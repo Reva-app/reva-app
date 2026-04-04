@@ -16,6 +16,9 @@ import {
 } from "@/lib/data";
 import { generateCoachInsights } from "@/lib/coach";
 import { CheckInModal } from "@/components/checkin/CheckInModal";
+import { AppointmentModal } from "@/components/dagboek/AppointmentModal";
+import { InnameModal, type InnameFormFields } from "@/components/medicatie/InnameModal";
+import { TrainingModal } from "@/components/training/TrainingModal";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -505,7 +508,7 @@ export default function Dashboard() {
     medicatie, addMedicatie,
     dagboekWorkouts, trainingSchemas, addDagboekWorkout,
     dossierDocumenten, addDossierDocument, fotoUpdates,
-    doelen, mijlpalen,
+    doelen, mijlpalen, contactpersonen,
     dagsSindsBlessure, dagsSindsOperatie, fase,
   } = useAppData();
 
@@ -767,7 +770,7 @@ export default function Dashboard() {
               {isAvond && " · Tijd om terug te blikken"}
             </p>
 
-            {/* Motivatie */}
+            {/* Motivatie — both desktop and mobile, inline between context and badges */}
             <p className="text-sm leading-relaxed mb-5 max-w-sm"
               style={{ color: "#4a4a52" }}>
               {motivatie}
@@ -1497,7 +1500,31 @@ export default function Dashboard() {
       ════════════════════════════════════════════════════════════════════ */}
       <div>
         <RowLabel>Snelle acties</RowLabel>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+
+        {/* Mobile: 4 items without Document */}
+        <div className="grid grid-cols-2 gap-3 sm:hidden">
+          {(([
+            { label: "Check-in",  icon: ClipboardCheck, modal: "checkin"  , color: "#e8632a", bg: "#fff3ee" },
+            { label: "Afspraak",  icon: Calendar,       modal: "afspraak" , color: "#3b82f6", bg: "#eff6ff" },
+            { label: "Training",  icon: Dumbbell,       modal: "training" , color: "#0ea5e9", bg: "#f0f9ff" },
+            { label: "Medicatie", icon: Pill,           modal: "medicatie", color: "#8b5cf6", bg: "#f5f3ff" },
+          ]) as { label: string; icon: React.ElementType; modal: NonNullable<QuickModal>; color: string; bg: string }[]).map((a) => (
+            <button key={a.modal} onClick={() => setQuickModal(a.modal)}
+              className="rounded-2xl border p-4 flex flex-col items-center gap-2.5 text-center transition-all cursor-pointer w-full"
+              style={{ background: "#ffffff", borderColor: "#e8e5df", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: a.bg }}>
+                <a.icon size={16} style={{ color: a.color }} />
+              </div>
+              <div className="flex items-center gap-1">
+                <Plus size={10} style={{ color: a.color }} />
+                <span className="text-xs font-semibold text-gray-700">{a.label}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Desktop: all 5 items including Document */}
+        <div className="hidden sm:grid sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {(([
             { label: "Check-in",  icon: ClipboardCheck, modal: "checkin"  , color: "#e8632a", bg: "#fff3ee" },
             { label: "Afspraak",  icon: Calendar,       modal: "afspraak" , color: "#3b82f6", bg: "#eff6ff" },
@@ -1536,25 +1563,47 @@ export default function Dashboard() {
         />
       )}
       {quickModal === "afspraak" && (
-        <AfspraakQuickModal
+        <AppointmentModal
+          initialDate={today}
+          contactpersonen={contactpersonen}
           onClose={() => setQuickModal(null)}
-          addAppointment={addAppointment}
-          today={today}
+          onSave={(apt) => {
+            addAppointment(apt);
+            setQuickModal(null);
+          }}
         />
       )}
       {quickModal === "training" && (
-        <TrainingQuickModal
-          onClose={() => setQuickModal(null)}
-          addDagboekWorkout={addDagboekWorkout}
+        <TrainingModal
           trainingSchemas={trainingSchemas.filter(s => s.status === "actief").map(s => ({ id: s.id, title: s.title }))}
-          today={today}
+          onClose={() => setQuickModal(null)}
+          onSave={(w) => {
+            addDagboekWorkout(w);
+            setQuickModal(null);
+          }}
         />
       )}
       {quickModal === "medicatie" && (
-        <MedicatieQuickModal
+        <InnameModal
           onClose={() => setQuickModal(null)}
-          addMedicatie={addMedicatie}
-          today={today}
+          title="Medicatie loggen"
+          saveLabel="Opslaan"
+          onSave={(data: InnameFormFields) => {
+            const effectiefNaam = data.naam === "Anders" && data.naamAnders.trim()
+              ? data.naamAnders.trim()
+              : data.naam;
+            addMedicatie({
+              id: crypto.randomUUID(),
+              date: data.datum,
+              time: data.tijdstip,
+              naam: effectiefNaam,
+              dosering: data.dosering.trim(),
+              hoeveelheid: data.hoeveelheid.trim() || "—",
+              reden: data.reden.trim(),
+              notitie: data.notitie.trim() || undefined,
+            });
+            setQuickModal(null);
+          }}
         />
       )}
       {quickModal === "document" && (

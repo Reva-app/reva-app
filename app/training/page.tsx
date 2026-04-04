@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAppData } from "@/lib/store";
+import { TrainingModal } from "@/components/training/TrainingModal";
 import {
   type TrainingOefening,
   type TrainingSchema,
@@ -148,32 +149,69 @@ function ModalShell({ title, onClose, children }: {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50"
       style={{ background: "rgba(0,0,0,0.35)", backdropFilter: "blur(2px)" }}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
+      {/* Desktop: centered modal */}
       <div
-        className="w-full max-w-lg rounded-2xl overflow-hidden flex flex-col"
+        className="hidden sm:flex items-center justify-center h-full p-4"
+        onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      >
+        <div
+          className="w-full max-w-lg rounded-2xl overflow-hidden flex flex-col"
+          style={{
+            background: "#ffffff",
+            boxShadow: "0 24px 64px rgba(0,0,0,0.18)",
+            animation: "modalIn 0.18s ease",
+            maxHeight: "calc(100vh - 2rem)",
+          }}
+        >
+          <div className="flex items-center justify-between px-6 py-4 border-b shrink-0"
+            style={{ borderColor: "#f0ede8" }}>
+            <p className="text-sm font-semibold text-gray-900">{title}</p>
+            <button onClick={onClose}
+              className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-gray-100">
+              <X size={15} className="text-gray-400" />
+            </button>
+          </div>
+          <div className="overflow-y-auto overscroll-contain flex-1">
+            {children}
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile: bottom sheet */}
+      <div
+        className="sm:hidden fixed left-0 right-0 bottom-0 rounded-t-2xl flex flex-col overflow-hidden"
         style={{
           background: "#ffffff",
-          boxShadow: "0 24px 64px rgba(0,0,0,0.18)",
-          animation: "modalIn 0.18s ease",
-          maxHeight: "calc(100vh - 2rem)",
+          boxShadow: "0 -12px 48px rgba(0,0,0,0.18)",
+          animation: "sheetUp 0.3s cubic-bezier(0.32,0.72,0,1)",
+          maxHeight: "92vh",
+          paddingBottom: "calc(var(--nav-height) + env(safe-area-inset-bottom, 0px))",
         }}
       >
-        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b shrink-0"
-          style={{ borderColor: "#f0ede8" }}>
-          <p className="text-sm font-semibold text-gray-900">{title}</p>
+        <div className="flex justify-center pt-3 shrink-0">
+          <div className="w-9 h-1 rounded-full" style={{ background: "#e0ddd8" }} />
+        </div>
+        <div className="flex items-center justify-between px-5 py-3.5 shrink-0"
+          style={{ borderBottom: "1px solid #f0ede8" }}>
+          <p className="text-base font-semibold text-gray-900">{title}</p>
           <button onClick={onClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-gray-100">
-            <X size={15} className="text-gray-400" />
+            className="w-8 h-8 rounded-full flex items-center justify-center touch-press"
+            style={{ background: "#f3f0eb" }}>
+            <X size={15} className="text-gray-500" />
           </button>
         </div>
-        <div className="overflow-y-auto overscroll-contain flex-1">
+        <div className="overflow-y-auto overflow-x-hidden overscroll-contain flex-1">
           {children}
         </div>
       </div>
-      <style>{`@keyframes modalIn { from { opacity:0; transform:scale(0.97) translateY(6px); } to { opacity:1; transform:scale(1) translateY(0); } }`}</style>
+
+      <style>{`
+        @keyframes modalIn { from { opacity:0; transform:scale(0.97) translateY(6px); } to { opacity:1; transform:scale(1) translateY(0); } }
+      `}</style>
     </div>
   );
 }
@@ -256,9 +294,20 @@ function OefeningFormModal({
             placeholder="Extra aandachtspunten van de fysio" />
         </div>
       </div>
-      <div className="flex gap-2 justify-end px-4 sm:px-6 py-4 border-t shrink-0" style={{ borderColor: "#f0ede8" }}>
+      {/* Desktop footer */}
+      <div className="hidden sm:flex gap-2 justify-end px-6 py-4 border-t shrink-0" style={{ borderColor: "#f0ede8" }}>
         <Button variant="secondary" size="sm" onClick={onClose}>Annuleren</Button>
         <Button size="sm" onClick={handleSave}>Opslaan</Button>
+      </div>
+      {/* Mobile footer — wide orange button */}
+      <div className="sm:hidden px-5 pb-5 pt-3 shrink-0" style={{ borderTop: "1px solid #f0ede8" }}>
+        <button
+          onClick={handleSave}
+          className="w-full py-4 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 touch-press"
+          style={{ background: "#e8632a", color: "#ffffff" }}
+        >
+          Opslaan
+        </button>
       </div>
     </ModalShell>
   );
@@ -431,9 +480,20 @@ function SchemaFormModal({
           )}
         </div>
       </div>
-      <div className="flex gap-2 justify-end px-4 sm:px-6 py-4 border-t shrink-0" style={{ borderColor: "#f0ede8" }}>
+      {/* Desktop footer */}
+      <div className="hidden sm:flex gap-2 justify-end px-6 py-4 border-t shrink-0" style={{ borderColor: "#f0ede8" }}>
         <Button variant="secondary" size="sm" onClick={onClose}>Annuleren</Button>
         <Button size="sm" onClick={handleSave}>Opslaan</Button>
+      </div>
+      {/* Mobile footer — wide orange button */}
+      <div className="sm:hidden px-5 pb-5 pt-3 shrink-0" style={{ borderTop: "1px solid #f0ede8" }}>
+        <button
+          onClick={handleSave}
+          className="w-full py-4 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 touch-press"
+          style={{ background: "#e8632a", color: "#ffffff" }}
+        >
+          Opslaan
+        </button>
       </div>
     </ModalShell>
   );
@@ -728,12 +788,29 @@ export default function TrainingPage() {
   const {
     trainingOefeningen, addTrainingOefening, updateTrainingOefening, deleteTrainingOefening,
     trainingSchemas, addTrainingSchema, updateTrainingSchema, deleteTrainingSchema,
-    dagboekWorkouts,
+    dagboekWorkouts, addDagboekWorkout,
   } = useAppData();
 
   const [activeTab, setActiveTab] = useState<Tab>("schemas");
   const [oefeningModal, setOefeningModal] = useState<{ open: boolean; editing?: TrainingOefening }>({ open: false });
   const [schemaModal, setSchemaModal] = useState<{ open: boolean; editing?: TrainingSchema }>({ open: false });
+  const [trainingModal, setTrainingModal] = useState(false);
+  const [oefeningTypeFilter, setOefeningTypeFilter] = useState<TrainingOefeningType | "Alles">("Alles");
+
+  const weekScrollRef = useRef<HTMLDivElement>(null);
+  const todayCardRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll week view to today on mount
+  useEffect(() => {
+    if (todayCardRef.current && weekScrollRef.current) {
+      const card = todayCardRef.current;
+      const container = weekScrollRef.current;
+      const cardLeft = card.offsetLeft;
+      const cardWidth = card.offsetWidth;
+      const containerWidth = container.offsetWidth;
+      container.scrollLeft = cardLeft - containerWidth / 2 + cardWidth / 2;
+    }
+  }, []);
 
   // Week calendar — visual only, ready for agenda/dagboek integration
   const weekDays = getWeekDays();
@@ -787,12 +864,17 @@ export default function TrainingPage() {
           }
         />
       </div>
-      {/* Mobile: title + subtitle only (buttons are below the tab bar) */}
+      {/* Mobile: title + subtitle + Training toevoegen button */}
       <div className="sm:hidden">
         <SectionHeader
           title="Training & Oefeningen"
           subtitle="Jouw revalidatieschema's en oefeningen database"
         />
+        <div className="mt-3">
+          <Button size="sm" onClick={() => setTrainingModal(true)}>
+            <Plus size={15} /> Training toevoegen
+          </Button>
+        </div>
       </div>
 
       {/* Week overview — dark card, visual only, ready for future dagboek integration */}
@@ -865,7 +947,7 @@ export default function TrainingPage() {
         </div>
 
         {/* Mobile: horizontal scroll with wider cards */}
-        <div className="sm:hidden flex gap-2.5 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+        <div ref={weekScrollRef} className="sm:hidden flex gap-2.5 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
           {weekDays.map(({ date, label }) => {
             const isToday = date === today;
             const dayWorkouts = dagboekWorkouts.filter((w) => w.date === date);
@@ -873,6 +955,7 @@ export default function TrainingPage() {
             const overflow = dayWorkouts.length - visible.length;
             return (
               <div key={date}
+                ref={isToday ? todayCardRef : undefined}
                 className="flex flex-col gap-2 py-3 px-3 rounded-xl shrink-0"
                 style={{
                   width: "120px",
@@ -963,7 +1046,7 @@ export default function TrainingPage() {
             {activeTab === "schemas" ? "Nieuw schema" : "Oefening toevoegen"}
           </button>
         </div>
-        {/* Mobile: tabs full width, button below */}
+        {/* Mobile: tabs full width, orange CTA button below */}
         <div className="sm:hidden mb-4">
           <PageTabs
             active={activeTab}
@@ -971,17 +1054,18 @@ export default function TrainingPage() {
             schemaCount={trainingSchemas.length}
             oefeningCount={trainingOefeningen.length}
           />
-          <button
-            onClick={() => activeTab === "schemas"
-              ? setSchemaModal({ open: true })
-              : setOefeningModal({ open: true })
-            }
-            className="mt-3 w-full flex items-center justify-center gap-2 text-sm font-semibold py-3.5 rounded-2xl transition-colors touch-press"
-            style={{ background: "#e8632a", color: "#ffffff", boxShadow: "0 4px 14px rgba(232,99,42,0.3)" }}
-          >
-            <Plus size={15} />
-            {activeTab === "schemas" ? "Nieuw schema toevoegen" : "Oefening toevoegen"}
-          </button>
+          <div className="mt-3">
+            <Button
+              size="sm"
+              onClick={() => activeTab === "schemas"
+                ? setSchemaModal({ open: true })
+                : setOefeningModal({ open: true })
+              }
+            >
+              <Plus size={15} />
+              {activeTab === "schemas" ? "Schema toevoegen" : "Oefening toevoegen"}
+            </Button>
+          </div>
         </div>
 
         {/* Tab: Schema's */}
@@ -1057,34 +1141,92 @@ export default function TrainingPage() {
               <EmptyState icon={BookOpen} title="Nog geen oefeningen"
                 sub="Voeg oefeningen toe aan je database. Je kunt ze daarna aan schema's koppelen." />
             ) : (
-              <div className="space-y-6">
-                {OEFENING_TYPES.map((type) => {
-                  const groep = trainingOefeningen.filter((o) => o.type === type);
-                  if (groep.length === 0) return null;
-                  return (
-                    <div key={type}>
-                      <SectionLabel>{type}</SectionLabel>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {groep.map((oe) => (
-                          <OefeningCard
-                            key={oe.id}
-                            oefening={oe}
-                            usedInCount={usedInCount(oe.id)}
-                            onEdit={() => setOefeningModal({ open: true, editing: oe })}
-                            onDelete={() => deleteTrainingOefening(oe.id)}
-                          />
-                        ))}
+              <>
+                {/* Mobile: type filter chips */}
+                <div className="sm:hidden flex gap-1.5 overflow-x-auto pb-2 mb-4" style={{ scrollbarWidth: "none" }}>
+                  {(["Alles", ...OEFENING_TYPES] as (TrainingOefeningType | "Alles")[]).map((t) => {
+                    const isActive = oefeningTypeFilter === t;
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setOefeningTypeFilter(t)}
+                        className="text-xs font-medium px-3 py-1.5 rounded-full transition-all shrink-0 touch-press"
+                        style={{
+                          background: isActive ? "#e8632a" : "#f3f0eb",
+                          color: isActive ? "#ffffff" : "#6b7280",
+                        }}
+                      >
+                        {t}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Desktop: grouped by type */}
+                <div className="hidden sm:block space-y-6">
+                  {OEFENING_TYPES.map((type) => {
+                    const groep = trainingOefeningen.filter((o) => o.type === type);
+                    if (groep.length === 0) return null;
+                    return (
+                      <div key={type}>
+                        <SectionLabel>{type}</SectionLabel>
+                        <div className="grid grid-cols-2 gap-4">
+                          {groep.map((oe) => (
+                            <OefeningCard
+                              key={oe.id}
+                              oefening={oe}
+                              usedInCount={usedInCount(oe.id)}
+                              onEdit={() => setOefeningModal({ open: true, editing: oe })}
+                              onDelete={() => deleteTrainingOefening(oe.id)}
+                            />
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+
+                {/* Mobile: filtered flat list */}
+                <div className="sm:hidden space-y-3">
+                  {(() => {
+                    const filtered = oefeningTypeFilter === "Alles"
+                      ? trainingOefeningen
+                      : trainingOefeningen.filter((o) => o.type === oefeningTypeFilter);
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="flex flex-col items-center justify-center py-10 text-center rounded-2xl border border-dashed"
+                          style={{ borderColor: "#e8e5df" }}>
+                          <p className="text-sm text-gray-400">Geen oefeningen van dit type.</p>
+                        </div>
+                      );
+                    }
+                    return filtered.map((oe) => (
+                      <OefeningCard
+                        key={oe.id}
+                        oefening={oe}
+                        usedInCount={usedInCount(oe.id)}
+                        onEdit={() => setOefeningModal({ open: true, editing: oe })}
+                        onDelete={() => deleteTrainingOefening(oe.id)}
+                      />
+                    ));
+                  })()}
+                </div>
+              </>
             )}
           </div>
         )}
       </div>
 
       {/* ── Modals ────────────────────────────────────────────────────────────── */}
+      {trainingModal && (
+        <TrainingModal
+          onClose={() => setTrainingModal(false)}
+          onSave={(w) => { addDagboekWorkout(w); setTrainingModal(false); }}
+          trainingSchemas={trainingSchemas.filter((s) => s.status === "actief").map((s) => ({ id: s.id, title: s.title }))}
+        />
+      )}
+
       {oefeningModal.open && (
         <OefeningFormModal
           initial={oefeningModal.editing}

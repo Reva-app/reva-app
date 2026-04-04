@@ -9,6 +9,7 @@ import type { DagboekWorkout, MedicatieLog, AppointmentType } from "@/lib/data";
 import { CheckInModal } from "@/components/checkin/CheckInModal";
 import { AppointmentModal } from "@/components/dagboek/AppointmentModal";
 import { InnameModal, type InnameFormFields, todayStr, nowTimeStr } from "@/components/medicatie/InnameModal";
+import { TrainingModal } from "@/components/training/TrainingModal";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -146,107 +147,6 @@ function SaveBtn({
         children
       )}
     </button>
-  );
-}
-
-// ─── Training sheet ────────────────────────────────────────────────────────────
-
-function TrainingSheet({
-  onClose,
-  addDagboekWorkout,
-  trainingSchemas,
-}: {
-  onClose: () => void;
-  addDagboekWorkout: (w: DagboekWorkout) => void;
-  trainingSchemas: { id: string; title: string }[];
-}) {
-  const [schemaId, setSchemaId] = useState(trainingSchemas[0]?.id ?? "");
-  const [vrij, setVrij] = useState("");
-  const [date, setDate] = useState(todayStr());
-  const [completed, setCompleted] = useState(true);
-  const [saved, setSaved] = useState(false);
-
-  function save() {
-    const title = schemaId
-      ? (trainingSchemas.find((s) => s.id === schemaId)?.title ?? "Training")
-      : vrij.trim() || "Training";
-    const now = new Date();
-    addDagboekWorkout({
-      id: crypto.randomUUID(),
-      date,
-      title,
-      schemaId: schemaId || undefined,
-      completed,
-      completedAt: completed ? now.toISOString() : undefined,
-      createdAt: now.toISOString(),
-    });
-    setSaved(true);
-    setTimeout(onClose, 900);
-  }
-
-  return (
-    <BottomSheet title="Training toevoegen" onClose={onClose}>
-      {trainingSchemas.length > 0 && (
-        <div>
-          <FieldLabel>Trainingsschema</FieldLabel>
-          <SheetSelect value={schemaId} onChange={setSchemaId}>
-            <option value="">Vrije training (geen schema)</option>
-            {trainingSchemas.map((s) => (
-              <option key={s.id} value={s.id}>{s.title}</option>
-            ))}
-          </SheetSelect>
-        </div>
-      )}
-
-      {!schemaId && (
-        <div>
-          <FieldLabel>Naam training</FieldLabel>
-          <SheetInput
-            value={vrij}
-            onChange={(e) => setVrij(e.target.value)}
-            placeholder="Bijv. looptraining, fietsen..."
-          />
-        </div>
-      )}
-
-      {/* Date picker */}
-      <div>
-        <FieldLabel>Datum</FieldLabel>
-        <SheetInput
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
-      </div>
-
-      {/* Completed toggle */}
-      <button
-        type="button"
-        onClick={() => setCompleted((v) => !v)}
-        className="flex items-center gap-3 w-full px-4 py-3.5 rounded-2xl transition-all touch-press"
-        style={{
-          background: completed ? "#f0fdf4" : "#f3f0eb",
-          border: `2px solid ${completed ? "#86efac" : "#e8e5df"}`,
-        }}
-      >
-        <div
-          className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-all"
-          style={{ background: completed ? "#16a34a" : "#d1d5db" }}
-        >
-          {completed && <Check size={12} color="#ffffff" strokeWidth={3} />}
-        </div>
-        <span
-          className="text-sm font-medium"
-          style={{ color: completed ? "#15803d" : "#6b7280" }}
-        >
-          {completed ? "Training afgerond ✓" : "Training gepland (nog niet afgerond)"}
-        </span>
-      </button>
-
-      <SaveBtn onClick={save} saved={saved}>
-        Training opslaan
-      </SaveBtn>
-    </BottomSheet>
   );
 }
 
@@ -392,10 +292,10 @@ export function QuickActionFAB() {
         />
       )}
       {activeSheet === "training" && (
-        <TrainingSheet
+        <TrainingModal
           onClose={() => setActiveSheet(null)}
-          addDagboekWorkout={addDagboekWorkout}
-          trainingSchemas={trainingSchemas}
+          onSave={(w) => { addDagboekWorkout(w); setActiveSheet(null); }}
+          trainingSchemas={trainingSchemas.filter(s => s.status === "actief").map(s => ({ id: s.id, title: s.title }))}
         />
       )}
       {activeSheet === "medicatie" && (

@@ -252,7 +252,7 @@ export function AppointmentModal({
           boxShadow: "0 -12px 48px rgba(0,0,0,0.18)",
           animation: "sheetUp 0.3s cubic-bezier(0.32,0.72,0,1)",
           maxHeight: "92vh",
-          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          paddingBottom: "calc(var(--nav-height) + env(safe-area-inset-bottom, 0px))",
         }}
       >
         <div className="flex justify-center pt-3 shrink-0">

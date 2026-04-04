@@ -653,12 +653,22 @@ function StatCards({ checkIns, appointments, dagboekWorkouts, mijlpalen, aantalF
           return (
             <div key={s.label} className="rounded-2xl border p-4"
               style={{ background: "#ffffff", borderColor: "#e8e5df", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${s.color}18` }}>
+              {/* Mobile: icon left of value */}
+              <div className="flex items-center gap-2.5 mb-1 sm:hidden">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${s.color}18` }}>
                   <Icon size={13} style={{ color: s.color }} />
                 </div>
+                <p className="text-2xl font-bold text-gray-900 leading-none">{s.display}</p>
               </div>
-              <p className="text-2xl font-bold text-gray-900 leading-none">{s.display}</p>
+              {/* Desktop: icon above value */}
+              <div className="hidden sm:block">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${s.color}18` }}>
+                    <Icon size={13} style={{ color: s.color }} />
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-gray-900 leading-none">{s.display}</p>
+              </div>
               <p className="text-xs font-medium text-gray-600 mt-1">{s.label}</p>
               <p className="text-[11px] text-gray-400">{s.sub}</p>
             </div>
@@ -687,7 +697,9 @@ export default function DagboekPage() {
   const todayDate = new Date();
   const [viewYear, setViewYear]     = useState(todayDate.getFullYear());
   const [viewMonth, setViewMonth]   = useState(todayDate.getMonth());
-  const [selectedDate, setSelectedDate] = useState<string | null>(today);
+  const [selectedDate, setSelectedDate] = useState<string | null>(
+    typeof window !== "undefined" && window.innerWidth < 640 ? null : today
+  );
 
   const [aptModal, setAptModal]         = useState<{ open: boolean; date: string; editing?: Appointment }>({ open: false, date: today });
   const [workoutModal, setWorkoutModal] = useState<{ open: boolean; date: string; editing?: DagboekWorkout }>({ open: false, date: today });
@@ -763,10 +775,12 @@ export default function DagboekPage() {
       {/* ── Calendar area ───────────────────────────────────────────────────── */}
       <div className="flex-1 min-w-0 flex flex-col overflow-y-auto">
 
-        {/* Title + controls */}
-        <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-4 shrink-0">
+        {/* Title */}
+        <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-0 sm:pb-0 shrink-0">
           <p className="text-2xl font-bold text-gray-900 mb-4">Dagboek</p>
-          <div className="flex items-center justify-between flex-wrap gap-3">
+
+          {/* Month nav + action buttons — desktop only here, mobile gets it below stat cards */}
+          <div className="hidden sm:flex items-center justify-between flex-wrap gap-3 pb-4">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1">
                 <button onClick={prevMonth} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors">
@@ -780,13 +794,11 @@ export default function DagboekPage() {
                 </button>
               </div>
               <button onClick={goToday}
-                className="text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors hover:bg-gray-50"
-                style={{ borderColor: "#e8e5df", color: "#374151" }}>
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                style={{ background: "#e8632a", color: "#ffffff" }}>
                 Vandaag
               </button>
             </div>
-
-            {/* Action buttons with category colors */}
             <div className="flex items-center gap-1.5 flex-wrap">
               <button onClick={() => setAptModal({ open: true, date: selectedDate ?? today })}
                 className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors"
@@ -809,6 +821,28 @@ export default function DagboekPage() {
 
         {/* Stat cards */}
         <StatCards checkIns={checkIns} appointments={appointments} dagboekWorkouts={dagboekWorkouts} mijlpalen={mijlpalen} aantalFysio={profile.aantalFysio} />
+
+        {/* Month nav — mobile only, directly above calendar */}
+        <div className="sm:hidden px-4 pt-4 pb-2 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <button onClick={prevMonth} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors">
+                <ChevronLeft size={15} className="text-gray-500" />
+              </button>
+              <h2 className="text-base font-semibold text-gray-700 min-w-[160px] text-center capitalize">
+                {fmtMonthYear(viewYear, viewMonth)}
+              </h2>
+              <button onClick={nextMonth} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors">
+                <ChevronRight size={15} className="text-gray-500" />
+              </button>
+            </div>
+            <button onClick={goToday}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+              style={{ background: "#e8632a", color: "#ffffff" }}>
+              Vandaag
+            </button>
+          </div>
+        </div>
 
         {/* Day-of-week header */}
         <div className="px-4 sm:px-6 shrink-0">
@@ -938,7 +972,7 @@ export default function DagboekPage() {
             )}
           </div>
 
-          <div className="px-4 py-4 border-t shrink-0 flex gap-2" style={{ borderColor: "#e8e5df", background: "#ffffff" }}>
+          <div className="hidden sm:flex px-4 py-4 border-t shrink-0 gap-2" style={{ borderColor: "#e8e5df", background: "#ffffff" }}>
             <button onClick={() => setAptModal({ open: true, date: selectedDate })}
               className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-2 rounded-xl border transition-colors hover:bg-gray-50"
               style={{ borderColor: "#e8e5df", color: "#374151" }}>
