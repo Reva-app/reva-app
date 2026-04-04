@@ -787,20 +787,12 @@ export default function TrainingPage() {
           }
         />
       </div>
-      {/* Mobile: title + subtitle + buttons stacked */}
+      {/* Mobile: title + subtitle only (buttons are below the tab bar) */}
       <div className="sm:hidden">
         <SectionHeader
           title="Training & Oefeningen"
           subtitle="Jouw revalidatieschema's en oefeningen database"
         />
-        <div className="grid grid-cols-2 gap-2 mt-3">
-          <Button variant="secondary" size="sm" onClick={() => setSchemaModal({ open: true })}>
-            <LayoutList size={14} /> Schema toevoegen
-          </Button>
-          <Button size="sm" onClick={() => setOefeningModal({ open: true })}>
-            <Plus size={14} /> Oefening toevoegen
-          </Button>
-        </div>
       </div>
 
       {/* Week overview — dark card, visual only, ready for future dagboek integration */}
@@ -984,11 +976,11 @@ export default function TrainingPage() {
               ? setSchemaModal({ open: true })
               : setOefeningModal({ open: true })
             }
-            className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-medium py-2.5 rounded-xl border transition-colors"
-            style={{ color: "#6b7280", borderColor: "#e8e5df", background: "#faf9f7" }}
+            className="mt-3 w-full flex items-center justify-center gap-2 text-sm font-semibold py-3.5 rounded-2xl transition-colors touch-press"
+            style={{ background: "#e8632a", color: "#ffffff", boxShadow: "0 4px 14px rgba(232,99,42,0.3)" }}
           >
-            <Plus size={13} />
-            {activeTab === "schemas" ? "Nieuw schema" : "Oefening toevoegen"}
+            <Plus size={15} />
+            {activeTab === "schemas" ? "Nieuw schema toevoegen" : "Oefening toevoegen"}
           </button>
         </div>
 

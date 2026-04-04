@@ -134,6 +134,32 @@ export function MedPillButtons({
 
 // ─── Form body (renders inside any container) ─────────────────────────────────
 
+function NativeInput({
+  type,
+  value,
+  onChange,
+}: {
+  type: "date" | "time";
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full min-w-0 text-sm rounded-xl border px-4 py-2.5 focus:outline-none"
+      style={{
+        borderColor: "#e8e5df",
+        background: "#f8f7f4",
+        color: "#1a1a1a",
+        boxSizing: "border-box",
+        maxWidth: "100%",
+      }}
+    />
+  );
+}
+
 function InnameFormBody({
   fields,
   setField,
@@ -143,6 +169,7 @@ function InnameFormBody({
   title,
   saveLabel = "Opslaan",
   saved,
+  nativePickers = false,
 }: {
   fields: InnameFormFields;
   setField: <K extends keyof InnameFormFields>(k: K, v: InnameFormFields[K]) => void;
@@ -152,6 +179,7 @@ function InnameFormBody({
   title: string;
   saveLabel?: string;
   saved: boolean;
+  nativePickers?: boolean;
 }) {
   const canSave =
     fields.dosering.trim() &&
@@ -205,11 +233,19 @@ function InnameFormBody({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <FieldLabel>Datum</FieldLabel>
-              <DatePicker value={fields.datum} onChange={(v) => setField("datum", v)} />
+              {nativePickers ? (
+                <NativeInput type="date" value={fields.datum} onChange={(v) => setField("datum", v)} />
+              ) : (
+                <DatePicker value={fields.datum} onChange={(v) => setField("datum", v)} />
+              )}
             </div>
             <div>
               <FieldLabel>Tijdstip</FieldLabel>
-              <TimePicker value={fields.tijdstip} onChange={(v) => setField("tijdstip", v)} />
+              {nativePickers ? (
+                <NativeInput type="time" value={fields.tijdstip} onChange={(v) => setField("tijdstip", v)} />
+              ) : (
+                <TimePicker value={fields.tijdstip} onChange={(v) => setField("tijdstip", v)} />
+              )}
             </div>
           </div>
 
@@ -378,7 +414,7 @@ export function InnameModal({
         <div className="flex justify-center pt-3 shrink-0">
           <div className="w-9 h-1 rounded-full" style={{ background: "#e0ddd8" }} />
         </div>
-        <div className="overflow-y-auto flex-1">
+        <div className="overflow-y-auto flex-1" style={{ paddingBottom: "env(safe-area-inset-bottom, 12px)" }}>
           <InnameFormBody
             fields={fields}
             setField={setField}
@@ -388,6 +424,7 @@ export function InnameModal({
             title={title}
             saveLabel={saveLabel}
             saved={saved}
+            nativePickers={true}
           />
         </div>
       </div>

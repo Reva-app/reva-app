@@ -430,6 +430,9 @@ export default function MedicatiePage() {
   type SchemaMode = "list" | "add" | { edit: MedicatieSchema };
   const [schemaMode, setSchemaMode] = useState<SchemaMode>("list");
 
+  // Mobile tab
+  const [mobileTab, setMobileTab] = useState<"overzicht" | "schema">("overzicht");
+
   // ── Stats ────────────────────────────────────────────────────────────────────
   const today = todayStr();
   const innamesVandaag = medicatie.filter((m) => m.date === today).length;
@@ -636,11 +639,31 @@ export default function MedicatiePage() {
         </div>
       </div>
 
+      {/* Mobile tab switcher */}
+      <div className="sm:hidden flex rounded-xl overflow-hidden mb-5" style={{ background: "#f3f0eb" }}>
+        {(["overzicht", "schema"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setMobileTab(tab)}
+            className="flex-1 py-2.5 text-sm font-medium transition-all"
+            style={{
+              background: mobileTab === tab ? "#ffffff" : "transparent",
+              color: mobileTab === tab ? "#1a1a1a" : "#9ca3af",
+              borderRadius: "10px",
+              margin: "3px",
+              boxShadow: mobileTab === tab ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+            }}
+          >
+            {tab === "overzicht" ? "Overzicht" : "Schema"}
+          </button>
+        ))}
+      </div>
+
       {/* Two-column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
 
         {/* Left: Inname tracker */}
-        <div className="min-w-0">
+        <div className={`min-w-0 ${mobileTab !== "overzicht" ? "hidden sm:block" : ""}`}>
           {Object.keys(grouped).length === 0 ? (
             <div
               className="rounded-2xl border py-16 flex flex-col items-center gap-3"
@@ -685,7 +708,7 @@ export default function MedicatiePage() {
         </div>
 
         {/* Right: Medicatieschema */}
-        <div className="rounded-2xl overflow-hidden" style={{ background: "#18181a", border: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className={`rounded-2xl overflow-hidden ${mobileTab !== "schema" ? "hidden sm:block" : ""}`} style={{ background: "#18181a", border: "1px solid rgba(255,255,255,0.06)" }}>
           <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
             <div>
               <p className="text-sm font-semibold text-white">Medicatieschema</p>

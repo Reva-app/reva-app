@@ -735,6 +735,7 @@ export default function DoelstellingenPage() {
   } = useAppData();
 
   const [toast, setToast] = useState<string | null>(null);
+  const [mobileTabDoel, setMobileTabDoel] = useState<"doelstellingen" | "mijlpalen">("doelstellingen");
   const [goalModal, setGoalModal] = useState<{ mode: "add" } | { mode: "edit"; doel: Doel } | null>(null);
   const [deleteGoalTarget, setDeleteGoalTarget] = useState<Doel | null>(null);
   const [mijlpaalModal, setMijlpaalModal] = useState<{ mode: "add" } | { mode: "edit"; mijlpaal: Mijlpaal } | null>(null);
@@ -814,36 +815,56 @@ export default function DoelstellingenPage() {
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto">
 
+      {/* Hoofddoelstelling — always visible */}
+      <section className="mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Hoofddoelstelling</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Jouw belangrijkste herstelgoal</p>
+          </div>
+        </div>
+
+        {mainGoal ? (
+          <MainGoalCard
+            doel={mainGoal}
+            onToggle={() => handleToggleDoel(mainGoal)}
+            onEdit={() => setGoalModal({ mode: "edit", doel: mainGoal })}
+          />
+        ) : (
+          <div className="rounded-2xl border border-dashed flex flex-col items-center justify-center py-10 gap-2"
+            style={{ borderColor: "#e8e5df" }}>
+            <Target size={24} style={{ color: "#d4cfc9" }} />
+            <p className="text-sm text-gray-400">Nog geen hoofddoel ingesteld</p>
+            <p className="text-xs text-gray-400">Voeg een doelstelling toe en maak het je hoofddoel</p>
+          </div>
+        )}
+      </section>
+
+      {/* Mobile tab switcher */}
+      <div className="sm:hidden flex rounded-xl overflow-hidden mb-5" style={{ background: "#f3f0eb" }}>
+        {(["doelstellingen", "mijlpalen"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setMobileTabDoel(tab)}
+            className="flex-1 py-2.5 text-sm font-medium transition-all"
+            style={{
+              background: mobileTabDoel === tab ? "#ffffff" : "transparent",
+              color: mobileTabDoel === tab ? "#1a1a1a" : "#9ca3af",
+              borderRadius: "10px",
+              margin: "3px",
+              boxShadow: mobileTabDoel === tab ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+            }}
+          >
+            {tab === "doelstellingen" ? "Doelstellingen" : "Mijlpalen"}
+          </button>
+        ))}
+      </div>
+
       {/* ── Two-column layout ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 items-start">
 
         {/* ── LEFT COLUMN: Doelstellingen ─────────────────────────────────────── */}
-        <div className="space-y-6">
-
-          {/* Blok 1: Hoofddoelstelling */}
-          <section>
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h2 className="text-base font-semibold text-gray-900">Hoofddoelstelling</h2>
-                <p className="text-xs text-gray-400 mt-0.5">Jouw belangrijkste herstelgoal</p>
-              </div>
-            </div>
-
-            {mainGoal ? (
-              <MainGoalCard
-                doel={mainGoal}
-                onToggle={() => handleToggleDoel(mainGoal)}
-                onEdit={() => setGoalModal({ mode: "edit", doel: mainGoal })}
-              />
-            ) : (
-              <div className="rounded-2xl border border-dashed flex flex-col items-center justify-center py-10 gap-2"
-                style={{ borderColor: "#e8e5df" }}>
-                <Target size={24} style={{ color: "#d4cfc9" }} />
-                <p className="text-sm text-gray-400">Nog geen hoofddoel ingesteld</p>
-                <p className="text-xs text-gray-400">Voeg een doelstelling toe en maak het je hoofddoel</p>
-              </div>
-            )}
-          </section>
+        <div className={`space-y-6 ${mobileTabDoel !== "doelstellingen" ? "hidden sm:block" : ""}`}>
 
           {/* Blok 2: Overige doelstellingen */}
           <section>
@@ -881,7 +902,7 @@ export default function DoelstellingenPage() {
         </div>
 
         {/* ── RIGHT COLUMN: Mijlpalen ─────────────────────────────────────────── */}
-        <div className="space-y-4">
+        <div className={`space-y-4 ${mobileTabDoel !== "mijlpalen" ? "hidden sm:block" : ""}`}>
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-base font-semibold text-gray-900">Mijlpalen</h2>

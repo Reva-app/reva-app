@@ -478,15 +478,30 @@ export default function DossierPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
-      <SectionHeader
-        title="Medisch Dossier"
-        subtitle="Documenten, foto updates en contactpersonen op één plek"
-        action={
+      {/* Desktop: button in SectionHeader */}
+      <div className="hidden sm:block">
+        <SectionHeader
+          title="Medisch Dossier"
+          subtitle="Documenten, foto updates en contactpersonen op één plek"
+          action={
+            <Button size="sm" onClick={handleAddButton}>
+              <Plus size={15} /> {addLabel()}
+            </Button>
+          }
+        />
+      </div>
+      {/* Mobile: button below subtitle */}
+      <div className="sm:hidden">
+        <SectionHeader
+          title="Medisch Dossier"
+          subtitle="Documenten, foto updates en contactpersonen op één plek"
+        />
+        <div className="mt-3">
           <Button size="sm" onClick={handleAddButton}>
             <Plus size={15} /> {addLabel()}
           </Button>
-        }
-      />
+        </div>
+      </div>
 
       {/* ── Tabs ─────────────────────────────────────────────────────────── */}
       <div className="flex gap-1 p-1 rounded-xl" style={{ background: "#f3f0eb" }}>

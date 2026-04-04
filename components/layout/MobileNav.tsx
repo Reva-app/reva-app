@@ -17,76 +17,40 @@ import {
   X,
 } from "lucide-react";
 
-// ─── All candidate nav pages ───────────────────────────────────────────────────
+// ─── Navigation config ─────────────────────────────────────────────────────────
 
-const ALL_NAV = [
-  { href: "/",              label: "Dashboard",    icon: LayoutDashboard },
-  { href: "/dagboek",       label: "Dagboek",      icon: BookOpen },
-  { href: "/training",      label: "Training",     icon: Dumbbell },
-  { href: "/medicatie",     label: "Medicatie",    icon: Pill },
-  { href: "/dossier",       label: "Dossier",      icon: FolderOpen },
-  { href: "/doelstellingen",label: "Doelen",       icon: Target },
-  { href: "/analyse",       label: "Analyse",      icon: BarChart2 },
-  { href: "/instellingen",  label: "Instellingen", icon: Settings },
+const FIXED_NAV = [
+  { href: "/",         label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dagboek",  label: "Dagboek",   icon: BookOpen },
+  { href: "/training", label: "Training",  icon: Dumbbell },
 ];
 
-const meerNav = ALL_NAV.filter(n =>
-  !["/", "/dagboek", "/training"].includes(n.href)
-);
-
-const RECENT_KEY  = "reva_recent_pages";
-const DEFAULT_RECENT = ["/", "/dagboek", "/training"];
+const ALL_NAV = [
+  { href: "/",               label: "Dashboard",    icon: LayoutDashboard },
+  { href: "/dagboek",        label: "Dagboek",      icon: BookOpen },
+  { href: "/training",       label: "Trainingen",   icon: Dumbbell },
+  { href: "/medicatie",      label: "Medicatie",    icon: Pill },
+  { href: "/dossier",        label: "Dossier",      icon: FolderOpen },
+  { href: "/doelstellingen", label: "Doelen",       icon: Target },
+  { href: "/analyse",        label: "Analyse",      icon: BarChart2 },
+  { href: "/instellingen",   label: "Instellingen", icon: Settings },
+];
 
 // ─── Component ─────────────────────────────────────────────────────────────────
 
 export function MobileNav() {
   const pathname = usePathname();
   const [meerOpen, setMeerOpen] = useState(false);
-  const [recentPages, setRecentPages] = useState<string[]>(DEFAULT_RECENT);
 
-  // Hydration-safe: load from localStorage after mount
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(RECENT_KEY);
-      if (stored) {
-        const parsed: string[] = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) setRecentPages(parsed);
-      }
-    } catch { /* ignore */ }
-  }, []);
-
-  // Track navigation — update recent pages on every route change
+  // Close Meer sheet on navigation
   useEffect(() => {
     setMeerOpen(false);
-    if (!ALL_NAV.some(n => n.href === pathname)) return;
-    setRecentPages(prev => {
-      const updated = [pathname, ...prev.filter(p => p !== pathname)].slice(0, 6);
-      try { localStorage.setItem(RECENT_KEY, JSON.stringify(updated)); } catch { /* ignore */ }
-      return updated;
-    });
   }, [pathname]);
 
-  // Derive 3 dynamic items from recent history
-  const dynamicNav = recentPages
-    .filter(p => ALL_NAV.some(n => n.href === p))
-    .slice(0, 3)
-    .map(p => ALL_NAV.find(n => n.href === p)!);
-
-  // Ensure we always have exactly 3 (fill with defaults if needed)
-  if (dynamicNav.length < 3) {
-    for (const d of DEFAULT_RECENT) {
-      if (dynamicNav.length >= 3) break;
-      if (!dynamicNav.some(n => n.href === d)) {
-        const found = ALL_NAV.find(n => n.href === d);
-        if (found) dynamicNav.push(found);
-      }
-    }
-  }
-
-  const [left1, left2, right1] = dynamicNav;
-
-  const isCheckIn    = pathname === "/check-in";
-  const isMeerActive = ALL_NAV.some(n => n.href === pathname && !dynamicNav.some(d => d.href === n.href));
+  const isCheckIn = pathname === "/check-in";
+  const isMeerActive = ALL_NAV.some(
+    n => n.href === pathname && !FIXED_NAV.some(f => f.href === n.href) && pathname !== "/check-in"
+  );
 
   return (
     <>
@@ -101,41 +65,17 @@ export function MobileNav() {
       >
         <div className="flex items-end h-16 px-1">
 
-          {/* Left item 1 */}
-          {left1 && (() => {
-            const { href, label, icon: Icon } = left1;
-            const active = pathname === href;
-            return (
-              <Link key={href} href={href}
-                className="flex-1 flex flex-col items-center justify-end gap-1 pb-2 touch-press">
-                <Icon size={22} style={{ color: active ? "#e8632a" : "#5a5a6a" }} strokeWidth={active ? 2.2 : 1.8} />
-                <span className="text-[10px] font-medium leading-none" style={{ color: active ? "#ffffff" : "#5a5a6a" }}>
-                  {label}
-                </span>
-              </Link>
-            );
-          })()}
+          {/* Dashboard */}
+          <NavItem href="/" label="Dashboard" icon={LayoutDashboard} active={pathname === "/"} />
 
-          {/* Left item 2 */}
-          {left2 && (() => {
-            const { href, label, icon: Icon } = left2;
-            const active = pathname === href;
-            return (
-              <Link key={href} href={href}
-                className="flex-1 flex flex-col items-center justify-end gap-1 pb-2 touch-press">
-                <Icon size={22} style={{ color: active ? "#e8632a" : "#5a5a6a" }} strokeWidth={active ? 2.2 : 1.8} />
-                <span className="text-[10px] font-medium leading-none" style={{ color: active ? "#ffffff" : "#5a5a6a" }}>
-                  {label}
-                </span>
-              </Link>
-            );
-          })()}
+          {/* Dagboek */}
+          <NavItem href="/dagboek" label="Dagboek" icon={BookOpen} active={pathname === "/dagboek"} />
 
           {/* Center — raised Check-in button */}
           <div className="flex-1 flex flex-col items-center" style={{ paddingBottom: "6px" }}>
             <Link href="/check-in" className="flex flex-col items-center gap-1 touch-press" style={{ marginTop: "-20px" }}>
               <div
-                className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl"
+                className="w-14 h-14 rounded-full flex items-center justify-center"
                 style={{
                   background: isCheckIn
                     ? "linear-gradient(135deg, #f0703a 0%, #d4541e 100%)"
@@ -148,29 +88,19 @@ export function MobileNav() {
               >
                 <ClipboardCheck size={24} style={{ color: "#ffffff" }} strokeWidth={2.2} />
               </div>
-              <span className="text-[10px] font-medium leading-none"
-                style={{ color: isCheckIn ? "#ffffff" : "#9a9aaa" }}>
+              <span
+                className="text-[10px] font-medium leading-none"
+                style={{ color: isCheckIn ? "#ffffff" : "#9a9aaa" }}
+              >
                 Check-in
               </span>
             </Link>
           </div>
 
-          {/* Right item 1 */}
-          {right1 && (() => {
-            const { href, label, icon: Icon } = right1;
-            const active = pathname === href;
-            return (
-              <Link key={href} href={href}
-                className="flex-1 flex flex-col items-center justify-end gap-1 pb-2 touch-press">
-                <Icon size={22} style={{ color: active ? "#e8632a" : "#5a5a6a" }} strokeWidth={active ? 2.2 : 1.8} />
-                <span className="text-[10px] font-medium leading-none" style={{ color: active ? "#ffffff" : "#5a5a6a" }}>
-                  {label}
-                </span>
-              </Link>
-            );
-          })()}
+          {/* Trainingen */}
+          <NavItem href="/training" label="Training" icon={Dumbbell} active={pathname === "/training"} />
 
-          {/* Meer button */}
+          {/* Meer */}
           <button
             onClick={() => setMeerOpen((v) => !v)}
             className="flex-1 flex flex-col items-center justify-end gap-1 pb-2 touch-press"
@@ -195,7 +125,7 @@ export function MobileNav() {
       {meerOpen && (
         <div
           className="lg:hidden fixed inset-0 z-40"
-          style={{ background: "rgba(0,0,0,0.45)", animation: "fadeIn 0.2s ease" }}
+          style={{ background: "rgba(0,0,0,0.5)", animation: "fadeIn 0.2s ease" }}
           onClick={() => setMeerOpen(false)}
         />
       )}
@@ -203,12 +133,14 @@ export function MobileNav() {
       {/* ── Meer slide-up sheet ──────────────────────────────────────── */}
       {meerOpen && (
         <div
-          className="lg:hidden fixed left-0 right-0 z-50 rounded-t-2xl"
+          className="lg:hidden fixed left-0 right-0 z-[45]"
           style={{
             bottom: `calc(var(--nav-height) + env(safe-area-inset-bottom, 0px))`,
             background: "#1c1c1e",
-            border: "1px solid rgba(255,255,255,0.07)",
-            borderBottom: "none",
+            borderTop: "1px solid rgba(255,255,255,0.10)",
+            borderLeft: "1px solid rgba(255,255,255,0.07)",
+            borderRight: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: "20px 20px 0 0",
             animation: "sheetUp 0.28s cubic-bezier(0.32,0.72,0,1)",
           }}
         >
@@ -234,7 +166,7 @@ export function MobileNav() {
             </button>
           </div>
 
-          {/* Grid of links — all pages */}
+          {/* Grid of links */}
           <div className="grid grid-cols-3 gap-3 p-4" style={{ paddingBottom: "20px" }}>
             {ALL_NAV.map(({ href, label, icon: Icon }) => {
               const active = pathname === href;
@@ -249,8 +181,10 @@ export function MobileNav() {
                   }}
                 >
                   <Icon size={22} style={{ color: active ? "#e8632a" : "#9ca3af" }} strokeWidth={active ? 2.2 : 1.8} />
-                  <span className="text-[11px] font-medium text-center leading-tight"
-                    style={{ color: active ? "#ffffff" : "#9ca3af" }}>
+                  <span
+                    className="text-[11px] font-medium text-center leading-tight"
+                    style={{ color: active ? "#ffffff" : "#9ca3af" }}
+                  >
                     {label}
                   </span>
                 </Link>
@@ -260,5 +194,31 @@ export function MobileNav() {
         </div>
       )}
     </>
+  );
+}
+
+// ─── Nav item ──────────────────────────────────────────────────────────────────
+
+function NavItem({
+  href,
+  label,
+  icon: Icon,
+  active,
+}: {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  active: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex-1 flex flex-col items-center justify-end gap-1 pb-2 touch-press"
+    >
+      <Icon size={22} style={{ color: active ? "#e8632a" : "#5a5a6a" }} strokeWidth={active ? 2.2 : 1.8} />
+      <span className="text-[10px] font-medium leading-none" style={{ color: active ? "#ffffff" : "#5a5a6a" }}>
+        {label}
+      </span>
+    </Link>
   );
 }

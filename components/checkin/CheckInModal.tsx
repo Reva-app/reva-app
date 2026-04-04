@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X, Check } from "lucide-react";
 import type { CheckIn } from "@/lib/data";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -150,20 +151,26 @@ export function CheckInModal({
         {/* Scrollable content */}
         <div className="overflow-y-auto flex-1 px-5 py-5 space-y-4 bottom-sheet-content">
 
+          {/* Uitleg */}
+          <p className="text-xs text-gray-400 leading-relaxed">
+            Vul in hoe je dag was. Bij alle scores geldt: <strong className="text-gray-500">1 is laag</strong> en de hoogste waarde is het beste — behalve bij pijn, waar lager beter is.
+          </p>
+
           {/* Date */}
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5">Datum</label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full text-sm rounded-xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-100 transition-all"
-              style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
-            />
+            <DatePicker value={date} onChange={setDate} />
           </div>
 
-          <ScoreRow label="Dagscore"      value={dagscore}   max={5}  onChange={setDagscore}   color="#e8632a" />
-          <ScoreRow label="Pijnniveau"    value={pijn}       max={10} onChange={setPijn}       color="#ef4444" />
+          <ScoreRow label="Dagscore"   value={dagscore}   max={5}  onChange={setDagscore}   color="#e8632a" />
+
+          <div>
+            <ScoreRow label="Pijnscore" value={pijn} max={10} onChange={setPijn} color="#ef4444" />
+            <p className="text-[11px] mt-1.5 px-0.5" style={{ color: "#ef4444" }}>
+              Let op: 1 = weinig pijn &nbsp;·&nbsp; 10 = veel pijn
+            </p>
+          </div>
+
           <ScoreRow label="Mobiliteit"    value={mobiliteit} max={5}  onChange={setMobiliteit} color="#3b82f6" />
           <ScoreRow label="Energie"       value={energie}    max={5}  onChange={setEnergie}    color="#f59e0b" />
           <ScoreRow label="Slaapkwaliteit" value={slaap}     max={5}  onChange={setSlaap}      color="#8b5cf6" />

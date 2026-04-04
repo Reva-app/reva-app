@@ -62,7 +62,7 @@ function BottomSheet({
         </div>
 
         {/* Scrollable content */}
-        <div className="overflow-y-auto flex-1 px-5 py-5 space-y-4 bottom-sheet-content">
+        <div className="overflow-y-auto overflow-x-hidden flex-1 px-5 py-5 space-y-4 bottom-sheet-content">
           {children}
         </div>
       </div>
@@ -82,8 +82,8 @@ function SheetInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className="w-full text-sm rounded-xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-100 transition-all"
-      style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
+      className="w-full min-w-0 text-sm rounded-xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-100 transition-all"
+      style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a", boxSizing: "border-box", maxWidth: "100%" }}
     />
   );
 }
