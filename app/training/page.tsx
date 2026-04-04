@@ -796,6 +796,7 @@ export default function TrainingPage() {
   const [schemaModal, setSchemaModal] = useState<{ open: boolean; editing?: TrainingSchema }>({ open: false });
   const [trainingModal, setTrainingModal] = useState(false);
   const [oefeningTypeFilter, setOefeningTypeFilter] = useState<TrainingOefeningType | "Alles">("Alles");
+  const [schemaStatusFilter, setSchemaStatusFilter] = useState<TrainingSchemaStatus | "Alles">("Alles");
 
   const weekScrollRef = useRef<HTMLDivElement>(null);
   const todayCardRef = useRef<HTMLDivElement>(null);
@@ -1046,14 +1047,29 @@ export default function TrainingPage() {
             {activeTab === "schemas" ? "Nieuw schema" : "Oefening toevoegen"}
           </button>
         </div>
-        {/* Mobile: tabs full width, orange CTA button below */}
+        {/* Mobile: full-width pill tabs (Medicatie stijl) + CTA below */}
         <div className="sm:hidden mb-4">
-          <PageTabs
-            active={activeTab}
-            onChange={setActiveTab}
-            schemaCount={trainingSchemas.length}
-            oefeningCount={trainingOefeningen.length}
-          />
+          <div className="flex rounded-xl overflow-hidden" style={{ background: "#f3f0eb" }}>
+            {([
+              { id: "schemas" as Tab, label: `Schema's (${trainingSchemas.length})` },
+              { id: "oefeningen" as Tab, label: `Oefeningen (${trainingOefeningen.length})` },
+            ]).map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className="flex-1 py-2.5 text-sm font-medium transition-all"
+                style={{
+                  background: activeTab === id ? "#ffffff" : "transparent",
+                  color: activeTab === id ? "#1a1a1a" : "#9ca3af",
+                  boxShadow: activeTab === id ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+                  margin: activeTab === id ? "3px" : "0",
+                  borderRadius: activeTab === id ? "8px" : "0",
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="mt-3">
             <Button
               size="sm"
@@ -1075,9 +1091,33 @@ export default function TrainingPage() {
               <EmptyState icon={LayoutList} title="Nog geen schema's"
                 sub="Maak een trainingsschema op basis van het plan van je fysio." />
             ) : (
+              <>
+                {/* Mobile: status filter chips */}
+                <div className="sm:hidden flex gap-1.5 overflow-x-auto pb-2 mb-4" style={{ scrollbarWidth: "none" }}>
+                  {(["Alles", "actief", "gepland", "afgerond"] as (TrainingSchemaStatus | "Alles")[]).map((f) => {
+                    const isActive = schemaStatusFilter === f;
+                    const label = f === "Alles" ? "Alles" : STATUS_OPTIONS.find((s) => s.value === f)?.label ?? f;
+                    return (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => setSchemaStatusFilter(f)}
+                        className="text-xs font-medium px-3 py-1.5 rounded-full transition-all shrink-0 touch-press"
+                        style={{
+                          background: isActive ? "#e8632a" : "#f3f0eb",
+                          color: isActive ? "#ffffff" : "#6b7280",
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+
               <div className="space-y-6">
+                {/* Desktop: grouped by status */}
                 {actieveSchemas.length > 0 && (
-                  <div>
+                  <div className={schemaStatusFilter !== "Alles" && schemaStatusFilter !== "actief" ? "hidden sm:block" : ""}>
                     <SectionLabel>Actief</SectionLabel>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {actieveSchemas.map((s) => (
@@ -1095,7 +1135,7 @@ export default function TrainingPage() {
                 )}
 
                 {geplande.length > 0 && (
-                  <div>
+                  <div className={schemaStatusFilter !== "Alles" && schemaStatusFilter !== "gepland" ? "hidden sm:block" : ""}>
                     <SectionLabel>Gepland</SectionLabel>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {geplande.map((s) => (
@@ -1113,7 +1153,7 @@ export default function TrainingPage() {
                 )}
 
                 {afgeronde.length > 0 && (
-                  <div>
+                  <div className={schemaStatusFilter !== "Alles" && schemaStatusFilter !== "afgerond" ? "hidden sm:block" : ""}>
                     <SectionLabel>Afgerond</SectionLabel>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {afgeronde.map((s) => (
@@ -1130,6 +1170,7 @@ export default function TrainingPage() {
                   </div>
                 )}
               </div>
+              </>
             )}
           </div>
         )}

@@ -679,11 +679,11 @@ export default function InstellingenPage() {
               style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
             />
           </div>
-          <div className="flex items-center gap-3 pt-1">
+          <div className="pt-1">
             <Button size="sm" onClick={handleFeedback} disabled={fbSending}>
               {fbSending ? "Versturen..." : "Verstuur feedback"}
             </Button>
-            <p className="text-[11px] text-gray-400">Wordt verstuurd naar info@reva-app.nl</p>
+            <p className="text-[11px] text-gray-400 mt-2">Wordt verstuurd naar info@reva-app.nl</p>
           </div>
         </div>
       </Card>
@@ -705,9 +705,31 @@ export default function InstellingenPage() {
       </Card>
 
       {/* App info */}
-      <div className="text-center pt-2 pb-4">
-        <p className="text-xs" style={{ color: "#c4bfb7" }}>REVA Herstel Kompas · Versie 0.1.0</p>
-        <p className="text-xs mt-0.5" style={{ color: "#c4bfb7" }}>Gebouwd voor persoonlijk gebruik. Geen medisch advies.</p>
+      <div className="text-center pt-2 pb-6 space-y-1">
+        <p className="text-xs" style={{ color: "#c4bfb7" }}>REVA Herstel Dashboard · Versie 0.1.0</p>
+        <p className="text-xs" style={{ color: "#c4bfb7" }}>Gebouwd voor persoonlijk gebruik. Geen medisch advies.</p>
+        <p className="text-xs" style={{ color: "#c4bfb7" }}>
+          <span
+            className="underline underline-offset-2 cursor-pointer hover:opacity-70 transition-opacity"
+            onClick={() => showToast("Disclaimer en algemene voorwaarden komen binnenkort beschikbaar.")}
+          >
+            Disclaimer
+          </span>
+          {" · "}
+          <span
+            className="underline underline-offset-2 cursor-pointer hover:opacity-70 transition-opacity"
+            onClick={() => showToast("Disclaimer en algemene voorwaarden komen binnenkort beschikbaar.")}
+          >
+            Algemene voorwaarden
+          </span>
+          {" · "}
+          <span
+            className="underline underline-offset-2 cursor-pointer hover:opacity-70 transition-opacity"
+            onClick={() => showToast("Disclaimer en algemene voorwaarden komen binnenkort beschikbaar.")}
+          >
+            Privacybeleid
+          </span>
+        </p>
       </div>
     </div>
   );

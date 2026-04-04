@@ -490,17 +490,12 @@ export default function DossierPage() {
           }
         />
       </div>
-      {/* Mobile: button below subtitle */}
+      {/* Mobile: title only, no button */}
       <div className="sm:hidden">
         <SectionHeader
           title="Medisch Dossier"
           subtitle="Documenten, foto updates en contactpersonen op één plek"
         />
-        <div className="mt-3">
-          <Button size="sm" onClick={handleAddButton}>
-            <Plus size={15} /> {addLabel()}
-          </Button>
-        </div>
       </div>
 
       {/* ── Tabs ─────────────────────────────────────────────────────────── */}
@@ -521,6 +516,37 @@ export default function DossierPage() {
             </span>
           </button>
         ))}
+      </div>
+
+      {/* Mobile: tab title + uitleg + CTA button */}
+      <div className="sm:hidden">
+        {tab === "documenten" && (
+          <div className="mb-4">
+            <p className="text-base font-semibold text-gray-900 mb-0.5">Documenten</p>
+            <p className="text-xs text-gray-400 mb-3">Sla medische brieven, verslagen en scans op.</p>
+            <Button size="sm" onClick={() => setDocModal({ open: true })}>
+              <Plus size={15} /> Document toevoegen
+            </Button>
+          </div>
+        )}
+        {tab === "foto-updates" && (
+          <div className="mb-4">
+            <p className="text-base font-semibold text-gray-900 mb-0.5">Foto updates</p>
+            <p className="text-xs text-gray-400 mb-3">Documenteer je visuele voortgang week voor week.</p>
+            <Button size="sm" onClick={() => setFotoModal(true)}>
+              <Plus size={15} /> Foto toevoegen
+            </Button>
+          </div>
+        )}
+        {tab === "contactpersonen" && (
+          <div className="mb-4">
+            <p className="text-base font-semibold text-gray-900 mb-0.5">Contactpersonen</p>
+            <p className="text-xs text-gray-400 mb-3">Bewaar gegevens van je zorgverleners op één plek.</p>
+            <Button size="sm" onClick={() => setContactModal({ open: true })}>
+              <Plus size={15} /> Contactpersoon toevoegen
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* ── Documenten ───────────────────────────────────────────────────── */}

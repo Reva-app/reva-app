@@ -903,7 +903,31 @@ export default function DoelstellingenPage() {
 
         {/* ── RIGHT COLUMN: Mijlpalen ─────────────────────────────────────────── */}
         <div className={`space-y-4 ${mobileTabDoel !== "mijlpalen" ? "hidden sm:block" : ""}`}>
-          <div className="flex items-center justify-between">
+
+          {/* Mobile: title + count + button (matches Doelstellingen layout) + progress bar below */}
+          <div className="sm:hidden">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">Mijlpalen</h2>
+                <p className="text-xs text-gray-400 mt-0.5">{completedMijlpalen} van {totalMijlpalen} behaald</p>
+              </div>
+              <Button size="sm" onClick={() => setMijlpaalModal({ mode: "add" })}>
+                <Plus size={14} /> Nieuwe mijlpaal
+              </Button>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-2.5 rounded-full overflow-hidden" style={{ background: "#f0ede8" }}>
+                <div className="h-full rounded-full transition-all"
+                  style={{ width: `${totalMijlpalen > 0 ? (completedMijlpalen / totalMijlpalen) * 100 : 0}%`, background: "#e8632a" }} />
+              </div>
+              <span className="text-xs font-semibold shrink-0" style={{ color: "#e8632a" }}>
+                {totalMijlpalen > 0 ? Math.round((completedMijlpalen / totalMijlpalen) * 100) : 0}%
+              </span>
+            </div>
+          </div>
+
+          {/* Desktop: title + compact progress + button inline */}
+          <div className="hidden sm:flex items-center justify-between">
             <div>
               <h2 className="text-base font-semibold text-gray-900">Mijlpalen</h2>
               <p className="text-xs text-gray-400 mt-0.5">{completedMijlpalen} van {totalMijlpalen} behaald</p>

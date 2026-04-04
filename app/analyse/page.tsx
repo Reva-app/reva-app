@@ -435,6 +435,32 @@ export default function AnalysePage() {
         </div>
       </div>
 
+      {/* Mobile: Wat valt op — direct onder de header */}
+      <div className="sm:hidden">
+        <Card>
+          <CardHeader
+            title="Wat valt op"
+            subtitle="Observaties op basis van jouw data"
+            action={<Lightbulb size={15} className="text-gray-400" />}
+          />
+          {!s || s.obs.length === 0 ? (
+            <p className="text-sm text-gray-400 mt-2">Vul meer check-ins in voor slimme observaties.</p>
+          ) : (
+            <div className="space-y-3 mt-3">
+              {s.obs.slice(0, 5).map((obs, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <div className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "#e8632a" }} />
+                  <p className="text-sm text-gray-600 leading-relaxed">{obs}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="text-[10px] mt-5 pt-3" style={{ borderTop: "1px solid #f3f0eb", color: "#c4bfb7" }}>
+            Deze observaties zijn informatief en vormen geen medisch advies.
+          </p>
+        </Card>
+      </div>
+
       {/* ── Rij 2: 3 inzichtkaarten ────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
@@ -793,8 +819,8 @@ export default function AnalysePage() {
         )}
       </Card>
 
-      {/* ── Rij 7: Wat valt op ──────────────────────────────────────────── */}
-      <Card>
+      {/* ── Rij 7: Wat valt op — desktop only (mobile shows it at top) ─── */}
+      <Card className="hidden sm:block">
         <CardHeader
           title="Wat valt op"
           subtitle="Observaties op basis van jouw data"

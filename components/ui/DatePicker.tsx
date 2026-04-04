@@ -126,7 +126,9 @@ export function DatePicker({
 
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
+      // On mobile, the fixed nav bar covers the bottom — subtract its height
+      const navHeight = window.innerWidth < 640 ? 64 : 0;
+      const spaceBelow = window.innerHeight - rect.bottom - navHeight;
       const spaceAbove = rect.top;
 
       // Clamp left so the dropdown never overflows the right edge

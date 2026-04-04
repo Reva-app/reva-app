@@ -607,34 +607,60 @@ export default function MedicatiePage() {
       <div className="grid grid-cols-3 gap-3 mb-6">
         {/* Innames vandaag */}
         <div className="rounded-2xl border p-4" style={{ background: "#ffffff", borderColor: "#e8e5df" }}>
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-3" style={{ background: "#fff3ee" }}>
-            <Pill size={15} style={{ color: "#e8632a" }} />
+          {/* Mobile: icon left of value */}
+          <div className="flex items-center gap-2 mb-1 sm:hidden">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#fff3ee" }}>
+              <Pill size={13} style={{ color: "#e8632a" }} />
+            </div>
+            <p className="text-2xl font-bold text-gray-900 leading-none">{innamesVandaag}</p>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{innamesVandaag}</p>
+          {/* Desktop: icon above value */}
+          <div className="hidden sm:block">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-3" style={{ background: "#fff3ee" }}>
+              <Pill size={15} style={{ color: "#e8632a" }} />
+            </div>
+            <p className="text-2xl font-bold text-gray-900">{innamesVandaag}</p>
+          </div>
           <p className="text-xs text-gray-400 mt-0.5">Innames vandaag</p>
         </div>
 
         {/* Dagen met / zonder medicatie */}
         <div className="rounded-2xl border p-4" style={{ background: "#ffffff", borderColor: "#e8e5df" }}>
-          <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center mb-3"
-            style={{ background: stat2Label === "Dagen zonder medicatie" ? "#fef9ec" : "#f0fdf4" }}
-          >
-            <CalendarCheck
-              size={15}
-              style={{ color: stat2Label === "Dagen zonder medicatie" ? "#d97706" : "#16a34a" }}
-            />
+          {/* Mobile: icon left of value */}
+          <div className="flex items-center gap-2 mb-1 sm:hidden">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: stat2Label === "Dagen zonder medicatie" ? "#fef9ec" : "#f0fdf4" }}>
+              <CalendarCheck size={13} style={{ color: stat2Label === "Dagen zonder medicatie" ? "#d97706" : "#16a34a" }} />
+            </div>
+            <p className="text-2xl font-bold text-gray-900 leading-none">{stat2Value}</p>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{stat2Value}</p>
+          {/* Desktop: icon above value */}
+          <div className="hidden sm:block">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-3"
+              style={{ background: stat2Label === "Dagen zonder medicatie" ? "#fef9ec" : "#f0fdf4" }}>
+              <CalendarCheck size={15} style={{ color: stat2Label === "Dagen zonder medicatie" ? "#d97706" : "#16a34a" }} />
+            </div>
+            <p className="text-2xl font-bold text-gray-900">{stat2Value}</p>
+          </div>
           <p className="text-xs text-gray-400 mt-0.5">{stat2Label}</p>
         </div>
 
         {/* Actieve schema's */}
         <div className="rounded-2xl border p-4" style={{ background: "#ffffff", borderColor: "#e8e5df" }}>
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-3" style={{ background: "#f5f3ff" }}>
-            <ListChecks size={15} style={{ color: "#7c3aed" }} />
+          {/* Mobile: icon left of value */}
+          <div className="flex items-center gap-2 mb-1 sm:hidden">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#f5f3ff" }}>
+              <ListChecks size={13} style={{ color: "#7c3aed" }} />
+            </div>
+            <p className="text-2xl font-bold text-gray-900 leading-none">{activeSchemasCount}</p>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{activeSchemasCount}</p>
+          {/* Desktop: icon above value */}
+          <div className="hidden sm:block">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-3" style={{ background: "#f5f3ff" }}>
+              <ListChecks size={15} style={{ color: "#7c3aed" }} />
+            </div>
+            <p className="text-2xl font-bold text-gray-900">{activeSchemasCount}</p>
+          </div>
           <p className="text-xs text-gray-400 mt-0.5">Actieve schema&apos;s</p>
         </div>
       </div>

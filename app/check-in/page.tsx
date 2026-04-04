@@ -431,6 +431,8 @@ function CheckInEditModal({
 export default function CheckInPage() {
   const { checkIns, addCheckIn, updateCheckIn } = useAppData();
 
+  const [mobileTab, setMobileTab] = useState<"formulier" | "dezeweek">("formulier");
+
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [dagscore,   setDagscore]   = useState(3);
   const [pijn,       setPijn]       = useState(4);
@@ -465,6 +467,107 @@ export default function CheckInPage() {
     setNotitie(""); setSubmitted(false);
   }
 
+  // ── Shared form content (used on both desktop and mobile formulier tab) ──────
+  const formContent = submitted ? (
+    <div className="rounded-2xl border bg-white text-center py-10 px-6"
+      style={{ borderColor: "#e8e5df", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+      <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
+        style={{ background: "#f0fdf4" }}>
+        <Check size={24} style={{ color: "#22c55e" }} />
+      </div>
+      <h3 className="text-base font-semibold text-gray-900 mb-1">Check-in opgeslagen</h3>
+      <p className="text-sm text-gray-400">
+        {new Date(selectedDate + "T12:00:00").toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" })}
+      </p>
+      <p className="text-sm text-gray-400 mt-0.5">
+        Dagscore {dagscore}/5 — {dagscoreLabels[dagscore]}
+      </p>
+      <Button variant="secondary" size="sm" className="mt-5" onClick={reset}>
+        Nieuwe check-in
+      </Button>
+    </div>
+  ) : (
+    <>
+      <div className="rounded-2xl border bg-white"
+        style={{ borderColor: "#e8e5df", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+
+        {/* Datum */}
+        <div className="px-6 pt-6 pb-5 border-b" style={{ borderColor: "#f0ede8" }}>
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Datum</p>
+          <DatePicker value={selectedDate} onChange={setSelectedDate} />
+          {!isToday && (
+            <p className="text-xs text-gray-400 mt-2">Je vult een check-in in voor een eerdere dag</p>
+          )}
+        </div>
+
+        {/* Dagscore */}
+        <div className="px-6 pt-5 pb-5 border-b" style={{ borderColor: "#f0ede8" }}>
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">
+            {isToday ? "Dagscore van vandaag" : "Dagscore"}
+          </p>
+          <p className="text-sm text-gray-500 mb-3">
+            {isToday
+              ? "Hoe was jouw dag overall?"
+              : `Hoe was jouw dag op ${new Date(selectedDate + "T12:00:00").toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" })}?`}
+          </p>
+          <div className="flex gap-2">
+            {[1, 2, 3, 4, 5].map((v) => (
+              <button key={v} onClick={() => setDagscore(v)}
+                className="flex-1 py-4 rounded-xl flex flex-col items-center gap-1.5 transition-all"
+                style={{
+                  background: dagscore === v ? "#1c1c1e" : "#f8f7f4",
+                  border: dagscore === v ? "2px solid #e8632a" : "2px solid transparent",
+                }}>
+                <span className="text-xl">{dagscoreEmoji[v]}</span>
+                <span className="text-xs font-medium"
+                  style={{ color: dagscore === v ? "#ffffff" : "#9ca3af" }}>
+                  {dagscoreLabels[v]}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Details */}
+        <div className="px-6 pt-5 pb-5 border-b" style={{ borderColor: "#f0ede8" }}>
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">Details</p>
+          <p className="text-sm text-gray-500 mb-4">Optioneel — vul in wat relevant is</p>
+          <div className="space-y-5">
+            <ScoreSelector label="Dagscore"      value={dagscore}   max={5}  onChange={setDagscore}   color="#e8632a" />
+            <div>
+              <ScoreSelector label="Pijnscore"   value={pijn}       max={10} onChange={setPijn}       color="#ef4444" />
+              <p className="text-[11px] mt-1.5 px-0.5" style={{ color: "#ef4444" }}>
+                Let op: 1 = weinig pijn &nbsp;·&nbsp; 10 = veel pijn
+              </p>
+            </div>
+            <ScoreSelector label="Mobiliteit"    value={mobiliteit} max={5}  onChange={setMobiliteit} color="#3b82f6" />
+            <ScoreSelector label="Energie"       value={energie}    max={5}  onChange={setEnergie}    color="#f59e0b" />
+            <ScoreSelector label="Slaapkwaliteit" value={slaap}     max={5}  onChange={setSlaap}      color="#8b5cf6" />
+            <ScoreSelector label="Stemming"      value={stemming}   max={5}  onChange={setStemming}   color="#10b981" />
+          </div>
+        </div>
+
+        {/* Notitie */}
+        <div className="px-6 pt-5 pb-6">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">Notitie</p>
+          <p className="text-sm text-gray-500 mb-3">Optioneel</p>
+          <textarea
+            value={notitie}
+            onChange={(e) => setNotitie(e.target.value)}
+            placeholder="Hoe voelde jouw herstel vandaag? Bijzonderheden, opmerkingen..."
+            rows={4}
+            className="w-full text-sm rounded-xl border px-4 py-3 resize-none focus:outline-none"
+            style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
+          />
+        </div>
+      </div>
+
+      <Button fullWidth size="lg" onClick={handleSubmit}>
+        Check-in opslaan
+      </Button>
+    </>
+  );
+
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
       <SectionHeader
@@ -472,115 +575,117 @@ export default function CheckInPage() {
         subtitle="Hoe gaat het vandaag met jouw herstel?"
       />
 
-      {/* ── 1. Hersteltrend — full width ─────────────────────────────────── */}
-      <HerstelTrendLijn checkIns={checkIns} />
+      {/* ── Mobile: tab bar ──────────────────────────────────────────────── */}
+      <div className="sm:hidden">
+        <div className="flex rounded-xl overflow-hidden mb-5" style={{ background: "#f3f0eb" }}>
+          {(["formulier", "dezeweek"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setMobileTab(tab)}
+              className="flex-1 py-2.5 text-sm font-medium transition-all"
+              style={{
+                background: mobileTab === tab ? "#ffffff" : "transparent",
+                color: mobileTab === tab ? "#1a1a1a" : "#9ca3af",
+                boxShadow: mobileTab === tab ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+                margin: mobileTab === tab ? "3px" : "0",
+                borderRadius: mobileTab === tab ? "8px" : "0",
+              }}
+            >
+              {tab === "formulier" ? "Check-in formulier" : "Deze week"}
+            </button>
+          ))}
+        </div>
 
-      {/* ── 2. Two-column: form + week overview ──────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-
-        {/* Left: check-in form (2/3) */}
-        <div className="lg:col-span-2 space-y-5">
-          {submitted ? (
-            <div className="rounded-2xl border bg-white text-center py-10 px-6"
-              style={{ borderColor: "#e8e5df", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-              <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
-                style={{ background: "#f0fdf4" }}>
-                <Check size={24} style={{ color: "#22c55e" }} />
-              </div>
-              <h3 className="text-base font-semibold text-gray-900 mb-1">Check-in opgeslagen</h3>
-              <p className="text-sm text-gray-400">
-                {new Date(selectedDate + "T12:00:00").toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" })}
-              </p>
-              <p className="text-sm text-gray-400 mt-0.5">
-                Dagscore {dagscore}/5 — {dagscoreLabels[dagscore]}
-              </p>
-              <Button variant="secondary" size="sm" className="mt-5" onClick={reset}>
-                Nieuwe check-in
-              </Button>
-            </div>
-          ) : (
-            <>
-              <div className="rounded-2xl border bg-white"
+        {mobileTab === "formulier" && (
+          <div className="space-y-5">
+            {submitted ? (
+              <div className="rounded-2xl border bg-white text-center py-10 px-6"
                 style={{ borderColor: "#e8e5df", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+                <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
+                  style={{ background: "#f0fdf4" }}>
+                  <Check size={24} style={{ color: "#22c55e" }} />
+                </div>
+                <h3 className="text-base font-semibold text-gray-900 mb-1">Check-in opgeslagen</h3>
+                <p className="text-sm text-gray-400">
+                  {new Date(selectedDate + "T12:00:00").toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" })}
+                </p>
+                <p className="text-sm text-gray-400 mt-0.5">
+                  Dagscore {dagscore}/5 — {dagscoreLabels[dagscore]}
+                </p>
+                <Button variant="secondary" size="sm" className="mt-5" onClick={reset}>
+                  Nieuwe check-in
+                </Button>
+              </div>
+            ) : (
+              <>
+                {/* Uitleg — matches CheckInModal */}
+                <p className="text-xs text-gray-400 leading-relaxed px-1">
+                  Vul in hoe je dag was. Bij alle scores geldt: <strong className="text-gray-500">1 is laag</strong> en de hoogste waarde is het beste — behalve bij pijn, waar lager beter is.
+                </p>
 
                 {/* Datum */}
-                <div className="px-6 pt-6 pb-5 border-b" style={{ borderColor: "#f0ede8" }}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Datum</p>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Datum</label>
                   <DatePicker value={selectedDate} onChange={setSelectedDate} />
-                  {!isToday && (
-                    <p className="text-xs text-gray-400 mt-2">Je vult een check-in in voor een eerdere dag</p>
-                  )}
                 </div>
 
-                {/* Dagscore */}
-                <div className="px-6 pt-5 pb-5 border-b" style={{ borderColor: "#f0ede8" }}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">
-                    {isToday ? "Dagscore van vandaag" : "Dagscore"}
+                <ScoreSelector label="Dagscore"       value={dagscore}   max={5}  onChange={setDagscore}   color="#e8632a" />
+                <div>
+                  <ScoreSelector label="Pijnscore"    value={pijn}       max={10} onChange={setPijn}       color="#ef4444" />
+                  <p className="text-[11px] mt-1.5 px-0.5" style={{ color: "#ef4444" }}>
+                    Let op: 1 = weinig pijn &nbsp;·&nbsp; 10 = veel pijn
                   </p>
-                  <p className="text-sm text-gray-500 mb-3">
-                    {isToday
-                      ? "Hoe was jouw dag overall?"
-                      : `Hoe was jouw dag op ${new Date(selectedDate + "T12:00:00").toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" })}?`}
-                  </p>
-                  <div className="flex gap-2">
-                    {[1, 2, 3, 4, 5].map((v) => (
-                      <button key={v} onClick={() => setDagscore(v)}
-                        className="flex-1 py-4 rounded-xl flex flex-col items-center gap-1.5 transition-all"
-                        style={{
-                          background: dagscore === v ? "#1c1c1e" : "#f8f7f4",
-                          border: dagscore === v ? "2px solid #e8632a" : "2px solid transparent",
-                        }}>
-                        <span className="text-xl">{dagscoreEmoji[v]}</span>
-                        <span className="text-xs font-medium"
-                          style={{ color: dagscore === v ? "#ffffff" : "#9ca3af" }}>
-                          {dagscoreLabels[v]}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
                 </div>
+                <ScoreSelector label="Mobiliteit"     value={mobiliteit} max={5}  onChange={setMobiliteit} color="#3b82f6" />
+                <ScoreSelector label="Energie"        value={energie}    max={5}  onChange={setEnergie}    color="#f59e0b" />
+                <ScoreSelector label="Slaapkwaliteit" value={slaap}      max={5}  onChange={setSlaap}      color="#8b5cf6" />
+                <ScoreSelector label="Stemming"       value={stemming}   max={5}  onChange={setStemming}   color="#10b981" />
 
-                {/* Details */}
-                <div className="px-6 pt-5 pb-5 border-b" style={{ borderColor: "#f0ede8" }}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">Details</p>
-                  <p className="text-sm text-gray-500 mb-4">Optioneel — vul in wat relevant is</p>
-                  <div className="space-y-5">
-                    <ScoreSelector label="Pijnniveau"     value={pijn}       max={10} onChange={setPijn}       color="#ef4444" />
-                    <ScoreSelector label="Mobiliteit"     value={mobiliteit} max={5}  onChange={setMobiliteit} color="#3b82f6" />
-                    <ScoreSelector label="Energie"        value={energie}    max={5}  onChange={setEnergie}    color="#f59e0b" />
-                    <ScoreSelector label="Slaapkwaliteit" value={slaap}      max={5}  onChange={setSlaap}      color="#8b5cf6" />
-                    <ScoreSelector label="Stemming"       value={stemming}   max={5}  onChange={setStemming}   color="#10b981" />
-                  </div>
-                </div>
-
-                {/* Notitie */}
-                <div className="px-6 pt-5 pb-6">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">Notitie</p>
-                  <p className="text-sm text-gray-500 mb-3">Optioneel</p>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                    Notitie <span className="text-[10px] font-normal text-gray-400 italic">optioneel</span>
+                  </label>
                   <textarea
                     value={notitie}
                     onChange={(e) => setNotitie(e.target.value)}
-                    placeholder="Hoe voelde jouw herstel vandaag? Bijzonderheden, opmerkingen..."
-                    rows={4}
+                    placeholder="Hoe was je dag?"
+                    rows={3}
                     className="w-full text-sm rounded-xl border px-4 py-3 resize-none focus:outline-none"
                     style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
                   />
                 </div>
-              </div>
 
-              <Button fullWidth size="lg" onClick={handleSubmit}>
-                Check-in opslaan
-              </Button>
-            </>
-          )}
-        </div>
+                <button
+                  onClick={handleSubmit}
+                  className="w-full py-4 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 touch-press"
+                  style={{ background: "#e8632a", color: "#ffffff" }}
+                >
+                  Check-in opslaan
+                </button>
+              </>
+            )}
+          </div>
+        )}
 
-        {/* Right: vertical week overview (dark) */}
-        <div>
-          <WeekOverzichtVertical
-            checkIns={checkIns}
-            onEdit={(ci) => setEditModal(ci)}
-          />
+        {mobileTab === "dezeweek" && (
+          <div className="space-y-5">
+            <WeekOverzichtVertical checkIns={checkIns} onEdit={(ci) => setEditModal(ci)} />
+            <HerstelTrendLijn checkIns={checkIns} />
+          </div>
+        )}
+      </div>
+
+      {/* ── Desktop: original two-column layout ──────────────────────────── */}
+      <div className="hidden sm:block space-y-6">
+        <HerstelTrendLijn checkIns={checkIns} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div className="lg:col-span-2 space-y-5">
+            {formContent}
+          </div>
+          <div>
+            <WeekOverzichtVertical checkIns={checkIns} onEdit={(ci) => setEditModal(ci)} />
+          </div>
         </div>
       </div>
 
