@@ -628,13 +628,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         trainingOefeningen,
         addTrainingOefening: (o) => {
           setTrainingOefeningen((prev) => [...prev, o]);
-          const uid = getUserId(); if (uid) upsertTrainingOefening(o, uid);
+          const uid = getUserId();
+          if (!uid) { console.error("[addTrainingOefening] getUserId() null — not saved"); return; }
+          upsertTrainingOefening(o, uid).then(({ error }) => {
+            if (error) console.error("[addTrainingOefening] save failed:", error, "id:", o.id);
+          });
         },
         updateTrainingOefening: (id, patch) => {
           setTrainingOefeningen((prev) => prev.map((o) => {
             if (o.id !== id) return o;
             const updated = { ...o, ...patch, updatedAt: new Date().toISOString() };
-            const uid = getUserId(); if (uid) upsertTrainingOefening(updated, uid);
+            const uid = getUserId();
+            if (!uid) { console.error("[updateTrainingOefening] getUserId() null — not saved"); return updated; }
+            upsertTrainingOefening(updated, uid).then(({ error }) => {
+              if (error) console.error("[updateTrainingOefening] save failed:", error, "id:", id);
+            });
             return updated;
           }));
         },
@@ -647,13 +655,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         trainingSchemas,
         addTrainingSchema: (s) => {
           setTrainingSchemas((prev) => [...prev, s]);
-          const uid = getUserId(); if (uid) upsertTrainingSchema(s, uid);
+          const uid = getUserId();
+          if (!uid) { console.error("[addTrainingSchema] getUserId() null — not saved"); return; }
+          upsertTrainingSchema(s, uid).then(({ error }) => {
+            if (error) console.error("[addTrainingSchema] save failed:", error, "id:", s.id);
+          });
         },
         updateTrainingSchema: (id, patch) => {
           setTrainingSchemas((prev) => prev.map((s) => {
             if (s.id !== id) return s;
             const updated = { ...s, ...patch, updatedAt: new Date().toISOString() };
-            const uid = getUserId(); if (uid) upsertTrainingSchema(updated, uid);
+            const uid = getUserId();
+            if (!uid) { console.error("[updateTrainingSchema] getUserId() null — not saved"); return updated; }
+            upsertTrainingSchema(updated, uid).then(({ error }) => {
+              if (error) console.error("[updateTrainingSchema] save failed:", error, "id:", id);
+            });
             return updated;
           }));
         },
@@ -666,7 +682,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         trainingLogs,
         addTrainingLog: (l) => {
           setTrainingLogs((prev) => [l, ...prev]);
-          const uid = getUserId(); if (uid) insertTrainingLog(l, uid);
+          const uid = getUserId();
+          if (!uid) { console.error("[addTrainingLog] getUserId() null — not saved"); return; }
+          insertTrainingLog(l, uid).then(({ error }) => {
+            if (error) console.error("[addTrainingLog] save failed:", error, "id:", l.id);
+          });
         },
         deleteTrainingLog: (id) => {
           setTrainingLogs((prev) => prev.filter((l) => l.id !== id));
@@ -778,7 +798,8 @@ async function migrateFromLocalStorage(
   }
 ): Promise<void> {
   // Only migrate collections that are empty in Supabase
-  const tasks: Promise<void>[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tasks: Promise<any>[] = [];
 
   if (existing.checkIns.length === 0) {
     const lsData = lsGet<CheckIn[]>("reva_checkins");

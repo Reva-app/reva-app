@@ -50,7 +50,8 @@ const STATUS_CONFIG: Record<TrainingSchemaStatus, { label: string; badge: "succe
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function uid() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  // Must be a valid UUID — PostgreSQL uuid columns reject non-UUID strings.
+  return crypto.randomUUID();
 }
 
 function todayStr() {

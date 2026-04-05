@@ -9,7 +9,9 @@ import type { TrainingOefening, TrainingSchema, TrainingLog, DagboekWorkout } fr
 
 function logErr(fn: string, error: { message?: string; code?: string; details?: string; hint?: string } | null) {
   if (!error) return;
-  console.error(`[${fn}] Supabase error — message: "${error.message}" | code: ${error.code} | details: ${error.details} | hint: ${error.hint}`);
+  console.error(
+    `[${fn}] Supabase error — message: "${error.message}" | code: ${error.code} | details: ${error.details} | hint: ${error.hint}`
+  );
 }
 
 // ─── Exercises ────────────────────────────────────────────────────────────────
@@ -22,15 +24,31 @@ export async function loadTrainingOefeningen(userId: string): Promise<TrainingOe
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
   if (error) { logErr("loadTrainingOefeningen", error); return []; }
+  console.info("[loadTrainingOefeningen] loaded", data?.length ?? 0, "rows for uid:", userId);
   return (data ?? []).map(dbToTrainingOefening);
 }
 
-export async function upsertTrainingOefening(o: TrainingOefening, userId: string): Promise<void> {
+export async function upsertTrainingOefening(o: TrainingOefening, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
-  const { error } = await supabase
+  const payload = trainingOefeningToDb(o, userId);
+  console.info("[upsertTrainingOefening] uid:", userId, "id:", o.id, "title:", o.title, "payload:", payload);
+
+  const { data, error } = await supabase
     .from("training_exercises")
-    .upsert(trainingOefeningToDb(o, userId), { onConflict: "id" });
-  if (error) logErr("upsertTrainingOefening", error);
+    .upsert(payload, { onConflict: "id" })
+    .select();
+
+  if (error) {
+    logErr("upsertTrainingOefening", error);
+    return { error: error.message };
+  }
+  if (!data || data.length === 0) {
+    const msg = "upsertTrainingOefening: 0 rows affected";
+    console.error("[upsertTrainingOefening]", msg, "— uid:", userId, "id:", o.id);
+    return { error: msg };
+  }
+  console.info("[upsertTrainingOefening] saved OK, rows:", data.length);
+  return { error: null };
 }
 
 export async function deleteTrainingOefening(id: string): Promise<void> {
@@ -49,15 +67,31 @@ export async function loadTrainingSchemas(userId: string): Promise<TrainingSchem
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
   if (error) { logErr("loadTrainingSchemas", error); return []; }
+  console.info("[loadTrainingSchemas] loaded", data?.length ?? 0, "rows for uid:", userId);
   return (data ?? []).map(dbToTrainingSchema);
 }
 
-export async function upsertTrainingSchema(s: TrainingSchema, userId: string): Promise<void> {
+export async function upsertTrainingSchema(s: TrainingSchema, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
-  const { error } = await supabase
+  const payload = trainingSchemaToDb(s, userId);
+  console.info("[upsertTrainingSchema] uid:", userId, "id:", s.id, "title:", s.title, "exerciseIds:", s.exerciseIds, "payload:", payload);
+
+  const { data, error } = await supabase
     .from("training_schemas")
-    .upsert(trainingSchemaToDb(s, userId), { onConflict: "id" });
-  if (error) logErr("upsertTrainingSchema", error);
+    .upsert(payload, { onConflict: "id" })
+    .select();
+
+  if (error) {
+    logErr("upsertTrainingSchema", error);
+    return { error: error.message };
+  }
+  if (!data || data.length === 0) {
+    const msg = "upsertTrainingSchema: 0 rows affected";
+    console.error("[upsertTrainingSchema]", msg, "— uid:", userId, "id:", s.id);
+    return { error: msg };
+  }
+  console.info("[upsertTrainingSchema] saved OK, rows:", data.length, "result:", data);
+  return { error: null };
 }
 
 export async function deleteTrainingSchema(id: string): Promise<void> {
@@ -76,15 +110,26 @@ export async function loadTrainingLogs(userId: string): Promise<TrainingLog[]> {
     .eq("user_id", userId)
     .order("date", { ascending: false });
   if (error) { logErr("loadTrainingLogs", error); return []; }
+  console.info("[loadTrainingLogs] loaded", data?.length ?? 0, "rows for uid:", userId);
   return (data ?? []).map(dbToTrainingLog);
 }
 
-export async function insertTrainingLog(l: TrainingLog, userId: string): Promise<void> {
+export async function insertTrainingLog(l: TrainingLog, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
-  const { error } = await supabase
+  const payload = trainingLogToDb(l, userId);
+  console.info("[insertTrainingLog] uid:", userId, "id:", l.id, "date:", l.date, "payload:", payload);
+
+  const { data, error } = await supabase
     .from("training_logs")
-    .insert(trainingLogToDb(l, userId));
-  if (error) logErr("insertTrainingLog", error);
+    .insert(payload)
+    .select();
+
+  if (error) {
+    logErr("insertTrainingLog", error);
+    return { error: error.message };
+  }
+  console.info("[insertTrainingLog] saved OK, rows:", data?.length ?? 0);
+  return { error: null };
 }
 
 export async function deleteTrainingLog(id: string): Promise<void> {
@@ -103,15 +148,31 @@ export async function loadDagboekWorkouts(userId: string): Promise<DagboekWorkou
     .eq("user_id", userId)
     .order("date", { ascending: true });
   if (error) { logErr("loadDagboekWorkouts", error); return []; }
+  console.info("[loadDagboekWorkouts] loaded", data?.length ?? 0, "rows for uid:", userId);
   return (data ?? []).map(dbToDagboekWorkout);
 }
 
-export async function upsertDagboekWorkout(w: DagboekWorkout, userId: string): Promise<void> {
+export async function upsertDagboekWorkout(w: DagboekWorkout, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
-  const { error } = await supabase
+  const payload = dagboekWorkoutToDb(w, userId);
+  console.info("[upsertDagboekWorkout] uid:", userId, "id:", w.id, "date:", w.date, "schemaId:", w.schemaId, "payload:", payload);
+
+  const { data, error } = await supabase
     .from("diary_workouts")
-    .upsert(dagboekWorkoutToDb(w, userId), { onConflict: "id" });
-  if (error) logErr("upsertDagboekWorkout", error);
+    .upsert(payload, { onConflict: "id" })
+    .select();
+
+  if (error) {
+    logErr("upsertDagboekWorkout", error);
+    return { error: error.message };
+  }
+  if (!data || data.length === 0) {
+    const msg = "upsertDagboekWorkout: 0 rows affected";
+    console.error("[upsertDagboekWorkout]", msg, "— uid:", userId, "id:", w.id);
+    return { error: msg };
+  }
+  console.info("[upsertDagboekWorkout] saved OK, rows:", data.length);
+  return { error: null };
 }
 
 export async function deleteDagboekWorkout(id: string): Promise<void> {
