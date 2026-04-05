@@ -37,22 +37,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const isLoading = authLoading || !hydrated;
 
   if (isLoading) {
-    return (
-      <div
-        className="fixed inset-0 flex items-center justify-center"
-        style={{ background: "#f8f7f4" }}
-      >
-        <div className="flex flex-col items-center gap-3">
-          <div
-            className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
-            style={{ borderColor: "#e8e5df", borderTopColor: "#e8632a" }}
-          />
-          <span className="text-sm font-medium" style={{ color: "#a8a29e" }}>
-            Laden…
-          </span>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   if (!user) {
