@@ -7,6 +7,11 @@ import {
 } from "@/lib/db/mappers";
 import type { TrainingOefening, TrainingSchema, TrainingLog, DagboekWorkout } from "@/lib/data";
 
+function logErr(fn: string, error: { message?: string; code?: string; details?: string; hint?: string } | null) {
+  if (!error) return;
+  console.error(`[${fn}] Supabase error — message: "${error.message}" | code: ${error.code} | details: ${error.details} | hint: ${error.hint}`);
+}
+
 // ─── Exercises ────────────────────────────────────────────────────────────────
 
 export async function loadTrainingOefeningen(userId: string): Promise<TrainingOefening[]> {
@@ -16,7 +21,7 @@ export async function loadTrainingOefeningen(userId: string): Promise<TrainingOe
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
-  if (error) { console.error("loadTrainingOefeningen:", error); return []; }
+  if (error) { logErr("loadTrainingOefeningen", error); return []; }
   return (data ?? []).map(dbToTrainingOefening);
 }
 
@@ -25,12 +30,13 @@ export async function upsertTrainingOefening(o: TrainingOefening, userId: string
   const { error } = await supabase
     .from("training_exercises")
     .upsert(trainingOefeningToDb(o, userId), { onConflict: "id" });
-  if (error) console.error("upsertTrainingOefening:", error);
+  if (error) logErr("upsertTrainingOefening", error);
 }
 
 export async function deleteTrainingOefening(id: string): Promise<void> {
   const supabase = createClient();
-  await supabase.from("training_exercises").delete().eq("id", id);
+  const { error } = await supabase.from("training_exercises").delete().eq("id", id);
+  if (error) logErr("deleteTrainingOefening", error);
 }
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -42,7 +48,7 @@ export async function loadTrainingSchemas(userId: string): Promise<TrainingSchem
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
-  if (error) { console.error("loadTrainingSchemas:", error); return []; }
+  if (error) { logErr("loadTrainingSchemas", error); return []; }
   return (data ?? []).map(dbToTrainingSchema);
 }
 
@@ -51,12 +57,13 @@ export async function upsertTrainingSchema(s: TrainingSchema, userId: string): P
   const { error } = await supabase
     .from("training_schemas")
     .upsert(trainingSchemaToDb(s, userId), { onConflict: "id" });
-  if (error) console.error("upsertTrainingSchema:", error);
+  if (error) logErr("upsertTrainingSchema", error);
 }
 
 export async function deleteTrainingSchema(id: string): Promise<void> {
   const supabase = createClient();
-  await supabase.from("training_schemas").delete().eq("id", id);
+  const { error } = await supabase.from("training_schemas").delete().eq("id", id);
+  if (error) logErr("deleteTrainingSchema", error);
 }
 
 // ─── Logs ─────────────────────────────────────────────────────────────────────
@@ -68,7 +75,7 @@ export async function loadTrainingLogs(userId: string): Promise<TrainingLog[]> {
     .select("*")
     .eq("user_id", userId)
     .order("date", { ascending: false });
-  if (error) { console.error("loadTrainingLogs:", error); return []; }
+  if (error) { logErr("loadTrainingLogs", error); return []; }
   return (data ?? []).map(dbToTrainingLog);
 }
 
@@ -77,20 +84,16 @@ export async function insertTrainingLog(l: TrainingLog, userId: string): Promise
   const { error } = await supabase
     .from("training_logs")
     .insert(trainingLogToDb(l, userId));
-  if (error) console.error("insertTrainingLog:", error);
+  if (error) logErr("insertTrainingLog", error);
 }
 
 export async function deleteTrainingLog(id: string): Promise<void> {
   const supabase = createClient();
-  await supabase.from("training_logs").delete().eq("id", id);
+  const { error } = await supabase.from("training_logs").delete().eq("id", id);
+  if (error) logErr("deleteTrainingLog", error);
 }
 
 // ─── Diary workouts ───────────────────────────────────────────────────────────
-
-function logSupabaseError(fn: string, error: { message?: string; code?: string; details?: string; hint?: string } | null) {
-  if (!error) return;
-  console.error(`[${fn}] Supabase error — message: "${error.message}" | code: ${error.code} | details: ${error.details} | hint: ${error.hint}`);
-}
 
 export async function loadDagboekWorkouts(userId: string): Promise<DagboekWorkout[]> {
   const supabase = createClient();
@@ -99,10 +102,7 @@ export async function loadDagboekWorkouts(userId: string): Promise<DagboekWorkou
     .select("*")
     .eq("user_id", userId)
     .order("date", { ascending: true });
-  if (error) {
-    logSupabaseError("loadDagboekWorkouts", error);
-    return [];
-  }
+  if (error) { logErr("loadDagboekWorkouts", error); return []; }
   return (data ?? []).map(dbToDagboekWorkout);
 }
 
@@ -111,11 +111,11 @@ export async function upsertDagboekWorkout(w: DagboekWorkout, userId: string): P
   const { error } = await supabase
     .from("diary_workouts")
     .upsert(dagboekWorkoutToDb(w, userId), { onConflict: "id" });
-  if (error) logSupabaseError("upsertDagboekWorkout", error);
+  if (error) logErr("upsertDagboekWorkout", error);
 }
 
 export async function deleteDagboekWorkout(id: string): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.from("diary_workouts").delete().eq("id", id);
-  if (error) logSupabaseError("deleteDagboekWorkout", error);
+  if (error) logErr("deleteDagboekWorkout", error);
 }
