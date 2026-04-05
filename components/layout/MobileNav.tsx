@@ -15,7 +15,9 @@ import {
   BarChart2,
   Settings,
   X,
+  LogOut,
 } from "lucide-react";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 // ─── Navigation config ─────────────────────────────────────────────────────────
 
@@ -41,6 +43,7 @@ const ALL_NAV = [
 export function MobileNav() {
   const pathname = usePathname();
   const [meerOpen, setMeerOpen] = useState(false);
+  const { signOut } = useAuth();
 
   // Close Meer sheet on navigation
   useEffect(() => {
@@ -167,7 +170,7 @@ export function MobileNav() {
           </div>
 
           {/* Grid of links */}
-          <div className="grid grid-cols-3 gap-3 p-4" style={{ paddingBottom: "20px" }}>
+          <div className="grid grid-cols-3 gap-3 p-4">
             {ALL_NAV.map(({ href, label, icon: Icon }) => {
               const active = pathname === href;
               return (
@@ -190,6 +193,23 @@ export function MobileNav() {
                 </Link>
               );
             })}
+          </div>
+
+          {/* Sign out row */}
+          <div className="px-4 pb-5">
+            <button
+              type="button"
+              onClick={signOut}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-medium touch-press"
+              style={{
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                color: "#9ca3af",
+              }}
+            >
+              <LogOut size={16} style={{ color: "#6b7280" }} />
+              Uitloggen
+            </button>
           </div>
         </div>
       )}

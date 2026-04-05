@@ -11,6 +11,7 @@ import {
   MessageSquare, Camera, Lock, Eye, EyeOff,
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
+import { createClient } from "@/lib/supabaseClient";
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -288,12 +289,41 @@ export default function InstellingenPage() {
   const [herhalingWw, setHerhalingWw] = useState("");
   const [showWw, setShowWw] = useState(false);
   const [wwSaved, setWwSaved] = useState(false);
+  const [wwLoading, setWwLoading] = useState(false);
 
-  function handleWachtwoord() {
+  async function handleWachtwoord() {
     if (!huidigWw || !nieuwWw || !herhalingWw) { showToast("Vul alle wachtwoordvelden in", "error"); return; }
     if (nieuwWw !== herhalingWw) { showToast("Nieuwe wachtwoorden komen niet overeen", "error"); return; }
     if (nieuwWw.length < 8) { showToast("Wachtwoord moet minimaal 8 tekens zijn", "error"); return; }
-    // TODO: connect to real auth backend
+
+    // Re-authenticate with current password before updating
+    const supabase = createClient();
+    setWwLoading(true);
+
+    // Verify current password by signing in first
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userEmail = sessionData.session?.user?.email;
+
+    if (userEmail) {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password: huidigWw,
+      });
+      if (signInError) {
+        setWwLoading(false);
+        showToast("Huidig wachtwoord is onjuist", "error");
+        return;
+      }
+    }
+
+    const { error } = await supabase.auth.updateUser({ password: nieuwWw });
+    setWwLoading(false);
+
+    if (error) {
+      showToast(error.message, "error");
+      return;
+    }
+
     setHuidigWw(""); setNieuwWw(""); setHerhalingWw("");
     setWwSaved(true);
     setTimeout(() => setWwSaved(false), 2500);
@@ -581,8 +611,8 @@ export default function InstellingenPage() {
                   <p className="text-[11px]" style={{ color: "#dc2626" }}>Wachtwoorden komen niet overeen</p>
                 )}
                 <div className="flex items-center gap-3">
-                  <Button size="sm" variant="secondary" onClick={handleWachtwoord}>
-                    <Lock size={13} /> Wachtwoord wijzigen
+                  <Button size="sm" variant="secondary" onClick={handleWachtwoord} disabled={wwLoading}>
+                    <Lock size={13} /> {wwLoading ? "Bezig…" : "Wachtwoord wijzigen"}
                   </Button>
                   {wwSaved && (
                     <span className="flex items-center gap-1.5 text-xs font-medium" style={{ color: "#16a34a" }}>

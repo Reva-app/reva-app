@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell } from "lucide-react";
 import { useAppData } from "@/lib/store";
+import { useAuth } from "@/components/auth/AuthProvider";
 import {
   generateAllNotifications,
   type AppNotification,
@@ -37,8 +38,12 @@ export function TopBar() {
     notificationSettings,
   } = useAppData();
 
-  const title        = pageTitles[pathname] ?? "REVA";
-  const avatarLetter = hydrated ? (profile.naam.trim()[0]?.toUpperCase() ?? "R") : "";
+  const { user } = useAuth();
+
+  const title = pageTitles[pathname] ?? "REVA";
+  const avatarLetter = hydrated
+    ? (profile.naam.trim()[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? "R")
+    : "";
 
   // ── Panel open state ──────────────────────────────────────────────────────
   const [panelOpen, setPanelOpen] = useState(false);

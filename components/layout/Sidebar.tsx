@@ -12,8 +12,10 @@ import {
   Pill,
   Target,
   BookOpen,
+  LogOut,
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 const primaryNav = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -33,10 +35,16 @@ const secondaryNav = [
 export function Sidebar() {
   const pathname = usePathname();
   const { profile, dagsSindsBlessure, fase, hydrated } = useAppData();
+  const { signOut, user } = useAuth();
 
-  const initials = hydrated
-    ? profile.naam.split(" ").filter(Boolean).map((w) => w[0].toUpperCase()).slice(0, 2).join("")
+  // Display name: profile name if set, else auth email, else empty
+  const displayNaam = hydrated
+    ? profile.naam || user?.email?.split("@")[0] || ""
     : "";
+
+  const initials = displayNaam
+    ? displayNaam.split(" ").filter(Boolean).map((w: string) => w[0].toUpperCase()).slice(0, 2).join("")
+    : user?.email?.[0]?.toUpperCase() ?? "";
 
   const NavLink = ({
     href,
@@ -116,14 +124,23 @@ export function Sidebar() {
               initials
             )}
           </div>
-          <div className="overflow-hidden min-w-0">
+          <div className="overflow-hidden min-w-0 flex-1">
             <p className="text-white text-xs font-medium truncate">
-              {hydrated ? profile.naam : ""}
+              {displayNaam}
             </p>
             <p className="text-[11px] truncate" style={{ color: "#52525e" }}>
-              {hydrated ? `Dag ${dagsSindsBlessure} — ${fase.split(" — ")[0]}` : ""}
+              {hydrated ? `Dag ${dagsSindsBlessure} — ${fase.split(" — ")[0]}` : user?.email ?? ""}
             </p>
           </div>
+          <button
+            type="button"
+            onClick={signOut}
+            title="Uitloggen"
+            className="shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10"
+            style={{ color: "#52525e" }}
+          >
+            <LogOut size={13} />
+          </button>
         </div>
       </div>
     </aside>
