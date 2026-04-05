@@ -186,6 +186,18 @@ export interface Mijlpaal {
   updatedAt: string;
 }
 
+// ─── Notification settings ────────────────────────────────────────────────────
+
+export interface NotificationSettings {
+  checkin: boolean;
+  afspraken: boolean;
+  medicatie: boolean;
+  training: boolean;
+  foto: boolean;
+  mijlpalen: boolean;
+  checkinTijd: string;
+}
+
 // ─── Profile type ─────────────────────────────────────────────────────────────
 
 export interface Profile {
