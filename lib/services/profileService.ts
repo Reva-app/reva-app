@@ -27,14 +27,66 @@ export interface ProfileWithSettings {
   setupCompleted: boolean;
 }
 
+// ─── ensureSettingsRowExists ──────────────────────────────────────────────────
+
+/**
+ * Validates the current auth session and guarantees a `settings` row exists
+ * for the authenticated user. Call this before every UPDATE on the settings table.
+ *
+ * Returns the validated user id so callers don't need a second getUser() call.
+ */
+export async function ensureSettingsRowExists(): Promise<{ userId: string | null; error: string | null }> {
+  const supabase = createClient();
+
+  const { data: { user }, error: authErr } = await supabase.auth.getUser();
+  if (authErr || !user) {
+    const msg = `Auth session invalid: ${authErr?.message ?? "no user"}`;
+    console.error("[ensureSettingsRowExists] " + msg);
+    return { userId: null, error: msg };
+  }
+  const uid = user.id;
+
+  console.info("[ensureSettingsRowExists] checking settings row for uid:", uid);
+
+  const { data: row, error: selectErr } = await supabase
+    .from("settings")
+    .select("id")
+    .eq("user_id", uid)
+    .maybeSingle();
+
+  if (selectErr) {
+    logErr("ensureSettingsRowExists/select", selectErr);
+    // Don't bail — the row might still exist; continue to attempt update
+  }
+
+  if (!row) {
+    console.warn("[ensureSettingsRowExists] settings row missing for uid:", uid, "— inserting default row");
+    const { error: insertErr } = await supabase
+      .from("settings")
+      .insert({
+        user_id:                  uid,
+        supplementary_insurances: [],
+        notifications:            {},
+      });
+    if (insertErr && insertErr.code !== "23505") {
+      // 23505 = unique_violation — another concurrent request created the row first
+      logErr("ensureSettingsRowExists/insert", insertErr);
+      return { userId: uid, error: `Kon settings rij niet aanmaken: ${insertErr.message}` };
+    }
+    console.info("[ensureSettingsRowExists] default settings row created for uid:", uid);
+  } else {
+    console.info("[ensureSettingsRowExists] settings row OK for uid:", uid);
+  }
+
+  return { userId: uid, error: null };
+}
+
 // ─── ensureCurrentUserRows ────────────────────────────────────────────────────
 
 /**
- * Validates the current auth session and guarantees that both a `profiles` row
+ * Validates the current auth session and guarantees that BOTH a `profiles` row
  * and a `settings` row exist for the authenticated user.
- *
- * Call this at the start of every write function so that writes never fail
- * silently because bootstrap was skipped.
+ * Used by write functions that touch both tables.
  */
 export async function ensureCurrentUserRows(): Promise<{ userId: string | null; error: string | null }> {
   const supabase = createClient();
@@ -66,28 +118,11 @@ export async function ensureCurrentUserRows(): Promise<{ userId: string | null; 
     }
   }
 
-  // ── settings row ──────────────────────────────────────────────────────────
-  const { data: settingsRow, error: settingsSelectErr } = await supabase
-    .from("settings")
-    .select("id")
-    .eq("user_id", uid)
-    .maybeSingle();
-
-  if (settingsSelectErr) logErr("ensureCurrentUserRows/settings-select", settingsSelectErr);
-
-  if (!settingsRow) {
-    console.warn("[ensureCurrentUserRows] settings row missing for", uid, "— creating it");
-    const { error: settingsInsertErr } = await supabase
-      .from("settings")
-      .insert({
-        user_id:                  uid,
-        supplementary_insurances: [],
-        notifications:            {},
-      });
-    if (settingsInsertErr && settingsInsertErr.code !== "23505") {
-      logErr("ensureCurrentUserRows/settings-insert", settingsInsertErr);
-      return { userId: uid, error: `Kon settings rij niet aanmaken: ${settingsInsertErr.message}` };
-    }
+  // ── settings row (delegate to focused helper) ─────────────────────────────
+  const { error: settingsErr } = await ensureSettingsRowExists();
+  if (settingsErr && !settingsErr.startsWith("Auth session")) {
+    // Auth was already validated above; a settings creation failure is worth surfacing
+    return { userId: uid, error: settingsErr };
   }
 
   return { userId: uid, error: null };
@@ -238,37 +273,40 @@ export async function upsertProfile(
   // ── profiles table (naam, email, avatar) ──────────────────────────────────
   const dbPatch = profileToDb(patch);
   if (Object.keys(dbPatch).length > 0) {
+    console.info("[upsertProfile/profiles] uid:", uid, "payload:", dbPatch);
     const { data, error } = await supabase
       .from("profiles")
       .update(dbPatch)
       .eq("id", uid)
-      .select("id");
+      .select();
     if (error) {
       logErr("upsertProfile/profiles", error);
     } else if (!data || data.length === 0) {
-      console.error("[upsertProfile/profiles] 0 rows updated for uid:", uid);
+      console.error("[upsertProfile/profiles] 0 rows updated — uid:", uid, "payload:", dbPatch);
+    } else {
+      console.info("[upsertProfile/profiles] saved OK, rows:", data.length);
     }
   }
 
   // ── settings table (dates, injury info, insurance) ────────────────────────
   const settingsPatch = profileToSettings(patch);
   if (Object.keys(settingsPatch).length > 0) {
-    console.info("[upsertProfile/settings] uid:", uid, "fields:", Object.keys(settingsPatch));
+    console.info("[upsertProfile/settings] uid:", uid, "payload:", settingsPatch);
     const { data, error } = await supabase
       .from("settings")
       .update(settingsPatch)
       .eq("user_id", uid)
-      .select("id");
+      .select();
     if (error) {
       logErr("upsertProfile/settings", error);
       return { error: error.message };
     }
     if (!data || data.length === 0) {
-      const msg = "Geen settings rij geüpdatet voor deze gebruiker";
-      console.error("[upsertProfile/settings] " + msg, "uid:", uid);
+      const msg = "Update faalde: geen row gevonden voor user_id";
+      console.error("[upsertProfile/settings]", msg, "— uid:", uid, "payload:", settingsPatch);
       return { error: msg };
     }
-    console.info("[upsertProfile/settings] saved OK, rows:", data.length);
+    console.info("[upsertProfile/settings] saved OK, rows:", data.length, "result:", data);
   }
 
   return { error: null };
@@ -278,27 +316,31 @@ export async function saveNotificationSettings(
   _userId: string,
   settings: NotificationSettings
 ): Promise<{ error: string | null }> {
-  const { userId: uid, error: ensureErr } = await ensureCurrentUserRows();
+  const { userId: uid, error: ensureErr } = await ensureSettingsRowExists();
   if (!uid) return { error: ensureErr ?? "Niet ingelogd" };
 
   const supabase = createClient();
+  const payload = settings as unknown as Record<string, unknown>;
+
+  console.info("[saveNotificationSettings] uid:", uid, "payload:", settings);
 
   // Always save to the notifications JSONB column.
   const { data, error } = await supabase
     .from("settings")
-    .update({ notifications: settings as unknown as Record<string, unknown> })
+    .update({ notifications: payload })
     .eq("user_id", uid)
-    .select("id");
+    .select();
 
   if (error) {
     logErr("saveNotificationSettings/notifications", error);
     return { error: error.message };
   }
   if (!data || data.length === 0) {
-    const msg = "Geen settings rij geüpdatet voor deze gebruiker";
-    console.error("[saveNotificationSettings] " + msg, "uid:", uid);
+    const msg = "Update faalde: geen row gevonden voor user_id";
+    console.error("[saveNotificationSettings]", msg, "— uid:", uid, "payload:", settings);
     return { error: msg };
   }
+  console.info("[saveNotificationSettings] saved OK, rows:", data.length, "result:", data);
 
   // Best-effort update of dedicated columns (migration 003)
   // Failures are non-fatal — columns may not exist yet depending on migrations applied.
@@ -326,13 +368,32 @@ export async function markMigrated(userId: string): Promise<void> {
   if (error) logErr("markMigrated", error);
 }
 
-export async function markSetupCompleted(userId: string): Promise<void> {
+export async function markSetupCompleted(userId: string): Promise<{ error: string | null }> {
+  const { userId: uid, error: ensureErr } = await ensureSettingsRowExists();
+  if (!uid) return { error: ensureErr ?? "Niet ingelogd" };
+
   const supabase = createClient();
-  const { error } = await supabase
+  const payload = { setup_completed: true };
+
+  console.info("[markSetupCompleted] uid:", uid, "payload:", payload);
+
+  const { data, error } = await supabase
     .from("settings")
-    .update({ setup_completed: true })
-    .eq("user_id", userId);
-  if (error) logErr("markSetupCompleted", error);
+    .update(payload)
+    .eq("user_id", uid)
+    .select();
+
+  if (error) {
+    logErr("markSetupCompleted", error);
+    return { error: error.message };
+  }
+  if (!data || data.length === 0) {
+    const msg = "Update faalde: geen row gevonden voor user_id";
+    console.error("[markSetupCompleted]", msg, "— uid:", uid);
+    return { error: msg };
+  }
+  console.info("[markSetupCompleted] saved OK, rows:", data.length);
+  return { error: null };
 }
 
 /**
