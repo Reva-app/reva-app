@@ -26,6 +26,8 @@ export interface DbSettings {
   policy_number: string | null;
   supplementary_insurances: string[];
   physio_sessions_total: string | null;
+  checkin_reminder_enabled: boolean | null;
+  checkin_reminder_time: string | null;
   notifications: Record<string, unknown>;
   setup_completed: boolean;
   created_at: string;

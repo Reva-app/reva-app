@@ -33,7 +33,10 @@ CREATE TABLE IF NOT EXISTS public.settings (
   policy_number             text,
   supplementary_insurances  jsonb       NOT NULL DEFAULT '[]',
   physio_sessions_total     text,
+  checkin_reminder_enabled  boolean,
+  checkin_reminder_time     text,
   notifications             jsonb       NOT NULL DEFAULT '{}',
+  setup_completed           boolean     NOT NULL DEFAULT false,
   created_at                timestamptz NOT NULL DEFAULT now(),
   updated_at                timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT settings_user_id_unique UNIQUE (user_id)

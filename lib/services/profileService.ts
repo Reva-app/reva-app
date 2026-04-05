@@ -110,13 +110,14 @@ export async function ensureUserProfileAndSettings(user: User): Promise<void> {
   }
 
   if (!existingSettings) {
+    // Omit setup_completed and checkin_reminder_* here — let DB defaults handle them.
+    // This keeps the insert working regardless of which migrations have been applied.
     const { error: settingsInsertErr } = await supabase
       .from("settings")
       .insert({
         user_id:                  user.id,
         supplementary_insurances: [],
         notifications:            {},
-        setup_completed:          false,
       });
     if (settingsInsertErr && settingsInsertErr.code !== "23505") {
       logErr("ensureUserProfileAndSettings/settings-insert", settingsInsertErr);
@@ -146,12 +147,8 @@ export async function loadProfileAndSettings(userId: string): Promise<ProfileWit
 
   if (!dbProfile) return null;
 
-  const notifications = dbSettings?.notifications
-    ? dbToNotificationSettings(dbSettings.notifications as Record<string, unknown>)
-    : {
-        checkin: true, afspraken: true, medicatie: true,
-        training: false, foto: false, mijlpalen: true, checkinTijd: "20:00",
-      };
+  const notifRaw = (dbSettings?.notifications ?? {}) as Record<string, unknown>;
+  const notifications = dbToNotificationSettings(notifRaw, dbSettings ?? null);
 
   return {
     profile:        dbToProfile(dbProfile, dbSettings),
@@ -177,10 +174,16 @@ export async function upsertProfile(userId: string, patch: Partial<Profile>): Pr
 
   const settingsPatch = profileToSettings(patch);
   if (Object.keys(settingsPatch).length > 0) {
+    const payload = { user_id: userId, ...settingsPatch };
+    console.info("[upsertProfile/settings] saving:", payload);
     const { error } = await supabase
       .from("settings")
-      .upsert({ user_id: userId, ...settingsPatch }, { onConflict: "user_id" });
-    if (error) logErr("upsertProfile/settings", error);
+      .upsert(payload, { onConflict: "user_id" });
+    if (error) {
+      logErr("upsertProfile/settings", error);
+    } else {
+      console.info("[upsertProfile/settings] saved OK");
+    }
   }
 }
 
@@ -192,7 +195,12 @@ export async function saveNotificationSettings(
   const { error } = await supabase
     .from("settings")
     .upsert(
-      { user_id: userId, notifications: settings as unknown as Record<string, unknown> },
+      {
+        user_id:                   userId,
+        notifications:             settings as unknown as Record<string, unknown>,
+        checkin_reminder_enabled:  settings.checkin,
+        checkin_reminder_time:     settings.checkinTijd,
+      },
       { onConflict: "user_id" }
     );
   if (error) logErr("saveNotificationSettings", error);

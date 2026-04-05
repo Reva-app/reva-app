@@ -48,31 +48,39 @@ export function profileToDb(profile: Partial<Profile>): Partial<DbProfile> {
 
 export function profileToSettings(profile: Partial<Profile>): Partial<DbSettings> {
   const result: Partial<DbSettings> = {};
-  if (profile.geboortedatum           !== undefined) result.birth_date               = profile.geboortedatum || null as unknown as string;
-  if (profile.blessureDatum           !== undefined) result.injury_date              = profile.blessureDatum || null as unknown as string;
-  if (profile.operatieDatum           !== undefined) result.surgery_date             = profile.operatieDatum || null as unknown as string;
-  if (profile.blessureType            !== undefined) result.injury_type              = profile.blessureType;
-  if (profile.blessureTypeAnders      !== undefined) result.injury_type_other        = profile.blessureTypeAnders;
-  if (profile.situatieOmschrijving    !== undefined) result.injury_description       = profile.situatieOmschrijving;
-  if (profile.zorgverzekeraar         !== undefined) result.insurer_name             = profile.zorgverzekeraar;
-  if (profile.zorgverzekeraaarAnders  !== undefined) result.insurer_other            = profile.zorgverzekeraaarAnders;
-  if (profile.polisnummer             !== undefined) result.policy_number            = profile.polisnummer;
+  if (profile.geboortedatum            !== undefined) result.birth_date               = profile.geboortedatum            || null as unknown as string;
+  if (profile.blessureDatum            !== undefined) result.injury_date              = profile.blessureDatum            || null as unknown as string;
+  if (profile.operatieDatum            !== undefined) result.surgery_date             = profile.operatieDatum            || null as unknown as string;
+  if (profile.blessureType             !== undefined) result.injury_type              = profile.blessureType             || null as unknown as string;
+  if (profile.blessureTypeAnders       !== undefined) result.injury_type_other        = profile.blessureTypeAnders       || null as unknown as string;
+  if (profile.situatieOmschrijving     !== undefined) result.injury_description       = profile.situatieOmschrijving     || null as unknown as string;
+  if (profile.zorgverzekeraar          !== undefined) result.insurer_name             = profile.zorgverzekeraar          || null as unknown as string;
+  if (profile.zorgverzekeraaarAnders   !== undefined) result.insurer_other            = profile.zorgverzekeraaarAnders   || null as unknown as string;
+  if (profile.polisnummer              !== undefined) result.policy_number            = profile.polisnummer              || null as unknown as string;
   if (profile.aanvullendeVerzekeringen !== undefined) result.supplementary_insurances = profile.aanvullendeVerzekeringen;
-  if (profile.aantalFysio             !== undefined) result.physio_sessions_total    = profile.aantalFysio;
+  if (profile.aantalFysio              !== undefined) result.physio_sessions_total    = profile.aantalFysio              || null as unknown as string;
   return result;
 }
 
 // ─── Notification settings ────────────────────────────────────────────────────
 
-export function dbToNotificationSettings(raw: Record<string, unknown>): NotificationSettings {
+/**
+ * Maps the `notifications` JSONB blob + optional dedicated columns to NotificationSettings.
+ * Dedicated columns (`checkin_reminder_enabled`, `checkin_reminder_time`) take precedence
+ * over the JSONB blob when they are not null.
+ */
+export function dbToNotificationSettings(
+  raw: Record<string, unknown>,
+  row?: Pick<DbSettings, "checkin_reminder_enabled" | "checkin_reminder_time"> | null
+): NotificationSettings {
   return {
-    checkin:    (raw.checkin    as boolean) ?? true,
-    afspraken:  (raw.afspraken  as boolean) ?? true,
-    medicatie:  (raw.medicatie  as boolean) ?? true,
-    training:   (raw.training   as boolean) ?? false,
-    foto:       (raw.foto       as boolean) ?? false,
-    mijlpalen:  (raw.mijlpalen  as boolean) ?? true,
-    checkinTijd:(raw.checkinTijd as string) ?? "20:00",
+    checkin:    row?.checkin_reminder_enabled   ?? (raw.checkin    as boolean | undefined) ?? true,
+    afspraken:  (raw.afspraken  as boolean | undefined) ?? true,
+    medicatie:  (raw.medicatie  as boolean | undefined) ?? true,
+    training:   (raw.training   as boolean | undefined) ?? false,
+    foto:       (raw.foto       as boolean | undefined) ?? false,
+    mijlpalen:  (raw.mijlpalen  as boolean | undefined) ?? true,
+    checkinTijd: row?.checkin_reminder_time ?? (raw.checkinTijd as string | undefined) ?? "20:00",
   };
 }
 
