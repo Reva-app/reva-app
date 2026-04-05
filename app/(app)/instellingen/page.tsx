@@ -140,7 +140,7 @@ const ZORGVERZEKERAARS = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function InstellingenPage() {
-  const { profile, updateProfile, hydrated, notificationSettings, updateNotificationSettings } = useAppData();
+  const { profile, updateProfile, hydrated, notificationSettings, updateNotificationSettings, setupCompleted, markSetupDone } = useAppData();
 
   // ── Toast ──────────────────────────────────────────────────────────────────
   const [toast, setToast] = useState<{ msg: string; type?: "success" | "error" } | null>(null);
@@ -236,6 +236,7 @@ export default function InstellingenPage() {
   function handleSaveAccount() {
     if (!emailValid) { showToast("Voer een geldig e-mailadres in", "error"); return; }
     updateProfile({ naam, email, geboortedatum });
+    if (!setupCompleted) markSetupDone();
     showToast("Accountgegevens opgeslagen");
   }
 
@@ -246,6 +247,7 @@ export default function InstellingenPage() {
       situatieOmschrijving, zorgverzekeraar, zorgverzekeraaarAnders,
       polisnummer, aanvullendeVerzekeringen, aantalFysio,
     });
+    if (!setupCompleted) markSetupDone();
     showToast("Herstelgegevens opgeslagen");
   }
 
@@ -338,6 +340,29 @@ export default function InstellingenPage() {
       {toast && <Toast message={toast.msg} type={toast.type} onDismiss={() => setToast(null)} />}
 
       <SectionHeader title="Instellingen" subtitle="Beheer jouw profiel en voorkeuren" />
+
+      {/* ── Onboarding welkomstblok (alleen bij eerste setup) ─────────── */}
+      {!setupCompleted && (
+        <div
+          className="rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row gap-4"
+          style={{ background: "#fff8f5", border: "1.5px solid #fcd9c8" }}
+        >
+          <div
+            className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{ background: "#e8632a" }}
+          >
+            <span className="text-white font-bold text-base">R</span>
+          </div>
+          <div>
+            <p className="text-sm font-semibold" style={{ color: "#1a1a1a" }}>
+              Welkom bij REVA — vul eerst je blessuregegevens in
+            </p>
+            <p className="text-sm mt-1 leading-relaxed" style={{ color: "#6b6560" }}>
+              Zodat jouw dashboard en voortgang persoonlijk worden ingericht, vragen we je om hieronder je herstelgegevens in te vullen. Dit duurt slechts een minuut en helpt REVA direct waardevolle inzichten te geven.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ── 1. Herstelgegevens ────────────────────────────────────────── */}
       <Card>

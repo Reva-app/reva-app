@@ -7,8 +7,8 @@ import { AuthGate } from "@/components/auth/AuthGate";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AuthGate>
-      <AppDataProvider>
+    <AppDataProvider>
+      <AuthGate>
         <div className="flex h-full">
           <Sidebar />
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
@@ -23,7 +23,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <MobileNav />
           <QuickActionFAB />
         </div>
-      </AppDataProvider>
-    </AuthGate>
+      </AuthGate>
+    </AppDataProvider>
   );
 }

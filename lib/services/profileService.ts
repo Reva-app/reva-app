@@ -24,6 +24,7 @@ export interface ProfileWithSettings {
   profile: Profile;
   notifications: NotificationSettings;
   migrated: boolean;
+  setupCompleted: boolean;
 }
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
@@ -115,6 +116,7 @@ export async function ensureUserProfileAndSettings(user: User): Promise<void> {
         user_id:                  user.id,
         supplementary_insurances: [],
         notifications:            {},
+        setup_completed:          false,
       });
     if (settingsInsertErr && settingsInsertErr.code !== "23505") {
       logErr("ensureUserProfileAndSettings/settings-insert", settingsInsertErr);
@@ -152,9 +154,10 @@ export async function loadProfileAndSettings(userId: string): Promise<ProfileWit
       };
 
   return {
-    profile:    dbToProfile(dbProfile, dbSettings),
+    profile:        dbToProfile(dbProfile, dbSettings),
     notifications,
-    migrated:   dbProfile.localstorage_migrated ?? false,
+    migrated:       dbProfile.localstorage_migrated ?? false,
+    setupCompleted: dbSettings?.setup_completed ?? false,
   };
 }
 
@@ -202,4 +205,28 @@ export async function markMigrated(userId: string): Promise<void> {
     .update({ localstorage_migrated: true })
     .eq("id", userId);
   if (error) logErr("markMigrated", error);
+}
+
+export async function markSetupCompleted(userId: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("settings")
+    .update({ setup_completed: true })
+    .eq("user_id", userId);
+  if (error) logErr("markSetupCompleted", error);
+}
+
+/**
+ * Returns whether the user has completed onboarding.
+ * Used server-side (auth/callback) to determine post-login redirect.
+ */
+export async function getSetupCompleted(userId: string): Promise<boolean> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("settings")
+    .select("setup_completed")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) logErr("getSetupCompleted", error);
+  return data?.setup_completed ?? false;
 }

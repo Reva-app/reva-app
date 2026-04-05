@@ -36,6 +36,7 @@ import {
   saveNotificationSettings,
   ensureUserProfileAndSettings,
   markMigrated,
+  markSetupCompleted,
 } from "@/lib/services/profileService";
 import { loadCheckIns, upsertCheckIn } from "@/lib/services/checkinService";
 import { loadAppointments, upsertAppointment, deleteAppointment as dbDeleteAppointment } from "@/lib/services/appointmentsService";
@@ -118,6 +119,8 @@ const emptyProfile: Profile = {
 
 interface AppStore {
   hydrated: boolean;
+  setupCompleted: boolean;
+  markSetupDone: () => void;
   profile: Profile;
   updateProfile: (p: Partial<Profile>) => void;
   dagsSindsBlessure: number;
@@ -207,6 +210,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [readNotificationIds, setReadNotificationIds]   = useState<string[]>([]);
   const [loggedNotificationIds, setLoggedNotificationIds] = useState<string[]>([]);
   const [hydrated, setHydrated]                   = useState(false);
+  const [setupCompleted, setSetupCompleted]       = useState(false);
 
   // Track the currently loaded user to avoid re-loading on unrelated renders
   const loadedUserId = useRef<string | null>(null);
@@ -257,6 +261,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (profileData) {
       setProfile(profileData.profile);
       setNotificationSettings(profileData.notifications);
+      setSetupCompleted(profileData.setupCompleted);
 
       // ── localStorage migration (first login with existing local data) ──────
       if (!profileData.migrated) {
@@ -367,6 +372,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setFotoUpdates([]);
         setContactpersonen([]);
         setNotificationSettings(defaultNotificationSettings);
+        setSetupCompleted(false);
         setHydrated(true);
       }
     });
@@ -397,6 +403,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Setup completed ───────────────────────────────────────────────────────
+
+  const markSetupDone = useCallback(() => {
+    setSetupCompleted(true);
+    const uid = getUserId();
+    if (uid) markSetupCompleted(uid);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Notification settings ─────────────────────────────────────────────────
 
   const updateNotificationSettings = useCallback((patch: Partial<NotificationSettings>) => {
@@ -415,6 +430,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     <AppContext.Provider
       value={{
         hydrated,
+        setupCompleted,
+        markSetupDone,
         profile,
         updateProfile,
         dagsSindsBlessure,

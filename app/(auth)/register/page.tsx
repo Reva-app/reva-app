@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabaseClient";
 export default function RegisterPage() {
   const router = useRouter();
 
+  const [naam, setNaam] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordHerhaling, setPasswordHerhaling] = useState("");
@@ -19,6 +20,7 @@ export default function RegisterPage() {
   const supabase = createClient();
 
   function validate() {
+    if (!naam.trim()) { setError("Vul je naam in"); return false; }
     if (!email.trim()) { setError("E-mailadres is verplicht"); return false; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("Voer een geldig e-mailadres in"); return false; }
     if (!password) { setError("Wachtwoord is verplicht"); return false; }
@@ -38,6 +40,7 @@ export default function RegisterPage() {
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
+        data: { full_name: naam.trim() },
       },
     });
     setLoading(false);
@@ -51,7 +54,6 @@ export default function RegisterPage() {
       return;
     }
 
-    // Redirect to login with success hint
     router.push("/login?registered=1");
   }
 
@@ -110,6 +112,22 @@ export default function RegisterPage() {
         )}
 
         <form onSubmit={handleRegister} className="space-y-4" noValidate>
+          {/* Naam */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">
+              Naam
+            </label>
+            <input
+              type="text"
+              autoComplete="name"
+              value={naam}
+              onChange={(e) => setNaam(e.target.value)}
+              placeholder="Jouw naam"
+              className="w-full text-sm rounded-xl border px-4 py-3 focus:outline-none transition-colors"
+              style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
+            />
+          </div>
+
           {/* Email */}
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5">

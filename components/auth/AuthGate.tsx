@@ -1,28 +1,42 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useAppData } from "@/lib/store";
 
 /**
- * Client-side auth guard.
+ * Client-side auth + onboarding guard.
  *
- * Shows a neutral loading screen while the session is being resolved, then
- * redirects to /login if no session is found.  This is the second line of
- * defence — the proxy.ts handles the server-side redirect, but this component
- * covers client-side navigation and edge cases where the proxy cannot act.
+ * - While session is resolving: neutral loading screen (prevents flash).
+ * - No session: redirect to /login.
+ * - Session but setup not completed: redirect to /instellingen (unless already there).
+ * - Session + setup done: render children normally.
  */
 export function AuthGate({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { hydrated, setupCompleted } = useAppData();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login");
-    }
-  }, [loading, user, router]);
+    // Wait until both auth and store data are ready
+    if (authLoading || !hydrated) return;
 
-  if (loading) {
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
+
+    // Redirect to onboarding if setup not yet done, but avoid redirect loop
+    if (!setupCompleted && pathname !== "/instellingen") {
+      router.replace("/instellingen");
+    }
+  }, [authLoading, hydrated, user, setupCompleted, pathname, router]);
+
+  const isLoading = authLoading || !hydrated;
+
+  if (isLoading) {
     return (
       <div
         className="fixed inset-0 flex items-center justify-center"
@@ -42,7 +56,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-    // Redirect is in progress — render nothing to avoid a flash of app content
+    return null;
+  }
+
+  // Hide app content while redirecting to onboarding
+  if (!setupCompleted && pathname !== "/instellingen") {
     return null;
   }
 

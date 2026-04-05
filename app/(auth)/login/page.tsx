@@ -48,7 +48,7 @@ function LoginForm() {
     if (!validate()) return;
 
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
 
     if (error) {
@@ -62,7 +62,21 @@ function LoginForm() {
       return;
     }
 
-    router.push(next);
+    // If the user hasn't finished onboarding, send them to /instellingen.
+    // Otherwise honour the `next` param (or fall back to dashboard).
+    if (data.user) {
+      const { data: settings } = await supabase
+        .from("settings")
+        .select("setup_completed")
+        .eq("user_id", data.user.id)
+        .maybeSingle();
+
+      const setupDone = settings?.setup_completed ?? false;
+      const destination = setupDone ? (next && next !== "/" ? next : "/") : "/instellingen";
+      router.push(destination);
+    } else {
+      router.push(next || "/");
+    }
     router.refresh();
   }
 

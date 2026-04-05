@@ -27,6 +27,7 @@ export interface DbSettings {
   supplementary_insurances: string[];
   physio_sessions_total: string | null;
   notifications: Record<string, unknown>;
+  setup_completed: boolean;
   created_at: string;
   updated_at: string;
 }
