@@ -160,50 +160,82 @@ export async function loadProfileAndSettings(userId: string): Promise<ProfileWit
 
 // ─── Write ────────────────────────────────────────────────────────────────────
 
-export async function upsertProfile(userId: string, patch: Partial<Profile>): Promise<void> {
+export async function upsertProfile(
+  _userId: string,
+  patch: Partial<Profile>
+): Promise<{ error: string | null }> {
   const supabase = createClient();
-  const dbPatch = profileToDb(patch);
 
+  // Always verify the current session — never trust the passed userId alone.
+  const { data: { user }, error: authErr } = await supabase.auth.getUser();
+  if (authErr || !user) {
+    const msg = `Auth session invalid: ${authErr?.message ?? "no user"}`;
+    console.error("[upsertProfile] " + msg);
+    return { error: msg };
+  }
+  const uid = user.id;
+
+  // ── profiles table (naam, email, avatar) ────────────────���─────────────────
+  const dbPatch = profileToDb(patch);
   if (Object.keys(dbPatch).length > 0) {
     const { error } = await supabase
       .from("profiles")
       .update(dbPatch)
-      .eq("id", userId);
+      .eq("id", uid);
     if (error) logErr("upsertProfile/profiles", error);
   }
 
+  // ── settings table (dates, injury info, insurance) ────────────────────────
   const settingsPatch = profileToSettings(patch);
   if (Object.keys(settingsPatch).length > 0) {
-    const payload = { user_id: userId, ...settingsPatch };
-    console.info("[upsertProfile/settings] saving:", payload);
+    console.info("[upsertProfile/settings] uid:", uid, "fields:", Object.keys(settingsPatch));
     const { error } = await supabase
       .from("settings")
-      .upsert(payload, { onConflict: "user_id" });
+      .update(settingsPatch)
+      .eq("user_id", uid);
     if (error) {
       logErr("upsertProfile/settings", error);
-    } else {
-      console.info("[upsertProfile/settings] saved OK");
+      return { error: error.message };
     }
+    console.info("[upsertProfile/settings] saved OK");
   }
+
+  return { error: null };
 }
 
 export async function saveNotificationSettings(
-  userId: string,
+  _userId: string,
   settings: NotificationSettings
 ): Promise<void> {
   const supabase = createClient();
+
+  const { data: { user }, error: authErr } = await supabase.auth.getUser();
+  if (authErr || !user) {
+    console.error("[saveNotificationSettings] No valid session:", authErr?.message);
+    return;
+  }
+
+  // Always save to the notifications JSONB column.
+  // Also try to save to dedicated columns — they may or may not exist depending
+  // on which migrations have been applied; failures there are non-fatal.
   const { error } = await supabase
     .from("settings")
-    .upsert(
-      {
-        user_id:                   userId,
-        notifications:             settings as unknown as Record<string, unknown>,
-        checkin_reminder_enabled:  settings.checkin,
-        checkin_reminder_time:     settings.checkinTijd,
-      },
-      { onConflict: "user_id" }
-    );
-  if (error) logErr("saveNotificationSettings", error);
+    .update({ notifications: settings as unknown as Record<string, unknown> })
+    .eq("user_id", user.id);
+  if (error) logErr("saveNotificationSettings/notifications", error);
+
+  // Best-effort update of dedicated columns (migration 003)
+  const { error: colErr } = await supabase
+    .from("settings")
+    .update({
+      checkin_reminder_enabled: settings.checkin,
+      checkin_reminder_time:    settings.checkinTijd,
+    })
+    .eq("user_id", user.id);
+  if (colErr && colErr.code !== "42703") {
+    // 42703 = undefined_column — columns not yet created, ignore silently
+    logErr("saveNotificationSettings/dedicated-cols", colErr);
+  }
 }
 
 export async function markMigrated(userId: string): Promise<void> {

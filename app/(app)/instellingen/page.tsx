@@ -233,20 +233,22 @@ export default function InstellingenPage() {
       JSON.stringify(profile.aanvullendeVerzekeringen?.length ? profile.aanvullendeVerzekeringen : ["", ""]);
 
   // ── Save account ───────────────────────────────────────────────────────────
-  function handleSaveAccount() {
+  async function handleSaveAccount() {
     if (!emailValid) { showToast("Voer een geldig e-mailadres in", "error"); return; }
-    updateProfile({ naam, email, geboortedatum });
+    const { error } = await updateProfile({ naam, email, geboortedatum });
+    if (error) { showToast("Opslaan mislukt: " + error, "error"); return; }
     if (!setupCompleted) markSetupDone();
     showToast("Accountgegevens opgeslagen");
   }
 
   // ── Save herstelgegevens ───────────────────────────────────────────────────
-  function handleSaveHerstel() {
-    updateProfile({
+  async function handleSaveHerstel() {
+    const { error } = await updateProfile({
       blessureDatum, operatieDatum, blessureType, blessureTypeAnders,
       situatieOmschrijving, zorgverzekeraar, zorgverzekeraaarAnders,
       polisnummer, aanvullendeVerzekeringen, aantalFysio,
     });
+    if (error) { showToast("Opslaan mislukt: " + error, "error"); return; }
     if (!setupCompleted) markSetupDone();
     showToast("Herstelgegevens opgeslagen");
   }

@@ -122,7 +122,7 @@ interface AppStore {
   setupCompleted: boolean;
   markSetupDone: () => void;
   profile: Profile;
-  updateProfile: (p: Partial<Profile>) => void;
+  updateProfile: (p: Partial<Profile>) => Promise<{ error: string | null }>;
   dagsSindsBlessure: number;
   dagsSindsOperatie: number;
   fase: string;
@@ -396,10 +396,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   // ── Profile ───────────────────────────────────────────────────────────────
 
-  const updateProfile = useCallback((patch: Partial<Profile>) => {
+  const updateProfile = useCallback((patch: Partial<Profile>): Promise<{ error: string | null }> => {
     setProfile((prev) => ({ ...prev, ...patch }));
     const uid = getUserId();
-    if (uid) upsertProfile(uid, patch);
+    if (!uid) {
+      console.error("[updateProfile] getUserId() returned null — not saving to Supabase");
+      return Promise.resolve({ error: "Niet ingelogd" });
+    }
+    return upsertProfile(uid, patch);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
