@@ -27,6 +27,72 @@ export interface ProfileWithSettings {
   setupCompleted: boolean;
 }
 
+// ─── ensureCurrentUserRows ────────────────────────────────────────────────────
+
+/**
+ * Validates the current auth session and guarantees that both a `profiles` row
+ * and a `settings` row exist for the authenticated user.
+ *
+ * Call this at the start of every write function so that writes never fail
+ * silently because bootstrap was skipped.
+ */
+export async function ensureCurrentUserRows(): Promise<{ userId: string | null; error: string | null }> {
+  const supabase = createClient();
+
+  const { data: { user }, error: authErr } = await supabase.auth.getUser();
+  if (authErr || !user) {
+    const msg = `Auth session invalid: ${authErr?.message ?? "no user"}`;
+    console.error("[ensureCurrentUserRows] " + msg);
+    return { userId: null, error: msg };
+  }
+  const uid = user.id;
+
+  // ── profiles row ──────────────────────────────────────────────────────────
+  const { data: profileRow, error: profileSelectErr } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", uid)
+    .maybeSingle();
+
+  if (profileSelectErr) logErr("ensureCurrentUserRows/profiles-select", profileSelectErr);
+
+  if (!profileRow) {
+    console.warn("[ensureCurrentUserRows] profiles row missing for", uid, "— creating it");
+    const { error: profileInsertErr } = await supabase
+      .from("profiles")
+      .insert({ id: uid, email: user.email ?? "" });
+    if (profileInsertErr && profileInsertErr.code !== "23505") {
+      logErr("ensureCurrentUserRows/profiles-insert", profileInsertErr);
+    }
+  }
+
+  // ── settings row ──────────────────────────────────────────────────────────
+  const { data: settingsRow, error: settingsSelectErr } = await supabase
+    .from("settings")
+    .select("id")
+    .eq("user_id", uid)
+    .maybeSingle();
+
+  if (settingsSelectErr) logErr("ensureCurrentUserRows/settings-select", settingsSelectErr);
+
+  if (!settingsRow) {
+    console.warn("[ensureCurrentUserRows] settings row missing for", uid, "— creating it");
+    const { error: settingsInsertErr } = await supabase
+      .from("settings")
+      .insert({
+        user_id:                  uid,
+        supplementary_insurances: [],
+        notifications:            {},
+      });
+    if (settingsInsertErr && settingsInsertErr.code !== "23505") {
+      logErr("ensureCurrentUserRows/settings-insert", settingsInsertErr);
+      return { userId: uid, error: `Kon settings rij niet aanmaken: ${settingsInsertErr.message}` };
+    }
+  }
+
+  return { userId: uid, error: null };
+}
+
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 
 /**
@@ -164,40 +230,45 @@ export async function upsertProfile(
   _userId: string,
   patch: Partial<Profile>
 ): Promise<{ error: string | null }> {
+  const { userId: uid, error: ensureErr } = await ensureCurrentUserRows();
+  if (!uid) return { error: ensureErr ?? "Niet ingelogd" };
+
   const supabase = createClient();
 
-  // Always verify the current session — never trust the passed userId alone.
-  const { data: { user }, error: authErr } = await supabase.auth.getUser();
-  if (authErr || !user) {
-    const msg = `Auth session invalid: ${authErr?.message ?? "no user"}`;
-    console.error("[upsertProfile] " + msg);
-    return { error: msg };
-  }
-  const uid = user.id;
-
-  // ── profiles table (naam, email, avatar) ────────────────���─────────────────
+  // ── profiles table (naam, email, avatar) ──────────────────────────────────
   const dbPatch = profileToDb(patch);
   if (Object.keys(dbPatch).length > 0) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("profiles")
       .update(dbPatch)
-      .eq("id", uid);
-    if (error) logErr("upsertProfile/profiles", error);
+      .eq("id", uid)
+      .select("id");
+    if (error) {
+      logErr("upsertProfile/profiles", error);
+    } else if (!data || data.length === 0) {
+      console.error("[upsertProfile/profiles] 0 rows updated for uid:", uid);
+    }
   }
 
   // ── settings table (dates, injury info, insurance) ────────────────────────
   const settingsPatch = profileToSettings(patch);
   if (Object.keys(settingsPatch).length > 0) {
     console.info("[upsertProfile/settings] uid:", uid, "fields:", Object.keys(settingsPatch));
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("settings")
       .update(settingsPatch)
-      .eq("user_id", uid);
+      .eq("user_id", uid)
+      .select("id");
     if (error) {
       logErr("upsertProfile/settings", error);
       return { error: error.message };
     }
-    console.info("[upsertProfile/settings] saved OK");
+    if (!data || data.length === 0) {
+      const msg = "Geen settings rij geüpdatet voor deze gebruiker";
+      console.error("[upsertProfile/settings] " + msg, "uid:", uid);
+      return { error: msg };
+    }
+    console.info("[upsertProfile/settings] saved OK, rows:", data.length);
   }
 
   return { error: null };
@@ -206,36 +277,44 @@ export async function upsertProfile(
 export async function saveNotificationSettings(
   _userId: string,
   settings: NotificationSettings
-): Promise<void> {
+): Promise<{ error: string | null }> {
+  const { userId: uid, error: ensureErr } = await ensureCurrentUserRows();
+  if (!uid) return { error: ensureErr ?? "Niet ingelogd" };
+
   const supabase = createClient();
 
-  const { data: { user }, error: authErr } = await supabase.auth.getUser();
-  if (authErr || !user) {
-    console.error("[saveNotificationSettings] No valid session:", authErr?.message);
-    return;
-  }
-
   // Always save to the notifications JSONB column.
-  // Also try to save to dedicated columns — they may or may not exist depending
-  // on which migrations have been applied; failures there are non-fatal.
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("settings")
     .update({ notifications: settings as unknown as Record<string, unknown> })
-    .eq("user_id", user.id);
-  if (error) logErr("saveNotificationSettings/notifications", error);
+    .eq("user_id", uid)
+    .select("id");
+
+  if (error) {
+    logErr("saveNotificationSettings/notifications", error);
+    return { error: error.message };
+  }
+  if (!data || data.length === 0) {
+    const msg = "Geen settings rij geüpdatet voor deze gebruiker";
+    console.error("[saveNotificationSettings] " + msg, "uid:", uid);
+    return { error: msg };
+  }
 
   // Best-effort update of dedicated columns (migration 003)
+  // Failures are non-fatal — columns may not exist yet depending on migrations applied.
   const { error: colErr } = await supabase
     .from("settings")
     .update({
       checkin_reminder_enabled: settings.checkin,
       checkin_reminder_time:    settings.checkinTijd,
     })
-    .eq("user_id", user.id);
+    .eq("user_id", uid);
   if (colErr && colErr.code !== "42703") {
     // 42703 = undefined_column — columns not yet created, ignore silently
     logErr("saveNotificationSettings/dedicated-cols", colErr);
   }
+
+  return { error: null };
 }
 
 export async function markMigrated(userId: string): Promise<void> {

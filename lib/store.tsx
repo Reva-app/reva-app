@@ -147,7 +147,7 @@ interface AppStore {
   loggedNotificationIds: string[];
   markNotificationLogged: (id: string) => void;
   notificationSettings: NotificationSettings;
-  updateNotificationSettings: (patch: Partial<NotificationSettings>) => void;
+  updateNotificationSettings: (patch: Partial<NotificationSettings>) => Promise<{ error: string | null }>;
   doelen: Doel[];
   addDoel: (d: Doel) => void;
   updateDoel: (id: string, patch: Partial<Doel>) => void;
@@ -418,13 +418,30 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   // ── Notification settings ─────────────────────────────────────────────────
 
-  const updateNotificationSettings = useCallback((patch: Partial<NotificationSettings>) => {
-    setNotificationSettings((prev) => {
-      const next = { ...prev, ...patch };
-      const uid = getUserId();
-      if (uid) saveNotificationSettings(uid, next);
+  const updateNotificationSettings = useCallback(async (patch: Partial<NotificationSettings>): Promise<{ error: string | null }> => {
+    const uid = getUserId();
+    if (!uid) {
+      console.error("[updateNotificationSettings] getUserId() returned null — not saving");
+      return { error: "Niet ingelogd" };
+    }
+
+    // Capture prev and apply optimistic update synchronously
+    let prev!: NotificationSettings;
+    let next!: NotificationSettings;
+    setNotificationSettings((current) => {
+      prev = current;
+      next = { ...current, ...patch };
       return next;
     });
+
+    const result = await saveNotificationSettings(uid, next);
+
+    if (result.error) {
+      // Rollback on failure
+      setNotificationSettings(prev);
+    }
+
+    return result;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

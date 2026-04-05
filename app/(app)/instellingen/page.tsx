@@ -676,7 +676,11 @@ export default function InstellingenPage() {
               </div>
               <Toggle
                 enabled={notificationSettings[key]}
-                onChange={(v) => updateNotificationSettings({ [key]: v })}
+                onChange={(v) => {
+                  updateNotificationSettings({ [key]: v }).then(({ error }) => {
+                    if (error) showToast("Opslaan mislukt: " + error, "error");
+                  });
+                }}
               />
             </div>
           ))}
@@ -691,7 +695,11 @@ export default function InstellingenPage() {
               <div className="max-w-[180px]">
                 <TimePicker
                   value={notificationSettings.checkinTijd}
-                  onChange={(v) => updateNotificationSettings({ checkinTijd: v })}
+                  onChange={(v) => {
+                    updateNotificationSettings({ checkinTijd: v }).then(({ error }) => {
+                      if (error) showToast("Opslaan mislukt: " + error, "error");
+                    });
+                  }}
                   placeholder="Kies een tijdstip"
                 />
               </div>
