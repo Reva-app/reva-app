@@ -790,13 +790,24 @@ export const mockTrainingOefeningen: TrainingOefening[] = [
 // A logged training session — a user completed a schema on a given date
 export interface TrainingLog {
   id: string;
-  schemaId: string;
-  date: string;           // "YYYY-MM-DD"
-  completedExerciseIds: string[];
-  note: string;
+  schemaId?: string;              // optional — free-form entries have no schema
+  title: string;                  // display label in calendar / dagboek
+  date: string;                   // "YYYY-MM-DD"
+  completed: boolean;
+  completedAt?: string;           // ISO timestamp when marked done
+  reflection?: string;            // short diary note after completion
+  completedExerciseIds?: string[]; // set when logging a schema-based session
+  note?: string;                  // internal/coach notes
   durationMinutes?: number;
   createdAt: string;
 }
+
+/**
+ * DagboekWorkout is a type alias for TrainingLog.
+ * training_logs is the single source of truth for all workout entries —
+ * both planned/diary items (formerly diary_workouts) and completed sessions.
+ */
+export type DagboekWorkout = TrainingLog;
 
 export const mockTrainingSchemas: TrainingSchema[] = [
   {
@@ -838,12 +849,14 @@ export const mockTrainingSchemas: TrainingSchema[] = [
 ];
 
 export const mockTrainingLogs: TrainingLog[] = [
-  { id: "tl-1", schemaId: "ts-1", date: "2026-03-24", completedExerciseIds: ["toe-1", "toe-3", "toe-4"], note: "", createdAt: "2026-03-24T18:00:00Z" },
-  { id: "tl-2", schemaId: "ts-2", date: "2026-03-24", completedExerciseIds: ["toe-1", "toe-2"], note: "", createdAt: "2026-03-24T19:00:00Z" },
-  { id: "tl-3", schemaId: "ts-1", date: "2026-03-25", completedExerciseIds: ["toe-1", "toe-3", "toe-4"], note: "Goede sessie, minder pijn.", createdAt: "2026-03-25T18:00:00Z" },
-  { id: "tl-4", schemaId: "ts-1", date: "2026-03-27", completedExerciseIds: ["toe-1", "toe-3"], note: "", createdAt: "2026-03-27T17:30:00Z" },
-  { id: "tl-5", schemaId: "ts-2", date: "2026-03-28", completedExerciseIds: ["toe-1", "toe-2"], note: "", createdAt: "2026-03-28T10:00:00Z" },
-  { id: "tl-6", schemaId: "ts-1", date: "2026-03-29", completedExerciseIds: ["toe-1", "toe-3", "toe-4"], note: "", createdAt: "2026-03-29T18:30:00Z" },
+  { id: "tl-1", schemaId: "ts-1", title: "Dagelijks schema — Fase 2", date: "2026-03-24", completed: true,  completedAt: "2026-03-24T18:30:00Z", completedExerciseIds: ["toe-1", "toe-3", "toe-4"], note: "", createdAt: "2026-03-24T18:00:00Z" },
+  { id: "tl-2", schemaId: "ts-2", title: "Krachttraining — Fase 2",   date: "2026-03-24", completed: true,  completedAt: "2026-03-24T19:30:00Z", completedExerciseIds: ["toe-1", "toe-2"],            note: "", createdAt: "2026-03-24T19:00:00Z" },
+  { id: "tl-3", schemaId: "ts-1", title: "Dagelijks schema — Fase 2", date: "2026-03-25", completed: true,  completedAt: "2026-03-25T18:30:00Z", completedExerciseIds: ["toe-1", "toe-3", "toe-4"], note: "Goede sessie, minder pijn.", reflection: "Ging goed, minder pijn dan vorige keer.", createdAt: "2026-03-25T18:00:00Z" },
+  { id: "tl-4", schemaId: "ts-1", title: "Dagelijks schema — Fase 2", date: "2026-03-27", completed: true,  completedAt: "2026-03-27T18:00:00Z", completedExerciseIds: ["toe-1", "toe-3"],            note: "", createdAt: "2026-03-27T17:30:00Z" },
+  { id: "tl-5", schemaId: "ts-2", title: "Krachttraining — Fase 2",   date: "2026-03-28", completed: true,  completedAt: "2026-03-28T10:30:00Z", completedExerciseIds: ["toe-1", "toe-2"],            note: "", createdAt: "2026-03-28T10:00:00Z" },
+  { id: "tl-6", schemaId: "ts-1", title: "Dagelijks schema — Fase 2", date: "2026-03-29", completed: true,  completedAt: "2026-03-29T19:00:00Z", completedExerciseIds: ["toe-1", "toe-3", "toe-4"], note: "", createdAt: "2026-03-29T18:30:00Z" },
+  { id: "tl-7", schemaId: "ts-1", title: "Dagelijks schema — Fase 2", date: "2026-04-02", completed: false, createdAt: "2026-03-31T20:00:00Z" },
+  { id: "tl-8", schemaId: "ts-2", title: "Krachttraining bovenbeen",  date: "2026-04-07", completed: false, createdAt: "2026-04-01T20:00:00Z" },
 ];
 
 // ─── Mock Doelen ─────────────────────────────────────────────────────────────
@@ -970,49 +983,8 @@ export function documentTypeLabel(type: DocumentType): string {
 }
 
 // ─── Dagboek Workout ─────────────────────────────────────────────────────────
+// DagboekWorkout is defined as a type alias for TrainingLog above,
+// since training_logs is now the single source of truth for all workout entries.
 
-export interface DagboekWorkout {
-  id: string;
-  date: string;        // "YYYY-MM-DD"
-  title: string;
-  schemaId?: string;   // linked TrainingSchema id
-  completed: boolean;
-  completedAt?: string;
-  reflection?: string;
-  createdAt: string;
-}
-
-export const mockDagboekWorkouts: DagboekWorkout[] = [
-  {
-    id: "dw-1",
-    date: "2026-03-25",
-    title: "Looptraining 20 min",
-    completed: true,
-    completedAt: "2026-03-25T10:30:00Z",
-    reflection: "Ging goed, lichte pijn na afloop maar herstelde snel.",
-    createdAt: "2026-03-24T20:00:00Z",
-  },
-  {
-    id: "dw-2",
-    date: "2026-03-28",
-    title: "Fietsen stationaire fiets 30 min",
-    completed: true,
-    completedAt: "2026-03-28T09:45:00Z",
-    reflection: "",
-    createdAt: "2026-03-27T20:00:00Z",
-  },
-  {
-    id: "dw-3",
-    date: "2026-04-02",
-    title: "Stabiliteitsoefeningen fase 2",
-    completed: false,
-    createdAt: "2026-03-31T20:00:00Z",
-  },
-  {
-    id: "dw-4",
-    date: "2026-04-07",
-    title: "Krachttraining bovenbeen",
-    completed: false,
-    createdAt: "2026-04-01T20:00:00Z",
-  },
-];
+/** @deprecated — use mockTrainingLogs instead; kept only for migration compatibility */
+export const mockDagboekWorkouts: DagboekWorkout[] = [];

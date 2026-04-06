@@ -107,6 +107,9 @@ export interface DbTrainingLog {
   note: string | null;
   completed_exercise_ids: string[];
   duration_minutes: number | null;
+  completed: boolean;
+  completed_at: string | null;
+  reflection: string | null;
   created_at: string;
   updated_at: string;
 }

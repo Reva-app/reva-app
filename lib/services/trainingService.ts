@@ -197,6 +197,31 @@ export async function insertTrainingLog(l: TrainingLog, userId: string): Promise
   return { error: null };
 }
 
+export async function updateTrainingLogRecord(l: TrainingLog, userId: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { id: _id, user_id: _uid, ...fields } = trainingLogToDb(l, userId);
+  console.info("[updateTrainingLogRecord] uid:", userId, "id:", l.id, "date:", l.date, "fields:", fields);
+
+  const { data, error } = await supabase
+    .from("training_logs")
+    .update(fields)
+    .eq("id", l.id)
+    .eq("user_id", userId)
+    .select();
+
+  if (error) {
+    logErr("updateTrainingLogRecord", error);
+    return { error: error.message };
+  }
+  if (!data || data.length === 0) {
+    const msg = "updateTrainingLogRecord: geen rij gevonden (id of user_id klopt niet)";
+    console.error("[updateTrainingLogRecord]", msg, "— uid:", userId, "id:", l.id);
+    return { error: msg };
+  }
+  console.info("[updateTrainingLogRecord] saved OK, rows:", data.length);
+  return { error: null };
+}
+
 export async function deleteTrainingLog(id: string): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.from("training_logs").delete().eq("id", id);

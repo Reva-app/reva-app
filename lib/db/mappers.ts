@@ -222,10 +222,14 @@ export function trainingSchemaToDb(s: TrainingSchema, userId: string): Omit<DbTr
 export function dbToTrainingLog(row: DbTrainingLog): TrainingLog {
   return {
     id:                    row.id,
-    schemaId:              row.schema_id ?? "",
+    schemaId:              row.schema_id ?? undefined,
+    title:                 row.title,
     date:                  row.date,
+    completed:             row.completed,
+    completedAt:           row.completed_at ?? undefined,
+    reflection:            row.reflection ?? undefined,
     completedExerciseIds:  row.completed_exercise_ids ?? [],
-    note:                  row.note ?? "",
+    note:                  row.note ?? undefined,
     durationMinutes:       row.duration_minutes ?? undefined,
     createdAt:             row.created_at,
   };
@@ -236,12 +240,15 @@ export function trainingLogToDb(l: TrainingLog, userId: string): Omit<DbTraining
     id:                     l.id,
     user_id:                userId,
     schema_id:              l.schemaId || null,
-    title:                  l.note || "Training",
+    title:                  l.title || l.note || "Training",
     date:                   l.date,
     status:                 null,
     note:                   l.note || null,
-    completed_exercise_ids: l.completedExerciseIds,
+    completed_exercise_ids: l.completedExerciseIds ?? [],
     duration_minutes:       l.durationMinutes ?? null,
+    completed:              l.completed,
+    completed_at:           l.completedAt ?? null,
+    reflection:             l.reflection ?? null,
   };
 }
 

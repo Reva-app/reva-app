@@ -112,6 +112,8 @@ CREATE TABLE IF NOT EXISTS public.training_schemas (
 );
 
 -- ─── 7. training_logs ────────────────────────────────────────────────────────
+-- Single source of truth for all planned and completed workout entries.
+-- Absorbs the role of diary_workouts (which is kept but no longer written to).
 CREATE TABLE IF NOT EXISTS public.training_logs (
   id                      uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id                 uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -122,6 +124,9 @@ CREATE TABLE IF NOT EXISTS public.training_logs (
   note                    text,
   completed_exercise_ids  jsonb       NOT NULL DEFAULT '[]',
   duration_minutes        integer,
+  completed               boolean     NOT NULL DEFAULT false,
+  completed_at            timestamptz,
+  reflection              text,
   created_at              timestamptz NOT NULL DEFAULT now(),
   updated_at              timestamptz NOT NULL DEFAULT now()
 );

@@ -43,8 +43,7 @@ import { loadAppointments, upsertAppointment, deleteAppointment as dbDeleteAppoi
 import {
   loadTrainingOefeningen, upsertTrainingOefening, deleteTrainingOefening as dbDeleteTrainingOefening,
   loadTrainingSchemas, insertTrainingSchema, updateTrainingSchemaRecord, deleteTrainingSchema as dbDeleteTrainingSchema,
-  loadTrainingLogs, insertTrainingLog, deleteTrainingLog as dbDeleteTrainingLog,
-  loadDagboekWorkouts, upsertDagboekWorkout, deleteDagboekWorkout as dbDeleteDagboekWorkout,
+  loadTrainingLogs, insertTrainingLog, updateTrainingLogRecord, deleteTrainingLog as dbDeleteTrainingLog,
 } from "@/lib/services/trainingService";
 import {
   loadMedicatieLogs, upsertMedicatieLog, deleteMedicatieLog as dbDeleteMedicatieLog,
@@ -202,7 +201,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [trainingOefeningen, setTrainingOefeningen] = useState<TrainingOefening[]>([]);
   const [trainingSchemas, setTrainingSchemas]     = useState<TrainingSchema[]>([]);
   const [trainingLogs, setTrainingLogs]           = useState<TrainingLog[]>([]);
-  const [dagboekWorkouts, setDagboekWorkouts]     = useState<DagboekWorkout[]>([]);
+  // dagboekWorkouts is a derived view of trainingLogs — no separate state needed.
+  // DagboekWorkout is a type alias for TrainingLog; training_logs is the single source of truth.
   const [dossierDocumenten, setDossierDocumenten] = useState<DossierDocument[]>([]);
   const [fotoUpdates, setFotoUpdates]             = useState<FotoUpdate[]>([]);
   const [contactpersonen, setContactpersonen]     = useState<Contactpersoon[]>([]);
@@ -237,7 +237,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       fetchedOefeningen,
       fetchedSchemas,
       fetchedLogs,
-      fetchedWorkouts,
       fetchedDocumenten,
       fetchedFotos,
       fetchedContacten,
@@ -252,7 +251,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       loadTrainingOefeningen(user.id),
       loadTrainingSchemas(user.id),
       loadTrainingLogs(user.id),
-      loadDagboekWorkouts(user.id),
       loadDossierDocumenten(user.id),
       loadFotoUpdates(user.id),
       loadContactpersonen(user.id),
@@ -275,7 +273,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           trainingOefeningen: fetchedOefeningen,
           trainingSchemas: fetchedSchemas,
           trainingLogs: fetchedLogs,
-          dagboekWorkouts: fetchedWorkouts,
           dossierDocumenten: fetchedDocumenten,
           fotoUpdates: fetchedFotos,
           contactpersonen: fetchedContacten,
@@ -791,7 +788,6 @@ async function migrateFromLocalStorage(
     trainingOefeningen: TrainingOefening[];
     trainingSchemas: TrainingSchema[];
     trainingLogs: TrainingLog[];
-    dagboekWorkouts: DagboekWorkout[];
     dossierDocumenten: DossierDocument[];
     fotoUpdates: FotoUpdate[];
     contactpersonen: Contactpersoon[];
@@ -854,14 +850,6 @@ async function migrateFromLocalStorage(
     if (lsData?.length) {
       const { insertTrainingLog: itl } = await import("@/lib/services/trainingService");
       tasks.push(...lsData.map((l) => itl(l, userId)));
-    }
-  }
-
-  if (existing.dagboekWorkouts.length === 0) {
-    const lsData = lsGet<DagboekWorkout[]>("reva_dagboek_workouts");
-    if (lsData?.length) {
-      const { upsertDagboekWorkout: udw } = await import("@/lib/services/trainingService");
-      tasks.push(...lsData.map((w) => udw(w, userId)));
     }
   }
 
