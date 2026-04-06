@@ -279,7 +279,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         });
         await markMigrated(user.id);
         // Reload after migration
-        const [ci2, ap2, md2, ms2, do2, mp2, to2, ts2, tl2, dw2, dd2, fu2, cp2] = await Promise.all([
+        const [ci2, ap2, md2, ms2, do2, mp2, to2, ts2, tl2, dd2, fu2, cp2] = await Promise.all([
           loadCheckIns(user.id),
           loadAppointments(user.id),
           loadMedicatieLogs(user.id),
@@ -289,7 +289,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           loadTrainingOefeningen(user.id),
           loadTrainingSchemas(user.id),
           loadTrainingLogs(user.id),
-          loadDagboekWorkouts(user.id),
           loadDossierDocumenten(user.id),
           loadFotoUpdates(user.id),
           loadContactpersonen(user.id),
@@ -303,7 +302,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setTrainingOefeningen(to2);
         setTrainingSchemas(ts2);
         setTrainingLogs(tl2);
-        setDagboekWorkouts(dw2);
         setDossierDocumenten(dd2);
         setFotoUpdates(fu2);
         setContactpersonen(cp2);
@@ -317,7 +315,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setTrainingOefeningen(fetchedOefeningen);
         setTrainingSchemas(fetchedSchemas);
         setTrainingLogs(fetchedLogs);
-        setDagboekWorkouts(fetchedWorkouts);
         setDossierDocumenten(fetchedDocumenten);
         setFotoUpdates(fetchedFotos);
         setContactpersonen(fetchedContacten);
@@ -364,7 +361,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setTrainingOefeningen([]);
         setTrainingSchemas([]);
         setTrainingLogs([]);
-        setDagboekWorkouts([]);
         setDossierDocumenten([]);
         setFotoUpdates([]);
         setContactpersonen([]);
@@ -384,6 +380,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const fase = profile.operatieDatum
     ? herstelFase(dagsSindsOperatie)
     : "Herstel zonder operatie";
+
+  // dagboekWorkouts is a derived view of trainingLogs.
+  // DagboekWorkout = TrainingLog; training_logs is the single source of truth.
+  const dagboekWorkouts = trainingLogs;
 
   // ── getCurrentUserId helper ───────────────────────────────────────────────
 
@@ -690,23 +690,31 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           dbDeleteTrainingLog(id);
         },
 
-        // ── Dagboek workouts
+        // ── Dagboek workouts (derived from trainingLogs — training_logs is the source of truth)
         dagboekWorkouts,
         addDagboekWorkout: (w) => {
-          setDagboekWorkouts((prev) => [...prev, w]);
-          const uid = getUserId(); if (uid) upsertDagboekWorkout(w, uid);
+          setTrainingLogs((prev) => [...prev, w]);
+          const uid = getUserId();
+          if (!uid) { console.error("[addDagboekWorkout] getUserId() null — not saved"); return; }
+          insertTrainingLog(w, uid).then(({ error }) => {
+            if (error) console.error("[addDagboekWorkout] save failed:", error, "id:", w.id);
+          });
         },
         updateDagboekWorkout: (id, patch) => {
-          setDagboekWorkouts((prev) => prev.map((w) => {
+          setTrainingLogs((prev) => prev.map((w) => {
             if (w.id !== id) return w;
             const updated = { ...w, ...patch };
-            const uid = getUserId(); if (uid) upsertDagboekWorkout(updated, uid);
+            const uid = getUserId();
+            if (!uid) { console.error("[updateDagboekWorkout] getUserId() null — not saved"); return updated; }
+            updateTrainingLogRecord(updated, uid).then(({ error }) => {
+              if (error) console.error("[updateDagboekWorkout] save failed:", error, "id:", id);
+            });
             return updated;
           }));
         },
         deleteDagboekWorkout: (id) => {
-          setDagboekWorkouts((prev) => prev.filter((w) => w.id !== id));
-          dbDeleteDagboekWorkout(id);
+          setTrainingLogs((prev) => prev.filter((w) => w.id !== id));
+          dbDeleteTrainingLog(id);
         },
 
         // ── Dossier documenten

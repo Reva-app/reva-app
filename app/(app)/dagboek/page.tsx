@@ -117,7 +117,7 @@ interface DagItem {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function uid() { return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
+function uid() { return crypto.randomUUID(); }
 function todayStr() { return fmtDate(new Date()); }
 function fmtDate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
