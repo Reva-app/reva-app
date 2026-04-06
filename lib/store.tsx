@@ -39,7 +39,7 @@ import {
   markSetupCompleted,
 } from "@/lib/services/profileService";
 import { loadCheckIns, upsertCheckIn } from "@/lib/services/checkinService";
-import { loadAppointments, upsertAppointment, deleteAppointment as dbDeleteAppointment } from "@/lib/services/appointmentsService";
+import { loadAppointments, insertAppointment, updateAppointmentRecord, deleteAppointment as dbDeleteAppointment } from "@/lib/services/appointmentsService";
 import {
   loadTrainingOefeningen, upsertTrainingOefening, deleteTrainingOefening as dbDeleteTrainingOefening,
   loadTrainingSchemas, insertTrainingSchema, updateTrainingSchemaRecord, deleteTrainingSchema as dbDeleteTrainingSchema,
@@ -475,13 +475,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         appointments,
         addAppointment: (apt) => {
           setAppointments((prev) => [...prev, apt]);
-          const uid = getUserId(); if (uid) upsertAppointment(apt, uid);
+          const uid = getUserId();
+          if (!uid) { console.error("[addAppointment] getUserId() null — not saved"); return; }
+          insertAppointment(apt, uid).then(({ error }) => {
+            if (error) console.error("[addAppointment] insertAppointment failed:", error);
+          });
         },
         updateAppointment: (id, patch) => {
           setAppointments((prev) => prev.map((a) => {
             if (a.id !== id) return a;
             const updated = { ...a, ...patch };
-            const uid = getUserId(); if (uid) upsertAppointment(updated, uid);
+            const uid = getUserId();
+            if (!uid) { console.error("[updateAppointment] getUserId() null — not saved"); return updated; }
+            updateAppointmentRecord(updated, uid).then(({ error }) => {
+              if (error) console.error("[updateAppointment] updateAppointmentRecord failed:", error);
+            });
             return updated;
           }));
         },
