@@ -3,9 +3,8 @@ import {
   dbToTrainingOefening, trainingOefeningToDb,
   dbToTrainingSchema, trainingSchemaToDb,
   dbToTrainingLog, trainingLogToDb,
-  dbToDagboekWorkout, dagboekWorkoutToDb,
 } from "@/lib/db/mappers";
-import type { TrainingOefening, TrainingSchema, TrainingLog, DagboekWorkout } from "@/lib/data";
+import type { TrainingOefening, TrainingSchema, TrainingLog } from "@/lib/data";
 
 function logErr(fn: string, error: { message?: string; code?: string; details?: string; hint?: string } | null) {
   if (!error) return;
@@ -228,45 +227,6 @@ export async function deleteTrainingLog(id: string): Promise<void> {
   if (error) logErr("deleteTrainingLog", error);
 }
 
-// ─── Diary workouts ───────────────────────────────────────────────────────────
-
-export async function loadDagboekWorkouts(userId: string): Promise<DagboekWorkout[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("diary_workouts")
-    .select("*")
-    .eq("user_id", userId)
-    .order("date", { ascending: true });
-  if (error) { logErr("loadDagboekWorkouts", error); return []; }
-  console.info("[loadDagboekWorkouts] loaded", data?.length ?? 0, "rows for uid:", userId);
-  return (data ?? []).map(dbToDagboekWorkout);
-}
-
-export async function upsertDagboekWorkout(w: DagboekWorkout, userId: string): Promise<{ error: string | null }> {
-  const supabase = createClient();
-  const payload = dagboekWorkoutToDb(w, userId);
-  console.info("[upsertDagboekWorkout] uid:", userId, "id:", w.id, "date:", w.date, "schemaId:", w.schemaId, "payload:", payload);
-
-  const { data, error } = await supabase
-    .from("diary_workouts")
-    .upsert(payload, { onConflict: "id" })
-    .select();
-
-  if (error) {
-    logErr("upsertDagboekWorkout", error);
-    return { error: error.message };
-  }
-  if (!data || data.length === 0) {
-    const msg = "upsertDagboekWorkout: 0 rows affected";
-    console.error("[upsertDagboekWorkout]", msg, "— uid:", userId, "id:", w.id);
-    return { error: msg };
-  }
-  console.info("[upsertDagboekWorkout] saved OK, rows:", data.length);
-  return { error: null };
-}
-
-export async function deleteDagboekWorkout(id: string): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase.from("diary_workouts").delete().eq("id", id);
-  if (error) logErr("deleteDagboekWorkout", error);
-}
+// diary_workouts table is kept in the DB schema for backwards compat but is no longer written to.
+// All dated/planned/completed workout entries use training_logs as the single source of truth.
+// The store.tsx dagboekWorkouts value is derived from trainingLogs (DagboekWorkout = TrainingLog).
