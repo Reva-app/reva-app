@@ -58,16 +58,46 @@ export async function deleteTrainingOefening(id: string): Promise<void> {
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
+async function syncTrainingSchemaExercises(schemaId: string, exerciseIds: string[]): Promise<void> {
+  const supabase = createClient();
+
+  const { error: deleteError } = await supabase
+    .from("training_schema_exercises")
+    .delete()
+    .eq("schema_id", schemaId);
+  if (deleteError) { logErr("syncTrainingSchemaExercises/delete", deleteError); return; }
+
+  if (exerciseIds.length === 0) return;
+
+  const rows = exerciseIds.map((exercise_id, sort_order) => ({ schema_id: schemaId, exercise_id, sort_order }));
+  const { error: insertError } = await supabase
+    .from("training_schema_exercises")
+    .insert(rows);
+  if (insertError) logErr("syncTrainingSchemaExercises/insert", insertError);
+}
+
 export async function loadTrainingSchemas(userId: string): Promise<TrainingSchema[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("training_schemas")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: true });
-  if (error) { logErr("loadTrainingSchemas", error); return []; }
-  console.info("[loadTrainingSchemas] loaded", data?.length ?? 0, "rows for uid:", userId, "raw:", data);
-  return (data ?? []).map(dbToTrainingSchema);
+
+  const [{ data: schemaRows, error: schemaError }, { data: linkRows, error: linkError }] = await Promise.all([
+    supabase.from("training_schemas").select("*").eq("user_id", userId).order("created_at", { ascending: true }),
+    supabase.from("training_schema_exercises").select("schema_id, exercise_id, sort_order"),
+  ]);
+
+  if (schemaError) { logErr("loadTrainingSchemas/schemas", schemaError); return []; }
+  if (linkError) { logErr("loadTrainingSchemas/links", linkError); return []; }
+
+  console.info("[loadTrainingSchemas] loaded", schemaRows?.length ?? 0, "schemas, ", linkRows?.length ?? 0, "links for uid:", userId);
+
+  const links = linkRows ?? [];
+  return (schemaRows ?? []).map((row) => {
+    const schema = dbToTrainingSchema(row);
+    schema.exerciseIds = links
+      .filter((l) => l.schema_id === schema.id)
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((l) => l.exercise_id);
+    return schema;
+  });
 }
 
 /**
@@ -93,6 +123,8 @@ export async function insertTrainingSchema(s: TrainingSchema, userId: string): P
     console.error("[insertTrainingSchema]", msg, "— uid:", userId, "id:", s.id);
     return { error: msg };
   }
+
+  await syncTrainingSchemaExercises(s.id, s.exerciseIds);
   console.info("[insertTrainingSchema] saved OK, rows:", data.length, "result:", data);
   return { error: null };
 }
@@ -123,6 +155,8 @@ export async function updateTrainingSchemaRecord(s: TrainingSchema, userId: stri
     console.error("[updateTrainingSchemaRecord]", msg, "— uid:", userId, "id:", s.id);
     return { error: msg };
   }
+
+  await syncTrainingSchemaExercises(s.id, s.exerciseIds);
   console.info("[updateTrainingSchemaRecord] saved OK, rows:", data.length, "result:", data);
   return { error: null };
 }
@@ -154,12 +188,16 @@ export async function upsertTrainingSchema(s: TrainingSchema, userId: string): P
     }
     return insertResult;
   }
+
+  await syncTrainingSchemaExercises(s.id, s.exerciseIds);
   console.info("[upsertTrainingSchema/migration] saved OK, rows:", data.length);
   return { error: null };
 }
 
 export async function deleteTrainingSchema(id: string): Promise<void> {
   const supabase = createClient();
+  const { error: linkError } = await supabase.from("training_schema_exercises").delete().eq("schema_id", id);
+  if (linkError) logErr("deleteTrainingSchema/links", linkError);
   const { error } = await supabase.from("training_schemas").delete().eq("id", id);
   if (error) logErr("deleteTrainingSchema", error);
 }

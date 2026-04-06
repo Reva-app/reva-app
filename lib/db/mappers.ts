@@ -200,7 +200,7 @@ export function dbToTrainingSchema(row: DbTrainingSchema): TrainingSchema {
     title:       row.title,
     status:      (row.status as TrainingSchema["status"]) ?? "actief",
     duration:    row.duration ?? "",
-    exerciseIds: row.exercise_ids ?? [],
+    exerciseIds: [],
     createdAt:   row.created_at,
     updatedAt:   row.updated_at,
   };
@@ -208,12 +208,11 @@ export function dbToTrainingSchema(row: DbTrainingSchema): TrainingSchema {
 
 export function trainingSchemaToDb(s: TrainingSchema, userId: string): Omit<DbTrainingSchema, "created_at" | "updated_at"> {
   return {
-    id:           s.id,
-    user_id:      userId,
-    title:        s.title,
-    status:       s.status,
-    duration:     s.duration,
-    exercise_ids: s.exerciseIds,
+    id:       s.id,
+    user_id:  userId,
+    title:    s.title,
+    status:   s.status,
+    duration: s.duration,
   };
 }
 

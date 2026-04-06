@@ -92,9 +92,14 @@ export interface DbTrainingSchema {
   title: string;
   status: string | null;
   duration: string | null;
-  exercise_ids: string[];
   created_at: string;
   updated_at: string;
+}
+
+export interface DbTrainingSchemaExercise {
+  schema_id: string;
+  exercise_id: string;
+  sort_order: number;
 }
 
 export interface DbTrainingLog {
