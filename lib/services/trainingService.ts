@@ -67,14 +67,75 @@ export async function loadTrainingSchemas(userId: string): Promise<TrainingSchem
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
   if (error) { logErr("loadTrainingSchemas", error); return []; }
-  console.info("[loadTrainingSchemas] loaded", data?.length ?? 0, "rows for uid:", userId);
+  console.info("[loadTrainingSchemas] loaded", data?.length ?? 0, "rows for uid:", userId, "raw:", data);
   return (data ?? []).map(dbToTrainingSchema);
 }
 
+/**
+ * INSERT for new schemas. Uses explicit insert (not upsert) to avoid
+ * the silent-failure issue with JSONB columns in PostgREST upsert on conflict.
+ */
+export async function insertTrainingSchema(s: TrainingSchema, userId: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const payload = trainingSchemaToDb(s, userId);
+  console.info("[insertTrainingSchema] uid:", userId, "id:", s.id, "title:", s.title, "exerciseIds:", s.exerciseIds, "payload:", payload);
+
+  const { data, error } = await supabase
+    .from("training_schemas")
+    .insert(payload)
+    .select();
+
+  if (error) {
+    logErr("insertTrainingSchema", error);
+    return { error: error.message };
+  }
+  if (!data || data.length === 0) {
+    const msg = "insertTrainingSchema: 0 rows returned";
+    console.error("[insertTrainingSchema]", msg, "— uid:", userId, "id:", s.id);
+    return { error: msg };
+  }
+  console.info("[insertTrainingSchema] saved OK, rows:", data.length, "result:", data);
+  return { error: null };
+}
+
+/**
+ * UPDATE for existing schemas. Uses explicit update (not upsert) to avoid
+ * the silent-failure issue with JSONB columns in PostgREST upsert on conflict.
+ */
+export async function updateTrainingSchemaRecord(s: TrainingSchema, userId: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  // Omit id and user_id from the update payload (they are the WHERE keys, not fields to update).
+  const { id: _id, user_id: _uid, ...fields } = trainingSchemaToDb(s, userId);
+  console.info("[updateTrainingSchemaRecord] uid:", userId, "id:", s.id, "exerciseIds:", s.exerciseIds, "fields:", fields);
+
+  const { data, error } = await supabase
+    .from("training_schemas")
+    .update(fields)
+    .eq("id", s.id)
+    .eq("user_id", userId)
+    .select();
+
+  if (error) {
+    logErr("updateTrainingSchemaRecord", error);
+    return { error: error.message };
+  }
+  if (!data || data.length === 0) {
+    const msg = "updateTrainingSchemaRecord: geen rij gevonden (id of user_id klopt niet)";
+    console.error("[updateTrainingSchemaRecord]", msg, "— uid:", userId, "id:", s.id);
+    return { error: msg };
+  }
+  console.info("[updateTrainingSchemaRecord] saved OK, rows:", data.length, "result:", data);
+  return { error: null };
+}
+
+/**
+ * Upsert kept for the localStorage-migration path only.
+ * Use insertTrainingSchema / updateTrainingSchemaRecord for live UI writes.
+ */
 export async function upsertTrainingSchema(s: TrainingSchema, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const payload = trainingSchemaToDb(s, userId);
-  console.info("[upsertTrainingSchema] uid:", userId, "id:", s.id, "title:", s.title, "exerciseIds:", s.exerciseIds, "payload:", payload);
+  console.info("[upsertTrainingSchema/migration] uid:", userId, "id:", s.id, "payload:", payload);
 
   const { data, error } = await supabase
     .from("training_schemas")
@@ -86,11 +147,15 @@ export async function upsertTrainingSchema(s: TrainingSchema, userId: string): P
     return { error: error.message };
   }
   if (!data || data.length === 0) {
-    const msg = "upsertTrainingSchema: 0 rows affected";
-    console.error("[upsertTrainingSchema]", msg, "— uid:", userId, "id:", s.id);
-    return { error: msg };
+    console.warn("[upsertTrainingSchema/migration] 0 rows — retrying via insert then update");
+    const insertResult = await insertTrainingSchema(s, userId);
+    if (insertResult.error) {
+      // Row likely exists already; fall back to update
+      return updateTrainingSchemaRecord(s, userId);
+    }
+    return insertResult;
   }
-  console.info("[upsertTrainingSchema] saved OK, rows:", data.length, "result:", data);
+  console.info("[upsertTrainingSchema/migration] saved OK, rows:", data.length);
   return { error: null };
 }
 

@@ -42,7 +42,7 @@ import { loadCheckIns, upsertCheckIn } from "@/lib/services/checkinService";
 import { loadAppointments, upsertAppointment, deleteAppointment as dbDeleteAppointment } from "@/lib/services/appointmentsService";
 import {
   loadTrainingOefeningen, upsertTrainingOefening, deleteTrainingOefening as dbDeleteTrainingOefening,
-  loadTrainingSchemas, upsertTrainingSchema, deleteTrainingSchema as dbDeleteTrainingSchema,
+  loadTrainingSchemas, insertTrainingSchema, updateTrainingSchemaRecord, deleteTrainingSchema as dbDeleteTrainingSchema,
   loadTrainingLogs, insertTrainingLog, deleteTrainingLog as dbDeleteTrainingLog,
   loadDagboekWorkouts, upsertDagboekWorkout, deleteDagboekWorkout as dbDeleteDagboekWorkout,
 } from "@/lib/services/trainingService";
@@ -657,7 +657,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           setTrainingSchemas((prev) => [...prev, s]);
           const uid = getUserId();
           if (!uid) { console.error("[addTrainingSchema] getUserId() null — not saved"); return; }
-          upsertTrainingSchema(s, uid).then(({ error }) => {
+          insertTrainingSchema(s, uid).then(({ error }: { error: string | null }) => {
             if (error) console.error("[addTrainingSchema] save failed:", error, "id:", s.id);
           });
         },
@@ -667,7 +667,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             const updated = { ...s, ...patch, updatedAt: new Date().toISOString() };
             const uid = getUserId();
             if (!uid) { console.error("[updateTrainingSchema] getUserId() null — not saved"); return updated; }
-            upsertTrainingSchema(updated, uid).then(({ error }) => {
+            updateTrainingSchemaRecord(updated, uid).then(({ error }: { error: string | null }) => {
               if (error) console.error("[updateTrainingSchema] save failed:", error, "id:", id);
             });
             return updated;
