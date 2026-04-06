@@ -154,10 +154,22 @@ export interface DbMedicationSchedule {
   name_other: string | null;
   dosage: string | null;
   quantity: string | null;
-  times: string[];
   active: boolean;
   note: string | null;
   created_at: string;
+  updated_at: string;
+}
+
+export interface DbMedicationScheduleTime {
+  schedule_id: string;
+  time: string;
+  sort_order: number;
+}
+
+export interface DbNotificationState {
+  user_id: string;
+  read_ids: string[];
+  logged_ids: string[];
   updated_at: string;
 }
 

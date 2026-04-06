@@ -319,7 +319,7 @@ export function dbToMedicatieSchema(row: DbMedicationSchedule): MedicatieSchema 
     naamAnders:  row.name_other ?? "",
     dosering:    row.dosage ?? "",
     hoeveelheid: row.quantity ?? "",
-    tijden:      row.times ?? [],
+    tijden:      [], // populated from medication_schedule_times at load time
     actief:      row.active,
     notitie:     row.note ?? "",
   };
@@ -333,7 +333,6 @@ export function medicatieSchemaToDb(s: MedicatieSchema, userId: string): Omit<Db
     name_other:      s.naamAnders || null,
     dosage:          s.dosering || null,
     quantity:        s.hoeveelheid || null,
-    times:           s.tijden,
     active:          s.actief,
     note:            s.notitie || null,
   };

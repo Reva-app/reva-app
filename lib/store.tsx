@@ -46,8 +46,8 @@ import {
   loadTrainingLogs, insertTrainingLog, updateTrainingLogRecord, deleteTrainingLog as dbDeleteTrainingLog,
 } from "@/lib/services/trainingService";
 import {
-  loadMedicatieLogs, upsertMedicatieLog, deleteMedicatieLog as dbDeleteMedicatieLog,
-  loadMedicatieSchemas, upsertMedicatieSchema, deleteMedicatieSchema as dbDeleteMedicatieSchema,
+  loadMedicatieLogs, insertMedicatieLog, updateMedicatieLogRecord, deleteMedicatieLog as dbDeleteMedicatieLog,
+  loadMedicatieSchemas, insertMedicatieSchema, updateMedicatieSchemaRecord, deleteMedicatieSchema as dbDeleteMedicatieSchema,
 } from "@/lib/services/medicationService";
 import {
   loadDoelen, upsertDoel, deleteDoel as dbDeleteDoel,
@@ -55,10 +55,11 @@ import {
   reorderMijlpalen as dbReorderMijlpalen,
 } from "@/lib/services/goalsService";
 import {
-  loadDossierDocumenten, upsertDossierDocument, deleteDossierDocument as dbDeleteDossierDocument,
-  loadFotoUpdates, upsertFotoUpdate, deleteFotoUpdate as dbDeleteFotoUpdate,
-  loadContactpersonen, upsertContactpersoon, deleteContactpersoon as dbDeleteContactpersoon,
+  loadDossierDocumenten, insertDossierDocument, updateDossierDocumentRecord, deleteDossierDocument as dbDeleteDossierDocument,
+  loadFotoUpdates, insertFotoUpdate, deleteFotoUpdate as dbDeleteFotoUpdate,
+  loadContactpersonen, insertContactpersoon, updateContactpersoonRecord, deleteContactpersoon as dbDeleteContactpersoon,
 } from "@/lib/services/dossierService";
+import { loadNotificationState, saveNotificationState } from "@/lib/services/notificationService";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -321,11 +322,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Notification read/logged state stays in localStorage (device-specific, not critical)
-    const lsRead = lsGet<string[]>("reva_read_notifications") ?? [];
-    const lsLogged = lsGet<string[]>("reva_logged_notifications") ?? [];
-    setReadNotificationIds(lsRead);
-    setLoggedNotificationIds(lsLogged);
+    // Notification read/logged state — load from Supabase for authenticated users
+    const notifState = await loadNotificationState(user.id);
+    setReadNotificationIds(notifState.readIds);
+    setLoggedNotificationIds(notifState.loggedIds);
 
     setHydrated(true);
   }, []);
@@ -365,6 +365,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setFotoUpdates([]);
         setContactpersonen([]);
         setNotificationSettings(defaultNotificationSettings);
+        setReadNotificationIds([]);
+        setLoggedNotificationIds([]);
         setSetupCompleted(false);
         setHydrated(true);
       }
@@ -502,13 +504,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         medicatie,
         addMedicatie: (med) => {
           setMedicatie((prev) => [med, ...prev]);
-          const uid = getUserId(); if (uid) upsertMedicatieLog(med, uid);
+          const uid = getUserId();
+          if (!uid) { console.error("[addMedicatie] getUserId() null — not saved"); return; }
+          insertMedicatieLog(med, uid).then(({ error }) => {
+            if (error) console.error("[addMedicatie] insertMedicatieLog failed:", error);
+          });
         },
         updateMedicatie: (id, patch) => {
           setMedicatie((prev) => prev.map((m) => {
             if (m.id !== id) return m;
             const updated = { ...m, ...patch };
-            const uid = getUserId(); if (uid) upsertMedicatieLog(updated, uid);
+            const uid = getUserId();
+            if (!uid) { console.error("[updateMedicatie] getUserId() null — not saved"); return updated; }
+            updateMedicatieLogRecord(updated, uid).then(({ error }) => {
+              if (error) console.error("[updateMedicatie] updateMedicatieLogRecord failed:", error);
+            });
             return updated;
           }));
         },
@@ -521,13 +531,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         medicatieSchemas,
         addMedicatieSchema: (s) => {
           setMedicatieSchemas((prev) => [...prev, s]);
-          const uid = getUserId(); if (uid) upsertMedicatieSchema(s, uid);
+          const uid = getUserId();
+          if (!uid) { console.error("[addMedicatieSchema] getUserId() null — not saved"); return; }
+          insertMedicatieSchema(s, uid).then(({ error }) => {
+            if (error) console.error("[addMedicatieSchema] insertMedicatieSchema failed:", error);
+          });
         },
         updateMedicatieSchema: (id, patch) => {
           setMedicatieSchemas((prev) => prev.map((s) => {
             if (s.id !== id) return s;
             const updated = { ...s, ...patch };
-            const uid = getUserId(); if (uid) upsertMedicatieSchema(updated, uid);
+            const uid = getUserId();
+            if (!uid) { console.error("[updateMedicatieSchema] getUserId() null — not saved"); return updated; }
+            updateMedicatieSchemaRecord(updated, uid).then(({ error }) => {
+              if (error) console.error("[updateMedicatieSchema] updateMedicatieSchemaRecord failed:", error);
+            });
             return updated;
           }));
         },
@@ -536,22 +554,34 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           dbDeleteMedicatieSchema(id);
         },
 
-        // ── Notification state (device-local, kept in localStorage)
+        // ── Notification state (Supabase-backed per account)
         readNotificationIds,
         markNotificationRead: (id) => {
           setReadNotificationIds((prev) => {
             if (prev.includes(id)) return prev;
             const next = [...prev, id];
-            try { localStorage.setItem("reva_read_notifications", JSON.stringify(next)); } catch {}
+            const uid = getUserId();
+            if (uid) {
+              setLoggedNotificationIds((logged) => {
+                saveNotificationState(uid, next, logged);
+                return logged;
+              });
+            }
             return next;
           });
         },
         markAllNotificationsRead: (ids) => {
           setReadNotificationIds((prev) => {
             const set = new Set(prev);
-            ids.forEach((id) => set.add(id));
+            ids.forEach((nid) => set.add(nid));
             const next = [...set];
-            try { localStorage.setItem("reva_read_notifications", JSON.stringify(next)); } catch {}
+            const uid = getUserId();
+            if (uid) {
+              setLoggedNotificationIds((logged) => {
+                saveNotificationState(uid, next, logged);
+                return logged;
+              });
+            }
             return next;
           });
         },
@@ -560,7 +590,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           setLoggedNotificationIds((prev) => {
             if (prev.includes(id)) return prev;
             const next = [...prev, id];
-            try { localStorage.setItem("reva_logged_notifications", JSON.stringify(next)); } catch {}
+            const uid = getUserId();
+            if (uid) {
+              setReadNotificationIds((read) => {
+                saveNotificationState(uid, read, next);
+                return read;
+              });
+            }
             return next;
           });
         },
@@ -729,13 +765,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         dossierDocumenten,
         addDossierDocument: (d) => {
           setDossierDocumenten((prev) => [d, ...prev]);
-          const uid = getUserId(); if (uid) upsertDossierDocument(d, uid);
+          const uid = getUserId();
+          if (!uid) { console.error("[addDossierDocument] getUserId() null — not saved"); return; }
+          insertDossierDocument(d, uid).then(({ error }) => {
+            if (error) console.error("[addDossierDocument] insertDossierDocument failed:", error);
+          });
         },
         updateDossierDocument: (id, patch) => {
           setDossierDocumenten((prev) => prev.map((d) => {
             if (d.id !== id) return d;
             const updated = { ...d, ...patch };
-            const uid = getUserId(); if (uid) upsertDossierDocument(updated, uid);
+            const uid = getUserId();
+            if (!uid) { console.error("[updateDossierDocument] getUserId() null — not saved"); return updated; }
+            updateDossierDocumentRecord(updated, uid).then(({ error }) => {
+              if (error) console.error("[updateDossierDocument] updateDossierDocumentRecord failed:", error);
+            });
             return updated;
           }));
         },
@@ -748,7 +792,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         fotoUpdates,
         addFotoUpdate: (f) => {
           setFotoUpdates((prev) => [f, ...prev]);
-          const uid = getUserId(); if (uid) upsertFotoUpdate(f, uid);
+          const uid = getUserId();
+          if (!uid) { console.error("[addFotoUpdate] getUserId() null — not saved"); return; }
+          insertFotoUpdate(f, uid).then(({ error }) => {
+            if (error) console.error("[addFotoUpdate] insertFotoUpdate failed:", error);
+          });
         },
         deleteFotoUpdate: (id) => {
           setFotoUpdates((prev) => prev.filter((f) => f.id !== id));
@@ -759,13 +807,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         contactpersonen,
         addContactpersoon: (c) => {
           setContactpersonen((prev) => [...prev, c]);
-          const uid = getUserId(); if (uid) upsertContactpersoon(c, uid);
+          const uid = getUserId();
+          if (!uid) { console.error("[addContactpersoon] getUserId() null — not saved"); return; }
+          insertContactpersoon(c, uid).then(({ error }) => {
+            if (error) console.error("[addContactpersoon] insertContactpersoon failed:", error);
+          });
         },
         updateContactpersoon: (id, patch) => {
           setContactpersonen((prev) => prev.map((c) => {
             if (c.id !== id) return c;
             const updated = { ...c, ...patch };
-            const uid = getUserId(); if (uid) upsertContactpersoon(updated, uid);
+            const uid = getUserId();
+            if (!uid) { console.error("[updateContactpersoon] getUserId() null — not saved"); return updated; }
+            updateContactpersoonRecord(updated, uid).then(({ error }) => {
+              if (error) console.error("[updateContactpersoon] updateContactpersoonRecord failed:", error);
+            });
             return updated;
           }));
         },
