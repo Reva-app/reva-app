@@ -65,7 +65,11 @@ async function syncTrainingSchemaExercises(schemaId: string, exerciseIds: string
     .from("training_schema_exercises")
     .delete()
     .eq("schema_id", schemaId);
-  if (deleteError) { logErr("syncTrainingSchemaExercises/delete", deleteError); return; }
+  if (deleteError) {
+    // Non-fatal: junction table may not exist yet
+    logErr("syncTrainingSchemaExercises/delete (non-fatal)", deleteError);
+    return;
+  }
 
   if (exerciseIds.length === 0) return;
 
@@ -73,7 +77,7 @@ async function syncTrainingSchemaExercises(schemaId: string, exerciseIds: string
   const { error: insertError } = await supabase
     .from("training_schema_exercises")
     .insert(rows);
-  if (insertError) logErr("syncTrainingSchemaExercises/insert", insertError);
+  if (insertError) logErr("syncTrainingSchemaExercises/insert (non-fatal)", insertError);
 }
 
 export async function loadTrainingSchemas(userId: string): Promise<TrainingSchema[]> {
@@ -85,7 +89,8 @@ export async function loadTrainingSchemas(userId: string): Promise<TrainingSchem
   ]);
 
   if (schemaError) { logErr("loadTrainingSchemas/schemas", schemaError); return []; }
-  if (linkError) { logErr("loadTrainingSchemas/links", linkError); return []; }
+  // Junction table may not exist yet — non-fatal, schemas load without exerciseIds
+  if (linkError) { logErr("loadTrainingSchemas/links (non-fatal)", linkError); }
 
   console.info("[loadTrainingSchemas] loaded", schemaRows?.length ?? 0, "schemas, ", linkRows?.length ?? 0, "links for uid:", userId);
 
@@ -115,6 +120,14 @@ export async function insertTrainingSchema(s: TrainingSchema, userId: string): P
     .select();
 
   if (error) {
+    if (error.message?.includes("column") && error.message?.includes("schema cache")) {
+      console.warn("[insertTrainingSchema] column missing — retrying with minimal payload");
+      const minimal = { id: s.id, user_id: userId, title: s.title };
+      const { error: e2 } = await supabase.from("training_schemas").insert(minimal).select();
+      if (e2) { logErr("insertTrainingSchema/minimal", e2); return { error: e2.message }; }
+      await syncTrainingSchemaExercises(s.id, s.exerciseIds);
+      return { error: null };
+    }
     logErr("insertTrainingSchema", error);
     return { error: error.message };
   }
@@ -227,6 +240,23 @@ export async function insertTrainingLog(l: TrainingLog, userId: string): Promise
     .select();
 
   if (error) {
+    // Retry with minimal payload if columns are missing in this DB instance
+    if (error.message?.includes("column") && error.message?.includes("schema cache")) {
+      console.warn("[insertTrainingLog] column missing — retrying with minimal payload");
+      const minimal = {
+        id: l.id, user_id: userId,
+        title: l.title || l.note || "Training",
+        date: l.date,
+        completed: l.completed,
+        schema_id: l.schemaId || null,
+        completed_at: l.completedAt ?? null,
+        reflection: l.reflection ?? null,
+      };
+      const { error: e2 } = await supabase.from("training_logs").insert(minimal).select();
+      if (e2) { logErr("insertTrainingLog/minimal", e2); return { error: e2.message }; }
+      console.info("[insertTrainingLog] saved OK (minimal)");
+      return { error: null };
+    }
     logErr("insertTrainingLog", error);
     return { error: error.message };
   }
