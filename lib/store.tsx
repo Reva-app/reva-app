@@ -537,7 +537,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           const uid = getUserId();
           if (!uid) { console.error("[addMedicatieSchema] getUserId() null — not saved"); return; }
           insertMedicatieSchema(s, uid).then(({ error }) => {
-            if (error) console.error("[addMedicatieSchema] insertMedicatieSchema failed:", error);
+            if (error) {
+              console.error("[addMedicatieSchema] insertMedicatieSchema failed:", error);
+              alert(`Schema opslaan mislukt:\n${error}`);
+            }
           });
         },
         updateMedicatieSchema: (id, patch) => {

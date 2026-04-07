@@ -154,6 +154,7 @@ export interface DbMedicationSchedule {
   name_other: string | null;
   dosage: string | null;
   quantity: string | null;
+  times: string[] | null; // legacy column, kept in sync with medication_schedule_times junction table
   active: boolean;
   note: string | null;
   created_at: string;

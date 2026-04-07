@@ -324,7 +324,7 @@ export function dbToMedicatieSchema(row: DbMedicationSchedule): MedicatieSchema 
   };
 }
 
-export function medicatieSchemaToDb(s: MedicatieSchema, userId: string): Omit<DbMedicationSchedule, "created_at" | "updated_at"> {
+export function medicatieSchemaToDb(s: MedicatieSchema, userId: string): Omit<DbMedicationSchedule, "created_at" | "updated_at" | "times"> {
   return {
     id:              s.id,
     user_id:         userId,
@@ -332,6 +332,7 @@ export function medicatieSchemaToDb(s: MedicatieSchema, userId: string): Omit<Db
     name_other:      s.naamAnders || null,
     dosage:          s.dosering || null,
     quantity:        s.hoeveelheid || null,
+    // tijden worden apart opgeslagen via medication_schedule_times junction table
     active:          s.actief,
     note:            s.notitie || null,
   };
