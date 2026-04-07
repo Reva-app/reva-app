@@ -263,6 +263,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setSetupCompleted(profileData.setupCompleted);
 
       // ── localStorage migration (first login with existing local data) ──────
+      // For OAuth users (Google etc.) always wipe localStorage first —
+      // they never used the email-register flow so any local data is demo data.
+      const isOAuthUser = profileData.profile.authProvider === "google"
+        || profileData.profile.authProvider === "gmail";
+      if (!profileData.migrated && isOAuthUser) {
+        const REVA_LS_KEYS = [
+          "reva_checkins", "reva_appointments", "reva_medicatie", "reva_schemas",
+          "reva_training_oefeningen", "reva_training_schemas", "reva_training_logs",
+          "reva_doelen", "reva_mijlpalen", "reva_dossier_documenten",
+          "reva_foto_updates", "reva_contactpersonen", "reva_profile",
+        ];
+        REVA_LS_KEYS.forEach((k) => localStorage.removeItem(k));
+      }
+
       if (!profileData.migrated) {
         await migrateFromLocalStorage(user.id, {
           checkIns: fetchedCheckIns,
@@ -971,10 +985,14 @@ async function migrateFromLocalStorage(
     }
   }
 
-  // Also migrate profile settings
+  // Also migrate profile settings — but never overwrite auth-sourced fields
+  // (naam, email, authProvider) since those always come from the auth provider.
   const lsProfile = lsGet<Profile>("reva_profile");
   if (lsProfile) {
-    await upsertProfile(userId, lsProfile);
+    const { naam: _n, email: _e, authProvider: _a, profielfoto: _p, ...settingsOnly } = lsProfile;
+    if (Object.keys(settingsOnly).length > 0) {
+      await upsertProfile(userId, settingsOnly);
+    }
   }
 
   if (tasks.length > 0) {

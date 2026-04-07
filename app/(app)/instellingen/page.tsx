@@ -454,17 +454,19 @@ export default function InstellingenPage() {
           email: profile.email,
         }),
       });
-      const json = await res.json();
+      let json: { success?: boolean; error?: string } = {};
+      try { json = await res.json(); } catch { /* non-JSON response */ }
+
       if (!res.ok || json.error) {
-        showToast("Versturen mislukt: " + (json.error ?? "Probeer het later opnieuw"), "error");
+        showToast("Versturen mislukt: " + (json.error ?? `Fout ${res.status}`), "error");
         return;
       }
       setFbOnderwerp("");
       setFbBericht("");
       setFbCategorie("");
       showToast("Feedback verstuurd — bedankt!");
-    } catch {
-      showToast("Versturen mislukt: netwerkfout", "error");
+    } catch (err) {
+      showToast("Versturen mislukt: " + (err instanceof Error ? err.message : "netwerkfout"), "error");
     } finally {
       setFbSending(false);
     }
