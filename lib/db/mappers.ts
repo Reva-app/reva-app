@@ -141,7 +141,7 @@ export function dbToAppointment(row: DbAppointment): Appointment {
   };
 }
 
-export function appointmentToDb(apt: Appointment, userId: string): Omit<DbAppointment, "created_at" | "updated_at"> {
+export function appointmentToDb(apt: Appointment, userId: string): Omit<DbAppointment, "created_at" | "updated_at" | "status"> {
   return {
     id:               apt.id,
     user_id:          userId,
@@ -157,7 +157,6 @@ export function appointmentToDb(apt: Appointment, userId: string): Omit<DbAppoin
     outcome_after:    apt.uitkomst ?? null,
     follow_up_action: apt.vervolgactie ?? null,
     reminder_enabled: apt.herinnering,
-    status:           null,
   };
 }
 

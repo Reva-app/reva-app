@@ -480,7 +480,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           const uid = getUserId();
           if (!uid) { console.error("[addAppointment] getUserId() null — not saved"); return; }
           insertAppointment(apt, uid).then(({ error }) => {
-            if (error) console.error("[addAppointment] insertAppointment failed:", error);
+            if (error) {
+              console.error("[addAppointment] insertAppointment failed:", error);
+              alert(`Afspraak opslaan mislukt:\n${error}`);
+            }
           });
         },
         updateAppointment: (id, patch) => {
