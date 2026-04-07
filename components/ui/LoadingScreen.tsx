@@ -107,7 +107,7 @@ export function LoadingScreen({ done, onExited }: LoadingScreenProps) {
             textTransform: "uppercase",
           }}
         >
-          Herstel Kompas
+          Herstel Dashboard
         </p>
       </div>
 

@@ -24,9 +24,8 @@ export function AppLoadingGate({ children }: { children: React.ReactNode }) {
       {/* Render kinderen altijd zodat hydration al kan starten */}
       <div
         style={{
-          // Verberg visueel totdat laadscherm weg is, maar blokkeer hydration niet
+          height: "100%",
           visibility: exited ? "visible" : "hidden",
-          // Gebruik pointer-events zodat interactie geblokkeerd wordt tijdens laden
           pointerEvents: exited ? "auto" : "none",
         }}
       >
