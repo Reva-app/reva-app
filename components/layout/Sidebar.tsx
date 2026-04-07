@@ -137,7 +137,7 @@ export function Sidebar() {
             onClick={signOut}
             title="Uitloggen"
             className="shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10"
-            style={{ color: "#52525e" }}
+            style={{ color: "#e8632a" }}
           >
             <LogOut size={13} />
           </button>

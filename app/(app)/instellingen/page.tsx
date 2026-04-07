@@ -287,7 +287,7 @@ export default function InstellingenPage() {
   }
 
   // ── Wachtwoord wijzigen ────────────────────────────────────────────────────
-  const isGmail = (profile.authProvider ?? "local") === "gmail";
+  const isGmail = profile.authProvider === "google" || profile.authProvider === "gmail";
   const [huidigWw, setHuidigWw] = useState("");
   const [nieuwWw, setNieuwWw] = useState("");
   const [herhalingWw, setHerhalingWw] = useState("");
