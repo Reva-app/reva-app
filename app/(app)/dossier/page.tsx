@@ -618,7 +618,7 @@ export default function DossierPage() {
   const [confirmDel, setConfirmDel] = useState<{ type: "doc" | "foto" | "contact"; id: string } | null>(null);
 
   const tabs: { key: Tab; label: string; icon: React.ElementType; count: number }[] = [
-    { key: "foto-updates",    label: "Foto updates",     icon: Image,    count: fotoUpdates.length },
+    { key: "foto-updates",    label: "Foto updates",     icon: ImageIcon, count: fotoUpdates.length },
     { key: "contactpersonen", label: "Contactpersonen",  icon: Users,    count: contactpersonen.length },
     { key: "documenten",      label: "Documenten",       icon: FileText, count: dossierDocumenten.length },
   ];
