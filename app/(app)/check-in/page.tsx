@@ -444,19 +444,29 @@ export default function CheckInPage() {
   const [submitted,  setSubmitted]  = useState(false);
 
   const [editModal, setEditModal] = useState<CheckIn | null>(null);
+  // id of the check-in currently being edited via the mobile form tab
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const isToday = selectedDate === todayStr();
 
   function handleSubmit() {
-    addCheckIn({
-      id: uid(),
-      date: selectedDate,
-      dagscore, pijn, mobiliteit, energie, slaap, stemming,
-      zwelling: false,
-      notitie: notitie.trim() || undefined,
-      trainingGedaan: false,
-      medicatieGebruikt: false,
-    });
+    if (editingId) {
+      // Editing an existing check-in via the mobile form tab
+      const existing = checkIns.find((c) => c.id === editingId);
+      if (existing) {
+        updateCheckIn(editingId, { dagscore, pijn, mobiliteit, energie, slaap, stemming, notitie: notitie.trim() || undefined });
+      }
+    } else {
+      addCheckIn({
+        id: uid(),
+        date: selectedDate,
+        dagscore, pijn, mobiliteit, energie, slaap, stemming,
+        zwelling: false,
+        notitie: notitie.trim() || undefined,
+        trainingGedaan: false,
+        medicatieGebruikt: false,
+      });
+    }
     setSubmitted(true);
   }
 
@@ -464,7 +474,22 @@ export default function CheckInPage() {
     setSelectedDate(todayStr());
     setDagscore(3); setPijn(4); setMobiliteit(3);
     setEnergie(3); setSlaap(4); setStemming(3);
-    setNotitie(""); setSubmitted(false);
+    setNotitie(""); setSubmitted(false); setEditingId(null);
+  }
+
+  // Opens a past check-in in the mobile form tab for editing
+  function handleMobileEdit(ci: CheckIn) {
+    setSelectedDate(ci.date);
+    setDagscore(ci.dagscore);
+    setPijn(ci.pijn);
+    setMobiliteit(ci.mobiliteit);
+    setEnergie(ci.energie);
+    setSlaap(ci.slaap);
+    setStemming(ci.stemming);
+    setNotitie(ci.notitie ?? "");
+    setSubmitted(false);
+    setEditingId(ci.id);
+    setMobileTab("formulier");
   }
 
   // ── Shared form content (used on both desktop and mobile formulier tab) ──────
@@ -575,6 +600,11 @@ export default function CheckInPage() {
         subtitle="Hoe gaat het vandaag met jouw herstel?"
       />
 
+      {/* ── Mobile: hersteltrend boven tabs ─────────────────────────────── */}
+      <div className="sm:hidden">
+        <HerstelTrendLijn checkIns={checkIns} />
+      </div>
+
       {/* ── Mobile: tab bar ──────────────────────────────────────────────── */}
       <div className="sm:hidden">
         <div className="flex rounded-xl overflow-hidden mb-5" style={{ background: "#f3f0eb" }}>
@@ -618,16 +648,34 @@ export default function CheckInPage() {
               </div>
             ) : (
               <>
-                {/* Uitleg — matches CheckInModal */}
-                <p className="text-xs text-gray-400 leading-relaxed px-1">
-                  Vul in hoe je dag was. Bij alle scores geldt: <strong className="text-gray-500">1 is laag</strong> en de hoogste waarde is het beste — behalve bij pijn, waar lager beter is.
-                </p>
+                {/* Context banner when editing a past check-in */}
+                {editingId && (
+                  <div className="flex items-center justify-between rounded-xl px-4 py-3"
+                    style={{ background: "#fff8f5", border: "1px solid #fcd9c8" }}>
+                    <p className="text-xs font-medium" style={{ color: "#e8632a" }}>
+                      Check-in bewerken —{" "}
+                      {new Date(selectedDate + "T12:00:00").toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" })}
+                    </p>
+                    <button onClick={reset} className="text-xs underline underline-offset-2" style={{ color: "#e8632a" }}>
+                      Annuleren
+                    </button>
+                  </div>
+                )}
 
-                {/* Datum */}
+                {/* Uitleg — matches CheckInModal */}
+                {!editingId && (
+                  <p className="text-xs text-gray-400 leading-relaxed px-1">
+                    Vul in hoe je dag was. Bij alle scores geldt: <strong className="text-gray-500">1 is laag</strong> en de hoogste waarde is het beste — behalve bij pijn, waar lager beter is.
+                  </p>
+                )}
+
+                {/* Datum — alleen bij nieuwe check-in */}
+                {!editingId && (
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1.5">Datum</label>
                   <DatePicker value={selectedDate} onChange={setSelectedDate} />
                 </div>
+                )}
 
                 <ScoreSelector label="Dagscore"       value={dagscore}   max={5}  onChange={setDagscore}   color="#e8632a" />
                 <div>
@@ -660,7 +708,7 @@ export default function CheckInPage() {
                   className="w-full py-4 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 touch-press"
                   style={{ background: "#e8632a", color: "#ffffff" }}
                 >
-                  Check-in opslaan
+                  {editingId ? "Wijzigingen opslaan" : "Check-in opslaan"}
                 </button>
               </>
             )}
@@ -669,8 +717,7 @@ export default function CheckInPage() {
 
         {mobileTab === "dezeweek" && (
           <div className="space-y-5">
-            <WeekOverzichtVertical checkIns={checkIns} onEdit={(ci) => setEditModal(ci)} />
-            <HerstelTrendLijn checkIns={checkIns} />
+            <WeekOverzichtVertical checkIns={checkIns} onEdit={handleMobileEdit} />
           </div>
         )}
       </div>
