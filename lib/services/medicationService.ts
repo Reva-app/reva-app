@@ -159,7 +159,21 @@ export async function insertMedicatieSchema(s: MedicatieSchema, userId: string):
     .insert(payload)
     .select();
 
-  if (error) { logErr("insertMedicatieSchema", error); return { error: error.message }; }
+  if (error) {
+    // If columns are missing (schema mismatch), retry with minimal payload
+    if (error.message?.includes("column") && error.message?.includes("schema cache")) {
+      console.warn("[insertMedicatieSchema] column missing — retrying with minimal payload");
+      const minimal = { id: s.id, user_id: userId, medication_name: s.naam };
+      const { data: d2, error: e2 } = await supabase.from("medication_schedules").insert(minimal).select();
+      if (e2) { logErr("insertMedicatieSchema/minimal", e2); return { error: e2.message }; }
+      if (!d2 || d2.length === 0) return { error: "insertMedicatieSchema/minimal: 0 rows" };
+      await syncMedicationScheduleTimes(s.id, s.tijden);
+      console.info("[insertMedicatieSchema] saved OK (minimal), rows:", d2.length);
+      return { error: null };
+    }
+    logErr("insertMedicatieSchema", error);
+    return { error: error.message };
+  }
   if (!data || data.length === 0) {
     const msg = "insertMedicatieSchema: 0 rows returned";
     console.error("[insertMedicatieSchema]", msg, "— uid:", userId, "id:", s.id);
