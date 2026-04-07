@@ -1,7 +1,19 @@
--- Migration 009: RLS policies for medication tables + maak medication_schedule_times aan
+-- Migration 009: Fix medication_schedules kolommen + RLS + junction table
 -- Run this in the Supabase SQL editor.
 
--- ── 1. medication_schedule_times aanmaken als die nog niet bestaat ─────────────
+-- ── 1. Ontbrekende kolommen toevoegen aan medication_schedules ────────────────
+
+ALTER TABLE public.medication_schedules
+  ADD COLUMN IF NOT EXISTS name_other text,
+  ADD COLUMN IF NOT EXISTS dosage     text,
+  ADD COLUMN IF NOT EXISTS quantity   text,
+  ADD COLUMN IF NOT EXISTS note       text;
+
+-- active kolom: heeft een default nodig
+ALTER TABLE public.medication_schedules
+  ADD COLUMN IF NOT EXISTS active boolean NOT NULL DEFAULT true;
+
+-- ── 2. medication_schedule_times aanmaken als die nog niet bestaat ─────────────
 
 CREATE TABLE IF NOT EXISTS public.medication_schedule_times (
   id          bigserial   PRIMARY KEY,
@@ -14,7 +26,7 @@ CREATE TABLE IF NOT EXISTS public.medication_schedule_times (
 CREATE INDEX IF NOT EXISTS medication_schedule_times_schedule_id_idx
   ON public.medication_schedule_times (schedule_id);
 
--- ── 2. RLS op medication_logs ─────────────────────────────────────────────────
+-- ── 3. RLS op medication_logs ─────────────────────────────────────────────────
 
 ALTER TABLE public.medication_logs ENABLE ROW LEVEL SECURITY;
 
@@ -35,7 +47,7 @@ BEGIN
 END;
 $$;
 
--- ── 3. RLS op medication_schedules ───────────────────────────────────────────
+-- ── 4. RLS op medication_schedules ───────────────────────────────────────────
 
 ALTER TABLE public.medication_schedules ENABLE ROW LEVEL SECURITY;
 
@@ -56,7 +68,7 @@ BEGIN
 END;
 $$;
 
--- ── 4. RLS op medication_schedule_times ──────────────────────────────────────
+-- ── 5. RLS op medication_schedule_times ──────────────────────────────────────
 
 ALTER TABLE public.medication_schedule_times ENABLE ROW LEVEL SECURITY;
 
