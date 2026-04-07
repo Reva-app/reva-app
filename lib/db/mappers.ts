@@ -410,6 +410,7 @@ export function dbToDossierDocument(row: DbDossierDocument): DossierDocument {
     zorgverlenerAnders:   row.provider_name ?? undefined,
     omschrijving:         row.description ?? "",
     bestandsnaam:         row.file_name ?? undefined,
+    fileUrl:              row.file_url ?? undefined,
   };
 }
 
@@ -419,7 +420,7 @@ export function dossierDocumentToDb(d: DossierDocument, userId: string): Omit<Db
     user_id:       userId,
     title:         d.title,
     file_name:     d.bestandsnaam ?? null,
-    file_url:      null,
+    file_url:      d.fileUrl ?? null,
     file_type:     d.type,
     provider_type: d.zorgverlener || null,
     provider_name: d.zorgverlenerAnders ?? null,
@@ -432,9 +433,10 @@ export function dossierDocumentToDb(d: DossierDocument, userId: string): Omit<Db
 
 export function dbToFotoUpdate(row: DbDossierPhotoUpdate): FotoUpdate {
   return {
-    id:     row.id,
-    date:   row.date,
-    notitie: row.note ?? undefined,
+    id:       row.id,
+    date:     row.date,
+    notitie:  row.note ?? undefined,
+    imageUrl: row.image_url ?? undefined,
   };
 }
 
@@ -444,7 +446,7 @@ export function fotoUpdateToDb(f: FotoUpdate, userId: string): Omit<DbDossierPho
     user_id:     userId,
     date:        f.date,
     week_number: null,
-    image_url:   null,
+    image_url:   f.imageUrl ?? null,
     image_name:  null,
     note:        f.notitie ?? null,
   };

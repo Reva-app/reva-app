@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAppData } from "@/lib/store";
+import { useAuth } from "@/components/auth/AuthProvider";
 import {
   type DossierDocument,
   type FotoUpdate,
@@ -14,14 +15,15 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { uploadPhoto, uploadDocument } from "@/lib/services/storageService";
 import {
-  FileText, Image, Users, Plus, Phone, Mail, Building,
-  Download, Eye, Trash2, X, Pencil, Check, Camera,
+  FileText, Users, Plus, Phone, Mail, Building,
+  Download, Eye, Trash2, X, Pencil, Check, Camera, Upload, Image as ImageIcon,
 } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function uid() { return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
+function uid() { return crypto.randomUUID(); }
 
 function todayStr() {
   const d = new Date();
@@ -122,7 +124,8 @@ function ModalShell({ title, onClose, children }: { title: string; onClose: () =
 
 // ─── Document modal ───────────────────────────────────────────────────────────
 
-function DocumentModal({ initial, onClose, onSave }: {
+function DocumentModal({ userId, initial, onClose, onSave }: {
+  userId: string;
   initial?: DossierDocument;
   onClose: () => void;
   onSave: (d: DossierDocument) => void;
@@ -133,12 +136,44 @@ function DocumentModal({ initial, onClose, onSave }: {
   const [zorgverlener,       setZorgverlener]      = useState(initial?.zorgverlener ?? "Ziekenhuis");
   const [zorgverlenerAnders, setZorgverlenerAnders]= useState(initial?.zorgverlenerAnders ?? "");
   const [omschrijving,       setOmschrijving]      = useState(initial?.omschrijving ?? "");
-  const [bestandsnaam,       setBestandsnaam]      = useState(initial?.bestandsnaam ?? "");
   const [submitted,          setSubmitted]         = useState(false);
+  const [file,               setFile]              = useState<File | null>(null);
+  const [uploading,          setUploading]         = useState(false);
+  const [uploadError,        setUploadError]       = useState<string | null>(null);
 
-  function handleSave() {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setFile(f);
+    setUploadError(null);
+    // Auto-fill title from filename if empty
+    if (!title.trim()) {
+      setTitle(f.name.replace(/\.[^/.]+$/, "").replace(/[_-]+/g, " "));
+    }
+  }
+
+  async function handleSave() {
     setSubmitted(true);
     if (!title.trim() || !date) return;
+    setUploading(true);
+    setUploadError(null);
+
+    let fileUrl: string | undefined = initial?.fileUrl;
+    let bestandsnaam: string | undefined = initial?.bestandsnaam;
+
+    if (file) {
+      const result = await uploadDocument(userId, file);
+      if (result.error) {
+        setUploadError(`Upload mislukt: ${result.error}`);
+        setUploading(false);
+        return;
+      }
+      fileUrl = result.url ?? undefined;
+      bestandsnaam = result.name;
+    }
+
     onSave({
       id: initial?.id ?? uid(),
       title: title.trim(),
@@ -147,7 +182,8 @@ function DocumentModal({ initial, onClose, onSave }: {
       zorgverlener,
       zorgverlenerAnders: zorgverlener === "Anders" ? zorgverlenerAnders.trim() : undefined,
       omschrijving: omschrijving.trim(),
-      bestandsnaam: bestandsnaam.trim() || undefined,
+      bestandsnaam,
+      fileUrl,
     });
   }
 
@@ -188,14 +224,44 @@ function DocumentModal({ initial, onClose, onSave }: {
           <FieldLabel optional>Omschrijving</FieldLabel>
           <FormTextarea value={omschrijving} onChange={(e) => setOmschrijving(e.target.value)} rows={3} placeholder="Korte omschrijving van het document..." />
         </div>
+
+        {/* File upload */}
         <div>
-          <FieldLabel optional>Bestandsnaam</FieldLabel>
-          <FormInput value={bestandsnaam} onChange={(e) => setBestandsnaam(e.target.value)} placeholder="Bijv. mri_knie_feb.pdf" />
+          <FieldLabel optional>Bestand</FieldLabel>
+          {file || initial?.bestandsnaam ? (
+            <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl border" style={{ borderColor: "#e8e5df", background: "#f8f7f4" }}>
+              <FileText size={15} className="text-gray-400 shrink-0" />
+              <span className="text-sm text-gray-700 truncate flex-1">{file?.name ?? initial?.bestandsnaam}</span>
+              <button type="button" onClick={() => setFile(null)} className="shrink-0">
+                <X size={13} className="text-gray-400" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl border-2 border-dashed transition-colors hover:bg-gray-50"
+              style={{ borderColor: "#e8e5df" }}
+            >
+              <Upload size={15} className="text-gray-400" />
+              <span className="text-sm text-gray-400">PDF, Word, afbeelding uploaden...</span>
+            </button>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.heic,image/*"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          {uploadError && <p className="text-xs text-red-400 mt-1">{uploadError}</p>}
         </div>
       </div>
       <div className="flex gap-2 justify-end px-4 sm:px-6 py-4 border-t shrink-0" style={{ borderColor: "#f0ede8" }}>
-        <Button variant="secondary" size="sm" onClick={onClose}>Annuleren</Button>
-        <Button size="sm" onClick={handleSave}><Check size={14} /> Opslaan</Button>
+        <Button variant="secondary" size="sm" onClick={onClose} disabled={uploading}>Annuleren</Button>
+        <Button size="sm" onClick={handleSave} disabled={uploading}>
+          {uploading ? "Uploaden..." : <><Check size={14} /> Opslaan</>}
+        </Button>
       </div>
     </ModalShell>
   );
@@ -203,25 +269,113 @@ function DocumentModal({ initial, onClose, onSave }: {
 
 // ─── Foto modal ───────────────────────────────────────────────────────────────
 
-function FotoModal({ onClose, onSave }: {
+function FotoModal({ userId, onClose, onSave }: {
+  userId: string;
   onClose: () => void;
   onSave: (f: FotoUpdate) => void;
 }) {
-  const [date,    setDate]    = useState(todayStr());
-  const [notitie, setNotitie] = useState("");
+  const [date,      setDate]      = useState(todayStr());
+  const [notitie,   setNotitie]   = useState("");
+  const [preview,   setPreview]   = useState<string | null>(null);
+  const [file,      setFile]      = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error,     setError]     = useState<string | null>(null);
+
+  const fileInputRef   = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setFile(f);
+    setError(null);
+    const reader = new FileReader();
+    reader.onload = () => setPreview(reader.result as string);
+    reader.readAsDataURL(f);
+  }
+
+  async function handleSave() {
+    setUploading(true);
+    setError(null);
+    let imageUrl: string | undefined;
+
+    if (file) {
+      const result = await uploadPhoto(userId, file);
+      if (result.error) {
+        setError(`Upload mislukt: ${result.error}`);
+        setUploading(false);
+        return;
+      }
+      imageUrl = result.url ?? undefined;
+    }
+
+    onSave({ id: uid(), date, notitie: notitie.trim() || undefined, imageUrl });
+  }
 
   return (
     <ModalShell title="Foto update toevoegen" onClose={onClose}>
       <div className="p-4 sm:p-6 space-y-4">
-        {/* Upload placeholder */}
-        <div className="rounded-xl border-2 border-dashed flex flex-col items-center justify-center py-10 gap-2 cursor-pointer hover:bg-gray-50 transition-colors"
-          style={{ borderColor: "#e8e5df" }}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#f3f0eb" }}>
-            <Camera size={18} className="text-gray-400" />
+
+        {/* Preview of selected image */}
+        {preview ? (
+          <div className="relative rounded-xl overflow-hidden" style={{ height: "220px" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+            <button
+              onClick={() => { setPreview(null); setFile(null); }}
+              className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center"
+              style={{ background: "rgba(0,0,0,0.5)" }}
+            >
+              <X size={13} className="text-white" />
+            </button>
           </div>
-          <p className="text-sm font-medium text-gray-500">Klik om een foto te uploaden</p>
-          <p className="text-xs text-gray-300">JPG, PNG — max 10 MB</p>
-        </div>
+        ) : (
+          <div className="rounded-xl border-2 border-dashed space-y-3" style={{ borderColor: "#e8e5df", padding: "24px" }}>
+            <p className="text-sm font-medium text-center text-gray-500">Voeg een foto toe</p>
+
+            {/* Two buttons: camera (mobile) and file picker */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                className="flex flex-col items-center gap-2 py-4 rounded-xl transition-colors hover:bg-gray-50"
+                style={{ border: "1px solid #e8e5df" }}
+              >
+                <Camera size={20} style={{ color: "#e8632a" }} />
+                <span className="text-xs font-medium text-gray-600">Camera</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex flex-col items-center gap-2 py-4 rounded-xl transition-colors hover:bg-gray-50"
+                style={{ border: "1px solid #e8e5df" }}
+              >
+                <Upload size={20} className="text-gray-400" />
+                <span className="text-xs font-medium text-gray-600">Bestand kiezen</span>
+              </button>
+            </div>
+
+            <p className="text-[11px] text-center" style={{ color: "#c4bfb9" }}>JPG, PNG, HEIC — max 10 MB</p>
+          </div>
+        )}
+
+        {/* Hidden inputs */}
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+
         <div>
           <FieldLabel>Datum</FieldLabel>
           <DatePicker value={date} onChange={setDate} placeholder="Kies datum" />
@@ -230,11 +384,12 @@ function FotoModal({ onClose, onSave }: {
           <FieldLabel optional>Notitie</FieldLabel>
           <FormTextarea value={notitie} onChange={(e) => setNotitie(e.target.value)} rows={2} placeholder="Bijv. zwelling afgenomen, litteken heelt goed..." />
         </div>
+        {error && <p className="text-xs text-red-400">{error}</p>}
       </div>
       <div className="flex gap-2 justify-end px-4 sm:px-6 py-4 border-t shrink-0" style={{ borderColor: "#f0ede8" }}>
-        <Button variant="secondary" size="sm" onClick={onClose}>Annuleren</Button>
-        <Button size="sm" onClick={() => onSave({ id: uid(), date, notitie: notitie.trim() || undefined })}>
-          <Check size={14} /> Toevoegen
+        <Button variant="secondary" size="sm" onClick={onClose} disabled={uploading}>Annuleren</Button>
+        <Button size="sm" onClick={handleSave} disabled={uploading}>
+          {uploading ? "Uploaden..." : <><Check size={14} /> Toevoegen</>}
         </Button>
       </div>
     </ModalShell>
@@ -391,14 +546,21 @@ function FotoTimeline({ fotos, blessureDatum, onDelete }: {
 
                 {/* Photo */}
                 <div
-                  className="mx-4 mb-3 rounded-xl flex flex-col items-center justify-center gap-2"
+                  className="mx-4 mb-3 rounded-xl overflow-hidden"
                   style={{ background: "#f3f0eb", height: "200px" }}
                 >
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{ background: "rgba(255,255,255,0.7)" }}>
-                    <Image size={18} className="text-gray-300" />
-                  </div>
-                  <p className="text-[10px]" style={{ color: "#c4bfb9" }}>Geen preview</p>
+                  {f.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={f.imageUrl} alt="Foto update" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-2">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                        style={{ background: "rgba(255,255,255,0.7)" }}>
+                        <ImageIcon size={18} className="text-gray-300" />
+                      </div>
+                      <p className="text-[10px]" style={{ color: "#c4bfb9" }}>Geen foto</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Note */}
@@ -429,6 +591,8 @@ export default function DossierPage() {
     fotoUpdates, addFotoUpdate, deleteFotoUpdate,
     contactpersonen, addContactpersoon, updateContactpersoon, deleteContactpersoon,
   } = useAppData();
+  const { user } = useAuth();
+  const userId = user?.id ?? "";
 
   const [tab, setTab] = useState<Tab>("foto-updates");
 
@@ -581,12 +745,18 @@ export default function DossierPage() {
                     <p className="text-xs text-gray-400 mt-1.5 font-mono">{doc.bestandsnaam}</p>
                   )}
                   <div className="flex items-center gap-3 mt-3">
-                    <button className="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors">
-                      <Eye size={12} /> Bekijken
-                    </button>
-                    <button className="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors">
-                      <Download size={12} /> Downloaden
-                    </button>
+                    {doc.fileUrl && (
+                      <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors">
+                        <Eye size={12} /> Bekijken
+                      </a>
+                    )}
+                    {doc.fileUrl && (
+                      <a href={doc.fileUrl} download={doc.bestandsnaam ?? true}
+                        className="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors">
+                        <Download size={12} /> Downloaden
+                      </a>
+                    )}
                     <button onClick={() => setDocModal({ open: true, editing: doc })}
                       className="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors">
                       <Pencil size={12} /> Bewerken
@@ -678,7 +848,7 @@ export default function DossierPage() {
 
       {/* ── Modals ───────────────────────────────────────────────────────── */}
       {docModal.open && (
-        <DocumentModal initial={docModal.editing} onClose={() => setDocModal({ open: false })}
+        <DocumentModal userId={userId} initial={docModal.editing} onClose={() => setDocModal({ open: false })}
           onSave={(d) => {
             if (docModal.editing) updateDossierDocument(d.id, d);
             else addDossierDocument(d);
@@ -687,7 +857,7 @@ export default function DossierPage() {
       )}
 
       {fotoModal && (
-        <FotoModal onClose={() => setFotoModal(false)}
+        <FotoModal userId={userId} onClose={() => setFotoModal(false)}
           onSave={(f) => { addFotoUpdate(f); setFotoModal(false); }} />
       )}
 

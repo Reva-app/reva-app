@@ -104,12 +104,14 @@ export interface DossierDocument {
   zorgverlenerAnders?: string;
   omschrijving: string;
   bestandsnaam?: string;
+  fileUrl?: string;
 }
 
 export interface FotoUpdate {
   id: string;
   date: string;
   notitie?: string;
+  imageUrl?: string;
 }
 
 export interface Contactpersoon {
