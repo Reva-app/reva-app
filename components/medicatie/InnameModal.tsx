@@ -43,15 +43,9 @@ export type InnameFormFields = {
   notitie: string;
 };
 
-export function todayStr(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-export function nowTimeStr(): string {
-  const now = new Date();
-  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-}
+// Import from shared util + re-export voor backwards-compat
+import { todayStr, nowTimeStr } from "@/lib/dateUtils";
+export { todayStr, nowTimeStr };
 
 // ─── Shared form primitives ───────────────────────────────────────────────────
 

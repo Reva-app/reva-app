@@ -16,8 +16,18 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { TimePicker } from "@/components/ui/TimePicker";
-import { CheckInModal } from "@/components/checkin/CheckInModal";
-import { AppointmentModal } from "@/components/dagboek/AppointmentModal";
+import dynamic from "next/dynamic";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const CheckInModal = dynamic<any>(
+  () => import("@/components/checkin/CheckInModal").then((m) => ({ default: m.CheckInModal })),
+  { ssr: false }
+);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const AppointmentModal = dynamic<any>(
+  () => import("@/components/dagboek/AppointmentModal").then((m) => ({ default: m.AppointmentModal })),
+  { ssr: false }
+);
 import {
   ChevronLeft, ChevronRight, Plus, X, Check, Clock, MapPin,
   Dumbbell, Activity, Star, Target, Pill, AlertCircle, Trash2,

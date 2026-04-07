@@ -12,13 +12,33 @@ import { useAppData } from "@/lib/store";
 import {
   appointmentTypeLabel, type AppointmentType,
   type Appointment, type DagboekWorkout, type MedicatieLog, type DossierDocument,
-  type DocumentType,
+  type DocumentType, type CheckIn,
 } from "@/lib/data";
 import { generateCoachInsights } from "@/lib/coach";
-import { CheckInModal } from "@/components/checkin/CheckInModal";
-import { AppointmentModal } from "@/components/dagboek/AppointmentModal";
-import { InnameModal, type InnameFormFields } from "@/components/medicatie/InnameModal";
-import { TrainingModal } from "@/components/training/TrainingModal";
+import dynamic from "next/dynamic";
+import type { InnameFormFields } from "@/components/medicatie/InnameModal";
+
+// ─── Lazy-loaded modals ────────────────────────────────────────────────────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const CheckInModal = dynamic<any>(
+  () => import("@/components/checkin/CheckInModal").then((m) => ({ default: m.CheckInModal })),
+  { ssr: false }
+);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const AppointmentModal = dynamic<any>(
+  () => import("@/components/dagboek/AppointmentModal").then((m) => ({ default: m.AppointmentModal })),
+  { ssr: false }
+);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const InnameModal = dynamic<any>(
+  () => import("@/components/medicatie/InnameModal").then((m) => ({ default: m.InnameModal })),
+  { ssr: false }
+);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const TrainingModal = dynamic<any>(
+  () => import("@/components/training/TrainingModal").then((m) => ({ default: m.TrainingModal })),
+  { ssr: false }
+);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -1555,7 +1575,7 @@ export default function Dashboard() {
           existing={checkIns.find(c => c.date === today)}
           initialDate={today}
           onClose={() => setQuickModal(null)}
-          onSave={(ci) => {
+          onSave={(ci: CheckIn) => {
             const existing = checkIns.find(c => c.date === today);
             if (existing) updateCheckIn(ci.id, ci);
             else addCheckIn(ci);
@@ -1567,7 +1587,7 @@ export default function Dashboard() {
           initialDate={today}
           contactpersonen={contactpersonen}
           onClose={() => setQuickModal(null)}
-          onSave={(apt) => {
+          onSave={(apt: Appointment) => {
             addAppointment(apt);
             setQuickModal(null);
           }}
@@ -1577,7 +1597,7 @@ export default function Dashboard() {
         <TrainingModal
           trainingSchemas={trainingSchemas.filter(s => s.status === "actief").map(s => ({ id: s.id, title: s.title }))}
           onClose={() => setQuickModal(null)}
-          onSave={(w) => {
+          onSave={(w: DagboekWorkout) => {
             addDagboekWorkout(w);
             setQuickModal(null);
           }}

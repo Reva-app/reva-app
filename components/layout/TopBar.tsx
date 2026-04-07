@@ -10,8 +10,16 @@ import {
   type AppNotification,
 } from "@/lib/notifications";
 import { NotificationPanel } from "./NotificationPanel";
-import { InnameModal, type InnameFormFields, nowTimeStr, todayStr } from "@/components/medicatie/InnameModal";
+import dynamic from "next/dynamic";
+import type { InnameFormFields } from "@/components/medicatie/InnameModal";
+import { nowTimeStr, todayStr } from "@/lib/dateUtils";
 import type { MedicatieLog } from "@/lib/data";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const InnameModal = dynamic<any>(
+  () => import("@/components/medicatie/InnameModal").then((m) => ({ default: m.InnameModal })),
+  { ssr: false }
+);
 
 const pageTitles: Record<string, string> = {
   "/":              "Dashboard",

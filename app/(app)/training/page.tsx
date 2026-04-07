@@ -2,7 +2,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAppData } from "@/lib/store";
-import { TrainingModal } from "@/components/training/TrainingModal";
+import dynamic from "next/dynamic";
+import type { DagboekWorkout } from "@/lib/data";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const TrainingModal = dynamic<any>(
+  () => import("@/components/training/TrainingModal").then((m) => ({ default: m.TrainingModal })),
+  { ssr: false }
+);
 import {
   type TrainingOefening,
   type TrainingSchema,
@@ -1264,7 +1271,7 @@ export default function TrainingPage() {
       {trainingModal && (
         <TrainingModal
           onClose={() => setTrainingModal(false)}
-          onSave={(w) => { addDagboekWorkout(w); setTrainingModal(false); }}
+          onSave={(w: DagboekWorkout) => { addDagboekWorkout(w); setTrainingModal(false); }}
           trainingSchemas={trainingSchemas.filter((s) => s.status === "actief").map((s) => ({ id: s.id, title: s.title }))}
         />
       )}

@@ -1,15 +1,37 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import {
   Plus, X, ClipboardCheck, Dumbbell, Pill, Calendar, Check,
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
-import type { DagboekWorkout, MedicatieLog, AppointmentType } from "@/lib/data";
-import { CheckInModal } from "@/components/checkin/CheckInModal";
-import { AppointmentModal } from "@/components/dagboek/AppointmentModal";
-import { InnameModal, type InnameFormFields, todayStr, nowTimeStr } from "@/components/medicatie/InnameModal";
-import { TrainingModal } from "@/components/training/TrainingModal";
+import type { MedicatieLog, CheckIn, DagboekWorkout, Appointment } from "@/lib/data";
+import type { InnameFormFields } from "@/components/medicatie/InnameModal";
+import { todayStr } from "@/lib/dateUtils";
+
+// ─── Lazy-loaded modals (worden pas geladen als ze geopend worden) ─────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const CheckInModal = dynamic<any>(
+  () => import("@/components/checkin/CheckInModal").then((m) => ({ default: m.CheckInModal })),
+  { ssr: false }
+);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const AppointmentModal = dynamic<any>(
+  () => import("@/components/dagboek/AppointmentModal").then((m) => ({ default: m.AppointmentModal })),
+  { ssr: false }
+);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const InnameModal = dynamic<any>(
+  () => import("@/components/medicatie/InnameModal").then((m) => ({ default: m.InnameModal })),
+  { ssr: false }
+);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const TrainingModal = dynamic<any>(
+  () => import("@/components/training/TrainingModal").then((m) => ({ default: m.TrainingModal })),
+  { ssr: false }
+);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -285,7 +307,7 @@ export function QuickActionFAB() {
           existing={todayCheckIn}
           initialDate={today}
           onClose={() => setActiveSheet(null)}
-          onSave={(ci) => {
+          onSave={(ci: CheckIn) => {
             if (todayCheckIn) updateCheckIn(ci.id, ci);
             else addCheckIn(ci);
           }}
@@ -294,7 +316,7 @@ export function QuickActionFAB() {
       {activeSheet === "training" && (
         <TrainingModal
           onClose={() => setActiveSheet(null)}
-          onSave={(w) => { addDagboekWorkout(w); setActiveSheet(null); }}
+          onSave={(w: DagboekWorkout) => { addDagboekWorkout(w); setActiveSheet(null); }}
           trainingSchemas={trainingSchemas.filter(s => s.status === "actief").map(s => ({ id: s.id, title: s.title }))}
         />
       )}
@@ -311,7 +333,7 @@ export function QuickActionFAB() {
           initialDate={today}
           contactpersonen={contactpersonen}
           onClose={() => setActiveSheet(null)}
-          onSave={(apt) => {
+          onSave={(apt: Appointment) => {
             addAppointment(apt);
             setActiveSheet(null);
           }}
