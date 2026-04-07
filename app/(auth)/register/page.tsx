@@ -54,6 +54,15 @@ export default function RegisterPage() {
       return;
     }
 
+    // Clear any demo/localStorage data so a new account always starts empty
+    const REVA_LS_KEYS = [
+      "reva_checkins", "reva_appointments", "reva_medicatie", "reva_schemas",
+      "reva_training_oefeningen", "reva_training_schemas", "reva_training_logs",
+      "reva_doelen", "reva_mijlpalen", "reva_dossier_documenten",
+      "reva_foto_updates", "reva_contactpersonen", "reva_profile",
+    ];
+    REVA_LS_KEYS.forEach((k) => localStorage.removeItem(k));
+
     router.push("/login?registered=1");
   }
 

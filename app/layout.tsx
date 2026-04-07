@@ -11,6 +11,15 @@ const geist = Geist({
 export const metadata: Metadata = {
   title: "REVA — Herstel Dashboard",
   description: "Jouw persoonlijk herstel dashboard",
+  applicationName: "REVA",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "REVA",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 // viewportFit=cover enables env(safe-area-inset-*) on iPhone notch / home indicator
@@ -19,6 +28,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
+  themeColor: "#e8632a",
 };
 
 export default function RootLayout({

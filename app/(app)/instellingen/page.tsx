@@ -8,10 +8,12 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { TimePicker } from "@/components/ui/TimePicker";
 import {
   User, Bell, Download, Check, Plus, X, AlertCircle,
-  MessageSquare, Camera, Lock, Eye, EyeOff,
+  MessageSquare, Camera, Lock, Eye, EyeOff, Trash2,
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
 import { createClient } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
+import { getMijlpalenVoorBlessure } from "@/lib/mijlpalenTemplates";
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -104,6 +106,157 @@ function Toast({ message, type = "success", onDismiss }: { message: string; type
   );
 }
 
+// ─── Account verwijderen modal ────────────────────────────────────────────────
+
+function AccountVerwijderenModal({ onClose, onConfirm, loading }: {
+  onClose: () => void;
+  onConfirm: () => void;
+  loading: boolean;
+}) {
+  const [stap, setStap] = useState<1 | 2>(1);
+  const [bevestigTekst, setBevestigTekst] = useState("");
+  const bevestigdCorrect = bevestigTekst.trim().toUpperCase() === "VERWIJDER";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)" }}>
+      <div
+        className="relative w-full max-w-md rounded-2xl p-6 sm:p-8 shadow-2xl"
+        style={{ background: "#ffffff" }}
+      >
+        {/* Sluit knop */}
+        <button
+          onClick={onClose}
+          disabled={loading}
+          className="absolute top-4 right-4 p-1.5 rounded-xl hover:bg-gray-100 transition-colors disabled:opacity-50"
+        >
+          <X size={16} style={{ color: "#6b6560" }} />
+        </button>
+
+        {stap === 1 && (
+          <>
+            {/* Waarschuwing icoon */}
+            <div
+              className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5"
+              style={{ background: "#fef2f2" }}
+            >
+              <Trash2 size={22} style={{ color: "#dc2626" }} />
+            </div>
+
+            <h2 className="text-lg font-semibold mb-2" style={{ color: "#1a1a1a" }}>
+              Account permanent verwijderen
+            </h2>
+            <p className="text-sm leading-relaxed mb-5" style={{ color: "#6b6560" }}>
+              Dit verwijdert <strong style={{ color: "#1a1a1a" }}>alle</strong> gegevens die aan jouw account zijn gekoppeld — inclusief:
+            </p>
+
+            <ul className="space-y-2 mb-6">
+              {[
+                "Jouw profiel en herstelgegevens",
+                "Alle afspraken en check-ins",
+                "Trainingen, oefeningen en schema\'s",
+                "Medicatie en medicijnoverzichten",
+                "Dossier, foto\'s en contactpersonen",
+                "Doelen en mijlpalen",
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2.5 text-sm" style={{ color: "#6b6560" }}>
+                  <span
+                    className="mt-0.5 w-4 h-4 rounded-full flex items-center justify-center shrink-0"
+                    style={{ background: "#fef2f2" }}
+                  >
+                    <X size={9} style={{ color: "#dc2626" }} />
+                  </span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+
+            <div
+              className="rounded-xl p-3.5 flex gap-2.5 items-start mb-6"
+              style={{ background: "#fff8f5", border: "1px solid #fcd9c8" }}
+            >
+              <AlertCircle size={15} className="shrink-0 mt-0.5" style={{ color: "#e8632a" }} />
+              <p className="text-xs leading-relaxed" style={{ color: "#6b6560" }}>
+                <strong style={{ color: "#1a1a1a" }}>Dit kan niet ongedaan worden gemaakt.</strong> Alle data wordt permanent en onomkeerbaar verwijderd uit onze systemen.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <Button variant="secondary" size="sm" className="flex-1" onClick={onClose}>
+                Annuleren
+              </Button>
+              <button
+                onClick={() => setStap(2)}
+                className="flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors"
+                style={{ background: "#dc2626", color: "#ffffff" }}
+              >
+                Verder gaan
+              </button>
+            </div>
+          </>
+        )}
+
+        {stap === 2 && (
+          <>
+            <div
+              className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5"
+              style={{ background: "#fef2f2" }}
+            >
+              <Trash2 size={22} style={{ color: "#dc2626" }} />
+            </div>
+
+            <h2 className="text-lg font-semibold mb-2" style={{ color: "#1a1a1a" }}>
+              Bevestig verwijdering
+            </h2>
+            <p className="text-sm leading-relaxed mb-5" style={{ color: "#6b6560" }}>
+              Typ{" "}
+              <span
+                className="font-mono font-bold px-1.5 py-0.5 rounded-md"
+                style={{ background: "#f3f0eb", color: "#1a1a1a" }}
+              >
+                VERWIJDER
+              </span>{" "}
+              hieronder om te bevestigen dat je je account permanent wil verwijderen.
+            </p>
+
+            <input
+              type="text"
+              value={bevestigTekst}
+              onChange={(e) => setBevestigTekst(e.target.value)}
+              placeholder="Type VERWIJDER om te bevestigen"
+              autoFocus
+              disabled={loading}
+              className="w-full text-sm rounded-xl border px-4 py-2.5 mb-5 focus:outline-none transition-colors font-mono disabled:opacity-50"
+              style={{
+                borderColor: bevestigdCorrect ? "#dc2626" : "#e8e5df",
+                background: "#f8f7f4",
+                color: "#1a1a1a",
+              }}
+            />
+
+            <div className="flex gap-3">
+              <Button variant="secondary" size="sm" className="flex-1" onClick={() => setStap(1)} disabled={loading}>
+                Terug
+              </Button>
+              <button
+                onClick={onConfirm}
+                disabled={!bevestigdCorrect || loading}
+                className="flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all"
+                style={{
+                  background: bevestigdCorrect && !loading ? "#dc2626" : "#f3f0eb",
+                  color: bevestigdCorrect && !loading ? "#ffffff" : "#a8a29e",
+                  cursor: bevestigdCorrect && !loading ? "pointer" : "not-allowed",
+                }}
+              >
+                {loading ? "Verwijderen..." : "Account definitief verwijderen"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const BLESSURE_TYPEN = [
@@ -140,7 +293,8 @@ const ZORGVERZEKERAARS = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function InstellingenPage() {
-  const { profile, updateProfile, hydrated, notificationSettings, updateNotificationSettings, setupCompleted, markSetupDone } = useAppData();
+  const { profile, updateProfile, hydrated, notificationSettings, updateNotificationSettings, setupCompleted, markSetupDone, mijlpalen, addMijlpaal } = useAppData();
+  const router = useRouter();
 
   // ── Toast ──────────────────────────────────────────────────────────────────
   const [toast, setToast] = useState<{ msg: string; type?: "success" | "error" } | null>(null);
@@ -243,6 +397,9 @@ export default function InstellingenPage() {
 
   // ── Save herstelgegevens ───────────────────────────────────────────────────
   async function handleSaveHerstel() {
+    const isFirstBlessureType = !profile.blessureType && blessureType;
+    const shouldSeedMijlpalen = isFirstBlessureType && mijlpalen.length === 0;
+
     const { error } = await updateProfile({
       blessureDatum, operatieDatum, blessureType, blessureTypeAnders,
       situatieOmschrijving, zorgverzekeraar, zorgverzekeraaarAnders,
@@ -250,7 +407,17 @@ export default function InstellingenPage() {
     });
     if (error) { showToast("Opslaan mislukt: " + error, "error"); return; }
     if (!setupCompleted) markSetupDone();
-    showToast("Herstelgegevens opgeslagen");
+
+    // Seed blessure-specific milestones on first setup
+    if (shouldSeedMijlpalen) {
+      const templates = getMijlpalenVoorBlessure(blessureType);
+      for (const m of templates) {
+        addMijlpaal(m);
+      }
+      showToast("Herstelgegevens opgeslagen — mijlpalen aangemaakt");
+    } else {
+      showToast("Herstelgegevens opgeslagen");
+    }
   }
 
   // ── Aanvullende verzekeringen helpers ──────────────────────────────────────
@@ -334,12 +501,43 @@ export default function InstellingenPage() {
     showToast("Wachtwoord gewijzigd");
   }
 
+  // ── Account verwijderen ────────────────────────────────────────────────────
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  async function handleDeleteAccount() {
+    setDeleteLoading(true);
+    try {
+      const res = await fetch("/api/delete-account", { method: "DELETE" });
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        showToast("Verwijderen mislukt: " + (json.error ?? "Onbekende fout"), "error");
+        setDeleteLoading(false);
+        return;
+      }
+      // Sign out client-side after successful deletion
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      router.push("/auth/login");
+    } catch {
+      showToast("Verwijderen mislukt: netwerkfout", "error");
+      setDeleteLoading(false);
+    }
+  }
+
   // ── Initials helper ────────────────────────────────────────────────────────
   const initials = naam.split(" ").filter(Boolean).map((w) => w[0].toUpperCase()).slice(0, 2).join("");
 
   return (
     <div className="p-4 sm:p-6 max-w-2xl mx-auto space-y-6">
       {toast && <Toast message={toast.msg} type={toast.type} onDismiss={() => setToast(null)} />}
+      {showDeleteModal && (
+        <AccountVerwijderenModal
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDeleteAccount}
+          loading={deleteLoading}
+        />
+      )}
 
       <SectionHeader title="Instellingen" subtitle="Beheer jouw profiel en voorkeuren" />
 
@@ -763,8 +961,8 @@ export default function InstellingenPage() {
           <Button variant="secondary" size="sm">
             <Download size={14} /> Data exporteren
           </Button>
-          <Button variant="danger" size="sm">
-            Account verwijderen
+          <Button variant="danger" size="sm" onClick={() => setShowDeleteModal(true)}>
+            <Trash2 size={14} /> Account verwijderen
           </Button>
         </div>
       </Card>
