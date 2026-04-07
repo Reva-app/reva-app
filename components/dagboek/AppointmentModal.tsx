@@ -20,7 +20,7 @@ export interface AppointmentModalProps {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function uid() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  return crypto.randomUUID();
 }
 
 const APPOINTMENT_TYPES: AppointmentType[] = [
