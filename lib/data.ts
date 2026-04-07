@@ -204,7 +204,7 @@ export interface Profile {
   naam: string;
   email: string;
   profielfoto: string;          // base64 data URL or empty string
-  authProvider: "local" | "email" | "gmail";
+  authProvider: "local" | "email" | "gmail" | "google";
   geboortedatum: string;
   blessureDatum: string;
   operatieDatum: string;      // may be empty string
