@@ -294,19 +294,16 @@ export async function upsertProfile(
     console.info("[upsertProfile/settings] uid:", uid, "payload:", settingsPatch);
     const { data, error } = await supabase
       .from("settings")
-      .update(settingsPatch)
-      .eq("user_id", uid)
+      .upsert(
+        { user_id: uid, supplementary_insurances: [], ...settingsPatch },
+        { onConflict: "user_id" }
+      )
       .select();
     if (error) {
       logErr("upsertProfile/settings", error);
       return { error: error.message };
     }
-    if (!data || data.length === 0) {
-      const msg = "Update faalde: geen row gevonden voor user_id";
-      console.error("[upsertProfile/settings]", msg, "— uid:", uid, "payload:", settingsPatch);
-      return { error: msg };
-    }
-    console.info("[upsertProfile/settings] saved OK, rows:", data.length, "result:", data);
+    console.info("[upsertProfile/settings] saved OK, rows:", data?.length ?? 0);
   }
 
   return { error: null };
@@ -316,31 +313,29 @@ export async function saveNotificationSettings(
   _userId: string,
   settings: NotificationSettings
 ): Promise<{ error: string | null }> {
-  const { userId: uid, error: ensureErr } = await ensureSettingsRowExists();
-  if (!uid) return { error: ensureErr ?? "Niet ingelogd" };
-
   const supabase = createClient();
-  const payload = settings as unknown as Record<string, unknown>;
 
+  const { data: { user }, error: authErr } = await supabase.auth.getUser();
+  if (authErr || !user) return { error: "Niet ingelogd" };
+  const uid = user.id;
+
+  const payload = settings as unknown as Record<string, unknown>;
   console.info("[saveNotificationSettings] uid:", uid, "payload:", settings);
 
-  // Always save to the notifications JSONB column.
+  // Upsert — creates the row if it doesn't exist yet, updates if it does.
   const { data, error } = await supabase
     .from("settings")
-    .update({ notifications: payload })
-    .eq("user_id", uid)
+    .upsert(
+      { user_id: uid, notifications: payload, supplementary_insurances: [] },
+      { onConflict: "user_id" }
+    )
     .select();
 
   if (error) {
-    logErr("saveNotificationSettings/notifications", error);
+    logErr("saveNotificationSettings", error);
     return { error: error.message };
   }
-  if (!data || data.length === 0) {
-    const msg = "Update faalde: geen row gevonden voor user_id";
-    console.error("[saveNotificationSettings]", msg, "— uid:", uid, "payload:", settings);
-    return { error: msg };
-  }
-  console.info("[saveNotificationSettings] saved OK, rows:", data.length, "result:", data);
+  console.info("[saveNotificationSettings] saved OK, rows:", data?.length ?? 0);
 
   // Best-effort update of dedicated columns (migration 003)
   // Failures are non-fatal — columns may not exist yet depending on migrations applied.
@@ -352,7 +347,6 @@ export async function saveNotificationSettings(
     })
     .eq("user_id", uid);
   if (colErr && colErr.code !== "42703") {
-    // 42703 = undefined_column — columns not yet created, ignore silently
     logErr("saveNotificationSettings/dedicated-cols", colErr);
   }
 
@@ -369,30 +363,23 @@ export async function markMigrated(userId: string): Promise<void> {
 }
 
 export async function markSetupCompleted(userId: string): Promise<{ error: string | null }> {
-  const { userId: uid, error: ensureErr } = await ensureSettingsRowExists();
-  if (!uid) return { error: ensureErr ?? "Niet ingelogd" };
-
   const supabase = createClient();
-  const payload = { setup_completed: true };
 
-  console.info("[markSetupCompleted] uid:", uid, "payload:", payload);
+  console.info("[markSetupCompleted] uid:", userId);
 
   const { data, error } = await supabase
     .from("settings")
-    .update(payload)
-    .eq("user_id", uid)
+    .upsert(
+      { user_id: userId, setup_completed: true, supplementary_insurances: [] },
+      { onConflict: "user_id" }
+    )
     .select();
 
   if (error) {
     logErr("markSetupCompleted", error);
     return { error: error.message };
   }
-  if (!data || data.length === 0) {
-    const msg = "Update faalde: geen row gevonden voor user_id";
-    console.error("[markSetupCompleted]", msg, "— uid:", uid);
-    return { error: msg };
-  }
-  console.info("[markSetupCompleted] saved OK, rows:", data.length);
+  console.info("[markSetupCompleted] saved OK, rows:", data?.length ?? 0);
   return { error: null };
 }
 

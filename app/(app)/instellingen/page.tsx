@@ -436,21 +436,38 @@ export default function InstellingenPage() {
   const [fbBericht, setFbBericht] = useState("");
   const [fbSending, setFbSending] = useState(false);
 
-  function handleFeedback() {
+  async function handleFeedback() {
     if (!fbOnderwerp.trim() || !fbBericht.trim()) {
       showToast("Vul een onderwerp en bericht in", "error");
       return;
     }
     setFbSending(true);
-    // TODO: replace with real email integration to info@reva-app.nl
-    // Example: await fetch("/api/feedback", { method: "POST", body: JSON.stringify({ categorie: fbCategorie, onderwerp: fbOnderwerp, bericht: fbBericht }) })
-    setTimeout(() => {
-      setFbSending(false);
+    try {
+      const res = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          categorie: fbCategorie,
+          onderwerp: fbOnderwerp,
+          bericht: fbBericht,
+          naam: profile.naam,
+          email: profile.email,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        showToast("Versturen mislukt: " + (json.error ?? "Probeer het later opnieuw"), "error");
+        return;
+      }
       setFbOnderwerp("");
       setFbBericht("");
       setFbCategorie("");
       showToast("Feedback verstuurd — bedankt!");
-    }, 600);
+    } catch {
+      showToast("Versturen mislukt: netwerkfout", "error");
+    } finally {
+      setFbSending(false);
+    }
   }
 
   // ── Wachtwoord wijzigen ────────────────────────────────────────────────────

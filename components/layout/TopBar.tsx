@@ -179,62 +179,91 @@ export function TopBar() {
   return (
     <>
       <header
-        className="h-12 lg:h-14 border-b flex items-center justify-between px-4 sm:px-6 lg:px-6"
+        className="h-12 lg:h-14 border-b flex items-center px-4 sm:px-6 lg:px-6"
         style={{ background: "#ffffff", borderColor: "#e8e5df" }}
       >
-        <h1 className="hidden lg:block text-base font-semibold truncate min-w-0 mr-3" style={{ color: "#1a1a1a" }}>
+
+        {/* ── Desktop layout: page title left, controls right ── */}
+        <h1 className="hidden lg:block text-base font-semibold truncate min-w-0 flex-1 mr-3" style={{ color: "#1a1a1a" }}>
           {title}
         </h1>
 
-        {/* Desktop: avatar → bell. Mobile: avatar → bell (avatar left, bell right) */}
-        <div className="flex items-center gap-3">
-          {/* Avatar */}
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold text-white overflow-hidden shrink-0"
-            style={{ background: hydrated && profile.profielfoto ? "transparent" : "#e8632a" }}
-          >
-            {hydrated && profile.profielfoto ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={profile.profielfoto} alt="Profielfoto" className="w-full h-full object-cover" />
-            ) : (
-              avatarLetter
-            )}
-          </div>
+        {/* ── Mobile layout: account left · logo center · bell right ── */}
 
-          {/* Bell + badge + panel */}
-          <div className="relative">
-            <button
-              onClick={() => setPanelOpen(v => !v)}
-              className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-gray-100"
-              style={{ color: panelOpen ? "#e8632a" : "#6b7280" }}
-              aria-label="Meldingen openen"
+        {/* Account avatar (mobile only) */}
+        <button
+          onClick={() => router.push("/instellingen")}
+          className="lg:hidden w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold text-white overflow-hidden shrink-0"
+          style={{ background: hydrated && profile.profielfoto ? "transparent" : "#e8632a" }}
+          aria-label="Naar instellingen"
+        >
+          {hydrated && profile.profielfoto ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={profile.profielfoto} alt="Profielfoto" className="w-full h-full object-cover" />
+          ) : (
+            avatarLetter
+          )}
+        </button>
+
+        {/* Logo center (mobile only) */}
+        <div className="lg:hidden flex-1 flex justify-center">
+          <div className="flex items-center gap-2">
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: "#e8632a" }}
             >
-              <Bell size={16} />
-            </button>
-
-            {hydrated && unreadCount > 0 && (
-              <span
-                className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[10px] font-bold text-white pointer-events-none"
-                style={{ background: "#e8632a", lineHeight: 1 }}
-              >
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </span>
-            )}
-
-            {panelOpen && (
-              <NotificationPanel
-                notifications={notifications}
-                readIds={readNotificationIds}
-                loggedIds={loggedNotificationIds}
-                onMarkRead={markNotificationRead}
-                onMarkAllRead={handleMarkAllRead}
-                onDirectInnemen={handleDirectInnemen}
-                onHandmatigAanpassen={handleHandmatigAanpassen}
-                onCtaClick={handleCtaClick}
-                onClose={closePanel}
-              />
-            )}
+              <span className="text-white font-bold text-sm leading-none">R</span>
+            </div>
+            <span className="font-bold text-base" style={{ color: "#1a1a1a" }}>REVA</span>
           </div>
+        </div>
+
+        {/* Desktop avatar */}
+        <div
+          className="hidden lg:flex w-8 h-8 rounded-full items-center justify-center text-sm font-semibold text-white overflow-hidden shrink-0"
+          style={{ background: hydrated && profile.profielfoto ? "transparent" : "#e8632a" }}
+        >
+          {hydrated && profile.profielfoto ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={profile.profielfoto} alt="Profielfoto" className="w-full h-full object-cover" />
+          ) : (
+            avatarLetter
+          )}
+        </div>
+
+        {/* Bell + badge + panel (both mobile & desktop) */}
+        <div className="relative ml-3">
+          <button
+            onClick={() => setPanelOpen(v => !v)}
+            className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-gray-100"
+            style={{ color: panelOpen ? "#e8632a" : "#6b7280" }}
+            aria-label="Meldingen openen"
+          >
+            <Bell size={16} />
+          </button>
+
+          {hydrated && unreadCount > 0 && (
+            <span
+              className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[10px] font-bold text-white pointer-events-none"
+              style={{ background: "#e8632a", lineHeight: 1 }}
+            >
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+
+          {panelOpen && (
+            <NotificationPanel
+              notifications={notifications}
+              readIds={readNotificationIds}
+              loggedIds={loggedNotificationIds}
+              onMarkRead={markNotificationRead}
+              onMarkAllRead={handleMarkAllRead}
+              onDirectInnemen={handleDirectInnemen}
+              onHandmatigAanpassen={handleHandmatigAanpassen}
+              onCtaClick={handleCtaClick}
+              onClose={closePanel}
+            />
+          )}
         </div>
       </header>
 
