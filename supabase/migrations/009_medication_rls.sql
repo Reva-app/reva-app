@@ -1,7 +1,20 @@
--- Migration 009: RLS policies for medication tables + fix times column
+-- Migration 009: RLS policies for medication tables + maak medication_schedule_times aan
 -- Run this in the Supabase SQL editor.
 
--- ── 1. RLS op medication_logs ─────────────────────────────────────────────────
+-- ── 1. medication_schedule_times aanmaken als die nog niet bestaat ─────────────
+
+CREATE TABLE IF NOT EXISTS public.medication_schedule_times (
+  id          bigserial   PRIMARY KEY,
+  schedule_id uuid        NOT NULL REFERENCES public.medication_schedules(id) ON DELETE CASCADE,
+  time        text        NOT NULL,
+  sort_order  int         NOT NULL DEFAULT 0,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS medication_schedule_times_schedule_id_idx
+  ON public.medication_schedule_times (schedule_id);
+
+-- ── 2. RLS op medication_logs ─────────────────────────────────────────────────
 
 ALTER TABLE public.medication_logs ENABLE ROW LEVEL SECURITY;
 

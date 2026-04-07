@@ -106,7 +106,11 @@ async function syncMedicationScheduleTimes(scheduleId: string, times: string[]):
     .from("medication_schedule_times")
     .delete()
     .eq("schedule_id", scheduleId);
-  if (deleteError) { logErr("syncMedicationScheduleTimes/delete", deleteError); return; }
+  if (deleteError) {
+    // Non-fatal: table may not exist yet in this database instance
+    logErr("syncMedicationScheduleTimes/delete (non-fatal)", deleteError);
+    return;
+  }
 
   if (times.length === 0) return;
 
@@ -114,7 +118,7 @@ async function syncMedicationScheduleTimes(scheduleId: string, times: string[]):
   const { error: insertError } = await supabase
     .from("medication_schedule_times")
     .insert(rows);
-  if (insertError) logErr("syncMedicationScheduleTimes/insert", insertError);
+  if (insertError) logErr("syncMedicationScheduleTimes/insert (non-fatal)", insertError);
 }
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -129,7 +133,8 @@ export async function loadMedicatieSchemas(userId: string): Promise<MedicatieSch
   ]);
 
   if (schemaError) { logErr("loadMedicatieSchemas/schedules", schemaError); return []; }
-  if (timeError) { logErr("loadMedicatieSchemas/times", timeError); return []; }
+  // Times table may not exist yet — log but continue with empty times array
+  if (timeError) { logErr("loadMedicatieSchemas/times (non-fatal)", timeError); }
 
   console.info("[loadMedicatieSchemas] loaded", schemaRows?.length ?? 0, "schedules,", timeRows?.length ?? 0, "times for uid:", userId);
 
