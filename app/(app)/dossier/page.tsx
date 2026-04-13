@@ -16,6 +16,9 @@ import { Badge } from "@/components/ui/Badge";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { uploadPhoto, uploadDocument } from "@/lib/services/storageService";
+import { useUserPlan } from "@/lib/hooks/useUserPlan";
+import { canAddDossierDocument } from "@/lib/featureGates";
+import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 import {
   FileText, Users, Plus, Phone, Mail, Building,
   Download, Eye, Trash2, X, Pencil, Check, Camera, Upload, Image as ImageIcon,
@@ -594,6 +597,8 @@ export default function DossierPage() {
   const { user } = useAuth();
   const userId = user?.id ?? "";
 
+  const planInfo = useUserPlan();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [tab, setTab] = useState<Tab>("foto-updates");
 
   // Set active tab from URL query param (e.g. /dossier?tab=documenten)
@@ -627,7 +632,13 @@ export default function DossierPage() {
   const sortedFotos = [...fotoUpdates].sort((a, b) => b.date.localeCompare(a.date));
 
   function handleAddButton() {
-    if (tab === "documenten")      setDocModal({ open: true });
+    if (tab === "documenten") {
+      if (!canAddDossierDocument(planInfo, dossierDocumenten.length)) {
+        setShowUpgradeModal(true);
+        return;
+      }
+      setDocModal({ open: true });
+    }
     if (tab === "foto-updates")    setFotoModal(true);
     if (tab === "contactpersonen") setContactModal({ open: true });
   }
@@ -891,6 +902,10 @@ export default function DossierPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showUpgradeModal && (
+        <UpgradeModal feature="dossier" onClose={() => setShowUpgradeModal(false)} />
       )}
     </div>
   );

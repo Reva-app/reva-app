@@ -30,6 +30,12 @@ export interface DbSettings {
   checkin_reminder_time: string | null;
   notifications: Record<string, unknown>;
   setup_completed: boolean;
+  trial_start_date: string | null;
+  trial_end_date: string | null;
+  plan_type: string;
+  subscription_status: string;
+  subscription_source: string | null;
+  subscription_expires_at: string | null;
   created_at: string;
   updated_at: string;
 }

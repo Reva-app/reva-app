@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useAppData } from "@/lib/store";
 import { type Doel, type Mijlpaal } from "@/lib/data";
 import { Button } from "@/components/ui/Button";
+import { useUserPlan } from "@/lib/hooks/useUserPlan";
+import { canAddDoel } from "@/lib/featureGates";
+import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 import { DatePicker } from "@/components/ui/DatePicker";
 import {
   Target, Plus, Check, Pencil, Trash2, X,
@@ -734,6 +737,9 @@ export default function DoelstellingenPage() {
     mijlpalen, addMijlpaal, updateMijlpaal, deleteMijlpaal, reorderMijlpalen,
   } = useAppData();
 
+  const planInfo = useUserPlan();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
   const [toast, setToast] = useState<string | null>(null);
   const [mobileTabDoel, setMobileTabDoel] = useState<"doelstellingen" | "mijlpalen">("doelstellingen");
   const [goalModal, setGoalModal] = useState<{ mode: "add" } | { mode: "edit"; doel: Doel } | null>(null);
@@ -873,7 +879,16 @@ export default function DoelstellingenPage() {
                 <h2 className="text-base font-semibold text-gray-900">Overige doelstellingen</h2>
                 <p className="text-xs text-gray-400 mt-0.5">{regularGoals.length} {regularGoals.length === 1 ? "doel" : "doelen"}</p>
               </div>
-              <Button size="sm" onClick={() => setGoalModal({ mode: "add" })}>
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (!canAddDoel(planInfo, regularGoals.length)) {
+                    setShowUpgradeModal(true);
+                    return;
+                  }
+                  setGoalModal({ mode: "add" });
+                }}
+              >
                 <Plus size={14} /> Nieuw doel
               </Button>
             </div>
@@ -1027,6 +1042,10 @@ export default function DoelstellingenPage() {
       )}
 
       {toast && <CelebrationToast message={toast} onDone={() => setToast(null)} />}
+
+      {showUpgradeModal && (
+        <UpgradeModal feature="doel" onClose={() => setShowUpgradeModal(false)} />
+      )}
     </div>
   );
 }

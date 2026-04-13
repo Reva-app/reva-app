@@ -20,6 +20,9 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { useUserPlan } from "@/lib/hooks/useUserPlan";
+import { canAddTrainingOefening } from "@/lib/featureGates";
+import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 import {
   Plus, Pencil, Trash2, X, Check, ChevronDown, ChevronUp,
   Dumbbell, Activity, Zap, Move, Minus, HelpCircle, Clock,
@@ -799,6 +802,17 @@ export default function TrainingPage() {
     dagboekWorkouts, addDagboekWorkout,
   } = useAppData();
 
+  const planInfo = useUserPlan();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  function openOefeningModal(editing?: TrainingOefening) {
+    if (!editing && !canAddTrainingOefening(planInfo, trainingOefeningen.length)) {
+      setShowUpgradeModal(true);
+      return;
+    }
+    setOefeningModal({ open: true, editing });
+  }
+
   const [activeTab, setActiveTab] = useState<Tab>("schemas");
   const [oefeningModal, setOefeningModal] = useState<{ open: boolean; editing?: TrainingOefening }>({ open: false });
   const [schemaModal, setSchemaModal] = useState<{ open: boolean; editing?: TrainingSchema }>({ open: false });
@@ -866,7 +880,7 @@ export default function TrainingPage() {
               <Button variant="secondary" size="sm" onClick={() => setSchemaModal({ open: true })}>
                 <LayoutList size={14} /> Schema toevoegen
               </Button>
-              <Button size="sm" onClick={() => setOefeningModal({ open: true })}>
+              <Button size="sm" onClick={() => openOefeningModal()}>
                 <Plus size={14} /> Oefening toevoegen
               </Button>
             </div>
@@ -1046,7 +1060,7 @@ export default function TrainingPage() {
           <button
             onClick={() => activeTab === "schemas"
               ? setSchemaModal({ open: true })
-              : setOefeningModal({ open: true })
+              : openOefeningModal()
             }
             className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors hover:bg-gray-100"
             style={{ color: "#6b7280" }}
@@ -1083,7 +1097,7 @@ export default function TrainingPage() {
               size="sm"
               onClick={() => activeTab === "schemas"
                 ? setSchemaModal({ open: true })
-                : setOefeningModal({ open: true })
+                : openOefeningModal()
               }
             >
               <Plus size={15} />
@@ -1291,6 +1305,10 @@ export default function TrainingPage() {
           onSave={handleSaveSchema}
           onClose={() => setSchemaModal({ open: false })}
         />
+      )}
+
+      {showUpgradeModal && (
+        <UpgradeModal feature="training" onClose={() => setShowUpgradeModal(false)} />
       )}
     </div>
   );

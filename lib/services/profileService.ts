@@ -211,17 +211,27 @@ export async function ensureUserProfileAndSettings(user: User): Promise<void> {
   }
 
   if (!existingSettings) {
-    // Omit setup_completed and checkin_reminder_* here — let DB defaults handle them.
-    // This keeps the insert working regardless of which migrations have been applied.
+    // New user — start a 4-day trial immediately.
+    const now           = new Date();
+    const trialEnd      = new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000);
+    const trialStartIso = now.toISOString();
+    const trialEndIso   = trialEnd.toISOString();
+
     const { error: settingsInsertErr } = await supabase
       .from("settings")
       .insert({
         user_id:                  user.id,
         supplementary_insurances: [],
         notifications:            {},
+        trial_start_date:         trialStartIso,
+        trial_end_date:           trialEndIso,
+        plan_type:                "free",
+        subscription_status:      "inactive",
       });
     if (settingsInsertErr && settingsInsertErr.code !== "23505") {
       logErr("ensureUserProfileAndSettings/settings-insert", settingsInsertErr);
+    } else {
+      console.info("[ensureUserProfileAndSettings] trial seeded until", trialEndIso);
     }
   }
 }

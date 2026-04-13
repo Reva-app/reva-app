@@ -16,6 +16,9 @@ import { useRouter } from "next/navigation";
 import { getMijlpalenVoorBlessure } from "@/lib/mijlpalenTemplates";
 import { getOefeningenVoorBlessure } from "@/lib/trainingTemplates";
 import { apiUrl } from "@/lib/apiBase";
+import { useUserPlan } from "@/lib/hooks/useUserPlan";
+import { UpgradeModal } from "@/components/subscription/UpgradeModal";
+import { Zap, CheckCircle } from "lucide-react";
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -297,6 +300,8 @@ const ZORGVERZEKERAARS = [
 export default function InstellingenPage() {
   const { profile, updateProfile, hydrated, notificationSettings, updateNotificationSettings, setupCompleted, markSetupDone, mijlpalen, addMijlpaal, trainingOefeningen, addTrainingOefening } = useAppData();
   const router = useRouter();
+  const planInfo = useUserPlan();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   // ── Toast ──────────────────────────────────────────────────────────────────
   const [toast, setToast] = useState<{ msg: string; type?: "success" | "error" } | null>(null);
@@ -880,7 +885,110 @@ export default function InstellingenPage() {
         </div>
       </Card>
 
-      {/* ── 3. Meldingen ──────────────────────────────────────────────── */}
+      {/* ── 3. Abonnement ─────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader
+          title="Abonnement"
+          subtitle="Jouw huidige plan en toegang"
+          action={<Zap size={16} className="text-gray-400" />}
+        />
+        <div className="space-y-4">
+          {/* Plan badge */}
+          <div
+            className="rounded-xl p-4 flex items-start justify-between gap-4"
+            style={{
+              background: planInfo.plan === "premium"
+                ? "linear-gradient(135deg, #1a1a2e 0%, #2d2d44 100%)"
+                : planInfo.plan === "trial"
+                  ? "#f5f0e8"
+                  : "#f8f7f4",
+              border: planInfo.plan === "premium" ? "none" : "1px solid #e8e1d4",
+            }}
+          >
+            <div>
+              <p
+                className="font-semibold text-sm"
+                style={{ color: planInfo.plan === "premium" ? "#ffffff" : "#1a1a1a" }}
+              >
+                {planInfo.plan === "premium" && "REVA Premium"}
+                {planInfo.plan === "trial" && "REVA Premium (Trial)"}
+                {planInfo.plan === "free" && "Gratis plan"}
+              </p>
+              <p
+                className="text-xs mt-0.5"
+                style={{
+                  color: planInfo.plan === "premium"
+                    ? "rgba(255,255,255,0.6)"
+                    : "#9ca3af",
+                }}
+              >
+                {planInfo.plan === "premium" && "Volledige toegang tot alle functies"}
+                {planInfo.plan === "trial" && (
+                  planInfo.trialLastDay
+                    ? "Laatste dag — upgrade vandaag nog"
+                    : `Nog ${planInfo.trialDaysLeft} ${planInfo.trialDaysLeft === 1 ? "dag" : "dagen"} gratis Premium`
+                )}
+                {planInfo.plan === "free" && (
+                  planInfo.trialJustExpired
+                    ? "Je trial is verlopen"
+                    : "Beperkte toegang"
+                )}
+              </p>
+            </div>
+            <span
+              className="shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full"
+              style={{
+                background: planInfo.plan === "premium"
+                  ? "rgba(200,151,90,0.25)"
+                  : planInfo.plan === "trial"
+                    ? "#c8975a"
+                    : "#e8e5df",
+                color: planInfo.plan === "premium"
+                  ? "#c8975a"
+                  : planInfo.plan === "trial"
+                    ? "#ffffff"
+                    : "#9ca3af",
+              }}
+            >
+              {planInfo.plan === "premium" ? "Actief" : planInfo.plan === "trial" ? "Trial" : "Free"}
+            </span>
+          </div>
+
+          {/* Feature list */}
+          {planInfo.plan !== "premium" && (
+            <div className="space-y-2">
+              {[
+                "Onbeperkt trainingen en oefeningen",
+                "Medicatieschema's met herinneringen",
+                "Volledige check-ins (pijn, energie, slaap…)",
+                "Uitgebreide analyse en grafieken",
+                "Onbeperkt documenten in het dossier",
+              ].map((f) => (
+                <div key={f} className="flex items-center gap-2.5">
+                  <CheckCircle className="w-4 h-4 shrink-0" style={{ color: "#c8975a" }} />
+                  <span className="text-sm text-gray-600">{f}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {planInfo.plan !== "premium" && (
+            <button
+              onClick={() => setShowUpgradeModal(true)}
+              className="w-full py-3 rounded-xl font-semibold text-sm text-white transition-opacity hover:opacity-90"
+              style={{ background: "#c8975a" }}
+            >
+              {planInfo.plan === "trial" ? "Upgrade naar Premium" : "Bekijk Premium — €4,99/maand"}
+            </button>
+          )}
+        </div>
+      </Card>
+
+      {showUpgradeModal && (
+        <UpgradeModal onClose={() => setShowUpgradeModal(false)} />
+      )}
+
+      {/* ── 4. Meldingen ──────────────────────────────────────────────── */}
       <Card>
         <CardHeader
           title="Meldingen"
@@ -938,7 +1046,7 @@ export default function InstellingenPage() {
         </div>
       </Card>
 
-      {/* ── 4. Feedback ───────────────────────────────────────────────── */}
+      {/* ── 5. Feedback ───────────────────────────────────────────────── */}
       <Card>
         <CardHeader
           title="Feedback"
@@ -980,7 +1088,7 @@ export default function InstellingenPage() {
         </div>
       </Card>
 
-      {/* ── 5. Jouw data ──────────────────────────────────────────────── */}
+      {/* ── 6. Jouw data ──────────────────────────────────────────────── */}
       <Card>
         <CardHeader
           title="Jouw data"

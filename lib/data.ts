@@ -218,6 +218,13 @@ export interface Profile {
   polisnummer: string;
   aanvullendeVerzekeringen: string[];
   aantalFysio: string;
+  // ── Subscription ──────────────────────────────────────────────────────────
+  trialStartDate: string;        // ISO timestamp or ""
+  trialEndDate: string;          // ISO timestamp or ""
+  planType: "free" | "premium";
+  subscriptionStatus: "inactive" | "active" | "cancelled" | "expired";
+  subscriptionSource: string;    // "stripe" | "google_play" | "apple" | ""
+  subscriptionExpiresAt: string; // ISO timestamp or ""
 }
 
 export const mockProfile: Profile = {

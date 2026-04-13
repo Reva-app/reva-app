@@ -4,6 +4,9 @@ import { useState, useMemo } from "react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { useAppData } from "@/lib/store";
+import { useUserPlan } from "@/lib/hooks/useUserPlan";
+import { canViewFullAnalyse } from "@/lib/featureGates";
+import { FeatureLock } from "@/components/subscription/FeatureLock";
 import {
   TrendingUp, TrendingDown, Minus, Activity, Zap,
   Dumbbell, Pill, Target, Lightbulb, ChevronRight,
@@ -240,6 +243,7 @@ export default function AnalysePage() {
     hydrated, checkIns, medicatie, trainingLogs,
     appointments, mijlpalen, fotoUpdates,
   } = useAppData();
+  const planInfo = useUserPlan();
 
   const [period, setPeriod] = useState<Period>(14);
 
@@ -434,6 +438,11 @@ export default function AnalysePage() {
           <PeriodFilter value={period} onChange={setPeriod} />
         </div>
       </div>
+
+      {/* ── Feature gate: free users see a lock card instead of stats ── */}
+      {!canViewFullAnalyse(planInfo) ? (
+        <FeatureLock feature="analyse" />
+      ) : (<>
 
       {/* Mobile: Wat valt op — direct onder de header */}
       <div className="sm:hidden">
@@ -843,6 +852,7 @@ export default function AnalysePage() {
         </p>
       </Card>
 
+      </>)}
     </div>
   );
 }

@@ -113,6 +113,12 @@ const emptyProfile: Profile = {
   polisnummer: "",
   aanvullendeVerzekeringen: [],
   aantalFysio: "",
+  trialStartDate: "",
+  trialEndDate: "",
+  planType: "free",
+  subscriptionStatus: "inactive",
+  subscriptionSource: "",
+  subscriptionExpiresAt: "",
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────

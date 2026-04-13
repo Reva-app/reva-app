@@ -34,6 +34,13 @@ export function dbToProfile(p: DbProfile, s: DbSettings | null): Profile {
     polisnummer:             s?.policy_number ?? "",
     aanvullendeVerzekeringen: s?.supplementary_insurances ?? [],
     aantalFysio:             s?.physio_sessions_total ?? "",
+    // ── Subscription ────────────────────────────────────────────────────────
+    trialStartDate:        s?.trial_start_date ?? "",
+    trialEndDate:          s?.trial_end_date ?? "",
+    planType:              (s?.plan_type as Profile["planType"]) ?? "free",
+    subscriptionStatus:    (s?.subscription_status as Profile["subscriptionStatus"]) ?? "inactive",
+    subscriptionSource:    s?.subscription_source ?? "",
+    subscriptionExpiresAt: s?.subscription_expires_at ?? "",
   };
 }
 
