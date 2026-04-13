@@ -6,14 +6,14 @@ type MijlpalenTemplate = Array<{ fase: string; title: string }>;
 
 const KNIE_KRUISBAND: MijlpalenTemplate = [
   // Fase 1
-  { fase: "Fase 1 – Vroeg herstel", title: "Eerste stap gezet na operatie of blessure" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Zwelling grotendeels verminderd" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Pijn controleerbaar zonder medicatie" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Volledige knieextensie (rechtstand) bereikt" },
-  { fase: "Fase 1 – Vroeg herstel", title: "90° knieflexie bereikt" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Lopen met één kruk" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Lopen zonder krukken" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Zelfstandig traplopen (met leuning)" },
+  { fase: "Fase 1 – Basis", title: "Eerste stap gezet na operatie of blessure" },
+  { fase: "Fase 1 – Basis", title: "Zwelling grotendeels verminderd" },
+  { fase: "Fase 1 – Basis", title: "Pijn controleerbaar zonder medicatie" },
+  { fase: "Fase 1 – Basis", title: "Volledige knieextensie (rechtstand) bereikt" },
+  { fase: "Fase 1 – Basis", title: "90° knieflexie bereikt" },
+  { fase: "Fase 1 – Basis", title: "Lopen met één kruk" },
+  { fase: "Fase 1 – Basis", title: "Lopen zonder krukken" },
+  { fase: "Fase 1 – Basis", title: "Zelfstandig traplopen (met leuning)" },
   // Fase 2
   { fase: "Fase 2 – Beweging",      title: "120° knieflexie bereikt" },
   { fase: "Fase 2 – Beweging",      title: "Traplopen zonder leuning" },
@@ -37,12 +37,12 @@ const KNIE_KRUISBAND: MijlpalenTemplate = [
 ];
 
 const KNIE_MENISCUS: MijlpalenTemplate = [
-  { fase: "Fase 1 – Vroeg herstel", title: "Eerste stap gezet na operatie of blessure" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Zwelling en warmte verminderd" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Lopen zonder krukken" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Volledig gewicht dragen op het been" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Lopen zonder mank te gaan" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Traplopen met steun" },
+  { fase: "Fase 1 – Basis", title: "Eerste stap gezet na operatie of blessure" },
+  { fase: "Fase 1 – Basis", title: "Zwelling en warmte verminderd" },
+  { fase: "Fase 1 – Basis", title: "Lopen zonder krukken" },
+  { fase: "Fase 1 – Basis", title: "Volledig gewicht dragen op het been" },
+  { fase: "Fase 1 – Basis", title: "Lopen zonder mank te gaan" },
+  { fase: "Fase 1 – Basis", title: "Traplopen met steun" },
   { fase: "Fase 2 – Beweging",      title: "Traplopen zelfstandig zonder steun" },
   { fase: "Fase 2 – Beweging",      title: "Knie volledig buigen (>120°)" },
   { fase: "Fase 2 – Beweging",      title: "Fietsen op hometrainer pijnvrij" },
@@ -58,11 +58,11 @@ const KNIE_MENISCUS: MijlpalenTemplate = [
 ];
 
 const KNIE_KNIEBAND: MijlpalenTemplate = [
-  { fase: "Fase 1 – Vroeg herstel", title: "Eerste stap gezet na blessure" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Zwelling en pijn bij rust verdwenen" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Lopen zonder krukken" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Normaal looppatroon hersteld" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Traplopen mogelijk" },
+  { fase: "Fase 1 – Basis", title: "Eerste stap gezet na blessure" },
+  { fase: "Fase 1 – Basis", title: "Zwelling en pijn bij rust verdwenen" },
+  { fase: "Fase 1 – Basis", title: "Lopen zonder krukken" },
+  { fase: "Fase 1 – Basis", title: "Normaal looppatroon hersteld" },
+  { fase: "Fase 1 – Basis", title: "Traplopen mogelijk" },
   { fase: "Fase 2 – Beweging",      title: "Volledige knieflexie en extensie" },
   { fase: "Fase 2 – Beweging",      title: "Balans en coördinatie getraind" },
   { fase: "Fase 2 – Beweging",      title: "Fietsen pijnvrij (20 min)" },
@@ -78,11 +78,11 @@ const KNIE_KNIEBAND: MijlpalenTemplate = [
 ];
 
 const KNIE_PATELLA: MijlpalenTemplate = [
-  { fase: "Fase 1 – Vroeg herstel", title: "Eerste stap gezet na operatie of blessure" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Pijn en zwelling verminderd" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Lopen zonder krukken" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Volledig lopen zonder pijn" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Traplopen met lichte steun" },
+  { fase: "Fase 1 – Basis", title: "Eerste stap gezet na operatie of blessure" },
+  { fase: "Fase 1 – Basis", title: "Pijn en zwelling verminderd" },
+  { fase: "Fase 1 – Basis", title: "Lopen zonder krukken" },
+  { fase: "Fase 1 – Basis", title: "Volledig lopen zonder pijn" },
+  { fase: "Fase 1 – Basis", title: "Traplopen met lichte steun" },
   { fase: "Fase 2 – Beweging",      title: "Traplopen zelfstandig pijnvrij" },
   { fase: "Fase 2 – Beweging",      title: "Knie volledig buigen (>120°)" },
   { fase: "Fase 2 – Beweging",      title: "Fietsen op hometrainer (20 min)" },
@@ -98,12 +98,12 @@ const KNIE_PATELLA: MijlpalenTemplate = [
 ];
 
 const ENKEL: MijlpalenTemplate = [
-  { fase: "Fase 1 – Vroeg herstel", title: "Eerste stap gezet na blessure" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Zwelling en blauwe plek verminderd" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Lopen zonder krukken" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Volledig belasten zonder pijn" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Normaal looppatroon hersteld" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Traplopen zelfstandig" },
+  { fase: "Fase 1 – Basis", title: "Eerste stap gezet na blessure" },
+  { fase: "Fase 1 – Basis", title: "Zwelling en blauwe plek verminderd" },
+  { fase: "Fase 1 – Basis", title: "Lopen zonder krukken" },
+  { fase: "Fase 1 – Basis", title: "Volledig belasten zonder pijn" },
+  { fase: "Fase 1 – Basis", title: "Normaal looppatroon hersteld" },
+  { fase: "Fase 1 – Basis", title: "Traplopen zelfstandig" },
   { fase: "Fase 2 – Beweging",      title: "Balans op enkel (30 seconden)" },
   { fase: "Fase 2 – Beweging",      title: "Zijwaartse bewegingen pijnvrij" },
   { fase: "Fase 2 – Beweging",      title: "Eerste wandeling buiten (30 min)" },
@@ -119,12 +119,12 @@ const ENKEL: MijlpalenTemplate = [
 ];
 
 const SCHOUDER: MijlpalenTemplate = [
-  { fase: "Fase 1 – Vroeg herstel", title: "Eerste stap gezet na operatie of blessure" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Pijn bij rust controleerbaar" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Mitella of sling afgebouwd" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Arm tot schouderhoogte heffen" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Aankleden zelfstandig mogelijk" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Dagelijkse taken pijnvrij uitvoeren" },
+  { fase: "Fase 1 – Basis", title: "Eerste stap gezet na operatie of blessure" },
+  { fase: "Fase 1 – Basis", title: "Pijn bij rust controleerbaar" },
+  { fase: "Fase 1 – Basis", title: "Mitella of sling afgebouwd" },
+  { fase: "Fase 1 – Basis", title: "Arm tot schouderhoogte heffen" },
+  { fase: "Fase 1 – Basis", title: "Aankleden zelfstandig mogelijk" },
+  { fase: "Fase 1 – Basis", title: "Dagelijkse taken pijnvrij uitvoeren" },
   { fase: "Fase 2 – Beweging",      title: "Volledige armheffing (180°) bereikt" },
   { fase: "Fase 2 – Beweging",      title: "Arm achter rug mogelijk" },
   { fase: "Fase 2 – Beweging",      title: "Rotatie schouder volledig hersteld" },
@@ -141,11 +141,11 @@ const SCHOUDER: MijlpalenTemplate = [
 ];
 
 const SPIER_HAMSTRING: MijlpalenTemplate = [
-  { fase: "Fase 1 – Vroeg herstel", title: "Eerste stap gezet na blessure" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Pijn bij rust verdwenen" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Normaal lopen zonder hinkelen" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Lichte rek zonder pijn" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Traplopen pijnvrij" },
+  { fase: "Fase 1 – Basis", title: "Eerste stap gezet na blessure" },
+  { fase: "Fase 1 – Basis", title: "Pijn bij rust verdwenen" },
+  { fase: "Fase 1 – Basis", title: "Normaal lopen zonder hinkelen" },
+  { fase: "Fase 1 – Basis", title: "Lichte rek zonder pijn" },
+  { fase: "Fase 1 – Basis", title: "Traplopen pijnvrij" },
   { fase: "Fase 2 – Beweging",      title: "Volledige rekbaarheid teruggewonnen" },
   { fase: "Fase 2 – Beweging",      title: "Wandelen 30 minuten pijnvrij" },
   { fase: "Fase 2 – Beweging",      title: "Licht joggen pijnvrij" },
@@ -160,11 +160,11 @@ const SPIER_HAMSTRING: MijlpalenTemplate = [
 ];
 
 const PEES_ACHILLES: MijlpalenTemplate = [
-  { fase: "Fase 1 – Vroeg herstel", title: "Eerste stap gezet na blessure" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Pijn bij rust verdwenen" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Lopen zonder krukken" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Normaal looppatroon hersteld" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Traplopen pijnvrij" },
+  { fase: "Fase 1 – Basis", title: "Eerste stap gezet na blessure" },
+  { fase: "Fase 1 – Basis", title: "Pijn bij rust verdwenen" },
+  { fase: "Fase 1 – Basis", title: "Lopen zonder krukken" },
+  { fase: "Fase 1 – Basis", title: "Normaal looppatroon hersteld" },
+  { fase: "Fase 1 – Basis", title: "Traplopen pijnvrij" },
   { fase: "Fase 2 – Beweging",      title: "Wandelen 30 minuten pijnvrij" },
   { fase: "Fase 2 – Beweging",      title: "Hielhef op één been pijnvrij" },
   { fase: "Fase 2 – Beweging",      title: "Licht jogging pijnvrij" },
@@ -179,11 +179,11 @@ const PEES_ACHILLES: MijlpalenTemplate = [
 ];
 
 const RUG: MijlpalenTemplate = [
-  { fase: "Fase 1 – Vroeg herstel", title: "Eerste stap gezet na blessure" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Acuut pijnniveau sterk verminderd" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Zelfstandig opstaan uit bed mogelijk" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Zitten > 30 minuten zonder pijn" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Lopen > 20 minuten zonder pijn" },
+  { fase: "Fase 1 – Basis", title: "Eerste stap gezet na blessure" },
+  { fase: "Fase 1 – Basis", title: "Acuut pijnniveau sterk verminderd" },
+  { fase: "Fase 1 – Basis", title: "Zelfstandig opstaan uit bed mogelijk" },
+  { fase: "Fase 1 – Basis", title: "Zitten > 30 minuten zonder pijn" },
+  { fase: "Fase 1 – Basis", title: "Lopen > 20 minuten zonder pijn" },
   { fase: "Fase 2 – Beweging",      title: "Buigen en strekken pijnvrij" },
   { fase: "Fase 2 – Beweging",      title: "Core-stabilisatieoefeningen gestart" },
   { fase: "Fase 2 – Beweging",      title: "Autorijden pijnvrij" },
@@ -198,10 +198,10 @@ const RUG: MijlpalenTemplate = [
 ];
 
 const GENERIEK: MijlpalenTemplate = [
-  { fase: "Fase 1 – Vroeg herstel", title: "Eerste stap gezet na blessure" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Pijn bij rust controleerbaar" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Slapen zonder pijn mogelijk" },
-  { fase: "Fase 1 – Vroeg herstel", title: "Normale dagelijkse activiteiten mogelijk" },
+  { fase: "Fase 1 – Basis", title: "Eerste stap gezet na blessure" },
+  { fase: "Fase 1 – Basis", title: "Pijn bij rust controleerbaar" },
+  { fase: "Fase 1 – Basis", title: "Slapen zonder pijn mogelijk" },
+  { fase: "Fase 1 – Basis", title: "Normale dagelijkse activiteiten mogelijk" },
   { fase: "Fase 2 – Beweging",      title: "Lichte beweging pijnvrij" },
   { fase: "Fase 2 – Beweging",      title: "Wandelen 30 minuten pijnvrij" },
   { fase: "Fase 2 – Beweging",      title: "Volledig belastbaar in dagelijks leven" },

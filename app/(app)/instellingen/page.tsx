@@ -7,7 +7,7 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { TimePicker } from "@/components/ui/TimePicker";
 import {
-  User, Bell, Download, Check, Plus, X, AlertCircle,
+  User, Bell, Check, Plus, X, AlertCircle,
   MessageSquare, Camera, Lock, Eye, EyeOff, Trash2,
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
@@ -984,12 +984,9 @@ export default function InstellingenPage() {
       <Card>
         <CardHeader
           title="Jouw data"
-          subtitle="Exporteer of verwijder jouw hersteldata"
+          subtitle="Verwijder jouw hersteldata en account"
         />
         <div className="flex gap-3 flex-wrap">
-          <Button variant="secondary" size="sm">
-            <Download size={14} /> Data exporteren
-          </Button>
           <Button variant="danger" size="sm" onClick={() => setShowDeleteModal(true)}>
             <Trash2 size={14} /> Account verwijderen
           </Button>
