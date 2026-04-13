@@ -243,6 +243,12 @@ export const mockProfile: Profile = {
   polisnummer: "VGZ-2294-8831-AA",
   aanvullendeVerzekeringen: ["Aanvullend 2 — Fysiotherapie", "Tand — Basis"],
   aantalFysio: "18",
+  trialStartDate: "",
+  trialEndDate: "",
+  planType: "free",
+  subscriptionStatus: "inactive",
+  subscriptionSource: "",
+  subscriptionExpiresAt: "",
 };
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────

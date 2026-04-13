@@ -96,10 +96,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Push notificaties ────────────────────────────────────────────────────
+  // Initialiseer zodra de user beschikbaar is; cleanup bij uitloggen.
+  useEffect(() => {
+    if (!user) return;
+
+    let cancelled = false;
+    import("@/lib/services/pushService").then(({ initPushNotifications }) => {
+      if (!cancelled) initPushNotifications(user.id);
+    });
+
+    return () => { cancelled = true; };
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const signOut = useCallback(async () => {
+    if (user) {
+      const { removePushToken } = await import("@/lib/services/pushService");
+      await removePushToken(user.id).catch(() => {});
+    }
+    const { cleanupPushNotifications } = await import("@/lib/services/pushService");
+    cleanupPushNotifications();
     await supabase.auth.signOut();
     router.push("/login");
-  }, [supabase, router]);
+  }, [supabase, router, user]);
 
   return (
     <AuthContext.Provider value={{ user, session, loading, signOut }}>

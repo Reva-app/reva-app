@@ -6,7 +6,10 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { useAppData } from "@/lib/store";
 import { type CheckIn } from "@/lib/data";
-import { Check, TrendingUp, Pencil, X } from "lucide-react";
+import { Check, TrendingUp, Pencil, X, Lock } from "lucide-react";
+import { useUserPlan } from "@/lib/hooks/useUserPlan";
+import { canUseFullCheckIn } from "@/lib/featureGates";
+import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -426,10 +429,80 @@ function CheckInEditModal({
   );
 }
 
+// ─── Locked score fields overlay ─────────────────────────────────────────────
+
+/**
+ * Shows the 5 extra score fields blurred with a Premium lock overlay.
+ * Clicking opens the UpgradeModal.
+ */
+function LockedScoreFields({ onUnlock }: { onUnlock: () => void }) {
+  const fields = [
+    { label: "Pijnscore",      max: 10, value: 4, color: "#ef4444" },
+    { label: "Mobiliteit",     max: 5,  value: 3, color: "#3b82f6" },
+    { label: "Energie",        max: 5,  value: 3, color: "#f59e0b" },
+    { label: "Slaapkwaliteit", max: 5,  value: 4, color: "#8b5cf6" },
+    { label: "Stemming",       max: 5,  value: 3, color: "#10b981" },
+  ];
+
+  return (
+    <div className="relative">
+      {/* Blurred preview */}
+      <div className="pointer-events-none select-none space-y-5 opacity-40 blur-[2px]">
+        {fields.map((f) => (
+          <div key={f.label}>
+            <div className="flex justify-between mb-2">
+              <p className="text-sm font-medium text-gray-700">{f.label}</p>
+              <p className="text-sm font-bold" style={{ color: f.color }}>{f.value}/{f.max}</p>
+            </div>
+            <div className="flex gap-1.5">
+              {Array.from({ length: f.max }, (_, i) => (
+                <div
+                  key={i}
+                  className="flex-1 h-8 rounded-lg"
+                  style={{
+                    background: i < f.value
+                      ? f.color
+                      : "#f3f0eb",
+                    opacity: i < f.value ? (0.4 + (i / f.max) * 0.6) : 1,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Lock overlay */}
+      <button
+        onClick={onUnlock}
+        className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-2xl"
+        style={{ background: "rgba(255,255,255,0.8)" }}
+      >
+        <span
+          className="flex items-center justify-center rounded-full w-10 h-10"
+          style={{ background: "#f5f0e8" }}
+        >
+          <Lock className="w-5 h-5" style={{ color: "#c8975a" }} />
+        </span>
+        <p className="text-sm font-semibold text-gray-800">Uitgebreide check-ins met Premium</p>
+        <span
+          className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+          style={{ background: "#c8975a", color: "#ffffff" }}
+        >
+          Bekijk Premium
+        </span>
+      </button>
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function CheckInPage() {
   const { checkIns, addCheckIn, updateCheckIn } = useAppData();
+  const planInfo = useUserPlan();
+  const fullCheckIn = canUseFullCheckIn(planInfo);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const [mobileTab, setMobileTab] = useState<"formulier" | "dezeweek">("formulier");
 
@@ -556,19 +629,27 @@ export default function CheckInPage() {
         {/* Details */}
         <div className="px-6 pt-5 pb-5 border-b" style={{ borderColor: "#f0ede8" }}>
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">Details</p>
-          <p className="text-sm text-gray-500 mb-4">Optioneel — vul in wat relevant is</p>
+          <p className="text-sm text-gray-500 mb-4">
+            {fullCheckIn ? "Optioneel — vul in wat relevant is" : "Beschikbaar met Premium"}
+          </p>
           <div className="space-y-5">
-            <ScoreSelector label="Dagscore"      value={dagscore}   max={5}  onChange={setDagscore}   color="#e8632a" />
-            <div>
-              <ScoreSelector label="Pijnscore"   value={pijn}       max={10} onChange={setPijn}       color="#ef4444" />
-              <p className="text-[11px] mt-1.5 px-0.5" style={{ color: "#ef4444" }}>
-                Let op: 1 = weinig pijn &nbsp;·&nbsp; 10 = veel pijn
-              </p>
-            </div>
-            <ScoreSelector label="Mobiliteit"    value={mobiliteit} max={5}  onChange={setMobiliteit} color="#3b82f6" />
-            <ScoreSelector label="Energie"       value={energie}    max={5}  onChange={setEnergie}    color="#f59e0b" />
-            <ScoreSelector label="Slaapkwaliteit" value={slaap}     max={5}  onChange={setSlaap}      color="#8b5cf6" />
-            <ScoreSelector label="Stemming"      value={stemming}   max={5}  onChange={setStemming}   color="#10b981" />
+            <ScoreSelector label="Dagscore" value={dagscore} max={5} onChange={setDagscore} color="#e8632a" />
+            {fullCheckIn ? (
+              <>
+                <div>
+                  <ScoreSelector label="Pijnscore"   value={pijn}       max={10} onChange={setPijn}       color="#ef4444" />
+                  <p className="text-[11px] mt-1.5 px-0.5" style={{ color: "#ef4444" }}>
+                    Let op: 1 = weinig pijn &nbsp;·&nbsp; 10 = veel pijn
+                  </p>
+                </div>
+                <ScoreSelector label="Mobiliteit"    value={mobiliteit} max={5}  onChange={setMobiliteit} color="#3b82f6" />
+                <ScoreSelector label="Energie"       value={energie}    max={5}  onChange={setEnergie}    color="#f59e0b" />
+                <ScoreSelector label="Slaapkwaliteit" value={slaap}     max={5}  onChange={setSlaap}      color="#8b5cf6" />
+                <ScoreSelector label="Stemming"      value={stemming}   max={5}  onChange={setStemming}   color="#10b981" />
+              </>
+            ) : (
+              <LockedScoreFields onUnlock={() => setShowUpgradeModal(true)} />
+            )}
           </div>
         </div>
 
@@ -677,17 +758,23 @@ export default function CheckInPage() {
                 </div>
                 )}
 
-                <ScoreSelector label="Dagscore"       value={dagscore}   max={5}  onChange={setDagscore}   color="#e8632a" />
-                <div>
-                  <ScoreSelector label="Pijnscore"    value={pijn}       max={10} onChange={setPijn}       color="#ef4444" />
-                  <p className="text-[11px] mt-1.5 px-0.5" style={{ color: "#ef4444" }}>
-                    Let op: 1 = weinig pijn &nbsp;·&nbsp; 10 = veel pijn
-                  </p>
-                </div>
-                <ScoreSelector label="Mobiliteit"     value={mobiliteit} max={5}  onChange={setMobiliteit} color="#3b82f6" />
-                <ScoreSelector label="Energie"        value={energie}    max={5}  onChange={setEnergie}    color="#f59e0b" />
-                <ScoreSelector label="Slaapkwaliteit" value={slaap}      max={5}  onChange={setSlaap}      color="#8b5cf6" />
-                <ScoreSelector label="Stemming"       value={stemming}   max={5}  onChange={setStemming}   color="#10b981" />
+                <ScoreSelector label="Dagscore" value={dagscore} max={5} onChange={setDagscore} color="#e8632a" />
+                {fullCheckIn ? (
+                  <>
+                    <div>
+                      <ScoreSelector label="Pijnscore"    value={pijn}       max={10} onChange={setPijn}       color="#ef4444" />
+                      <p className="text-[11px] mt-1.5 px-0.5" style={{ color: "#ef4444" }}>
+                        Let op: 1 = weinig pijn &nbsp;·&nbsp; 10 = veel pijn
+                      </p>
+                    </div>
+                    <ScoreSelector label="Mobiliteit"     value={mobiliteit} max={5}  onChange={setMobiliteit} color="#3b82f6" />
+                    <ScoreSelector label="Energie"        value={energie}    max={5}  onChange={setEnergie}    color="#f59e0b" />
+                    <ScoreSelector label="Slaapkwaliteit" value={slaap}      max={5}  onChange={setSlaap}      color="#8b5cf6" />
+                    <ScoreSelector label="Stemming"       value={stemming}   max={5}  onChange={setStemming}   color="#10b981" />
+                  </>
+                ) : (
+                  <LockedScoreFields onUnlock={() => setShowUpgradeModal(true)} />
+                )}
 
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1.5">
@@ -746,6 +833,10 @@ export default function CheckInPage() {
             setEditModal(null);
           }}
         />
+      )}
+
+      {showUpgradeModal && (
+        <UpgradeModal feature="checkIn" onClose={() => setShowUpgradeModal(false)} />
       )}
     </div>
   );

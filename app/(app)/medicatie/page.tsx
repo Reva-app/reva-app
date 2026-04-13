@@ -3,6 +3,9 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { useUserPlan } from "@/lib/hooks/useUserPlan";
+import { canUseMedicatieSchema } from "@/lib/featureGates";
+import { FeatureLock } from "@/components/subscription/FeatureLock";
 import { TimePicker } from "@/components/ui/TimePicker";
 import { useAppData } from "@/lib/store";
 import { formatDate, type MedicatieLog, type MedicatieSchema } from "@/lib/data";
@@ -421,6 +424,8 @@ export default function MedicatiePage() {
     updateMedicatieSchema,
     deleteMedicatieSchema,
   } = useAppData();
+  const planInfo = useUserPlan();
+  const schemaAllowed = canUseMedicatieSchema(planInfo);
 
   // Modal: null = closed, "new" = nieuwe inname, MedicatieLog = bewerken
   type ModalState = null | "new" | MedicatieLog;
@@ -740,7 +745,7 @@ export default function MedicatiePage() {
               <p className="text-sm font-semibold text-white">Medicatieschema</p>
               <p className="text-xs mt-0.5" style={{ color: "#7c7c8a" }}>Dagelijkse vaste inname-momenten</p>
             </div>
-            {schemaMode !== "list" && (
+            {schemaAllowed && schemaMode !== "list" && (
               <button
                 onClick={() => setSchemaMode("list")}
                 className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
@@ -753,65 +758,73 @@ export default function MedicatiePage() {
             )}
           </div>
 
-          {schemaMode === "list" && (
-            <div
-              className="flex items-center gap-2.5 px-5 py-3 border-b text-xs"
-              style={{ borderColor: "rgba(255,255,255,0.07)", color: "#7c7c8a" }}
-            >
-              <Bell size={12} style={{ color: "#e8632a" }} />
-              Herinneringen volgen op basis van jouw schema
-            </div>
-          )}
-
-          {schemaMode === "list" ? (
-            <div className="p-4 space-y-3">
-              {medicatieSchemas.length === 0 ? (
-                <div className="flex flex-col items-center py-10 gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,255,255,0.07)" }}>
-                    <Bell size={18} style={{ color: "#52525e" }} />
-                  </div>
-                  <p className="text-sm font-medium text-center" style={{ color: "#7c7c8a" }}>
-                    Je hebt nog geen medicatieschema ingesteld
-                  </p>
-                  <Button size="sm" onClick={() => setSchemaMode("add")}>
-                    <Plus size={13} /> Voeg medicatie toe
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  {medicatieSchemas.map((schema) => (
-                    <SchemaCard
-                      key={schema.id}
-                      schema={schema}
-                      onToggle={() => updateMedicatieSchema(schema.id, { actief: !schema.actief })}
-                      onEdit={() => setSchemaMode({ edit: schema })}
-                      onDelete={() => deleteMedicatieSchema(schema.id)}
-                    />
-                  ))}
-                  <Button fullWidth size="sm" onClick={() => setSchemaMode("add")}>
-                    <Plus size={13} /> Voeg medicatie toe
-                  </Button>
-                </>
-              )}
+          {!schemaAllowed ? (
+            <div className="p-4">
+              <FeatureLock feature="medicatieSchema" />
             </div>
           ) : (
-            <SchemaForm
-              initial={
-                schemaMode !== "add"
-                  ? {
-                      naam: schemaMode.edit.naam,
-                      naamAnders: schemaMode.edit.naamAnders,
-                      dosering: schemaMode.edit.dosering,
-                      hoeveelheid: schemaMode.edit.hoeveelheid,
-                      tijden: schemaMode.edit.tijden,
-                      actief: schemaMode.edit.actief,
-                      notitie: schemaMode.edit.notitie,
-                    }
-                  : undefined
-              }
-              onSave={handleSaveSchema}
-              onCancel={() => setSchemaMode("list")}
-            />
+            <>
+              {schemaMode === "list" && (
+                <div
+                  className="flex items-center gap-2.5 px-5 py-3 border-b text-xs"
+                  style={{ borderColor: "rgba(255,255,255,0.07)", color: "#7c7c8a" }}
+                >
+                  <Bell size={12} style={{ color: "#e8632a" }} />
+                  Herinneringen volgen op basis van jouw schema
+                </div>
+              )}
+
+              {schemaMode === "list" ? (
+                <div className="p-4 space-y-3">
+                  {medicatieSchemas.length === 0 ? (
+                    <div className="flex flex-col items-center py-10 gap-3">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,255,255,0.07)" }}>
+                        <Bell size={18} style={{ color: "#52525e" }} />
+                      </div>
+                      <p className="text-sm font-medium text-center" style={{ color: "#7c7c8a" }}>
+                        Je hebt nog geen medicatieschema ingesteld
+                      </p>
+                      <Button size="sm" onClick={() => setSchemaMode("add")}>
+                        <Plus size={13} /> Voeg medicatie toe
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      {medicatieSchemas.map((schema) => (
+                        <SchemaCard
+                          key={schema.id}
+                          schema={schema}
+                          onToggle={() => updateMedicatieSchema(schema.id, { actief: !schema.actief })}
+                          onEdit={() => setSchemaMode({ edit: schema })}
+                          onDelete={() => deleteMedicatieSchema(schema.id)}
+                        />
+                      ))}
+                      <Button fullWidth size="sm" onClick={() => setSchemaMode("add")}>
+                        <Plus size={13} /> Voeg medicatie toe
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <SchemaForm
+                  initial={
+                    schemaMode !== "add"
+                      ? {
+                          naam: schemaMode.edit.naam,
+                          naamAnders: schemaMode.edit.naamAnders,
+                          dosering: schemaMode.edit.dosering,
+                          hoeveelheid: schemaMode.edit.hoeveelheid,
+                          tijden: schemaMode.edit.tijden,
+                          actief: schemaMode.edit.actief,
+                          notitie: schemaMode.edit.notitie,
+                        }
+                      : undefined
+                  }
+                  onSave={handleSaveSchema}
+                  onCancel={() => setSchemaMode("list")}
+                />
+              )}
+            </>
           )}
         </div>
       </div>
