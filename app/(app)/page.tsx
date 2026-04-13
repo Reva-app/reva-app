@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ClipboardCheck, Calendar, Dumbbell, Pill, FileText, Image,
   ArrowRight, Clock, MapPin, Check, ChevronRight, Plus,
@@ -520,6 +521,7 @@ function TrendChart({ checkIns }: { checkIns: { date: string; dagscore: number }
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
+  const router = useRouter();
   const {
     hydrated,
     profile,
@@ -755,8 +757,7 @@ export default function Dashboard() {
   function handleCoachAction(action: string) {
     if (action === "modal:checkin") { setQuickModal("checkin"); return; }
     if (action.startsWith("navigate:")) {
-      const href = action.slice("navigate:".length);
-      window.location.href = href;
+      router.push(action.slice("navigate:".length));
     }
   }
 
@@ -1488,9 +1489,15 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div className="flex items-start gap-4 px-5 pb-5">
-                  <div className="w-20 h-20 rounded-xl flex items-center justify-center shrink-0"
+                  <div className="w-20 h-20 rounded-xl shrink-0 overflow-hidden flex items-center justify-center"
                     style={{ background: "#f3f0eb" }}>
-                    <Image size={22} className="text-gray-300" />
+                    {latestFoto.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={latestFoto.imageUrl} alt="Laatste foto update"
+                        className="w-full h-full object-cover" />
+                    ) : (
+                      <Image size={22} className="text-gray-300" />
+                    )}
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-gray-900 mb-1">{fmtLong(latestFoto.date)}</p>

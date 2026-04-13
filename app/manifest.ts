@@ -1,5 +1,8 @@
 import type { MetadataRoute } from "next";
 
+// Vereist voor static export (output: 'export')
+export const dynamic = "force-static";
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "REVA",

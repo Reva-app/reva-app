@@ -14,6 +14,8 @@ import { useAppData } from "@/lib/store";
 import { createClient } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import { getMijlpalenVoorBlessure } from "@/lib/mijlpalenTemplates";
+import { getOefeningenVoorBlessure } from "@/lib/trainingTemplates";
+import { apiUrl } from "@/lib/apiBase";
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -293,7 +295,7 @@ const ZORGVERZEKERAARS = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function InstellingenPage() {
-  const { profile, updateProfile, hydrated, notificationSettings, updateNotificationSettings, setupCompleted, markSetupDone, mijlpalen, addMijlpaal } = useAppData();
+  const { profile, updateProfile, hydrated, notificationSettings, updateNotificationSettings, setupCompleted, markSetupDone, mijlpalen, addMijlpaal, trainingOefeningen, addTrainingOefening } = useAppData();
   const router = useRouter();
 
   // ── Toast ──────────────────────────────────────────────────────────────────
@@ -397,8 +399,9 @@ export default function InstellingenPage() {
 
   // ── Save herstelgegevens ───────────────────────────────────────────────────
   async function handleSaveHerstel() {
-    const isFirstBlessureType = !profile.blessureType && blessureType;
-    const shouldSeedMijlpalen = isFirstBlessureType && mijlpalen.length === 0;
+    const isFirstBlessureType  = !profile.blessureType && blessureType;
+    const shouldSeedMijlpalen  = isFirstBlessureType && mijlpalen.length === 0;
+    const shouldSeedOefeningen = isFirstBlessureType && trainingOefeningen.length === 0;
 
     const { error } = await updateProfile({
       blessureDatum, operatieDatum, blessureType, blessureTypeAnders,
@@ -408,13 +411,20 @@ export default function InstellingenPage() {
     if (error) { showToast("Opslaan mislukt: " + error, "error"); return; }
     if (!setupCompleted) markSetupDone();
 
-    // Seed blessure-specific milestones on first setup
+    // Seed mijlpalen en oefeningen bij eerste blessuretype-keuze
     if (shouldSeedMijlpalen) {
-      const templates = getMijlpalenVoorBlessure(blessureType);
-      for (const m of templates) {
+      for (const m of getMijlpalenVoorBlessure(blessureType)) {
         addMijlpaal(m);
       }
-      showToast("Herstelgegevens opgeslagen — mijlpalen aangemaakt");
+    }
+    if (shouldSeedOefeningen) {
+      for (const o of getOefeningenVoorBlessure(blessureType)) {
+        addTrainingOefening(o);
+      }
+    }
+
+    if (shouldSeedMijlpalen || shouldSeedOefeningen) {
+      showToast("Herstelgegevens opgeslagen — oefeningen en mijlpalen aangemaakt");
     } else {
       showToast("Herstelgegevens opgeslagen");
     }
@@ -443,7 +453,7 @@ export default function InstellingenPage() {
     }
     setFbSending(true);
     try {
-      const res = await fetch("/api/feedback", {
+      const res = await fetch(apiUrl("/api/feedback"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -527,7 +537,7 @@ export default function InstellingenPage() {
   async function handleDeleteAccount() {
     setDeleteLoading(true);
     try {
-      const res = await fetch("/api/delete-account", { method: "DELETE" });
+      const res = await fetch(apiUrl("/api/delete-account"), { method: "DELETE" });
       const json = await res.json();
       if (!res.ok || json.error) {
         showToast("Verwijderen mislukt: " + (json.error ?? "Onbekende fout"), "error");

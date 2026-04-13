@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, AlertCircle, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 // ─── Google icon ──────────────────────────────────────────────────────────────
 function GoogleIcon() {
@@ -31,6 +32,25 @@ function LoginForm() {
   const [error, setError] = useState("");
 
   const supabase = createClient();
+  const { user, loading: authLoading } = useAuth();
+
+  // Navigeer automatisch zodra de user-state beschikbaar is.
+  // Dit vangt zowel de native OAuth-callback (appUrlOpen → exchangeCodeForSession
+  // → onAuthStateChange) op als een reeds actieve sessie bij paginalading.
+  useEffect(() => {
+    if (authLoading || !user) return;
+
+    supabase
+      .from("settings")
+      .select("setup_completed")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        const setupDone = data?.setup_completed ?? false;
+        router.replace(setupDone ? (next !== "/" ? next : "/") : "/instellingen");
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, authLoading]);
 
   // Show a success hint if redirected from register page
   const registered = searchParams.get("registered") === "1";
@@ -83,17 +103,56 @@ function LoginForm() {
   async function handleGoogle() {
     setError("");
     setGoogleLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-      },
-    });
-    if (error) {
-      setError(error.message);
-      setGoogleLoading(false);
+
+    const { Capacitor } = await import("@capacitor/core");
+
+    if (Capacitor.isNativePlatform()) {
+      // Native (iOS / Android): open OAuth URL in externe browser.
+      // Google blokkeert OAuth in embedded WebViews, dus we gebruiken
+      // @capacitor/browser. De redirect gaat naar het custom URL-schema
+      // nl.revaapp.app://auth/callback, dat door AuthProvider wordt afgehandeld.
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: "nl.revaapp.app://auth/callback",
+          skipBrowserRedirect: true,
+        },
+      });
+      if (error) {
+        setError(error.message);
+        setGoogleLoading(false);
+        return;
+      }
+      if (data.url) {
+        const { Browser } = await import("@capacitor/browser");
+
+        // Spinner aan terwijl de browser open is.
+        // Als de gebruiker de browser sluit zonder in te loggen → spinner uit.
+        Browser.addListener("browserFinished", () => {
+          setGoogleLoading(false);
+          Browser.removeAllListeners();
+        });
+
+        await Browser.open({ url: data.url });
+      } else {
+        setGoogleLoading(false);
+      }
+      // Bij succes: appUrlOpen → exchangeCodeForSession → onAuthStateChange →
+      // useEffect hierboven detecteert user en navigeert naar het dashboard.
+    } else {
+      // Web: standaard Supabase redirect-flow
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        },
+      });
+      if (error) {
+        setError(error.message);
+        setGoogleLoading(false);
+      }
+      // Bij succes: browser wordt doorgestuurd door Supabase
     }
-    // On success, browser is redirected by Supabase — no need to handle
   }
 
   return (

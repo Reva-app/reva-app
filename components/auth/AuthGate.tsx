@@ -20,6 +20,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  // Normaliseer het pad: verwijder trailing slash (trailingSlash: true in
+  // static export geeft `/instellingen/` terug, vergelijking met `/instellingen`
+  // zou anders altijd mislukken en een oneindige redirect-loop veroorzaken).
+  const normalizedPath = pathname.replace(/\/$/, "") || "/";
+  const onInstellingen = normalizedPath === "/instellingen";
+
   useEffect(() => {
     if (authLoading || !hydrated) return;
 
@@ -28,14 +34,14 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (!setupCompleted && pathname !== "/instellingen") {
+    if (!setupCompleted && !onInstellingen) {
       router.replace("/instellingen");
     }
-  }, [authLoading, hydrated, user, setupCompleted, pathname, router]);
+  }, [authLoading, hydrated, user, setupCompleted, onInstellingen, router]);
 
   if (authLoading || !hydrated) return null;
   if (!user) return null;
-  if (!setupCompleted && pathname !== "/instellingen") return null;
+  if (!setupCompleted && !onInstellingen) return null;
 
   return <>{children}</>;
 }
