@@ -179,8 +179,8 @@ export function TopBar() {
   return (
     <>
       <header
-        className="h-12 lg:h-14 border-b flex items-center px-4 sm:px-6 lg:px-6"
-        style={{ background: "#ffffff", borderColor: "#e8e5df" }}
+        className="pt-safe border-b flex items-center px-4 sm:px-6 lg:px-6"
+        style={{ background: "#ffffff", borderColor: "#e8e5df", minHeight: "3rem" }}
       >
 
         {/* ── Desktop layout: page title left, controls right ── */}
