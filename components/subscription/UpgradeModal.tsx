@@ -26,16 +26,23 @@ export function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
       style={{ background: "rgba(0,0,0,0.45)" }}
+      onClick={onClose}
     >
+      {/* Scrollable sheet — stops click propagation so tapping inside doesn't close */}
       <div
-        className="w-full max-w-md rounded-3xl overflow-hidden"
-        style={{ background: "#ffffff" }}
+        className="w-full max-w-md rounded-t-3xl sm:rounded-3xl overflow-y-auto"
+        style={{
+          background: "#ffffff",
+          maxHeight: "92dvh",
+          paddingBottom: "env(safe-area-inset-bottom, 16px)",
+        }}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div
-          className="relative px-6 py-8 text-center"
+          className="relative px-6 py-7 text-center"
           style={{
             background: "linear-gradient(135deg, #1a1a2e 0%, #2d2d44 100%)",
           }}
@@ -49,13 +56,13 @@ export function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
           </button>
 
           <div
-            className="mx-auto mb-4 flex items-center justify-center w-14 h-14 rounded-2xl"
+            className="mx-auto mb-3 flex items-center justify-center w-12 h-12 rounded-2xl"
             style={{ background: "rgba(200,151,90,0.2)" }}
           >
-            <Zap className="w-7 h-7" style={{ color: "#c8975a" }} />
+            <Zap className="w-6 h-6" style={{ color: "#c8975a" }} />
           </div>
 
-          <h2 className="text-xl font-bold text-white mb-1">
+          <h2 className="text-lg font-bold text-white mb-1">
             {isExpired ? "Je trial is verlopen" : "Upgrade naar Premium"}
           </h2>
           <p className="text-sm" style={{ color: "rgba(255,255,255,0.65)" }}>
@@ -66,7 +73,7 @@ export function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
         </div>
 
         {/* Features list */}
-        <div className="px-6 py-5">
+        <div className="px-6 pt-5 pb-3">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
             Alles inbegrepen
           </p>
@@ -84,7 +91,7 @@ export function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
         </div>
 
         {/* Pricing + CTA */}
-        <div className="px-6 pb-6 space-y-3">
+        <div className="px-6 pb-4 pt-2 space-y-3">
           <div
             className="rounded-2xl p-4 text-center"
             style={{ background: "#f9f7f3", border: "1px solid #e8e1d4" }}
@@ -95,7 +102,7 @@ export function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
           </div>
 
           <button
-            className="w-full py-3.5 rounded-xl font-semibold text-sm text-white transition-opacity hover:opacity-90"
+            className="w-full py-3.5 rounded-xl font-semibold text-sm text-white transition-opacity active:opacity-80"
             style={{ background: "#c8975a" }}
             onClick={() => {
               // TODO: wire up payment provider (RevenueCat / Stripe)
@@ -107,7 +114,7 @@ export function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
 
           <button
             onClick={onClose}
-            className="w-full py-2.5 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+            className="w-full py-2.5 text-sm text-gray-400"
           >
             Misschien later
           </button>

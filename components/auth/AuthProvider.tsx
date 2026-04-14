@@ -97,16 +97,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ── Push notificaties ────────────────────────────────────────────────────
-  // Initialiseer zodra de user beschikbaar is; cleanup bij uitloggen.
+  // Wacht 2 seconden na inloggen zodat de navigatie eerst afrondt,
+  // daarna pas push initialiseren. Nooit de app laten crashen.
   useEffect(() => {
     if (!user) return;
 
+    let timer: ReturnType<typeof setTimeout>;
     let cancelled = false;
-    import("@/lib/services/pushService").then(({ initPushNotifications }) => {
-      if (!cancelled) initPushNotifications(user.id);
-    });
 
-    return () => { cancelled = true; };
+    timer = setTimeout(() => {
+      import("@/lib/services/pushService").then(({ initPushNotifications }) => {
+        if (!cancelled) initPushNotifications(user.id).catch(() => {});
+      });
+    }, 2000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const signOut = useCallback(async () => {

@@ -28,69 +28,77 @@ export async function initPushNotifications(userId: string): Promise<void> {
 
   if (typeof window === "undefined") return;
 
-  const { Capacitor } = await import("@capacitor/core");
-  if (!Capacitor.isNativePlatform()) return;
+  try {
+    const { Capacitor } = await import("@capacitor/core");
+    if (!Capacitor.isNativePlatform()) return;
 
-  const { PushNotifications } = await import("@capacitor/push-notifications");
+    const { PushNotifications } = await import("@capacitor/push-notifications");
 
-  // ── Vraag toestemming ──────────────────────────────────────────────────────
-  const permResult = await PushNotifications.requestPermissions();
-  if (permResult.receive !== "granted") {
-    console.info("[pushService] toestemming geweigerd door gebruiker");
-    return;
-  }
-
-  // ── Registreer bij FCM/APNs ────────────────────────────────────────────────
-  await PushNotifications.register();
-
-  // ── Listeners ─────────────────────────────────────────────────────────────
-  const regListener = await PushNotifications.addListener(
-    "registration",
-    async ({ value: token }) => {
-      console.info("[pushService] token ontvangen:", token.slice(0, 20) + "…");
-      await savePushToken(userId, token, Capacitor.getPlatform() as "android" | "ios");
-    }
-  );
-
-  const errListener = await PushNotifications.addListener(
-    "registrationError",
-    ({ error }) => {
-      console.error("[pushService] registratiefout:", error);
-    }
-  );
-
-  // Notificatie ontvangen terwijl app open is → toon als in-app melding
-  const fgListener = await PushNotifications.addListener(
-    "pushNotificationReceived",
-    (notification) => {
-      console.info("[pushService] notificatie ontvangen (foreground):", notification.title);
-      // Gooi een custom DOM-event zodat de app er op kan reageren
-      window.dispatchEvent(
-        new CustomEvent("reva:notification", { detail: notification })
-      );
-    }
-  );
-
-  // Gebruiker tikt op notificatie → navigeer naar de juiste pagina
-  const tapListener = await PushNotifications.addListener(
-    "pushNotificationActionPerformed",
-    (action) => {
-      const data = action.notification.data as Record<string, string> | undefined;
-      const route = data?.route ?? "/";
-      console.info("[pushService] notificatie tap, navigeer naar:", route);
-      // Gebruik history API — werkt ook vanuit background
-      if (typeof window !== "undefined") {
-        window.location.href = route;
+    // ── Listeners registreren vóór register() aanroepen ───────────────────────
+    // Dit voorkomt dat we het token missen als register() heel snel klaar is.
+    const regListener = await PushNotifications.addListener(
+      "registration",
+      async ({ value: token }) => {
+        console.info("[pushService] token ontvangen:", token.slice(0, 20) + "…");
+        await savePushToken(userId, token, Capacitor.getPlatform() as "android" | "ios");
       }
-    }
-  );
+    );
 
-  cleanupRef = () => {
-    regListener.remove();
-    errListener.remove();
-    fgListener.remove();
-    tapListener.remove();
-  };
+    const errListener = await PushNotifications.addListener(
+      "registrationError",
+      ({ error }) => {
+        // Niet fataal — app blijft gewoon werken zonder push
+        console.warn("[pushService] registratiefout (niet fataal):", error);
+      }
+    );
+
+    const fgListener = await PushNotifications.addListener(
+      "pushNotificationReceived",
+      (notification) => {
+        console.info("[pushService] notificatie ontvangen (foreground):", notification.title);
+        window.dispatchEvent(
+          new CustomEvent("reva:notification", { detail: notification })
+        );
+      }
+    );
+
+    const tapListener = await PushNotifications.addListener(
+      "pushNotificationActionPerformed",
+      (action) => {
+        const data = action.notification.data as Record<string, string> | undefined;
+        const route = data?.route ?? "/";
+        console.info("[pushService] notificatie tap, navigeer naar:", route);
+        if (typeof window !== "undefined") {
+          window.location.href = route;
+        }
+      }
+    );
+
+    cleanupRef = () => {
+      regListener.remove();
+      errListener.remove();
+      fgListener.remove();
+      tapListener.remove();
+    };
+
+    // ── Vraag toestemming ────────────────────────────────────────────────────
+    const permResult = await PushNotifications.requestPermissions();
+    if (permResult.receive !== "granted") {
+      console.info("[pushService] toestemming geweigerd — push uitgeschakeld");
+      cleanupRef();
+      cleanupRef = null;
+      return;
+    }
+
+    // ── Registreer bij FCM ───────────────────────────────────────────────────
+    await PushNotifications.register();
+
+  } catch (err) {
+    // Nooit de app laten crashen vanwege push — gewoon stil falen
+    console.warn("[pushService] initialisatie mislukt (niet fataal):", err);
+    cleanupRef?.();
+    cleanupRef = null;
+  }
 }
 
 /**
