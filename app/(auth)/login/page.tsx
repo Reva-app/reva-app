@@ -110,11 +110,11 @@ function LoginForm() {
       // Native (iOS / Android): open OAuth URL in externe browser.
       // Google blokkeert OAuth in embedded WebViews, dus we gebruiken
       // @capacitor/browser. De redirect gaat naar het custom URL-schema
-      // nl.revaapp.app://auth/callback, dat door AuthProvider wordt afgehandeld.
+      // com.reva.mobile://auth/callback, dat door AuthProvider wordt afgehandeld.
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: "nl.revaapp.app://auth/callback",
+          redirectTo: "com.reva.mobile://auth/callback",
           skipBrowserRedirect: true,
         },
       });

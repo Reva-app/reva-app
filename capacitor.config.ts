@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: "nl.revaapp.app",
+  appId: "com.reva.mobile",
   appName: "REVA",
   webDir: "out",
   server: {

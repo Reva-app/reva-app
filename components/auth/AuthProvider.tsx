@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { Browser } = await import("@capacitor/browser");
 
       const handle = await App.addListener("appUrlOpen", async ({ url }) => {
-        if (!url.startsWith("nl.revaapp.app://auth/callback")) return;
+        if (!url.startsWith("com.reva.mobile://auth/callback")) return;
 
         // Sluit de externe browser direct
         await Browser.close();
