@@ -193,7 +193,7 @@ export function TopBar() {
         {/* Account avatar (mobile only) */}
         <button
           onClick={() => router.push("/instellingen")}
-          className="lg:hidden w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold text-white overflow-hidden shrink-0"
+          className="lg:hidden w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold text-white overflow-hidden shrink-0"
           style={{ background: hydrated && profile.profielfoto ? "transparent" : "#e8632a" }}
           aria-label="Naar instellingen"
         >

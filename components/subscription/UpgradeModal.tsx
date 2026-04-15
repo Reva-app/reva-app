@@ -26,7 +26,7 @@ export function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center"
       style={{ background: "rgba(0,0,0,0.45)" }}
       onClick={onClose}
     >
@@ -36,7 +36,7 @@ export function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
         style={{
           background: "#ffffff",
           maxHeight: "92dvh",
-          paddingBottom: "env(safe-area-inset-bottom, 16px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)",
         }}
         onClick={(e) => e.stopPropagation()}
       >

@@ -1,23 +1,18 @@
 /**
  * send-checkin-reminder
  *
- * Supabase Edge Function — stuur een check-in herinnering via FCM.
+ * Supabase Edge Function — verstuurt push notificaties voor:
+ *  1. Dagelijkse check-in herinnering (op ingesteld tijdstip)
+ *  2. Medicatie herinneringen (op ingesteld schema-tijdstip)
+ *  3. Wekelijkse foto update herinnering (elke zondag om 19:00)
+ *  4. Training herinnering (dagelijks om 09:00 als er geplande schema's zijn)
+ *  5. Afspraak herinnering (dag ervoor om 18:00)
+ *  6. Doel deadline herinnering (dag ervoor om 09:00)
  *
- * Wordt getriggerd door een Supabase cron job:
- *   Schedule: elke 15 minuten — de functie filtert zelf op de juiste users.
+ * Schedule: elke 15 minuten via Supabase cron
  *
- * Vereiste secrets (stel in via: supabase secrets set KEY=VALUE):
- *   FCM_SERVER_KEY   — Firebase Server Key (uit Firebase Console → Projectinstellingen → Cloud Messaging)
- *
- * Flow:
- *  1. Bepaal het huidige UTC-uur en de lokale tijdzones (we gebruiken een
- *     simpele benadering: stuur op het ingestelde uur in UTC+1/+2).
- *  2. Haal alle users op die:
- *     - check-in melding aan hebben staan (checkin_reminder_enabled = true)
- *     - vandaag nog geen check-in hebben ingevuld
- *     - een checkin_reminder_time hebben die overeenkomt met het huidige uur
- *  3. Haal de FCM tokens op voor die users.
- *  4. Stuur de notificaties via de FCM v1 API.
+ * Vereiste secrets:
+ *   FCM_SERVER_KEY — Firebase Server Key
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -25,9 +20,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const FCM_ENDPOINT = "https://fcm.googleapis.com/fcm/send";
 
 Deno.serve(async () => {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const fcmKey = Deno.env.get("FCM_SERVER_KEY");
+  const supabaseUrl     = Deno.env.get("SUPABASE_URL")!;
+  const serviceRoleKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const fcmKey          = Deno.env.get("FCM_SERVER_KEY");
 
   if (!fcmKey) {
     return new Response("FCM_SERVER_KEY niet ingesteld", { status: 500 });
@@ -35,102 +30,313 @@ Deno.serve(async () => {
 
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-  // ── Bepaal huidig uur (UTC, we ronden op het kwartier) ──────────────────
-  const now = new Date();
-  // Format: "HH:MM" — vergelijk met checkin_reminder_time (bijv. "20:00")
-  const currentHour = now.getUTCHours();
+  const now        = new Date();
+  const today      = now.toISOString().slice(0, 10);
+  const currentHourUTC = now.getUTCHours();
+  const currentMinUTC  = now.getUTCMinutes();
+  // CET = UTC+1, CEST = UTC+2 (simpele benadering: gebruik UTC+1)
+  const localHour  = (currentHourUTC + 1) % 24;
+  const dayOfWeek  = now.getUTCDay(); // 0=zondag
 
-  // ── Zoek users die een herinnering moeten krijgen ──────────────────────
-  const { data: settings, error: settingsErr } = await supabase
+  // Morgen als YYYY-MM-DD (voor afspraken & doelen herinneringen)
+  const tomorrow = new Date(now);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+
+  const notifications: { token: string; title: string; body: string; route: string }[] = [];
+
+  // ── 1. Check-in herinneringen ────────────────────────────────────────────
+  const { data: settings } = await supabase
     .from("settings")
-    .select("user_id, checkin_reminder_time")
+    .select("user_id, checkin_reminder_time, notifications")
     .eq("checkin_reminder_enabled", true)
     .not("checkin_reminder_time", "is", null);
 
-  if (settingsErr) {
-    console.error("Settings ophalen mislukt:", settingsErr.message);
-    return new Response("DB fout", { status: 500 });
+  if (settings && settings.length > 0) {
+    // Filter op users waarvan het reminder-uur overeenkomt met nu
+    const checkinUserIds = settings
+      .filter((s) => {
+        const [hh] = (s.checkin_reminder_time as string).split(":");
+        return parseInt(hh, 10) === localHour && currentMinUTC < 15;
+      })
+      .map((s) => s.user_id as string);
+
+    if (checkinUserIds.length > 0) {
+      // Verwijder users die vandaag al een check-in hebben
+      const { data: existing } = await supabase
+        .from("check_ins")
+        .select("user_id")
+        .in("user_id", checkinUserIds)
+        .eq("date", today);
+
+      const doneSet = new Set((existing ?? []).map((c) => c.user_id));
+      const pending = checkinUserIds.filter((id) => !doneSet.has(id));
+
+      if (pending.length > 0) {
+        const { data: tokens } = await supabase
+          .from("push_tokens")
+          .select("token")
+          .in("user_id", pending);
+
+        (tokens ?? []).forEach(({ token }) => {
+          notifications.push({
+            token,
+            title: "Dagelijkse check-in",
+            body: "Hoe gaat het vandaag met jouw herstel? Vul je check-in in.",
+            route: "/check-in",
+          });
+        });
+      }
+    }
   }
 
-  // Vandaag in ISO-formaat (YYYY-MM-DD)
-  const today = now.toISOString().slice(0, 10);
+  // ── 2. Medicatie herinneringen ───────────────────────────────────────────
+  // Haal alle actieve schema's op met hun tijden
+  const { data: schemas } = await supabase
+    .from("medication_schedules")
+    .select("user_id, medication_name, times")
+    .eq("active", true);
 
-  // Filter: reminder time overeenkomt met huidig uur (UTC+1 benadering)
-  const targetUsers = (settings ?? []).filter((s) => {
-    if (!s.checkin_reminder_time) return false;
-    const [hh] = (s.checkin_reminder_time as string).split(":");
-    // Vergelijk met CET (UTC+1) — simpele benadering
-    const reminderHourUTC = (parseInt(hh, 10) - 1 + 24) % 24;
-    return reminderHourUTC === currentHour;
-  });
+  if (schemas && schemas.length > 0) {
+    // Groepeer per user
+    const medUserMap = new Map<string, string[]>();
+    for (const s of schemas) {
+      const times = (s.times as string[] | null) ?? [];
+      for (const t of times) {
+        const [hh, mm] = t.split(":").map(Number);
+        // Match als uur klopt én we binnen de eerste 15 minuten zitten
+        if (hh === localHour && currentMinUTC < 15) {
+          if (!medUserMap.has(s.user_id)) medUserMap.set(s.user_id, []);
+          medUserMap.get(s.user_id)!.push(s.medication_name as string);
+        }
+      }
+    }
 
-  if (targetUsers.length === 0) {
-    return new Response(JSON.stringify({ sent: 0, skipped: 0 }), {
-      headers: { "Content-Type": "application/json" },
-    });
+    if (medUserMap.size > 0) {
+      // Check welke users medicatie-notificaties aan hebben
+      const { data: notifSettings } = await supabase
+        .from("settings")
+        .select("user_id, notifications")
+        .in("user_id", [...medUserMap.keys()]);
+
+      const enabledUsers = (notifSettings ?? [])
+        .filter((s) => {
+          const n = s.notifications as Record<string, unknown>;
+          return n?.medicatie !== false;
+        })
+        .map((s) => s.user_id as string);
+
+      if (enabledUsers.length > 0) {
+        const { data: tokens } = await supabase
+          .from("push_tokens")
+          .select("token, user_id")
+          .in("user_id", enabledUsers);
+
+        (tokens ?? []).forEach(({ token, user_id }) => {
+          const meds = medUserMap.get(user_id as string) ?? [];
+          notifications.push({
+            token,
+            title: "Medicatie herinnering",
+            body: `Tijd voor: ${meds.join(", ")}`,
+            route: "/medicatie",
+          });
+        });
+      }
+    }
   }
 
-  const userIds = targetUsers.map((s) => s.user_id as string);
+  // ── 3. Wekelijkse foto herinnering (zondag 19:00) ────────────────────────
+  if (dayOfWeek === 0 && localHour === 19 && currentMinUTC < 15) {
+    const { data: fotoSettings } = await supabase
+      .from("settings")
+      .select("user_id, notifications");
 
-  // ── Filter users die vandaag al een check-in hebben ────────────────────
-  const { data: existingCheckIns } = await supabase
-    .from("check_ins")
-    .select("user_id")
-    .in("user_id", userIds)
-    .eq("date", today);
+    const fotoUsers = (fotoSettings ?? [])
+      .filter((s) => {
+        const n = s.notifications as Record<string, unknown>;
+        return n?.foto === true;
+      })
+      .map((s) => s.user_id as string);
 
-  const checkedInUserIds = new Set((existingCheckIns ?? []).map((c) => c.user_id));
-  const pendingUserIds = userIds.filter((id) => !checkedInUserIds.has(id));
+    if (fotoUsers.length > 0) {
+      const { data: tokens } = await supabase
+        .from("push_tokens")
+        .select("token")
+        .in("user_id", fotoUsers);
 
-  if (pendingUserIds.length === 0) {
-    return new Response(JSON.stringify({ sent: 0, skipped: userIds.length }), {
-      headers: { "Content-Type": "application/json" },
-    });
+      (tokens ?? []).forEach(({ token }) => {
+        notifications.push({
+          token,
+          title: "Wekelijkse foto update",
+          body: "Leg jouw herstelvoortgang vast met een nieuwe foto.",
+          route: "/dossier?tab=foto-updates",
+        });
+      });
+    }
   }
 
-  // ── Haal FCM tokens op ────────────────────────────────────────────────
-  const { data: tokens, error: tokenErr } = await supabase
-    .from("push_tokens")
-    .select("token, platform")
-    .in("user_id", pendingUserIds);
+  // ── 4. Training herinnering (dagelijks 09:00) ────────────────────────────
+  if (localHour === 9 && currentMinUTC < 15) {
+    const { data: trainingSettings } = await supabase
+      .from("settings")
+      .select("user_id, notifications");
 
-  if (tokenErr) {
-    console.error("Tokens ophalen mislukt:", tokenErr.message);
-    return new Response("DB fout", { status: 500 });
+    const trainingUsers = (trainingSettings ?? [])
+      .filter((s) => {
+        const n = s.notifications as Record<string, unknown>;
+        return n?.training === true;
+      })
+      .map((s) => s.user_id as string);
+
+    if (trainingUsers.length > 0) {
+      // Stuur alleen als user geplande schema's heeft
+      const { data: trainingSchemas } = await supabase
+        .from("training_schemas")
+        .select("user_id")
+        .in("user_id", trainingUsers)
+        .eq("status", "gepland");
+
+      const activeTrainers = [...new Set((trainingSchemas ?? []).map((s) => s.user_id as string))];
+
+      if (activeTrainers.length > 0) {
+        const { data: tokens } = await supabase
+          .from("push_tokens")
+          .select("token")
+          .in("user_id", activeTrainers);
+
+        (tokens ?? []).forEach(({ token }) => {
+          notifications.push({
+            token,
+            title: "Training vandaag",
+            body: "Je hebt een gepland trainingsschema. Vergeet niet te trainen!",
+            route: "/training",
+          });
+        });
+      }
+    }
   }
 
-  if (!tokens || tokens.length === 0) {
-    return new Response(JSON.stringify({ sent: 0, skipped: pendingUserIds.length }), {
-      headers: { "Content-Type": "application/json" },
-    });
+  // ── 5. Afspraak herinnering (dag ervoor om 18:00) ────────────────────────
+  if (localHour === 18 && currentMinUTC < 15) {
+    // Haal alle afspraken op voor morgen waarbij herinnering aan staat
+    const { data: appointments } = await supabase
+      .from("appointments")
+      .select("user_id, title, time")
+      .eq("date", tomorrowStr)
+      .eq("reminder_enabled", true);
+
+    if (appointments && appointments.length > 0) {
+      // Check welke users afspraak-notificaties aan hebben
+      const apptUserIds = [...new Set(appointments.map((a) => a.user_id as string))];
+
+      const { data: apptSettings } = await supabase
+        .from("settings")
+        .select("user_id, notifications")
+        .in("user_id", apptUserIds);
+
+      const enabledApptUsers = new Set(
+        (apptSettings ?? [])
+          .filter((s) => {
+            const n = s.notifications as Record<string, unknown>;
+            return n?.afspraken !== false;
+          })
+          .map((s) => s.user_id as string)
+      );
+
+      const filteredAppts = appointments.filter((a) =>
+        enabledApptUsers.has(a.user_id as string)
+      );
+
+      if (filteredAppts.length > 0) {
+        const enabledIds = [...new Set(filteredAppts.map((a) => a.user_id as string))];
+        const { data: tokens } = await supabase
+          .from("push_tokens")
+          .select("token, user_id")
+          .in("user_id", enabledIds);
+
+        (tokens ?? []).forEach(({ token, user_id }) => {
+          // Pak de eerste afspraak van morgen voor deze user
+          const appt = filteredAppts.find((a) => a.user_id === user_id);
+          const tijdLabel = appt?.time ? ` om ${(appt.time as string).slice(0, 5)}` : "";
+          notifications.push({
+            token,
+            title: "Afspraak morgen",
+            body: `${appt?.title ?? "Afspraak"}${tijdLabel} — vergeet je niet voor te bereiden.`,
+            route: "/afspraken",
+          });
+        });
+      }
+    }
   }
 
-  // ── Stuur FCM notificaties ────────────────────────────────────────────
+  // ── 6. Doel deadline herinnering (dag ervoor om 09:00) ───────────────────
+  if (localHour === 9 && currentMinUTC < 15) {
+    // Doelen waarvan de deadline morgen is en die nog niet voltooid zijn
+    const { data: expiredGoals } = await supabase
+      .from("goals")
+      .select("user_id, title")
+      .eq("target_date", tomorrowStr)
+      .eq("completed", false);
+
+    if (expiredGoals && expiredGoals.length > 0) {
+      const goalUserIds = [...new Set(expiredGoals.map((g) => g.user_id as string))];
+
+      const { data: goalSettings } = await supabase
+        .from("settings")
+        .select("user_id, notifications")
+        .in("user_id", goalUserIds);
+
+      const enabledGoalUsers = new Set(
+        (goalSettings ?? [])
+          .filter((s) => {
+            const n = s.notifications as Record<string, unknown>;
+            // Valt onder het algemene notificatie-veld "mijlpalen" of "doelen"
+            return n?.mijlpalen !== false;
+          })
+          .map((s) => s.user_id as string)
+      );
+
+      const filteredGoals = expiredGoals.filter((g) =>
+        enabledGoalUsers.has(g.user_id as string)
+      );
+
+      if (filteredGoals.length > 0) {
+        const enabledIds = [...new Set(filteredGoals.map((g) => g.user_id as string))];
+        const { data: tokens } = await supabase
+          .from("push_tokens")
+          .select("token, user_id")
+          .in("user_id", enabledIds);
+
+        (tokens ?? []).forEach(({ token, user_id }) => {
+          const goal = filteredGoals.find((g) => g.user_id === user_id);
+          notifications.push({
+            token,
+            title: "Doel deadline morgen",
+            body: `"${goal?.title ?? "Jouw doel"}" heeft morgen zijn deadline. Nog op tijd!`,
+            route: "/doelstellingen",
+          });
+        });
+      }
+    }
+  }
+
+  // ── Verstuur alle notificaties ───────────────────────────────────────────
   let sent = 0;
   const errors: string[] = [];
 
-  for (const { token } of tokens) {
-    const body = {
-      to: token,
-      notification: {
-        title: "Dagelijkse check-in",
-        body: "Hoe gaat het vandaag met jouw herstel? Vul je check-in in.",
-        sound: "default",
-        click_action: "FLUTTER_NOTIFICATION_CLICK",
-      },
-      data: {
-        route: "/check-in",
-      },
-      priority: "high",
-    };
-
+  for (const { token, title, body, route } of notifications) {
     const res = await fetch(FCM_ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `key=${fcmKey}`,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        to: token,
+        notification: { title, body, sound: "default" },
+        data: { route },
+        priority: "high",
+      }),
     });
 
     if (res.ok) {
@@ -141,7 +347,7 @@ Deno.serve(async () => {
     }
   }
 
-  console.info(`[send-checkin-reminder] sent=${sent} errors=${errors.length}`);
+  console.info(`[push] sent=${sent} errors=${errors.length} total=${notifications.length}`);
 
   return new Response(
     JSON.stringify({ sent, errors: errors.slice(0, 5) }),
