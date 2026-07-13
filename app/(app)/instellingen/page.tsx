@@ -277,6 +277,8 @@ const BLESSURE_TYPEN = [
   { value: "rug", label: "Rugblessure" },
   { value: "achilles", label: "Achillespees blessure" },
   { value: "patella", label: "Gescheurde kniepees" },
+  { value: "knieprothese", label: "Knieprothese" },
+  { value: "heupprothese", label: "Heupprothese" },
   { value: "anders", label: "Anders" },
 ];
 

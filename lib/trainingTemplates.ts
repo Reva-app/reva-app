@@ -6,10 +6,12 @@
  * en nog geen oefeningen heeft.
  *
  * Categorie-mapping:
- *   knie/been  → acl, meniscus, knieband, patella, hamstring, enkel, achilles, spier
- *   schouder   → schouder
- *   rug        → rug, pees (generiek)
- *   basis      → anders (en fallback)
+ *   knie/been     → acl, meniscus, knieband, patella, hamstring, enkel, achilles, spier
+ *   knieprothese  → knieprothese
+ *   heupprothese  → heupprothese
+ *   schouder      → schouder
+ *   rug           → rug, pees (generiek)
+ *   basis         → anders (en fallback)
  */
 
 import type { TrainingOefening } from "@/lib/data";
@@ -98,6 +100,136 @@ const KNIE_BEEN: OefeningTemplate[] = [
     loadOrTime: "15 tot 20 minuten",
     location: "Gym",
     note: "Bevordert gewricht-lubrificatie en spierherstel. Afstand opbouwen over weken.",
+  },
+];
+
+// ─── Knieprothese ─────────────────────────────────────────────────────────────
+
+const KNIE_PROTHESE: OefeningTemplate[] = [
+  {
+    title: "Enkelpompen",
+    type: "Mobiliteit",
+    description:
+      "Lig op je rug met de benen gestrekt. Beweeg de voet op en neer alsof je op een gaspedaal trapt. Rustig en ritmisch bewegen, ook als de knie nog gezwollen aanvoelt.",
+    repetitions: "3×20 herh.",
+    loadOrTime: "Lichaamsgewicht",
+    location: "Thuis",
+    note: "Vermindert zwelling en verlaagt het risico op trombose direct na de operatie.",
+  },
+  {
+    title: "Quadriceps aanspanning",
+    type: "Kracht",
+    description:
+      "Lig op je rug met gestrekte benen. Span de bovenbeenspier van het geopereerde been aan alsof je de knieholte in de mat duwt. Houd 5 seconden vast, ontspan.",
+    repetitions: "3×15 herh.",
+    loadOrTime: "Lichaamsgewicht",
+    location: "Thuis",
+    note: "Basisoefening direct na de operatie: altijd pijnvrij uitvoeren.",
+  },
+  {
+    title: "Hielglijden (heel slides)",
+    type: "Mobiliteit",
+    description:
+      "Lig op je rug. Schuif de hiel van het geopereerde been langzaam richting de billen om de knie te buigen, en weer terug tot volledig gestrekt. Gecontroleerd bewegen, niet forceren.",
+    repetitions: "3×10 herh.",
+    loadOrTime: "Lichaamsgewicht",
+    location: "Thuis",
+    note: "Bouwt de knieflexie geleidelijk op in de eerste weken na de prothese.",
+  },
+  {
+    title: "Knie-extensie zittend",
+    type: "Kracht",
+    description:
+      "Zit op een stoel met de voeten plat op de grond. Strek het geopereerde been langzaam tot het gestrekt is, houd 3 seconden vast en laat rustig zakken.",
+    repetitions: "3×12 herh.",
+    loadOrTime: "Lichaamsgewicht",
+    location: "Thuis",
+    note: "Versterkt de quadriceps, essentieel voor stabiel lopen na een knieprothese.",
+  },
+  {
+    title: "Lopen met looprek of rollator",
+    type: "Conditie",
+    description:
+      "Loop korte stukken met het looprek of de rollator, met een gelijkmatig looppatroon. Zet het geopereerde been zo normaal mogelijk neer. Stop bij vermoeidheid of pijn.",
+    repetitions: "meerdere keren per dag",
+    loadOrTime: "5 tot 10 minuten",
+    location: "Thuis",
+    note: "Bouw de loopafstand elke dag rustig op zoals geadviseerd door de fysiotherapeut.",
+  },
+  {
+    title: "Traplopen oefenen",
+    type: "Stabiliteit",
+    description:
+      "Oefen traplopen met de leuning: bij omhoog eerst het niet-geopereerde been, bij omlaag eerst het geopereerde been. Rustig tempo, altijd onder controle.",
+    repetitions: "1× per dag",
+    loadOrTime: "n.v.t.",
+    location: "Thuis",
+    note: "Volg de instructie van de fysiotherapeut over de juiste beenvolgorde.",
+  },
+];
+
+// ─── Heupprothese ─────────────────────────────────────────────────────────────
+
+const HEUP_PROTHESE: OefeningTemplate[] = [
+  {
+    title: "Enkelpompen",
+    type: "Mobiliteit",
+    description:
+      "Lig op je rug met de benen gestrekt. Beweeg de voet op en neer alsof je op een gaspedaal trapt. Rustig en ritmisch bewegen.",
+    repetitions: "3×20 herh.",
+    loadOrTime: "Lichaamsgewicht",
+    location: "Thuis",
+    note: "Vermindert zwelling en verlaagt het risico op trombose direct na de operatie.",
+  },
+  {
+    title: "Bilspier aanspanning",
+    type: "Kracht",
+    description:
+      "Lig op je rug met gestrekte benen. Span de bilspieren aan, houd 5 seconden vast en ontspan. Geen beweging nodig, alleen aanspannen.",
+    repetitions: "3×15 herh.",
+    loadOrTime: "Lichaamsgewicht",
+    location: "Thuis",
+    note: "Activeert de heupspieren zonder de heupprecauties te belasten.",
+  },
+  {
+    title: "Heupabductie liggend",
+    type: "Kracht",
+    description:
+      "Lig op je rug met beide benen gestrekt. Schuif het geopereerde been recht opzij naar buiten en weer terug, zonder het been te kruisen of te draaien.",
+    repetitions: "3×12 herh.",
+    loadOrTime: "Lichaamsgewicht",
+    location: "Thuis",
+    note: "Houd de heupprecauties aan: geen kruisen van de benen en niet naar binnen draaien.",
+  },
+  {
+    title: "Rechtebeen-hef liggend",
+    type: "Kracht",
+    description:
+      "Lig op je rug, het niet-geopereerde been gebogen. Til het gestrekte, geopereerde been op tot heuphoogte van het gebogen been, houd 2 seconden vast en laat langzaam zakken.",
+    repetitions: "3×10 herh.",
+    loadOrTime: "Lichaamsgewicht",
+    location: "Thuis",
+    note: "Versterkt de heupbuiger zonder de heup te overbelasten.",
+  },
+  {
+    title: "Opstaan en gaan zitten oefenen",
+    type: "Stabiliteit",
+    description:
+      "Oefen het opstaan uit een stevige stoel zonder voorover te buigen vanuit de heup. Gebruik de armleuningen en houd de rug rechtop. Ga op dezelfde manier weer zitten.",
+    repetitions: "5 tot 10 herh.",
+    loadOrTime: "n.v.t.",
+    location: "Thuis",
+    note: "Voorkomt overschrijden van de 90°-buigprecautie van de heup.",
+  },
+  {
+    title: "Lopen met looprek of rollator",
+    type: "Conditie",
+    description:
+      "Loop korte stukken met het looprek of de rollator, met een gelijkmatig looppatroon. Zet het geopereerde been zo normaal mogelijk neer. Stop bij vermoeidheid of pijn.",
+    repetitions: "meerdere keren per dag",
+    loadOrTime: "5 tot 10 minuten",
+    location: "Thuis",
+    note: "Bouw de loopafstand elke dag rustig op zoals geadviseerd door de fysiotherapeut.",
   },
 ];
 
@@ -321,7 +453,11 @@ export function getOefeningenVoorBlessure(blessureType: string): TrainingOefenin
 
   let templates: OefeningTemplate[];
 
-  if (knienBeen.includes(blessureType)) {
+  if (blessureType === "knieprothese") {
+    templates = KNIE_PROTHESE;
+  } else if (blessureType === "heupprothese") {
+    templates = HEUP_PROTHESE;
+  } else if (knienBeen.includes(blessureType)) {
     templates = KNIE_BEEN;
   } else if (schouder.includes(blessureType)) {
     templates = SCHOUDER;

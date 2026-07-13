@@ -197,6 +197,52 @@ const RUG: MijlpalenTemplate = [
   { fase: "Fase 4: Terugkeer",     title: "Terug op oud niveau" },
 ];
 
+const KNIE_PROTHESE: MijlpalenTemplate = [
+  { fase: "Fase 1: Basis", title: "Wond genezen zonder infectie" },
+  { fase: "Fase 1: Basis", title: "Pijn onder controle met medicatie" },
+  { fase: "Fase 1: Basis", title: "Zwelling onder controle" },
+  { fase: "Fase 1: Basis", title: "Volledige knie-extensie (0°) bereikt" },
+  { fase: "Fase 1: Basis", title: "90° knieflexie bereikt" },
+  { fase: "Fase 1: Basis", title: "Lopen met looprek of rollator" },
+  { fase: "Fase 1: Basis", title: "Traplopen met leuning" },
+  { fase: "Fase 2: Beweging",      title: "Lopen met kruk(ken) binnenshuis" },
+  { fase: "Fase 2: Beweging",      title: "110° knieflexie bereikt" },
+  { fase: "Fase 2: Beweging",      title: "Zelfstandig aan- en uitkleden" },
+  { fase: "Fase 2: Beweging",      title: "Fietsen op hometrainer" },
+  { fase: "Fase 2: Beweging",      title: "Autorijden hervat" },
+  { fase: "Fase 3: Kracht",        title: "120° knieflexie bereikt" },
+  { fase: "Fase 3: Kracht",        title: "Lopen zonder hulpmiddel" },
+  { fase: "Fase 3: Kracht",        title: "Quadricepskracht grotendeels hersteld" },
+  { fase: "Fase 3: Kracht",        title: "Zelfstandig traplopen zonder leuning" },
+  { fase: "Fase 3: Kracht",        title: "Wandelen > 30 minuten pijnvrij" },
+  { fase: "Fase 4: Terugkeer",     title: "Fietsen buiten mogelijk" },
+  { fase: "Fase 4: Terugkeer",     title: "Zwemmen hervat" },
+  { fase: "Fase 4: Terugkeer",     title: "Huishoudelijke taken zonder beperking" },
+  { fase: "Fase 4: Terugkeer",     title: "Terug op oud activiteitenniveau" },
+];
+
+const HEUP_PROTHESE: MijlpalenTemplate = [
+  { fase: "Fase 1: Basis", title: "Wond genezen zonder infectie" },
+  { fase: "Fase 1: Basis", title: "Pijn onder controle met medicatie" },
+  { fase: "Fase 1: Basis", title: "Heupprecauties correct toegepast" },
+  { fase: "Fase 1: Basis", title: "Zelfstandig opstaan uit bed of stoel" },
+  { fase: "Fase 1: Basis", title: "Lopen met looprek of rollator" },
+  { fase: "Fase 1: Basis", title: "Traplopen met leuning (been voor been)" },
+  { fase: "Fase 2: Beweging",      title: "Lopen met kruk(ken) binnenshuis" },
+  { fase: "Fase 2: Beweging",      title: "Zelfstandig aan- en uitkleden" },
+  { fase: "Fase 2: Beweging",      title: "Fietsen op hometrainer" },
+  { fase: "Fase 2: Beweging",      title: "Traplopen zonder leuning" },
+  { fase: "Fase 2: Beweging",      title: "Autorijden hervat" },
+  { fase: "Fase 3: Kracht",        title: "Lopen zonder hulpmiddel" },
+  { fase: "Fase 3: Kracht",        title: "Heupspierkracht grotendeels hersteld" },
+  { fase: "Fase 3: Kracht",        title: "Balans op één been (10 seconden)" },
+  { fase: "Fase 3: Kracht",        title: "Wandelen > 30 minuten pijnvrij" },
+  { fase: "Fase 4: Terugkeer",     title: "Fietsen buiten mogelijk" },
+  { fase: "Fase 4: Terugkeer",     title: "Zwemmen hervat" },
+  { fase: "Fase 4: Terugkeer",     title: "Golfen of tennissen (low-impact) hervat" },
+  { fase: "Fase 4: Terugkeer",     title: "Terug op oud activiteitenniveau" },
+];
+
 const GENERIEK: MijlpalenTemplate = [
   { fase: "Fase 1: Basis", title: "Eerste stap gezet na blessure" },
   { fase: "Fase 1: Basis", title: "Pijn bij rust controleerbaar" },
@@ -226,6 +272,8 @@ const TEMPLATES: Record<string, MijlpalenTemplate> = {
   pees:      PEES_ACHILLES,
   achilles:  PEES_ACHILLES,
   rug:       RUG,
+  knieprothese: KNIE_PROTHESE,
+  heupprothese: HEUP_PROTHESE,
   anders:    GENERIEK,
 };
 

@@ -49,6 +49,8 @@ const BLESSURE_TYPEN: Record<string, string> = {
   rug:       "Rugblessure",
   achilles:  "Achillespees blessure",
   patella:   "Gescheurde kniepees",
+  knieprothese: "Knieprothese",
+  heupprothese: "Heupprothese",
   anders:    "Blessure",
 };
 

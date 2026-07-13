@@ -47,7 +47,8 @@ const BLESSURE_LABELS: Record<string, string> = {
   acl: "ACL blessure", meniscus: "meniscus blessure", enkel: "enkelverstuiking",
   spier: "spierverrekking", hamstring: "hamstring blessure", schouder: "schouderblessure",
   knieband: "knieband blessure", pees: "peesontsteking", rug: "rugblessure",
-  achilles: "achillespees blessure", patella: "kniepees blessure", anders: "blessure",
+  achilles: "achillespees blessure", patella: "kniepees blessure",
+  knieprothese: "knieprothese", heupprothese: "heupprothese", anders: "blessure",
 };
 
 function blessureLabel(type: string, anders: string) {
