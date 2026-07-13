@@ -380,7 +380,7 @@ function SchemaFormModal({
       <div className="p-4 sm:p-6 space-y-4">
         <div>
           <FieldLabel>Naam *</FieldLabel>
-          <TextInput value={form.title} onChange={(v) => set("title", v)} placeholder="Bijv. Dagelijks schema — Fase 2" />
+          <TextInput value={form.title} onChange={(v) => set("title", v)} placeholder="Bijv. Dagelijks schema: Fase 2" />
           {submitted && !form.title.trim() && <p className="text-xs text-red-400 mt-1">Vul een naam in</p>}
         </div>
 

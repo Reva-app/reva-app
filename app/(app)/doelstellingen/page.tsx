@@ -29,7 +29,7 @@ function formatDate(str: string): string {
 }
 
 const ICON_OPTIONS = ["🏃", "🚴", "💪", "🏋️", "⚽", "🎯", "🧘", "🏊", "🚶", "🦵", "🏆", "✨"];
-const FASE_OPTIONS = ["Fase 1 – Basis", "Fase 2 – Beweging", "Fase 3 – Kracht", "Fase 4 – Terugkeer"];
+const FASE_OPTIONS = ["Fase 1: Basis", "Fase 2: Beweging", "Fase 3: Kracht", "Fase 4: Terugkeer"];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -806,7 +806,7 @@ export default function DoelstellingenPage() {
 
   // ── Milestone grouping ────────────────────────────────────────────────────
 
-  const faseOrder = ["Fase 1 – Basis", "Fase 2 – Beweging", "Fase 3 – Kracht", "Fase 4 – Terugkeer"];
+  const faseOrder = ["Fase 1: Basis", "Fase 2: Beweging", "Fase 3: Kracht", "Fase 4: Terugkeer"];
   const groupedMijlpalen = faseOrder.reduce<Record<string, Mijlpaal[]>>((acc, fase) => {
     acc[fase] = mijlpalen.filter((m) => m.fase === fase);
     return acc;
@@ -967,7 +967,7 @@ export default function DoelstellingenPage() {
             <div className="rounded-2xl border px-4 py-3 flex items-center gap-2.5"
               style={{ background: "#fff3ee", borderColor: "#fde3d5" }}>
               <Trophy size={15} style={{ color: "#e8632a" }} />
-              <p className="text-sm" style={{ color: "#e8632a" }}>Je eerste mijlpaal komt eraan — zet hem neer!</p>
+              <p className="text-sm" style={{ color: "#e8632a" }}>Je eerste mijlpaal komt eraan: zet hem neer!</p>
             </div>
           )}
 

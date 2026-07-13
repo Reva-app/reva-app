@@ -220,7 +220,7 @@ export function QuickActionFAB() {
       time: data.tijdstip,
       naam: effectiefNaam,
       dosering: data.dosering.trim(),
-      hoeveelheid: data.hoeveelheid.trim() || "—",
+      hoeveelheid: data.hoeveelheid.trim() || "n.v.t.",
       reden: data.reden.trim(),
       notitie: data.notitie.trim() || undefined,
     };

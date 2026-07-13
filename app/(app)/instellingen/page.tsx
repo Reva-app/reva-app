@@ -18,6 +18,7 @@ import { getOefeningenVoorBlessure } from "@/lib/trainingTemplates";
 import { apiUrl } from "@/lib/apiBase";
 import { useUserPlan } from "@/lib/hooks/useUserPlan";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
+import { SUBSCRIPTIONS_ENABLED } from "@/lib/subscription";
 import { Zap, CheckCircle } from "lucide-react";
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -151,7 +152,7 @@ function AccountVerwijderenModal({ onClose, onConfirm, loading }: {
               Account permanent verwijderen
             </h2>
             <p className="text-sm leading-relaxed mb-5" style={{ color: "#6b6560" }}>
-              Dit verwijdert <strong style={{ color: "#1a1a1a" }}>alle</strong> gegevens die aan jouw account zijn gekoppeld — inclusief:
+              Dit verwijdert <strong style={{ color: "#1a1a1a" }}>alle</strong> gegevens die aan jouw account zijn gekoppeld, inclusief:
             </p>
 
             <ul className="space-y-2 mb-6">
@@ -429,7 +430,7 @@ export default function InstellingenPage() {
     }
 
     if (shouldSeedMijlpalen || shouldSeedOefeningen) {
-      showToast("Herstelgegevens opgeslagen — oefeningen en mijlpalen aangemaakt");
+      showToast("Herstelgegevens opgeslagen: oefeningen en mijlpalen aangemaakt");
     } else {
       showToast("Herstelgegevens opgeslagen");
     }
@@ -479,7 +480,7 @@ export default function InstellingenPage() {
       setFbOnderwerp("");
       setFbBericht("");
       setFbCategorie("");
-      showToast("Feedback verstuurd — bedankt!");
+      showToast("Feedback verstuurd. Bedankt!");
     } catch (err) {
       showToast("Versturen mislukt: " + (err instanceof Error ? err.message : "netwerkfout"), "error");
     } finally {
@@ -589,7 +590,7 @@ export default function InstellingenPage() {
           </div>
           <div>
             <p className="text-sm font-semibold" style={{ color: "#1a1a1a" }}>
-              Welkom bij REVA — vul eerst je blessuregegevens in
+              Welkom bij REVA. Vul eerst je blessuregegevens in
             </p>
             <p className="text-sm mt-1 leading-relaxed" style={{ color: "#6b6560" }}>
               Zodat jouw dashboard en voortgang persoonlijk worden ingericht, vragen we je om hieronder je herstelgegevens in te vullen. Dit duurt slechts een minuut en helpt REVA direct waardevolle inzichten te geven.
@@ -885,7 +886,8 @@ export default function InstellingenPage() {
         </div>
       </Card>
 
-      {/* ── 3. Abonnement ─────────────────────────────────────────────── */}
+      {/* ── 3. Abonnement (verborgen — app is voorlopig volledig gratis) ── */}
+      {SUBSCRIPTIONS_ENABLED && (
       <Card>
         <CardHeader
           title="Abonnement"
@@ -925,7 +927,7 @@ export default function InstellingenPage() {
                 {planInfo.plan === "premium" && "Volledige toegang tot alle functies"}
                 {planInfo.plan === "trial" && (
                   planInfo.trialLastDay
-                    ? "Laatste dag — upgrade vandaag nog"
+                    ? "Laatste dag: upgrade vandaag nog"
                     : `Nog ${planInfo.trialDaysLeft} ${planInfo.trialDaysLeft === 1 ? "dag" : "dagen"} gratis Premium`
                 )}
                 {planInfo.plan === "free" && (
@@ -983,8 +985,9 @@ export default function InstellingenPage() {
           )}
         </div>
       </Card>
+      )}
 
-      {showUpgradeModal && (
+      {SUBSCRIPTIONS_ENABLED && showUpgradeModal && (
         <UpgradeModal onClose={() => setShowUpgradeModal(false)} />
       )}
 

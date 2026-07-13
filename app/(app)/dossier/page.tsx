@@ -358,7 +358,7 @@ function FotoModal({ userId, onClose, onSave }: {
               </button>
             </div>
 
-            <p className="text-[11px] text-center" style={{ color: "#c4bfb9" }}>JPG, PNG, HEIC — max 10 MB</p>
+            <p className="text-[11px] text-center" style={{ color: "#c4bfb9" }}>JPG, PNG, HEIC, max 10 MB</p>
           </div>
         )}
 

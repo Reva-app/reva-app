@@ -111,7 +111,7 @@ export function TopBar() {
       time:        nowTimeStr(),
       naam:        notification.relatedMedication ?? "",
       dosering:    schema?.dosering ?? "",
-      hoeveelheid: schema?.hoeveelheid || "—",
+      hoeveelheid: schema?.hoeveelheid || "n.v.t.",
       reden:       "Volgens het schema",
       notitie:     schema?.notitie || undefined,
     };
@@ -129,7 +129,7 @@ export function TopBar() {
       datum:       todayStr(),
       tijdstip:    notification.scheduledAt ?? nowTimeStr(),
       dosering:    schema?.dosering ?? "",
-      hoeveelheid: schema?.hoeveelheid && schema.hoeveelheid !== "—" ? schema.hoeveelheid : "",
+      hoeveelheid: schema?.hoeveelheid && schema.hoeveelheid !== "n.v.t." ? schema.hoeveelheid : "",
       reden:       "Volgens het schema",
       notitie:     schema?.notitie ?? "",
     };
@@ -149,7 +149,7 @@ export function TopBar() {
       time:        data.tijdstip,
       naam:        effectiefNaam,
       dosering:    data.dosering.trim(),
-      hoeveelheid: data.hoeveelheid.trim() || "—",
+      hoeveelheid: data.hoeveelheid.trim() || "n.v.t.",
       reden:       data.reden.trim(),
       notitie:     data.notitie.trim() || undefined,
     };

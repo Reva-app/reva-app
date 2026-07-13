@@ -129,7 +129,7 @@ export function Sidebar() {
               {displayNaam}
             </p>
             <p className="text-[11px] truncate" style={{ color: "#52525e" }}>
-              {hydrated ? `Dag ${dagsSindsBlessure} — ${fase.split(" — ")[0]}` : user?.email ?? ""}
+              {hydrated ? `Dag ${dagsSindsBlessure}: ${fase.split(": ")[0]}` : user?.email ?? ""}
             </p>
           </div>
           <button

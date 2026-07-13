@@ -94,7 +94,7 @@ function HerstelTrendLijn({ checkIns }: { checkIns: CheckIn[] }) {
         <div className="flex items-center justify-between mb-4">
           <div>
             <p className="text-base font-semibold text-gray-900">Hersteltrend</p>
-            <p className="text-xs text-gray-400 mt-0.5">Dagscore — laatste 14 dagen</p>
+            <p className="text-xs text-gray-400 mt-0.5">Dagscore van de laatste 14 dagen</p>
           </div>
         </div>
         <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -134,7 +134,7 @@ function HerstelTrendLijn({ checkIns }: { checkIns: CheckIn[] }) {
       <div className="flex items-center justify-between mb-4">
         <div>
           <p className="text-base font-semibold text-gray-900">Hersteltrend</p>
-          <p className="text-xs text-gray-400 mt-0.5">Dagscore — laatste {recent.length} check-ins</p>
+          <p className="text-xs text-gray-400 mt-0.5">Dagscore van de laatste {recent.length} check-ins</p>
         </div>
         {avg !== null && (
           <div className="text-right">
@@ -578,7 +578,7 @@ export default function CheckInPage() {
         {new Date(selectedDate + "T12:00:00").toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" })}
       </p>
       <p className="text-sm text-gray-400 mt-0.5">
-        Dagscore {dagscore}/5 — {dagscoreLabels[dagscore]}
+        Dagscore {dagscore}/5: {dagscoreLabels[dagscore]}
       </p>
       <Button variant="secondary" size="sm" className="mt-5" onClick={reset}>
         Nieuwe check-in
@@ -630,7 +630,7 @@ export default function CheckInPage() {
         <div className="px-6 pt-5 pb-5 border-b" style={{ borderColor: "#f0ede8" }}>
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">Details</p>
           <p className="text-sm text-gray-500 mb-4">
-            {fullCheckIn ? "Optioneel — vul in wat relevant is" : "Beschikbaar met Premium"}
+            {fullCheckIn ? "Optioneel: vul in wat relevant is" : "Beschikbaar met Premium"}
           </p>
           <div className="space-y-5">
             <ScoreSelector label="Dagscore" value={dagscore} max={5} onChange={setDagscore} color="#e8632a" />
@@ -721,7 +721,7 @@ export default function CheckInPage() {
                   {new Date(selectedDate + "T12:00:00").toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" })}
                 </p>
                 <p className="text-sm text-gray-400 mt-0.5">
-                  Dagscore {dagscore}/5 — {dagscoreLabels[dagscore]}
+                  Dagscore {dagscore}/5: {dagscoreLabels[dagscore]}
                 </p>
                 <Button variant="secondary" size="sm" className="mt-5" onClick={reset}>
                   Nieuwe check-in
@@ -734,7 +734,7 @@ export default function CheckInPage() {
                   <div className="flex items-center justify-between rounded-xl px-4 py-3"
                     style={{ background: "#fff8f5", border: "1px solid #fcd9c8" }}>
                     <p className="text-xs font-medium" style={{ color: "#e8632a" }}>
-                      Check-in bewerken —{" "}
+                      Check-in bewerken voor{" "}
                       {new Date(selectedDate + "T12:00:00").toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" })}
                     </p>
                     <button onClick={reset} className="text-xs underline underline-offset-2" style={{ color: "#e8632a" }}>
@@ -746,7 +746,7 @@ export default function CheckInPage() {
                 {/* Uitleg — matches CheckInModal */}
                 {!editingId && (
                   <p className="text-xs text-gray-400 leading-relaxed px-1">
-                    Vul in hoe je dag was. Bij alle scores geldt: <strong className="text-gray-500">1 is laag</strong> en de hoogste waarde is het beste — behalve bij pijn, waar lager beter is.
+                    Vul in hoe je dag was. Bij alle scores geldt: <strong className="text-gray-500">1 is laag</strong> en de hoogste waarde is het beste, behalve bij pijn, waar lager beter is.
                   </p>
                 )}
 

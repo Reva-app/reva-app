@@ -241,7 +241,7 @@ export const mockProfile: Profile = {
   zorgverzekeraar: "vgz",
   zorgverzekeraaarAnders: "",
   polisnummer: "VGZ-2294-8831-AA",
-  aanvullendeVerzekeringen: ["Aanvullend 2 — Fysiotherapie", "Tand — Basis"],
+  aanvullendeVerzekeringen: ["Aanvullend 2: Fysiotherapie", "Tand: Basis"],
   aantalFysio: "18",
   trialStartDate: "",
   trialEndDate: "",
@@ -258,7 +258,7 @@ export const mockPatient = {
   naam: "Thomas de Vries",
   blessureDatum: "2026-02-15",
   operatieDatum: "2026-02-22",
-  herstelFase: "Fase 2 — Vroeg herstel",
+  herstelFase: "Fase 2: Vroeg herstel",
   dagsSindsBlessure: 42,
   dagsSindsOperatie: 35,
 };
@@ -266,7 +266,7 @@ export const mockPatient = {
 export const mockAppointments: Appointment[] = [
   {
     id: "1",
-    title: "Nacontrole knie — Dr. Bakker",
+    title: "Nacontrole knie bij Dr. Bakker",
     type: "nacontrole",
     date: "2026-04-03",
     time: "10:30",
@@ -279,7 +279,7 @@ export const mockAppointments: Appointment[] = [
   },
   {
     id: "2",
-    title: "Fysiotherapie — sessie 8",
+    title: "Fysiotherapie: sessie 8",
     type: "fysio",
     date: "2026-03-31",
     time: "09:00",
@@ -301,7 +301,7 @@ export const mockAppointments: Appointment[] = [
   },
   {
     id: "4",
-    title: "Fysiotherapie — sessie 9",
+    title: "Fysiotherapie: sessie 9",
     type: "fysio",
     date: "2026-04-07",
     time: "09:00",
@@ -382,7 +382,7 @@ export const mockTimeline: TimelineEvent[] = [
   {
     id: "9",
     date: "2026-03-10",
-    title: "Fysiotherapie — sessie 3",
+    title: "Fysiotherapie: sessie 3",
     description: "Goed herstel. Flexie 95 graden. Begonnen met lichte krachttraining.",
     type: "fysio",
   },
@@ -396,7 +396,7 @@ export const mockTimeline: TimelineEvent[] = [
   {
     id: "11",
     date: "2026-03-20",
-    title: "Check-in — dagscore 4/5",
+    title: "Check-in: dagscore 4/5",
     description: "Goede dag. Weinig pijn, goed geslapen. Oefeningen gedaan.",
     type: "checkin",
   },
@@ -410,7 +410,7 @@ export const mockTimeline: TimelineEvent[] = [
   {
     id: "13",
     date: "2026-03-28",
-    title: "Fysiotherapie — sessie 7",
+    title: "Fysiotherapie: sessie 7",
     description: "Krachtscore verbeterd. Quad 70% van links. Schema uitgebreid.",
     type: "fysio",
   },
@@ -480,7 +480,7 @@ export const mockDiagnoses: Diagnose[] = [
     naam: "Contusie laterale femurcondyl",
     datumVastgesteld: "2026-02-19",
     vastgesteldDoor: "Dr. M. Bakker, Orthopeed",
-    toelichting: "Lichte botkneuzing zijkant dijbeen. Verwacht spontaan herstel binnen 6–8 weken.",
+    toelichting: "Lichte botkneuzing zijkant dijbeen. Verwacht spontaan herstel binnen 6 tot 8 weken.",
     status: "afgerond",
   },
 ];
@@ -560,7 +560,7 @@ export const mockFotoUpdates: FotoUpdate[] = [
   { id: "fu5", date: "2026-03-15", notitie: "Eerste week na ontslag ziekenhuis. Nog wat zwelling zichtbaar." },
   { id: "fu6", date: "2026-03-14", notitie: "Voorzijde knie na 3 weken herstel." },
   { id: "fu7", date: "2026-03-08", notitie: "Net terug uit het ziekenhuis. Begin herstel." },
-  { id: "fu8", date: "2026-03-03", notitie: "Dag voor de operatie — referentiefoto." },
+  { id: "fu8", date: "2026-03-03", notitie: "Dag voor de operatie: referentiefoto." },
 ];
 
 export const mockContactpersonen: Contactpersoon[] = [
@@ -827,7 +827,7 @@ export type DagboekWorkout = TrainingLog;
 export const mockTrainingSchemas: TrainingSchema[] = [
   {
     id: "ts-1",
-    title: "Dagelijks schema — Fase 2",
+    title: "Dagelijks schema: Fase 2",
     status: "actief",
     duration: "45 minuten",
     exerciseIds: ["toe-1", "toe-3", "toe-4"],
@@ -836,7 +836,7 @@ export const mockTrainingSchemas: TrainingSchema[] = [
   },
   {
     id: "ts-2",
-    title: "Krachttraining — Fase 2",
+    title: "Krachttraining: Fase 2",
     status: "actief",
     duration: "30 minuten",
     exerciseIds: ["toe-1", "toe-2"],
@@ -845,7 +845,7 @@ export const mockTrainingSchemas: TrainingSchema[] = [
   },
   {
     id: "ts-3",
-    title: "Progressief schema — Fase 3",
+    title: "Progressief schema: Fase 3",
     status: "gepland",
     duration: "45 minuten",
     exerciseIds: ["toe-5"],
@@ -854,7 +854,7 @@ export const mockTrainingSchemas: TrainingSchema[] = [
   },
   {
     id: "ts-4",
-    title: "Vroeg postoperatief — Fase 1",
+    title: "Vroeg postoperatief: Fase 1",
     status: "afgerond",
     duration: "15 minuten",
     exerciseIds: ["toe-6"],
@@ -864,13 +864,13 @@ export const mockTrainingSchemas: TrainingSchema[] = [
 ];
 
 export const mockTrainingLogs: TrainingLog[] = [
-  { id: "tl-1", schemaId: "ts-1", title: "Dagelijks schema — Fase 2", date: "2026-03-24", completed: true,  completedAt: "2026-03-24T18:30:00Z", completedExerciseIds: ["toe-1", "toe-3", "toe-4"], note: "", createdAt: "2026-03-24T18:00:00Z" },
-  { id: "tl-2", schemaId: "ts-2", title: "Krachttraining — Fase 2",   date: "2026-03-24", completed: true,  completedAt: "2026-03-24T19:30:00Z", completedExerciseIds: ["toe-1", "toe-2"],            note: "", createdAt: "2026-03-24T19:00:00Z" },
-  { id: "tl-3", schemaId: "ts-1", title: "Dagelijks schema — Fase 2", date: "2026-03-25", completed: true,  completedAt: "2026-03-25T18:30:00Z", completedExerciseIds: ["toe-1", "toe-3", "toe-4"], note: "Goede sessie, minder pijn.", reflection: "Ging goed, minder pijn dan vorige keer.", createdAt: "2026-03-25T18:00:00Z" },
-  { id: "tl-4", schemaId: "ts-1", title: "Dagelijks schema — Fase 2", date: "2026-03-27", completed: true,  completedAt: "2026-03-27T18:00:00Z", completedExerciseIds: ["toe-1", "toe-3"],            note: "", createdAt: "2026-03-27T17:30:00Z" },
-  { id: "tl-5", schemaId: "ts-2", title: "Krachttraining — Fase 2",   date: "2026-03-28", completed: true,  completedAt: "2026-03-28T10:30:00Z", completedExerciseIds: ["toe-1", "toe-2"],            note: "", createdAt: "2026-03-28T10:00:00Z" },
-  { id: "tl-6", schemaId: "ts-1", title: "Dagelijks schema — Fase 2", date: "2026-03-29", completed: true,  completedAt: "2026-03-29T19:00:00Z", completedExerciseIds: ["toe-1", "toe-3", "toe-4"], note: "", createdAt: "2026-03-29T18:30:00Z" },
-  { id: "tl-7", schemaId: "ts-1", title: "Dagelijks schema — Fase 2", date: "2026-04-02", completed: false, createdAt: "2026-03-31T20:00:00Z" },
+  { id: "tl-1", schemaId: "ts-1", title: "Dagelijks schema: Fase 2", date: "2026-03-24", completed: true,  completedAt: "2026-03-24T18:30:00Z", completedExerciseIds: ["toe-1", "toe-3", "toe-4"], note: "", createdAt: "2026-03-24T18:00:00Z" },
+  { id: "tl-2", schemaId: "ts-2", title: "Krachttraining: Fase 2",   date: "2026-03-24", completed: true,  completedAt: "2026-03-24T19:30:00Z", completedExerciseIds: ["toe-1", "toe-2"],            note: "", createdAt: "2026-03-24T19:00:00Z" },
+  { id: "tl-3", schemaId: "ts-1", title: "Dagelijks schema: Fase 2", date: "2026-03-25", completed: true,  completedAt: "2026-03-25T18:30:00Z", completedExerciseIds: ["toe-1", "toe-3", "toe-4"], note: "Goede sessie, minder pijn.", reflection: "Ging goed, minder pijn dan vorige keer.", createdAt: "2026-03-25T18:00:00Z" },
+  { id: "tl-4", schemaId: "ts-1", title: "Dagelijks schema: Fase 2", date: "2026-03-27", completed: true,  completedAt: "2026-03-27T18:00:00Z", completedExerciseIds: ["toe-1", "toe-3"],            note: "", createdAt: "2026-03-27T17:30:00Z" },
+  { id: "tl-5", schemaId: "ts-2", title: "Krachttraining: Fase 2",   date: "2026-03-28", completed: true,  completedAt: "2026-03-28T10:30:00Z", completedExerciseIds: ["toe-1", "toe-2"],            note: "", createdAt: "2026-03-28T10:00:00Z" },
+  { id: "tl-6", schemaId: "ts-1", title: "Dagelijks schema: Fase 2", date: "2026-03-29", completed: true,  completedAt: "2026-03-29T19:00:00Z", completedExerciseIds: ["toe-1", "toe-3", "toe-4"], note: "", createdAt: "2026-03-29T18:30:00Z" },
+  { id: "tl-7", schemaId: "ts-1", title: "Dagelijks schema: Fase 2", date: "2026-04-02", completed: false, createdAt: "2026-03-31T20:00:00Z" },
   { id: "tl-8", schemaId: "ts-2", title: "Krachttraining bovenbeen",  date: "2026-04-07", completed: false, createdAt: "2026-04-01T20:00:00Z" },
 ];
 
@@ -913,29 +913,29 @@ export const mockDoelen: Doel[] = [
 ];
 
 export const mockMijlpalen: Mijlpaal[] = [
-  // Fase 1 – Basis
-  { id: "mp-1",  fase: "Fase 1 – Basis",    title: "Eerste stappen met krukken",       completed: true,  completedAt: "2026-02-24", createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-24T12:00:00Z" },
-  { id: "mp-2",  fase: "Fase 1 – Basis",    title: "Eerste stappen zonder krukken",    completed: true,  completedAt: "2026-03-05", createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-03-05T14:00:00Z" },
-  { id: "mp-3",  fase: "Fase 1 – Basis",    title: "10 minuten lopen",                 completed: true,  completedAt: "2026-03-12", reflectionText: "Voelde goed, lichte spanning maar geen pijn.", painScore: 2, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-03-12T10:00:00Z" },
-  { id: "mp-4",  fase: "Fase 1 – Basis",    title: "30 minuten lopen",                 completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
-  { id: "mp-5",  fase: "Fase 1 – Basis",    title: "Traplopen met hulp",               completed: true,  completedAt: "2026-03-08", createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-03-08T09:00:00Z" },
-  { id: "mp-6",  fase: "Fase 1 – Basis",    title: "Traplopen zelfstandig",            completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
-  // Fase 2 – Beweging
-  { id: "mp-7",  fase: "Fase 2 – Beweging", title: "Eerste fietstocht binnen",         completed: true,  completedAt: "2026-03-18", reflectionText: "Erg blij dat dit lukte!", createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-03-18T11:00:00Z" },
-  { id: "mp-8",  fase: "Fase 2 – Beweging", title: "Eerste fietstocht buiten",         completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
-  { id: "mp-9",  fase: "Fase 2 – Beweging", title: "30 minuten fietsen",               completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
-  { id: "mp-10", fase: "Fase 2 – Beweging", title: "Balans op één been",               completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
-  { id: "mp-11", fase: "Fase 2 – Beweging", title: "Squat zonder pijn",                completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
-  // Fase 3 – Kracht
-  { id: "mp-12", fase: "Fase 3 – Kracht",   title: "60% kracht t.o.v. andere kant",   completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
-  { id: "mp-13", fase: "Fase 3 – Kracht",   title: "80% kracht t.o.v. andere kant",   completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
-  { id: "mp-14", fase: "Fase 3 – Kracht",   title: "Volledige mobiliteit",             completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
-  { id: "mp-15", fase: "Fase 3 – Kracht",   title: "Geen pijn bij dagelijkse beweging",completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
-  // Fase 4 – Terugkeer
-  { id: "mp-16", fase: "Fase 4 – Terugkeer",title: "Eerste lichte sportactiviteit",    completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
-  { id: "mp-17", fase: "Fase 4 – Terugkeer",title: "Eerste volledige training",        completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
-  { id: "mp-18", fase: "Fase 4 – Terugkeer",title: "Eerste wedstrijd of intensieve sessie", completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
-  { id: "mp-19", fase: "Fase 4 – Terugkeer",title: "Terug op oud niveau",              completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
+  // Fase 1: Basis
+  { id: "mp-1",  fase: "Fase 1: Basis",    title: "Eerste stappen met krukken",       completed: true,  completedAt: "2026-02-24", createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-24T12:00:00Z" },
+  { id: "mp-2",  fase: "Fase 1: Basis",    title: "Eerste stappen zonder krukken",    completed: true,  completedAt: "2026-03-05", createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-03-05T14:00:00Z" },
+  { id: "mp-3",  fase: "Fase 1: Basis",    title: "10 minuten lopen",                 completed: true,  completedAt: "2026-03-12", reflectionText: "Voelde goed, lichte spanning maar geen pijn.", painScore: 2, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-03-12T10:00:00Z" },
+  { id: "mp-4",  fase: "Fase 1: Basis",    title: "30 minuten lopen",                 completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
+  { id: "mp-5",  fase: "Fase 1: Basis",    title: "Traplopen met hulp",               completed: true,  completedAt: "2026-03-08", createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-03-08T09:00:00Z" },
+  { id: "mp-6",  fase: "Fase 1: Basis",    title: "Traplopen zelfstandig",            completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
+  // Fase 2: Beweging
+  { id: "mp-7",  fase: "Fase 2: Beweging", title: "Eerste fietstocht binnen",         completed: true,  completedAt: "2026-03-18", reflectionText: "Erg blij dat dit lukte!", createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-03-18T11:00:00Z" },
+  { id: "mp-8",  fase: "Fase 2: Beweging", title: "Eerste fietstocht buiten",         completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
+  { id: "mp-9",  fase: "Fase 2: Beweging", title: "30 minuten fietsen",               completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
+  { id: "mp-10", fase: "Fase 2: Beweging", title: "Balans op één been",               completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
+  { id: "mp-11", fase: "Fase 2: Beweging", title: "Squat zonder pijn",                completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
+  // Fase 3: Kracht
+  { id: "mp-12", fase: "Fase 3: Kracht",   title: "60% kracht t.o.v. andere kant",   completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
+  { id: "mp-13", fase: "Fase 3: Kracht",   title: "80% kracht t.o.v. andere kant",   completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
+  { id: "mp-14", fase: "Fase 3: Kracht",   title: "Volledige mobiliteit",             completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
+  { id: "mp-15", fase: "Fase 3: Kracht",   title: "Geen pijn bij dagelijkse beweging",completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
+  // Fase 4: Terugkeer
+  { id: "mp-16", fase: "Fase 4: Terugkeer",title: "Eerste lichte sportactiviteit",    completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
+  { id: "mp-17", fase: "Fase 4: Terugkeer",title: "Eerste volledige training",        completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
+  { id: "mp-18", fase: "Fase 4: Terugkeer",title: "Eerste wedstrijd of intensieve sessie", completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
+  { id: "mp-19", fase: "Fase 4: Terugkeer",title: "Terug op oud niveau",              completed: false, createdAt: "2026-02-22T10:00:00Z", updatedAt: "2026-02-22T10:00:00Z" },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

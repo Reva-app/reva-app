@@ -88,7 +88,7 @@ function contextMotivatie(score: number | null, trend: Trend, checkInVandaag: bo
     }
     if (score >= 4) {
       if (trend === "stijgend") return "Je herstel laat duidelijk vooruitgang zien. Ga zo door.";
-      if (trainedToday) return "Sterk bezig. Training én een goede score — dat is herstel.";
+      if (trainedToday) return "Sterk bezig. Training én een goede score: dat is herstel.";
       return "Sterk bezig. Je herstel zit duidelijk in een goede flow.";
     }
   }
@@ -325,7 +325,7 @@ function TrainingQuickModal({ onClose, addDagboekWorkout, trainingSchemas, today
       <div>
         <FormLabel>Trainingsschema (optioneel)</FormLabel>
         <FormSelect value={schemaId} onChange={setSchemaId}>
-          <option value="">— Geen schema —</option>
+          <option value="">Geen schema</option>
           {trainingSchemas.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
         </FormSelect>
       </div>
@@ -665,7 +665,7 @@ export default function Dashboard() {
   checkIns.slice(0, 5).forEach(c => activity.push({
     id: `ci-${c.id}`, date: c.date, sortKey: c.date + "T23:59",
     icon: ClipboardCheck, iconColor: "#e8632a", iconBg: "#fff3ee",
-    title: "Check-in", sub: `Dagscore ${c.dagscore}/5 — ${SCORE_LABELS[c.dagscore] ?? ""}`, href: "/check-in",
+    title: "Check-in", sub: `Dagscore ${c.dagscore}/5: ${SCORE_LABELS[c.dagscore] ?? ""}`, href: "/check-in",
   }));
   appointments.slice(0, 5).forEach(a => activity.push({
     id: `apt-${a.id}`, date: a.date, sortKey: `${a.date}T${a.time}`,
@@ -849,7 +849,7 @@ export default function Dashboard() {
                     {avgScore.toFixed(1)}<span className="text-xs font-normal ml-0.5 text-gray-400">/5</span>
                   </p>
                 ) : (
-                  <p className="text-lg font-bold leading-none text-gray-300">—</p>
+                  <p className="text-lg font-bold leading-none text-gray-300">n.v.t.</p>
                 )}
               </div>
               <div className="flex items-center justify-between">
@@ -1227,7 +1227,7 @@ export default function Dashboard() {
               <div className="grid grid-cols-4 gap-3 mb-3">
                 <div>
                   <p className="text-base font-bold leading-none text-gray-900">
-                    {coachInsights.weekly.avgScore !== null ? coachInsights.weekly.avgScore.toFixed(1) : "—"}
+                    {coachInsights.weekly.avgScore !== null ? coachInsights.weekly.avgScore.toFixed(1) : "n.v.t."}
                   </p>
                   <p className="text-[10px] text-gray-400 mt-0.5">gem. score</p>
                 </div>
@@ -1267,7 +1267,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <div>
                 <h3 className="text-sm font-semibold text-gray-900">Hersteltrend</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Dagscore — laatste 14 check-ins</p>
+                <p className="text-xs text-gray-400 mt-0.5">Dagscore van de laatste 14 check-ins</p>
               </div>
               {avgScore !== null && (
                 <div className="text-right">
@@ -1625,7 +1625,7 @@ export default function Dashboard() {
               time: data.tijdstip,
               naam: effectiefNaam,
               dosering: data.dosering.trim(),
-              hoeveelheid: data.hoeveelheid.trim() || "—",
+              hoeveelheid: data.hoeveelheid.trim() || "n.v.t.",
               reden: data.reden.trim(),
               notitie: data.notitie.trim() || undefined,
             });

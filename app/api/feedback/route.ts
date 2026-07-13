@@ -22,7 +22,7 @@ export async function POST(request: Request) {
       from: "REVA Feedback <feedback@reva-app.nl>",
       to: "info@reva-app.nl",
       replyTo: email || undefined,
-      subject: `[Feedback] ${categorie ? `${categorie} — ` : ""}${onderwerp}`,
+      subject: `[Feedback] ${categorie ? `${categorie}: ` : ""}${onderwerp}`,
       html: `
         <div style="font-family: sans-serif; max-width: 560px; color: #1a1a1a;">
           <h2 style="margin: 0 0 16px; font-size: 20px;">Nieuw feedbackbericht via REVA</h2>

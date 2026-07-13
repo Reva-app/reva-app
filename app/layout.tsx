@@ -9,7 +9,7 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "REVA — Herstel Dashboard",
+  title: "REVA: Herstel Dashboard",
   description: "Jouw persoonlijk herstel dashboard",
   applicationName: "REVA",
   appleWebApp: {

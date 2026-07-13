@@ -70,11 +70,11 @@ function dagsSinds(dateStr: string): number {
 }
 
 function herstelFase(dagsSindsOperatie: number): string {
-  if (dagsSindsOperatie <= 14) return "Fase 1 — Vroeg postoperatief";
-  if (dagsSindsOperatie <= 42) return "Fase 2 — Vroeg herstel";
-  if (dagsSindsOperatie <= 90) return "Fase 3 — Functioneel herstel";
-  if (dagsSindsOperatie <= 180) return "Fase 4 — Sportspecifiek";
-  return "Fase 5 — Terugkeer naar sport";
+  if (dagsSindsOperatie <= 14) return "Fase 1: Vroeg postoperatief";
+  if (dagsSindsOperatie <= 42) return "Fase 2: Vroeg herstel";
+  if (dagsSindsOperatie <= 90) return "Fase 3: Functioneel herstel";
+  if (dagsSindsOperatie <= 180) return "Fase 4: Sportspecifiek";
+  return "Fase 5: Terugkeer naar sport";
 }
 
 // localStorage helpers (kept for migration reading only)

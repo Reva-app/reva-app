@@ -365,7 +365,7 @@ function LogItem({
           </div>
           <p className="text-xs text-gray-500 mt-0.5">
             {med.dosering}
-            {med.hoeveelheid && med.hoeveelheid !== "—" ? ` · ${med.hoeveelheid}` : ""}
+            {med.hoeveelheid && med.hoeveelheid !== "n.v.t." ? ` · ${med.hoeveelheid}` : ""}
             {" · "}{med.reden}
           </p>
           {med.notitie && <p className="text-xs text-gray-400 mt-1 italic">{med.notitie}</p>}
@@ -509,7 +509,7 @@ export default function MedicatiePage() {
         date: data.datum,
         time: data.tijdstip,
         dosering: data.dosering.trim(),
-        hoeveelheid: data.hoeveelheid.trim() || "—",
+        hoeveelheid: data.hoeveelheid.trim() || "n.v.t.",
         reden: data.reden.trim(),
         notitie: data.notitie.trim() || undefined,
       });
@@ -520,7 +520,7 @@ export default function MedicatiePage() {
         date: data.datum,
         time: data.tijdstip,
         dosering: data.dosering.trim(),
-        hoeveelheid: data.hoeveelheid.trim() || "—",
+        hoeveelheid: data.hoeveelheid.trim() || "n.v.t.",
         reden: data.reden.trim(),
         notitie: data.notitie.trim() || undefined,
       });
@@ -536,7 +536,7 @@ export default function MedicatiePage() {
           datum: modalItem.date,
           tijdstip: modalItem.time,
           dosering: modalItem.dosering,
-          hoeveelheid: modalItem.hoeveelheid !== "—" ? modalItem.hoeveelheid : "",
+          hoeveelheid: modalItem.hoeveelheid !== "n.v.t." ? modalItem.hoeveelheid : "",
           reden: modalItem.reden,
           notitie: modalItem.notitie ?? "",
         }

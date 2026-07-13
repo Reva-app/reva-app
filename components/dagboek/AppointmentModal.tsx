@@ -177,7 +177,7 @@ export function AppointmentModal({
       <div>
         <FieldLabel optional>Behandelaar</FieldLabel>
         <FormSelect value={behandelaarSelect} onChange={setBehandelaarSelect}>
-          <option value="">— Geen behandelaar —</option>
+          <option value="">Geen behandelaar</option>
           {contactpersonen.map((c) => (
             <option key={c.id} value={c.naam}>{c.naam}</option>
           ))}

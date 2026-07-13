@@ -126,27 +126,27 @@ function buildDailyInsight(input: CoachInput, today: string, weekDays: string[])
       return `Je check-in score van vandaag is ${todayCheckIn.dagscore}/5 en de trend is duidelijk stijgend. Je herstel zit in een goede flow.`;
     }
     if (todayCheckIn.dagscore >= 4) {
-      return `Je check-in score van vandaag is ${todayCheckIn.dagscore}/5 — dat is goed. Blijf dit ritme vasthouden.`;
+      return `Je check-in score van vandaag is ${todayCheckIn.dagscore}/5: dat is goed. Blijf dit ritme vasthouden.`;
     }
     if (todayCheckIn.dagscore <= 2) {
       return `Je score van vandaag is ${todayCheckIn.dagscore}/5. Dat zijn zware momenten. Rust nemen is ook onderdeel van herstel.`;
     }
     if (trend === "dalend" && todayCheckIn.dagscore === 3) {
-      return `Je scores laten de afgelopen dagen een licht dalende lijn zien. Je lichaam geeft signalen — luister goed naar wat het nodig heeft.`;
+      return `Je scores laten de afgelopen dagen een licht dalende lijn zien. Je lichaam geeft signalen: luister goed naar wat het nodig heeft.`;
     }
   }
 
   // No check-in yet
   if (!todayCheckIn) {
     if (now.getHours() >= 18) {
-      return `Je hebt vandaag nog geen check-in ingevuld. Een check-in helpt je om goed zicht te houden op je herstel — ook op moeilijkere dagen.`;
+      return `Je hebt vandaag nog geen check-in ingevuld. Een check-in helpt je om goed zicht te houden op je herstel, ook op moeilijkere dagen.`;
     }
     return `Nog geen check-in vandaag. Door dit bij te houden krijg je steeds beter inzicht in hoe je herstel verloopt.`;
   }
 
   // Strong training week
   if (trainedThisWeek >= 4) {
-    return `Je hebt deze week al ${trainedThisWeek} trainingsdagen afgerond. Dat is een sterke week — goed bezig.`;
+    return `Je hebt deze week al ${trainedThisWeek} trainingsdagen afgerond. Dat is een sterke week, goed bezig.`;
   }
 
   // Appointment today
@@ -161,7 +161,7 @@ function buildDailyInsight(input: CoachInput, today: string, weekDays: string[])
 
   // Day count milestone
   if ([7, 14, 21, 30, 60, 90, 100].includes(dagsSindsBlessure)) {
-    return `Vandaag ben je ${dagsSindsBlessure} dagen bezig met je herstel. Elke dag telt — ook de rustigere.`;
+    return `Vandaag ben je ${dagsSindsBlessure} dagen bezig met je herstel. Elke dag telt, ook de rustigere.`;
   }
 
   // Default
@@ -202,7 +202,7 @@ function buildNextStep(input: CoachInput, today: string, tomorrow: string): {
   // Priority 4: appointment tomorrow
   if (tomorrowApts.length > 0) {
     return {
-      nextStep: `Je hebt morgen een afspraak — kijk je voorbereiding nog even na`,
+      nextStep: `Je hebt morgen een afspraak: kijk je voorbereiding nog even na`,
       nextStepAction: "navigate:/dagboek",
     };
   }

@@ -208,7 +208,7 @@ function Delta({ curr, prev, higherIsBetter = true, unit = "" }: {
   const sign = diff > 0 ? "+" : "";
   return (
     <span className="text-xs font-semibold" style={{ color }}>
-      {neutral ? "—" : `${sign}${round1(diff)}${unit}`}
+      {neutral ? "n.v.t." : `${sign}${round1(diff)}${unit}`}
     </span>
   );
 }
@@ -327,7 +327,7 @@ export default function AnalysePage() {
     if (curCI.length === 0) {
       summary = "Vul dagelijkse check-ins in om inzicht te krijgen in jouw herstelvoortgang.";
     } else if (scoreTrend === "stijgend") {
-      summary = "Je hersteltrend gaat de goede kant op — je dagscores stijgen.";
+      summary = "Je hersteltrend gaat de goede kant op: je dagscores stijgen.";
     } else if (scoreTrend === "dalend") {
       summary = "Je hersteltrend toont een lichte daling. Schommelingen zijn normaal in herstel.";
     } else {
@@ -372,7 +372,7 @@ export default function AnalysePage() {
       const d = daysUntil(next.date);
       if (d <= 7) {
         const when = d === 0 ? "vandaag" : d === 1 ? "morgen" : `over ${d} dagen`;
-        obs.push(`Je volgende afspraak — "${next.title}" — is ${when}.`);
+        obs.push(`Je volgende afspraak, "${next.title}", is ${when}.`);
       }
     }
 
@@ -389,7 +389,7 @@ export default function AnalysePage() {
     // Good score streak
     let highStreak = 0;
     for (const ci of recSorted) { if (ci.dagscore >= 4) highStreak++; else break; }
-    if (highStreak >= 3) obs.push(`Je check-in score is al ${highStreak} dagen op rij 4 of hoger — goed bezig.`);
+    if (highStreak >= 3) obs.push(`Je check-in score is al ${highStreak} dagen op rij 4 of hoger: goed bezig.`);
 
     return {
       // Period averages
@@ -479,7 +479,7 @@ export default function AnalysePage() {
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#9ca3af" }}>Hersteltrend</p>
               <p className="text-2xl font-bold mt-0.5" style={{ color: "#1a1a1a" }}>
-                {s ? round1(s.avgScore) : "—"}<span className="text-sm font-normal text-gray-400">/5</span>
+                {s ? round1(s.avgScore) : "n.v.t."}<span className="text-sm font-normal text-gray-400">/5</span>
               </p>
             </div>
             <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#fff5f0" }}>
@@ -506,7 +506,7 @@ export default function AnalysePage() {
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#9ca3af" }}>Pijn & Mobiliteit</p>
               <p className="text-2xl font-bold mt-0.5" style={{ color: "#1a1a1a" }}>
-                {s ? round1(s.avgPijn) : "—"}<span className="text-sm font-normal text-gray-400">/10</span>
+                {s ? round1(s.avgPijn) : "n.v.t."}<span className="text-sm font-normal text-gray-400">/10</span>
               </p>
             </div>
             <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#fef3c7" }}>
@@ -540,7 +540,7 @@ export default function AnalysePage() {
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#9ca3af" }}>Activiteit</p>
               <p className="text-2xl font-bold mt-0.5" style={{ color: "#1a1a1a" }}>
-                {s ? s.ciCount : "—"}<span className="text-sm font-normal text-gray-400"> check-ins</span>
+                {s ? s.ciCount : "n.v.t."}<span className="text-sm font-normal text-gray-400"> check-ins</span>
               </p>
             </div>
             <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#f0fdf4" }}>
@@ -571,7 +571,7 @@ export default function AnalysePage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         <Card>
-          <CardHeader title="Check-in trend" subtitle={`Dagscore — laatste ${period} dagen`} />
+          <CardHeader title="Check-in trend" subtitle={`Dagscore van de laatste ${period} dagen`} />
           {noData ? (
             <p className="text-sm text-gray-400 mt-2">Geen check-in data beschikbaar.</p>
           ) : (
@@ -591,7 +591,7 @@ export default function AnalysePage() {
         </Card>
 
         <Card>
-          <CardHeader title="Pijnniveau trend" subtitle={`Pijnscore — laatste ${period} dagen`} />
+          <CardHeader title="Pijnniveau trend" subtitle={`Pijnscore van de laatste ${period} dagen`} />
           {noData ? (
             <p className="text-sm text-gray-400 mt-2">Geen check-in data beschikbaar.</p>
           ) : (
@@ -621,7 +621,7 @@ export default function AnalysePage() {
             <p className="text-sm text-gray-400 mt-2">Geen data beschikbaar.</p>
           ) : (
             <div className="space-y-4 mt-3">
-              <Bar label="Pijn (omgekeerd)" value={10 - s!.avgPijn} max={10} color="#e8632a" sublabel="/10 — lager is beter" />
+              <Bar label="Pijn (omgekeerd)" value={10 - s!.avgPijn} max={10} color="#e8632a" sublabel="/10, lager is beter" />
               <Bar label="Mobiliteit" value={s!.avgMob} max={5} color="#3b82f6" sublabel="/5" />
               <Bar label="Energie" value={s!.avgEnergie} max={5} color="#8b5cf6" sublabel="/5" />
               <Bar label="Slaapkwaliteit" value={s!.avgSlaap} max={5} color="#0ea5e9" sublabel="/5" />

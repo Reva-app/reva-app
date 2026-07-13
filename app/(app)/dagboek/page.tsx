@@ -420,7 +420,7 @@ function DetailItem({ item, onCompleteWorkout, onUncompleteWorkout, onDeleteWork
                     Afgerond
                   </span>
                   <span className="text-[10px] font-medium opacity-0 group-hover/unc:opacity-100 transition-opacity" style={{ color: "#e8632a" }}>
-                    — ongedaan maken
+                    · ongedaan maken
                   </span>
                 </button>
                 {item.rawWorkout.reflection && <p className="text-xs text-gray-500 mt-1 italic">"{item.rawWorkout.reflection}"</p>}
@@ -501,7 +501,7 @@ function useLiveTimeline(profile: ReturnType<typeof useAppData>["profile"], appo
 
     // Check-ins
     checkIns.forEach((ci) => {
-      items.push({ id: `tl-ci-${ci.id}`, date: ci.date, type: "checkin", title: `Check-in — Dagscore ${ci.dagscore}/5`, description: ci.notitie || undefined });
+      items.push({ id: `tl-ci-${ci.id}`, date: ci.date, type: "checkin", title: `Check-in: Dagscore ${ci.dagscore}/5`, description: ci.notitie || undefined });
     });
 
     // Medicatie (group by date, list unique names)
@@ -517,7 +517,7 @@ function useLiveTimeline(profile: ReturnType<typeof useAppData>["profile"], appo
     // Completed workouts
     dagboekWorkouts.filter((w) => w.completed).forEach((w) => {
       const schema = trainingSchemas.find((s) => s.id === w.schemaId);
-      const title = schema ? schema.title + (w.title ? ` — ${w.title}` : "") : w.title;
+      const title = schema ? schema.title + (w.title ? `: ${w.title}` : "") : w.title;
       items.push({ id: `tl-workout-${w.id}`, date: w.date, type: "training", title, description: w.reflection || undefined });
     });
 
@@ -651,7 +651,7 @@ function StatCards({ checkIns, appointments, dagboekWorkouts, mijlpalen, aantalF
   const stats = [
     { value: trainingenDezeWeek, label: "Trainingen afgerond", sub: "deze week",        icon: Dumbbell,  color: "#0ea5e9", display: String(trainingenDezeWeek) },
     { value: fysioOver,          label: "Fysio behandelingen", sub: "nog beschikbaar",  icon: Activity,  color: "#10b981", display: String(fysioOver) },
-    { value: avgScore ?? 0,      label: "Gem. check-in score", sub: "deze week",        icon: Star,      color: "#e8632a", display: avgScore !== null ? `${avgScore}/5` : "—" },
+    { value: avgScore ?? 0,      label: "Gem. check-in score", sub: "deze week",        icon: Star,      color: "#e8632a", display: avgScore !== null ? `${avgScore}/5` : "n.v.t." },
     { value: afgerondeMijlpalen, label: "Afgeronde mijlpalen", sub: "totaal behaald",   icon: Trophy,    color: "#f59e0b", display: String(afgerondeMijlpalen) },
   ];
 
@@ -740,7 +740,7 @@ export default function DagboekPage() {
       .forEach((m) => items.push({ id: `mijl-${m.id}`, kind: "mijlpaal", colorKey: "mijlpaal", title: m.title, completed: true }));
     dagboekWorkouts.filter((w) => w.date === dateStr).forEach((w) => {
       const schema = trainingSchemas.find((s) => s.id === w.schemaId);
-      const displayTitle = schema ? schema.title + (w.title ? ` — ${w.title}` : "") : w.title;
+      const displayTitle = schema ? schema.title + (w.title ? `: ${w.title}` : "") : w.title;
       items.push({ id: `workout-${w.id}`, kind: "workout", colorKey: "workout", title: displayTitle, completed: w.completed, rawWorkout: w });
     });
     // Check-in: keep in list but title is "Check-in" only (score shown in badge)

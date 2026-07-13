@@ -27,7 +27,7 @@ const KNIE_BEEN: OefeningTemplate[] = [
     repetitions: "3×15 herh.",
     loadOrTime: "Lichaamsgewicht",
     location: "Thuis",
-    note: "Beginoefening vroeg postoperatief — altijd pijnvrij uitvoeren.",
+    note: "Beginoefening vroeg postoperatief: altijd pijnvrij uitvoeren.",
   },
   {
     title: "Rechtebeen-hef",
@@ -50,7 +50,7 @@ const KNIE_BEEN: OefeningTemplate[] = [
     note: "Goed voor kuit- en enkeldorsaalflexie na knie- of enkelblessure.",
   },
   {
-    title: "Mini squat (0–45°)",
+    title: "Mini squat (0 tot 45°)",
     type: "Kracht",
     description:
       "Sta met voeten schouderbreedte uit elkaar. Buig de knieën langzaam tot ca. 45° terwijl je de romp rechtop houdt. Houd 2 seconden vast en kom langzaam terug. Knieën wijzen in lijn met de tenen.",
@@ -83,7 +83,7 @@ const KNIE_BEEN: OefeningTemplate[] = [
     title: "Enkelcirkel (zittend)",
     type: "Mobiliteit",
     description:
-      "Zit op een stoel. Til de voet van het geblesseerde been iets op en draai langzaam cirkels met de enkel — 10× met de klok mee en 10× tegen de klok in. Rustig en bewust bewegen.",
+      "Zit op een stoel. Til de voet van het geblesseerde been iets op en draai langzaam cirkels met de enkel: 10× met de klok mee en 10× tegen de klok in. Rustig en bewust bewegen.",
     repetitions: "2×10 cirkels",
     loadOrTime: "Lichaamsgewicht",
     location: "Thuis",
@@ -95,7 +95,7 @@ const KNIE_BEEN: OefeningTemplate[] = [
     description:
       "Wandel op een loopband of buiten op vlak terrein op comfortabel tempo. Houd een normale afwikkelbeweging aan. Stop bij pijn of significant hinken.",
     repetitions: "1× per dag",
-    loadOrTime: "15–20 minuten",
+    loadOrTime: "15 tot 20 minuten",
     location: "Gym",
     note: "Bevordert gewricht-lubrificatie en spierherstel. Afstand opbouwen over weken.",
   },
@@ -108,7 +108,7 @@ const SCHOUDER: OefeningTemplate[] = [
     title: "Pendel (Codman)",
     type: "Mobiliteit",
     description:
-      "Buig voorover, steun met de gezonde hand op een tafel. Laat de geblesseerde arm ontspannen hangen en maak kleine cirkels met de arm — gebruik de zwaartekracht, geen spierkracht. 10× elke richting.",
+      "Buig voorover, steun met de gezonde hand op een tafel. Laat de geblesseerde arm ontspannen hangen en maak kleine cirkels met de arm. Gebruik de zwaartekracht, geen spierkracht. 10× elke richting.",
     repetitions: "2×10 cirkels",
     loadOrTime: "Lichaamsgewicht",
     location: "Thuis",
@@ -118,7 +118,7 @@ const SCHOUDER: OefeningTemplate[] = [
     title: "Schouderblad-knijpen",
     type: "Kracht",
     description:
-      "Zit of sta rechtop. Trek de schouderbladen naar elkaar toe alsof je een potlood tussen ze vasthoudt. Houd 5 seconden vast en ontspan. Houd de schouders laag — niet optrekken.",
+      "Zit of sta rechtop. Trek de schouderbladen naar elkaar toe alsof je een potlood tussen ze vasthoudt. Houd 5 seconden vast en ontspan. Houd de schouders laag, niet optrekken.",
     repetitions: "3×12 herh.",
     loadOrTime: "Lichaamsgewicht",
     location: "Thuis",
@@ -162,7 +162,7 @@ const SCHOUDER: OefeningTemplate[] = [
     repetitions: "3×12 herh.",
     loadOrTime: "Lichaamsgewicht",
     location: "Thuis",
-    note: "Traint serratus anterior — cruciaal voor schouderblad-ritme en rotatorstabiliteit.",
+    note: "Traint serratus anterior: cruciaal voor schouderblad-ritme en rotatorstabiliteit.",
   },
   {
     title: "Theraband rijtrek",
@@ -193,7 +193,7 @@ const RUG: OefeningTemplate[] = [
     title: "Knieën naar borst (rek)",
     type: "Rekken",
     description:
-      "Lig op je rug. Trek beide knieën voorzichtig naar de borst en houd ze vast met de handen. Voel een rustige rek in de lage rug. Rustig ademen — niet forceren.",
+      "Lig op je rug. Trek beide knieën voorzichtig naar de borst en houd ze vast met de handen. Voel een rustige rek in de lage rug. Rustig ademen, niet forceren.",
     repetitions: "3× 30 seconden",
     loadOrTime: "Lichaamsgewicht",
     location: "Thuis",
@@ -213,7 +213,7 @@ const RUG: OefeningTemplate[] = [
     title: "Bird-dog",
     type: "Stabiliteit",
     description:
-      "Begin op handen en knieën. Strek gelijktijdig de rechterarm vooruit en het linkerbeen achteraan. Houd de romp stabiel — rug plat, geen rotatie. Houd 3 sec vast en wissel.",
+      "Begin op handen en knieën. Strek gelijktijdig de rechterarm vooruit en het linkerbeen achteraan. Houd de romp stabiel: rug plat, geen rotatie. Houd 3 sec vast en wissel.",
     repetitions: "3×10 herh. per zijde",
     loadOrTime: "Lichaamsgewicht",
     location: "Thuis",
@@ -227,7 +227,7 @@ const RUG: OefeningTemplate[] = [
     repetitions: "3×15 herh.",
     loadOrTime: "Lichaamsgewicht",
     location: "Thuis",
-    note: "Versterkt bilspieren en heupen — vermindert lumbale overbelasting.",
+    note: "Versterkt bilspieren en heupen: vermindert lumbale overbelasting.",
   },
   {
     title: "Cat-cow stretch",
@@ -245,7 +245,7 @@ const RUG: OefeningTemplate[] = [
     description:
       "Wandel op vlak terrein met een rechtop gehouden houding. Gebruik rustgevend tempo. Vermijd lange perioden stilzitten direct voor en na de wandeling.",
     repetitions: "1× per dag",
-    loadOrTime: "20–30 minuten",
+    loadOrTime: "20 tot 30 minuten",
     location: "Buiten",
     note: "Actief bewegen is beter dan rust bij rugpijn. Opbouwen in duur.",
   },
@@ -268,14 +268,14 @@ const BASIS: OefeningTemplate[] = [
     title: "Ademhalingsoefening (diafragma)",
     type: "Stabiliteit",
     description:
-      "Zit of lig ontspannen. Leg een hand op de buik. Adem diep in via de neus — de buik bol je uit (niet de borst). Adem langzaam uit via de mond. Rustig en gecontroleerd.",
+      "Zit of lig ontspannen. Leg een hand op de buik. Adem diep in via de neus: de buik bol je uit (niet de borst). Adem langzaam uit via de mond. Rustig en gecontroleerd.",
     repetitions: "2×10 ademteugen",
-    loadOrTime: "—",
+    loadOrTime: "n.v.t.",
     location: "Thuis",
     note: "Activeert het parasympathisch zenuwstelsel en ondersteunt herstel.",
   },
   {
-    title: "Statisch rekken — hamstrings",
+    title: "Statisch rekken: hamstrings",
     type: "Rekken",
     description:
       "Zit op de grond met gestrekte benen. Buig voorover vanuit de heupen (niet de rug ronden) richting je voeten. Houd de rek vast. Geen stuiterende bewegingen.",
@@ -300,7 +300,7 @@ const BASIS: OefeningTemplate[] = [
     description:
       "Zit rechtop op een stoel. Rol de schouders langzaam naar voren, dan omhoog, naar achteren en naar beneden. Voer de volledige cirkel uit, rustig en bewust.",
     repetitions: "2×10 cirkels elke richting",
-    loadOrTime: "—",
+    loadOrTime: "n.v.t.",
     location: "Thuis",
     note: "Licht activerende mobiliteits­oefening voor de bovenrug en schouders.",
   },

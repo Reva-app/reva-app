@@ -26,6 +26,13 @@ export interface PlanInfo {
   trialJustExpired: boolean;
 }
 
+// ─── Master switch ────────────────────────────────────────────────────────────
+// De app is voorlopig volledig gratis: alle Premium/trial-UI en featuregates
+// staan uit. Zet terug op true om het abonnementsmodel weer te activeren —
+// de onderliggende logica blijft intact.
+
+export const SUBSCRIPTIONS_ENABLED = false;
+
 // ─── Developer bypass ─────────────────────────────────────────────────────────
 
 const DEV_EMAILS = new Set(["stef.robberts1@gmail.com"]);
@@ -115,5 +122,6 @@ export function getUserPlan(
  * True als de gebruiker volledige toegang heeft (trial of premium).
  */
 export function hasFullAccess(planInfo: PlanInfo): boolean {
+  if (!SUBSCRIPTIONS_ENABLED) return true;
   return planInfo.plan === "premium" || planInfo.plan === "trial";
 }

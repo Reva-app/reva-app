@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, Check } from "lucide-react";
 import type { CheckIn } from "@/lib/data";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -109,34 +109,31 @@ export function CheckInModal({
 
   const title = existing ? "Check-in bewerken" : "Check-in invullen";
 
-  return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-[60]"
-        style={{ background: "rgba(0,0,0,0.45)", animation: "fadeIn 0.18s ease" }}
-        onClick={onClose}
-      />
+  useEffect(() => {
+    const fn = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", fn);
+    return () => document.removeEventListener("keydown", fn);
+  }, [onClose]);
 
-      {/* Sheet */}
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.45)", animation: "fadeIn 0.18s ease" }}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      {/* Popup */}
       <div
-        className="fixed left-0 right-0 bottom-0 z-[60] rounded-t-2xl flex flex-col"
+        className="w-full max-w-lg rounded-2xl flex flex-col"
         style={{
           background: "#ffffff",
-          boxShadow: "0 -12px 48px rgba(0,0,0,0.18)",
-          animation: "sheetUp 0.3s cubic-bezier(0.32,0.72,0,1)",
-          maxHeight: "92vh",
-          paddingBottom: "calc(var(--nav-height) + env(safe-area-inset-bottom, 0px))",
+          boxShadow: "0 24px 64px rgba(0,0,0,0.18)",
+          animation: "modalIn 0.2s cubic-bezier(0.32,0.72,0,1)",
+          maxHeight: "calc(100vh - 2rem)",
         }}
       >
-        {/* Drag handle */}
-        <div className="flex justify-center pt-3 shrink-0">
-          <div className="w-9 h-1 rounded-full" style={{ background: "#e0ddd8" }} />
-        </div>
-
         {/* Header */}
         <div
-          className="flex items-center justify-between px-5 py-3.5 shrink-0"
+          className="flex items-center justify-between px-5 sm:px-6 py-4 shrink-0"
           style={{ borderBottom: "1px solid #f0ede8" }}
         >
           <p className="text-base font-semibold text-gray-900">{title}</p>
@@ -150,11 +147,11 @@ export function CheckInModal({
         </div>
 
         {/* Scrollable content */}
-        <div className="overflow-y-auto flex-1 px-5 py-5 space-y-4 bottom-sheet-content">
+        <div className="overflow-y-auto flex-1 px-5 sm:px-6 py-5 space-y-4">
 
           {/* Uitleg */}
           <p className="text-xs text-gray-400 leading-relaxed">
-            Vul in hoe je dag was. Bij alle scores geldt: <strong className="text-gray-500">1 is laag</strong> en de hoogste waarde is het beste — behalve bij pijn, waar lager beter is.
+            Vul in hoe je dag was. Bij alle scores geldt: <strong className="text-gray-500">1 is laag</strong> en de hoogste waarde is het beste, behalve bij pijn, waar lager beter is.
           </p>
 
           {/* Date */}
@@ -212,6 +209,6 @@ export function CheckInModal({
           </button>
         </div>
       </div>
-    </>
+    </div>
   );
 }
