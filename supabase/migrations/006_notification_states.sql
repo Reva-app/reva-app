@@ -16,3 +16,9 @@ create policy "Users can manage own notification state"
   for all
   using  (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- Zonder deze notify blijft PostgREST de tabel soms niet herkennen totdat de
+-- schema-cache op een ander moment ververst, wat "Could not find the table
+-- 'public.notification_states' in the schema cache"-fouten oplevert bij
+-- API-calls (o.a. gezien bij account-verwijdering).
+NOTIFY pgrst, 'reload schema';
