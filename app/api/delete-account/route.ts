@@ -3,7 +3,8 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-// Tables to delete from (in order — junction tables before parent tables to avoid FK issues)
+// Tables to delete from (in order — junction tables before parent tables to avoid FK issues).
+// Names must match supabase/schema.sql exactly — a mismatch here silently skips that table.
 const USER_TABLES: string[] = [
   "diary_workouts",
   "training_logs",
@@ -13,15 +14,19 @@ const USER_TABLES: string[] = [
   "medication_schedule_times", // RLS: via schedule owner check
   "medication_logs",
   "medication_schedules",      // CASCADE → medication_schedule_times
-  "check_ins",
+  "checkins",
   "appointments",
-  "doelen",
-  "mijlpalen",
+  "goals",
+  "milestones",
   "dossier_documents",
   "dossier_photo_updates",
   "dossier_contacts",
-  "user_settings",
+  "push_tokens",
+  "notification_states",
+  "settings",
 ];
+
+const STORAGE_BUCKETS = ["dossier-photos", "dossier-documents"] as const;
 
 export async function DELETE() {
   const cookieStore = await cookies();
@@ -52,17 +57,25 @@ export async function DELETE() {
   const userId = user.id;
   const errors: string[] = [];
 
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    return NextResponse.json(
+      { error: "Server configuratiefout: service role key ontbreekt" },
+      { status: 500 }
+    );
+  }
+  const admin = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey);
+
   // Delete all user data row by row, per table
   for (const table of USER_TABLES) {
     const col = table === "training_schema_exercises" || table === "medication_schedule_times"
-      ? null // These are handled by CASCADE from parent tables; try anyway via admin below
+      ? null // Handled by CASCADE from parent tables (training_schemas / medication_schedules)
       : "user_id";
 
-    if (!col) continue; // Skip — CASCADE will handle them
+    if (!col) continue;
 
     const { error } = await supabase.from(table).delete().eq(col, userId);
     if (error) {
-      // Non-fatal: table may not exist in this DB instance
       console.error(`[delete-account] ${table}: ${error.message}`);
       errors.push(`${table}: ${error.message}`);
     }
@@ -72,22 +85,44 @@ export async function DELETE() {
   const { error: profileError } = await supabase.from("profiles").delete().eq("id", userId);
   if (profileError) {
     console.error(`[delete-account] profiles: ${profileError.message}`);
+    errors.push(`profiles: ${profileError.message}`);
   }
 
-  // Delete the auth user — requires service role key (admin)
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceRoleKey) {
+  // Delete uploaded files — otherwise photos/documents keep existing in Storage
+  // after the account (and its rows referencing them) is gone.
+  for (const bucket of STORAGE_BUCKETS) {
+    const { data: files, error: listError } = await admin.storage.from(bucket).list(userId);
+    if (listError) {
+      console.error(`[delete-account] storage list ${bucket}: ${listError.message}`);
+      errors.push(`storage:${bucket}: ${listError.message}`);
+      continue;
+    }
+    if (files && files.length > 0) {
+      const paths = files.map((f) => `${userId}/${f.name}`);
+      const { error: removeError } = await admin.storage.from(bucket).remove(paths);
+      if (removeError) {
+        console.error(`[delete-account] storage remove ${bucket}: ${removeError.message}`);
+        errors.push(`storage:${bucket}: ${removeError.message}`);
+      }
+    }
+  }
+
+  // Delete the auth user last — session cookies are only valid until this point.
+  const { error: deleteAuthError } = await admin.auth.admin.deleteUser(userId);
+  if (deleteAuthError) {
+    console.error("[delete-account] auth.admin.deleteUser:", deleteAuthError.message);
     return NextResponse.json(
-      { error: "Server configuratiefout: service role key ontbreekt" },
+      { success: false, error: "Account kon niet volledig worden verwijderd. Probeer het opnieuw of neem contact op.", errors },
       { status: 500 }
     );
   }
 
-  const admin = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey);
-  const { error: deleteAuthError } = await admin.auth.admin.deleteUser(userId);
-  if (deleteAuthError) {
-    console.error("[delete-account] auth.admin.deleteUser:", deleteAuthError.message);
-    return NextResponse.json({ error: deleteAuthError.message }, { status: 500 });
+  if (errors.length > 0) {
+    console.error(`[delete-account] partial failure for uid ${userId}:`, errors);
+    return NextResponse.json(
+      { success: false, error: "Account is verwijderd, maar niet alle gegevens konden worden gewist. Neem contact op met support.", errors },
+      { status: 207 }
+    );
   }
 
   console.info("[delete-account] account fully deleted for uid:", userId);

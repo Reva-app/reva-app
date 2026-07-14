@@ -30,7 +30,7 @@ export async function loadMedicatieLogs(userId: string): Promise<MedicatieLog[]>
 export async function insertMedicatieLog(m: MedicatieLog, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const payload = medicatieLogToDb(m, userId);
-  console.info("[insertMedicatieLog] uid:", userId, "id:", m.id, "naam:", m.naam, "payload:", payload);
+  console.info("[insertMedicatieLog] uid:", userId, "id:", m.id);
 
   const { data, error } = await supabase
     .from("medication_logs")
@@ -50,7 +50,7 @@ export async function insertMedicatieLog(m: MedicatieLog, userId: string): Promi
 export async function updateMedicatieLogRecord(m: MedicatieLog, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const { id: _id, user_id: _uid, ...fields } = medicatieLogToDb(m, userId);
-  console.info("[updateMedicatieLogRecord] uid:", userId, "id:", m.id, "fields:", fields);
+  console.info("[updateMedicatieLogRecord] uid:", userId, "id:", m.id);
 
   const { data, error } = await supabase
     .from("medication_logs")
@@ -72,7 +72,7 @@ export async function updateMedicatieLogRecord(m: MedicatieLog, userId: string):
 export async function upsertMedicatieLog(m: MedicatieLog, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const payload = medicatieLogToDb(m, userId);
-  console.info("[upsertMedicatieLog/migration] uid:", userId, "id:", m.id, "payload:", payload);
+  console.info("[upsertMedicatieLog/migration] uid:", userId, "id:", m.id);
 
   const { data, error } = await supabase
     .from("medication_logs")
@@ -89,12 +89,10 @@ export async function upsertMedicatieLog(m: MedicatieLog, userId: string): Promi
   return { error: null };
 }
 
-export async function deleteMedicatieLog(id: string): Promise<void> {
+export async function deleteMedicatieLog(id: string, userId: string): Promise<void> {
   const supabase = createClient();
-  console.info("[deleteMedicatieLog] id:", id);
-  const { error } = await supabase.from("medication_logs").delete().eq("id", id);
+  const { error } = await supabase.from("medication_logs").delete().eq("id", id).eq("user_id", userId);
   if (error) logErr("deleteMedicatieLog", error);
-  else console.info("[deleteMedicatieLog] deleted OK, id:", id);
 }
 
 // ─── Schedule times sync ──────────────────────────────────────────────────────
@@ -152,7 +150,7 @@ export async function loadMedicatieSchemas(userId: string): Promise<MedicatieSch
 export async function insertMedicatieSchema(s: MedicatieSchema, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const payload = medicatieSchemaToDb(s, userId);
-  console.info("[insertMedicatieSchema] uid:", userId, "id:", s.id, "naam:", s.naam, "tijden:", s.tijden, "payload:", payload);
+  console.info("[insertMedicatieSchema] uid:", userId, "id:", s.id);
 
   const { data, error } = await supabase
     .from("medication_schedules")
@@ -188,7 +186,7 @@ export async function insertMedicatieSchema(s: MedicatieSchema, userId: string):
 export async function updateMedicatieSchemaRecord(s: MedicatieSchema, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const { id: _id, user_id: _uid, ...fields } = medicatieSchemaToDb(s, userId);
-  console.info("[updateMedicatieSchemaRecord] uid:", userId, "id:", s.id, "naam:", s.naam, "tijden:", s.tijden, "fields:", fields);
+  console.info("[updateMedicatieSchemaRecord] uid:", userId, "id:", s.id);
 
   const { data, error } = await supabase
     .from("medication_schedules")
@@ -212,7 +210,7 @@ export async function updateMedicatieSchemaRecord(s: MedicatieSchema, userId: st
 export async function upsertMedicatieSchema(s: MedicatieSchema, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const payload = medicatieSchemaToDb(s, userId);
-  console.info("[upsertMedicatieSchema/migration] uid:", userId, "id:", s.id, "payload:", payload);
+  console.info("[upsertMedicatieSchema/migration] uid:", userId, "id:", s.id);
 
   const { data, error } = await supabase
     .from("medication_schedules")
@@ -232,12 +230,10 @@ export async function upsertMedicatieSchema(s: MedicatieSchema, userId: string):
   return { error: null };
 }
 
-export async function deleteMedicatieSchema(id: string): Promise<void> {
+export async function deleteMedicatieSchema(id: string, userId: string): Promise<void> {
   const supabase = createClient();
-  console.info("[deleteMedicatieSchema] id:", id);
   const { error: timesError } = await supabase.from("medication_schedule_times").delete().eq("schedule_id", id);
   if (timesError) logErr("deleteMedicatieSchema/times", timesError);
-  const { error } = await supabase.from("medication_schedules").delete().eq("id", id);
+  const { error } = await supabase.from("medication_schedules").delete().eq("id", id).eq("user_id", userId);
   if (error) logErr("deleteMedicatieSchema", error);
-  else console.info("[deleteMedicatieSchema] deleted OK, id:", id);
 }

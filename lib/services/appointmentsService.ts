@@ -29,7 +29,7 @@ export async function loadAppointments(userId: string): Promise<Appointment[]> {
 export async function insertAppointment(apt: Appointment, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const payload = appointmentToDb(apt, userId);
-  console.info("[insertAppointment] uid:", userId, "id:", apt.id, "title:", apt.title, "payload:", payload);
+  console.info("[insertAppointment] uid:", userId, "id:", apt.id);
 
   const { data, error } = await supabase
     .from("appointments")
@@ -55,7 +55,7 @@ export async function insertAppointment(apt: Appointment, userId: string): Promi
 export async function updateAppointmentRecord(apt: Appointment, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const { id: _id, user_id: _uid, ...fields } = appointmentToDb(apt, userId);
-  console.info("[updateAppointmentRecord] uid:", userId, "id:", apt.id, "title:", apt.title, "fields:", fields);
+  console.info("[updateAppointmentRecord] uid:", userId, "id:", apt.id);
 
   const { data, error } = await supabase
     .from("appointments")
@@ -83,7 +83,7 @@ export async function updateAppointmentRecord(apt: Appointment, userId: string):
 export async function upsertAppointment(apt: Appointment, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const payload = appointmentToDb(apt, userId);
-  console.info("[upsertAppointment/migration] uid:", userId, "id:", apt.id, "payload:", payload);
+  console.info("[upsertAppointment/migration] uid:", userId, "id:", apt.id);
 
   const { data, error } = await supabase
     .from("appointments")
@@ -106,10 +106,8 @@ export async function upsertAppointment(apt: Appointment, userId: string): Promi
   return { error: null };
 }
 
-export async function deleteAppointment(id: string): Promise<void> {
+export async function deleteAppointment(id: string, userId: string): Promise<void> {
   const supabase = createClient();
-  console.info("[deleteAppointment] id:", id);
-  const { error } = await supabase.from("appointments").delete().eq("id", id);
+  const { error } = await supabase.from("appointments").delete().eq("id", id).eq("user_id", userId);
   if (error) logErr("deleteAppointment", error);
-  else console.info("[deleteAppointment] deleted OK, id:", id);
 }

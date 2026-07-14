@@ -30,7 +30,7 @@ export async function loadTrainingOefeningen(userId: string): Promise<TrainingOe
 export async function upsertTrainingOefening(o: TrainingOefening, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const payload = trainingOefeningToDb(o, userId);
-  console.info("[upsertTrainingOefening] uid:", userId, "id:", o.id, "title:", o.title, "payload:", payload);
+  console.info("[upsertTrainingOefening] uid:", userId, "id:", o.id);
 
   const { data, error } = await supabase
     .from("training_exercises")
@@ -50,9 +50,9 @@ export async function upsertTrainingOefening(o: TrainingOefening, userId: string
   return { error: null };
 }
 
-export async function deleteTrainingOefening(id: string): Promise<void> {
+export async function deleteTrainingOefening(id: string, userId: string): Promise<void> {
   const supabase = createClient();
-  const { error } = await supabase.from("training_exercises").delete().eq("id", id);
+  const { error } = await supabase.from("training_exercises").delete().eq("id", id).eq("user_id", userId);
   if (error) logErr("deleteTrainingOefening", error);
 }
 
@@ -112,7 +112,7 @@ export async function loadTrainingSchemas(userId: string): Promise<TrainingSchem
 export async function insertTrainingSchema(s: TrainingSchema, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const payload = trainingSchemaToDb(s, userId);
-  console.info("[insertTrainingSchema] uid:", userId, "id:", s.id, "title:", s.title, "exerciseIds:", s.exerciseIds, "payload:", payload);
+  console.info("[insertTrainingSchema] uid:", userId, "id:", s.id);
 
   const { data, error } = await supabase
     .from("training_schemas")
@@ -150,7 +150,7 @@ export async function updateTrainingSchemaRecord(s: TrainingSchema, userId: stri
   const supabase = createClient();
   // Omit id and user_id from the update payload (they are the WHERE keys, not fields to update).
   const { id: _id, user_id: _uid, ...fields } = trainingSchemaToDb(s, userId);
-  console.info("[updateTrainingSchemaRecord] uid:", userId, "id:", s.id, "exerciseIds:", s.exerciseIds, "fields:", fields);
+  console.info("[updateTrainingSchemaRecord] uid:", userId, "id:", s.id);
 
   const { data, error } = await supabase
     .from("training_schemas")
@@ -181,7 +181,7 @@ export async function updateTrainingSchemaRecord(s: TrainingSchema, userId: stri
 export async function upsertTrainingSchema(s: TrainingSchema, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const payload = trainingSchemaToDb(s, userId);
-  console.info("[upsertTrainingSchema/migration] uid:", userId, "id:", s.id, "payload:", payload);
+  console.info("[upsertTrainingSchema/migration] uid:", userId, "id:", s.id);
 
   const { data, error } = await supabase
     .from("training_schemas")
@@ -207,11 +207,11 @@ export async function upsertTrainingSchema(s: TrainingSchema, userId: string): P
   return { error: null };
 }
 
-export async function deleteTrainingSchema(id: string): Promise<void> {
+export async function deleteTrainingSchema(id: string, userId: string): Promise<void> {
   const supabase = createClient();
   const { error: linkError } = await supabase.from("training_schema_exercises").delete().eq("schema_id", id);
   if (linkError) logErr("deleteTrainingSchema/links", linkError);
-  const { error } = await supabase.from("training_schemas").delete().eq("id", id);
+  const { error } = await supabase.from("training_schemas").delete().eq("id", id).eq("user_id", userId);
   if (error) logErr("deleteTrainingSchema", error);
 }
 
@@ -232,7 +232,7 @@ export async function loadTrainingLogs(userId: string): Promise<TrainingLog[]> {
 export async function insertTrainingLog(l: TrainingLog, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const payload = trainingLogToDb(l, userId);
-  console.info("[insertTrainingLog] uid:", userId, "id:", l.id, "date:", l.date, "payload:", payload);
+  console.info("[insertTrainingLog] uid:", userId, "id:", l.id);
 
   const { data, error } = await supabase
     .from("training_logs")
@@ -267,7 +267,7 @@ export async function insertTrainingLog(l: TrainingLog, userId: string): Promise
 export async function updateTrainingLogRecord(l: TrainingLog, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const { id: _id, user_id: _uid, ...fields } = trainingLogToDb(l, userId);
-  console.info("[updateTrainingLogRecord] uid:", userId, "id:", l.id, "date:", l.date, "fields:", fields);
+  console.info("[updateTrainingLogRecord] uid:", userId, "id:", l.id);
 
   const { data, error } = await supabase
     .from("training_logs")
@@ -289,9 +289,9 @@ export async function updateTrainingLogRecord(l: TrainingLog, userId: string): P
   return { error: null };
 }
 
-export async function deleteTrainingLog(id: string): Promise<void> {
+export async function deleteTrainingLog(id: string, userId: string): Promise<void> {
   const supabase = createClient();
-  const { error } = await supabase.from("training_logs").delete().eq("id", id);
+  const { error } = await supabase.from("training_logs").delete().eq("id", id).eq("user_id", userId);
   if (error) logErr("deleteTrainingLog", error);
 }
 

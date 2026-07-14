@@ -4,6 +4,7 @@ import {
   dbToFotoUpdate, fotoUpdateToDb,
   dbToContactpersoon, contactpersoonToDb,
 } from "@/lib/db/mappers";
+import { resolveSignedUrls } from "@/lib/services/storageService";
 import type { DossierDocument, FotoUpdate, Contactpersoon } from "@/lib/data";
 
 function logErr(fn: string, error: { message?: string; code?: string; details?: string; hint?: string } | null) {
@@ -25,13 +26,21 @@ export async function loadDossierDocumenten(userId: string): Promise<DossierDocu
     .order("date", { ascending: false });
   if (error) { logErr("loadDossierDocumenten", error); return []; }
   console.info("[loadDossierDocumenten] loaded", data?.length ?? 0, "rows for uid:", userId);
-  return (data ?? []).map(dbToDossierDocument);
+  const documenten = (data ?? []).map(dbToDossierDocument);
+
+  // dossier-documents is a private bucket — resolve stored paths to fresh,
+  // short-lived signed URLs so the returned objects are directly usable.
+  const storedPaths = documenten.map((d) => d.fileUrl).filter((v): v is string => !!v);
+  const signedByPath = await resolveSignedUrls("dossier-documents", storedPaths);
+  return documenten.map((d) => (
+    d.fileUrl ? { ...d, fileUrl: signedByPath.get(d.fileUrl) ?? d.fileUrl } : d
+  ));
 }
 
 export async function insertDossierDocument(d: DossierDocument, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const payload = dossierDocumentToDb(d, userId);
-  console.info("[insertDossierDocument] uid:", userId, "id:", d.id, "title:", d.title, "payload:", payload);
+  console.info("[insertDossierDocument] uid:", userId, "id:", d.id);
 
   const { data, error } = await supabase
     .from("dossier_documents")
@@ -51,7 +60,7 @@ export async function insertDossierDocument(d: DossierDocument, userId: string):
 export async function updateDossierDocumentRecord(d: DossierDocument, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const { id: _id, user_id: _uid, ...fields } = dossierDocumentToDb(d, userId);
-  console.info("[updateDossierDocumentRecord] uid:", userId, "id:", d.id, "title:", d.title, "fields:", fields);
+  console.info("[updateDossierDocumentRecord] uid:", userId, "id:", d.id);
 
   const { data, error } = await supabase
     .from("dossier_documents")
@@ -73,7 +82,7 @@ export async function updateDossierDocumentRecord(d: DossierDocument, userId: st
 export async function upsertDossierDocument(d: DossierDocument, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const payload = dossierDocumentToDb(d, userId);
-  console.info("[upsertDossierDocument/migration] uid:", userId, "id:", d.id, "payload:", payload);
+  console.info("[upsertDossierDocument/migration] uid:", userId, "id:", d.id);
 
   const { data, error } = await supabase
     .from("dossier_documents")
@@ -90,12 +99,10 @@ export async function upsertDossierDocument(d: DossierDocument, userId: string):
   return { error: null };
 }
 
-export async function deleteDossierDocument(id: string): Promise<void> {
+export async function deleteDossierDocument(id: string, userId: string): Promise<void> {
   const supabase = createClient();
-  console.info("[deleteDossierDocument] id:", id);
-  const { error } = await supabase.from("dossier_documents").delete().eq("id", id);
+  const { error } = await supabase.from("dossier_documents").delete().eq("id", id).eq("user_id", userId);
   if (error) logErr("deleteDossierDocument", error);
-  else console.info("[deleteDossierDocument] deleted OK, id:", id);
 }
 
 // ─── Photo updates ────────────────────────────────────────────────────────────
@@ -110,13 +117,21 @@ export async function loadFotoUpdates(userId: string): Promise<FotoUpdate[]> {
     .order("date", { ascending: false });
   if (error) { logErr("loadFotoUpdates", error); return []; }
   console.info("[loadFotoUpdates] loaded", data?.length ?? 0, "rows for uid:", userId);
-  return (data ?? []).map(dbToFotoUpdate);
+  const fotos = (data ?? []).map(dbToFotoUpdate);
+
+  // dossier-photos is a private bucket — resolve stored paths to fresh,
+  // short-lived signed URLs so the returned objects are directly usable.
+  const storedPaths = fotos.map((f) => f.imageUrl).filter((v): v is string => !!v);
+  const signedByPath = await resolveSignedUrls("dossier-photos", storedPaths);
+  return fotos.map((f) => (
+    f.imageUrl ? { ...f, imageUrl: signedByPath.get(f.imageUrl) ?? f.imageUrl } : f
+  ));
 }
 
 export async function insertFotoUpdate(f: FotoUpdate, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const payload = fotoUpdateToDb(f, userId);
-  console.info("[insertFotoUpdate] uid:", userId, "id:", f.id, "date:", f.date, "payload:", payload);
+  console.info("[insertFotoUpdate] uid:", userId, "id:", f.id);
 
   const { data, error } = await supabase
     .from("dossier_photo_updates")
@@ -136,7 +151,7 @@ export async function insertFotoUpdate(f: FotoUpdate, userId: string): Promise<{
 export async function upsertFotoUpdate(f: FotoUpdate, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const payload = fotoUpdateToDb(f, userId);
-  console.info("[upsertFotoUpdate/migration] uid:", userId, "id:", f.id, "payload:", payload);
+  console.info("[upsertFotoUpdate/migration] uid:", userId, "id:", f.id);
 
   const { data, error } = await supabase
     .from("dossier_photo_updates")
@@ -151,12 +166,10 @@ export async function upsertFotoUpdate(f: FotoUpdate, userId: string): Promise<{
   return { error: null };
 }
 
-export async function deleteFotoUpdate(id: string): Promise<void> {
+export async function deleteFotoUpdate(id: string, userId: string): Promise<void> {
   const supabase = createClient();
-  console.info("[deleteFotoUpdate] id:", id);
-  const { error } = await supabase.from("dossier_photo_updates").delete().eq("id", id);
+  const { error } = await supabase.from("dossier_photo_updates").delete().eq("id", id).eq("user_id", userId);
   if (error) logErr("deleteFotoUpdate", error);
-  else console.info("[deleteFotoUpdate] deleted OK, id:", id);
 }
 
 // ─── Contacts ─────────────────────────────────────────────────────────────────
@@ -177,7 +190,7 @@ export async function loadContactpersonen(userId: string): Promise<Contactpersoo
 export async function insertContactpersoon(c: Contactpersoon, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const payload = contactpersoonToDb(c, userId);
-  console.info("[insertContactpersoon] uid:", userId, "id:", c.id, "naam:", c.naam, "payload:", payload);
+  console.info("[insertContactpersoon] uid:", userId, "id:", c.id);
 
   const { data, error } = await supabase
     .from("dossier_contacts")
@@ -197,7 +210,7 @@ export async function insertContactpersoon(c: Contactpersoon, userId: string): P
 export async function updateContactpersoonRecord(c: Contactpersoon, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const { id: _id, user_id: _uid, ...fields } = contactpersoonToDb(c, userId);
-  console.info("[updateContactpersoonRecord] uid:", userId, "id:", c.id, "naam:", c.naam, "fields:", fields);
+  console.info("[updateContactpersoonRecord] uid:", userId, "id:", c.id);
 
   const { data, error } = await supabase
     .from("dossier_contacts")
@@ -219,7 +232,7 @@ export async function updateContactpersoonRecord(c: Contactpersoon, userId: stri
 export async function upsertContactpersoon(c: Contactpersoon, userId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const payload = contactpersoonToDb(c, userId);
-  console.info("[upsertContactpersoon/migration] uid:", userId, "id:", c.id, "payload:", payload);
+  console.info("[upsertContactpersoon/migration] uid:", userId, "id:", c.id);
 
   const { data, error } = await supabase
     .from("dossier_contacts")
@@ -236,10 +249,8 @@ export async function upsertContactpersoon(c: Contactpersoon, userId: string): P
   return { error: null };
 }
 
-export async function deleteContactpersoon(id: string): Promise<void> {
+export async function deleteContactpersoon(id: string, userId: string): Promise<void> {
   const supabase = createClient();
-  console.info("[deleteContactpersoon] id:", id);
-  const { error } = await supabase.from("dossier_contacts").delete().eq("id", id);
+  const { error } = await supabase.from("dossier_contacts").delete().eq("id", id).eq("user_id", userId);
   if (error) logErr("deleteContactpersoon", error);
-  else console.info("[deleteContactpersoon] deleted OK, id:", id);
 }

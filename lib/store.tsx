@@ -520,7 +520,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         },
         deleteAppointment: (id) => {
           setAppointments((prev) => prev.filter((a) => a.id !== id));
-          dbDeleteAppointment(id);
+          const uid = getUserId(); if (uid) dbDeleteAppointment(id, uid);
         },
 
         // ── Medicatie logs
@@ -547,7 +547,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         },
         deleteMedicatie: (id) => {
           setMedicatie((prev) => prev.filter((m) => m.id !== id));
-          dbDeleteMedicatieLog(id);
+          const uid = getUserId(); if (uid) dbDeleteMedicatieLog(id, uid);
         },
 
         // ── Medicatie schemas
@@ -577,7 +577,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         },
         deleteMedicatieSchema: (id) => {
           setMedicatieSchemas((prev) => prev.filter((s) => s.id !== id));
-          dbDeleteMedicatieSchema(id);
+          const uid = getUserId(); if (uid) dbDeleteMedicatieSchema(id, uid);
         },
 
         // ── Notification state (Supabase-backed per account)
@@ -643,7 +643,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         },
         deleteDoel: (id) => {
           setDoelen((prev) => prev.filter((d) => d.id !== id));
-          dbDeleteDoel(id);
+          const uid = getUserId(); if (uid) dbDeleteDoel(id, uid);
         },
         promoteToMain: (id) => {
           setDoelen((prev) => {
@@ -677,7 +677,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         },
         deleteMijlpaal: (id) => {
           setMijlpalen((prev) => prev.filter((m) => m.id !== id));
-          dbDeleteMijlpaal(id);
+          const uid = getUserId(); if (uid) dbDeleteMijlpaal(id, uid);
         },
         reorderMijlpalen: (orderedIds) => {
           setMijlpalen((prev) => {
@@ -715,7 +715,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         },
         deleteTrainingOefening: (id) => {
           setTrainingOefeningen((prev) => prev.filter((o) => o.id !== id));
-          dbDeleteTrainingOefening(id);
+          const uid = getUserId(); if (uid) dbDeleteTrainingOefening(id, uid);
         },
 
         // ── Training schemas
@@ -742,7 +742,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         },
         deleteTrainingSchema: (id) => {
           setTrainingSchemas((prev) => prev.filter((s) => s.id !== id));
-          dbDeleteTrainingSchema(id);
+          const uid = getUserId(); if (uid) dbDeleteTrainingSchema(id, uid);
         },
 
         // ── Training logs
@@ -757,7 +757,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         },
         deleteTrainingLog: (id) => {
           setTrainingLogs((prev) => prev.filter((l) => l.id !== id));
-          dbDeleteTrainingLog(id);
+          const uid = getUserId(); if (uid) dbDeleteTrainingLog(id, uid);
         },
 
         // ── Dagboek workouts (derived from trainingLogs — training_logs is the source of truth)
@@ -784,7 +784,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         },
         deleteDagboekWorkout: (id) => {
           setTrainingLogs((prev) => prev.filter((w) => w.id !== id));
-          dbDeleteTrainingLog(id);
+          const uid = getUserId(); if (uid) dbDeleteTrainingLog(id, uid);
         },
 
         // ── Dossier documenten
@@ -811,7 +811,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         },
         deleteDossierDocument: (id) => {
           setDossierDocumenten((prev) => prev.filter((d) => d.id !== id));
-          dbDeleteDossierDocument(id);
+          const uid = getUserId(); if (uid) dbDeleteDossierDocument(id, uid);
         },
 
         // ── Foto updates
@@ -826,7 +826,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         },
         deleteFotoUpdate: (id) => {
           setFotoUpdates((prev) => prev.filter((f) => f.id !== id));
-          dbDeleteFotoUpdate(id);
+          const uid = getUserId(); if (uid) dbDeleteFotoUpdate(id, uid);
         },
 
         // ── Contactpersonen
@@ -853,7 +853,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         },
         deleteContactpersoon: (id) => {
           setContactpersonen((prev) => prev.filter((c) => c.id !== id));
-          dbDeleteContactpersoon(id);
+          const uid = getUserId(); if (uid) dbDeleteContactpersoon(id, uid);
         },
 
         notificationSettings,

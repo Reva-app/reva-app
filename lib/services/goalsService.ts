@@ -28,9 +28,9 @@ export async function upsertDoel(d: Doel, userId: string): Promise<void> {
   if (error) logErr("upsertDoel", error);
 }
 
-export async function deleteDoel(id: string): Promise<void> {
+export async function deleteDoel(id: string, userId: string): Promise<void> {
   const supabase = createClient();
-  const { error } = await supabase.from("goals").delete().eq("id", id);
+  const { error } = await supabase.from("goals").delete().eq("id", id).eq("user_id", userId);
   if (error) logErr("deleteDoel", error);
 }
 
@@ -55,9 +55,9 @@ export async function upsertMijlpaal(m: Mijlpaal, userId: string, sortOrder: num
   if (error) logErr("upsertMijlpaal", error);
 }
 
-export async function deleteMijlpaal(id: string): Promise<void> {
+export async function deleteMijlpaal(id: string, userId: string): Promise<void> {
   const supabase = createClient();
-  const { error } = await supabase.from("milestones").delete().eq("id", id);
+  const { error } = await supabase.from("milestones").delete().eq("id", id).eq("user_id", userId);
   if (error) logErr("deleteMijlpaal", error);
 }
 

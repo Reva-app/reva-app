@@ -211,9 +211,9 @@ export async function ensureUserProfileAndSettings(user: User): Promise<void> {
   }
 
   if (!existingSettings) {
-    // New user — start a 4-day trial immediately.
+    // New user — start a 7-day trial immediately.
     const now           = new Date();
-    const trialEnd      = new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000);
+    const trialEnd      = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const trialStartIso = now.toISOString();
     const trialEndIso   = trialEnd.toISOString();
 
@@ -283,7 +283,7 @@ export async function upsertProfile(
   // ── profiles table (naam, email, avatar) ──────────────────────────────────
   const dbPatch = profileToDb(patch);
   if (Object.keys(dbPatch).length > 0) {
-    console.info("[upsertProfile/profiles] uid:", uid, "payload:", dbPatch);
+    console.info("[upsertProfile/profiles] uid:", uid);
     const { data, error } = await supabase
       .from("profiles")
       .update(dbPatch)
@@ -301,7 +301,7 @@ export async function upsertProfile(
   // ── settings table (dates, injury info, insurance) ────────────────────────
   const settingsPatch = profileToSettings(patch);
   if (Object.keys(settingsPatch).length > 0) {
-    console.info("[upsertProfile/settings] uid:", uid, "payload:", settingsPatch);
+    console.info("[upsertProfile/settings] uid:", uid);
     const { data, error } = await supabase
       .from("settings")
       .upsert(
@@ -330,7 +330,7 @@ export async function saveNotificationSettings(
   const uid = user.id;
 
   const payload = settings as unknown as Record<string, unknown>;
-  console.info("[saveNotificationSettings] uid:", uid, "payload:", settings);
+  console.info("[saveNotificationSettings] uid:", uid);
 
   // Upsert — creates the row if it doesn't exist yet, updates if it does.
   const { data, error } = await supabase

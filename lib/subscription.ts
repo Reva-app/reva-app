@@ -6,7 +6,7 @@
  *
  * Plan-hiërarchie:
  *   premium  → actief abonnement (of developer-account)
- *   trial    → binnen de 4-daagse proefperiode
+ *   trial    → binnen de 7-daagse proefperiode
  *   free     → geen actief abonnement en trial verlopen
  */
 
@@ -35,7 +35,7 @@ export const SUBSCRIPTIONS_ENABLED = false;
 
 // ─── Developer bypass ─────────────────────────────────────────────────────────
 
-const DEV_EMAILS = new Set(["stef.robberts1@gmail.com"]);
+const DEV_EMAILS = new Set(["stef.robberts1@gmail.com", "info@reva-app.nl"]);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

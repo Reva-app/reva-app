@@ -5,24 +5,22 @@
  *
  * Flow:
  *  1. initPushNotifications(userId) aanroepen zodra de gebruiker ingelogd is.
- *  2. Vraagt toestemming aan.
- *  3. Registreert het FCM/APNs token in Supabase (push_tokens tabel).
- *  4. Toont binnenkomende notificaties als in-app toast (foreground).
- *  5. Handelt tap op notificatie af (navigatie).
+ *  2. Maakt een Android notification channel aan (vereist op Android 8+).
+ *  3. Vraagt toestemming aan.
+ *  4. Registreert het FCM/APNs token in Supabase (push_tokens tabel).
+ *  5. Toont binnenkomende notificaties als in-app toast (foreground).
+ *  6. Handelt tap op notificatie af (navigatie).
  */
 
 import { createClient } from "@/lib/supabaseClient";
 
-type CleanupFn = () => void;
+// Channel-ID moet overeenkomen met wat de Edge Function verstuurt
+export const PUSH_CHANNEL_ID = "reva_default";
 
+type CleanupFn = () => void;
 let cleanupRef: CleanupFn | null = null;
 
-/**
- * Initialiseer push notificaties voor de ingelogde gebruiker.
- * Veilig om meerdere keren aan te roepen — verwijdert eerst de oude listeners.
- */
 export async function initPushNotifications(userId: string): Promise<void> {
-  // Ruim eventuele vorige listeners op
   cleanupRef?.();
   cleanupRef = null;
 
@@ -30,16 +28,41 @@ export async function initPushNotifications(userId: string): Promise<void> {
 
   try {
     const { Capacitor } = await import("@capacitor/core");
-    if (!Capacitor.isNativePlatform()) return;
+    if (!Capacitor.isNativePlatform()) {
+      console.info("[pushService] geen native platform — push overgeslagen");
+      return;
+    }
 
     const { PushNotifications } = await import("@capacitor/push-notifications");
 
-    // ── Listeners registreren vóór register() aanroepen ───────────────────────
-    // Dit voorkomt dat we het token missen als register() heel snel klaar is.
+    // ── Android: maak notification channel aan (vereist op Android 8+) ──────
+    // Als de channel al bestaat heeft createChannel geen effect.
+    if (Capacitor.getPlatform() === "android") {
+      try {
+        await PushNotifications.createChannel({
+          id:          PUSH_CHANNEL_ID,
+          name:        "REVA meldingen",
+          description: "Herinneringen voor check-ins, medicatie en afspraken",
+          importance:  4, // IMPORTANCE_HIGH — toont heads-up banner
+          sound:       "default",
+          vibration:   true,
+          visibility:  1, // VISIBILITY_PUBLIC
+        });
+        console.info("[pushService] channel aangemaakt:", PUSH_CHANNEL_ID);
+      } catch (chErr) {
+        console.warn("[pushService] channel aanmaken mislukt (niet fataal):", chErr);
+      }
+    }
+
+    // ── Check huidige permissie-status ───────────────────────────────────────
+    const current = await PushNotifications.checkPermissions();
+    console.info("[pushService] huidige permissie:", current.receive);
+
+    // ── Listeners vóór register() — voorkomt gemiste tokens ─────────────────
     const regListener = await PushNotifications.addListener(
       "registration",
       async ({ value: token }) => {
-        console.info("[pushService] token ontvangen:", token.slice(0, 20) + "…");
+        console.info("[pushService] ✅ FCM token ontvangen:", token.slice(0, 25) + "…");
         await savePushToken(userId, token, Capacitor.getPlatform() as "android" | "ios");
       }
     );
@@ -47,30 +70,25 @@ export async function initPushNotifications(userId: string): Promise<void> {
     const errListener = await PushNotifications.addListener(
       "registrationError",
       ({ error }) => {
-        // Niet fataal — app blijft gewoon werken zonder push
-        console.warn("[pushService] registratiefout (niet fataal):", error);
+        console.warn("[pushService] ❌ registratiefout:", JSON.stringify(error));
       }
     );
 
     const fgListener = await PushNotifications.addListener(
       "pushNotificationReceived",
       (notification) => {
-        console.info("[pushService] notificatie ontvangen (foreground):", notification.title);
-        window.dispatchEvent(
-          new CustomEvent("reva:notification", { detail: notification })
-        );
+        console.info("[pushService] 📩 notificatie ontvangen (foreground):", notification.title);
+        window.dispatchEvent(new CustomEvent("reva:notification", { detail: notification }));
       }
     );
 
     const tapListener = await PushNotifications.addListener(
       "pushNotificationActionPerformed",
       (action) => {
-        const data = action.notification.data as Record<string, string> | undefined;
+        const data  = action.notification.data as Record<string, string> | undefined;
         const route = data?.route ?? "/";
-        console.info("[pushService] notificatie tap, navigeer naar:", route);
-        if (typeof window !== "undefined") {
-          window.location.href = route;
-        }
+        console.info("[pushService] 👆 notificatie tap → navigeer naar:", route);
+        if (typeof window !== "undefined") window.location.href = route;
       }
     );
 
@@ -82,28 +100,38 @@ export async function initPushNotifications(userId: string): Promise<void> {
     };
 
     // ── Vraag toestemming ────────────────────────────────────────────────────
-    const permResult = await PushNotifications.requestPermissions();
+    if (current.receive === "denied") {
+      console.warn("[pushService] ⛔ notificaties geweigerd in telefooninstellingen");
+      console.warn("[pushService] → Ga naar Instellingen > Apps > REVA > Meldingen");
+      cleanupRef();
+      cleanupRef = null;
+      return;
+    }
+
+    const permResult = current.receive === "granted"
+      ? current
+      : await PushNotifications.requestPermissions();
+
+    console.info("[pushService] permissie na request:", permResult.receive);
+
     if (permResult.receive !== "granted") {
-      console.info("[pushService] toestemming geweigerd — push uitgeschakeld");
+      console.info("[pushService] toestemming niet verleend — push uitgeschakeld");
       cleanupRef();
       cleanupRef = null;
       return;
     }
 
     // ── Registreer bij FCM ───────────────────────────────────────────────────
+    console.info("[pushService] registreren bij FCM…");
     await PushNotifications.register();
 
   } catch (err) {
-    // Nooit de app laten crashen vanwege push — gewoon stil falen
     console.warn("[pushService] initialisatie mislukt (niet fataal):", err);
     cleanupRef?.();
     cleanupRef = null;
   }
 }
 
-/**
- * Verwijder push-listeners (bijv. bij uitloggen).
- */
 export function cleanupPushNotifications(): void {
   cleanupRef?.();
   cleanupRef = null;
@@ -126,29 +154,22 @@ async function savePushToken(
     );
 
   if (error) {
-    console.error("[pushService] token opslaan mislukt:", error.message);
+    console.error("[pushService] ❌ token opslaan mislukt:", error.message);
+    console.error("[pushService]   code:", error.code, "hint:", error.hint);
   } else {
-    console.info("[pushService] token opgeslagen voor user:", userId.slice(0, 8));
+    console.info("[pushService] ✅ token opgeslagen voor user:", userId.slice(0, 8));
   }
 }
 
-/**
- * Verwijder het token van dit device (bij uitloggen).
- */
 export async function removePushToken(userId: string): Promise<void> {
   if (typeof window === "undefined") return;
 
   const { Capacitor } = await import("@capacitor/core");
   if (!Capacitor.isNativePlatform()) return;
 
-  const { PushNotifications } = await import("@capacitor/push-notifications");
   const supabase = createClient();
 
   try {
-    // Haal huidig token op om het specifiek te verwijderen
-    await PushNotifications.register();
-    // We verwijderen gewoon alle tokens van deze user op dit device
-    // (simpeler dan het token apart op te halen)
     await supabase
       .from("push_tokens")
       .delete()

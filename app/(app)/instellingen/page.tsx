@@ -897,7 +897,10 @@ export default function InstellingenPage() {
           action={<Zap size={16} className="text-gray-400" />}
         />
         <div className="space-y-4">
-          {/* Plan badge */}
+          {/* Plan badge — wacht op hydration om verkeerde dagentelling te voorkomen */}
+          {!planInfo.hydrated ? (
+            <div className="rounded-xl p-4 animate-pulse" style={{ background: "#f3f0eb", height: 64 }} />
+          ) : (
           <div
             className="rounded-xl p-4 flex items-start justify-between gap-4"
             style={{
@@ -957,6 +960,7 @@ export default function InstellingenPage() {
               {planInfo.plan === "premium" ? "Actief" : planInfo.plan === "trial" ? "Trial" : "Free"}
             </span>
           </div>
+          )}
 
           {/* Feature list */}
           {planInfo.plan !== "premium" && (
@@ -982,7 +986,7 @@ export default function InstellingenPage() {
               className="w-full py-3 rounded-xl font-semibold text-sm text-white transition-opacity hover:opacity-90"
               style={{ background: "#c8975a" }}
             >
-              {planInfo.plan === "trial" ? "Upgrade naar Premium" : "Bekijk Premium — €4,99/maand"}
+              {planInfo.plan === "trial" ? "Upgrade naar Premium" : "Bekijk Premium: vanaf €4,16/maand"}
             </button>
           )}
         </div>
@@ -1032,19 +1036,30 @@ export default function InstellingenPage() {
               style={{ background: "#faf9f7", borderColor: "#ece9e3" }}
             >
               <FieldLabel>Tijdstip check-in herinnering</FieldLabel>
-              <div className="max-w-[180px]">
-                <TimePicker
-                  value={notificationSettings.checkinTijd}
-                  onChange={(v) => {
-                    updateNotificationSettings({ checkinTijd: v }).then(({ error }) => {
-                      if (error) showToast("Opslaan mislukt: " + error, "error");
-                    });
-                  }}
-                  placeholder="Kies een tijdstip"
-                />
+              <div className="flex items-center gap-3">
+                <div className="max-w-[180px]">
+                  <TimePicker
+                    value={notificationSettings.checkinTijd}
+                    onChange={(v) => {
+                      updateNotificationSettings({ checkinTijd: v }).then(({ error }) => {
+                        if (error) {
+                          showToast("Opslaan mislukt: " + error, "error");
+                        } else {
+                          showToast(`Herinnering ingesteld op ${v}`, "success");
+                        }
+                      });
+                    }}
+                    placeholder="Kies een tijdstip"
+                  />
+                </div>
+                {notificationSettings.checkinTijd && (
+                  <span className="text-xs font-medium" style={{ color: "#c8975a" }}>
+                    Dagelijks om {notificationSettings.checkinTijd}
+                  </span>
+                )}
               </div>
               <p className="text-[11px] text-gray-400">
-                Elke dag ontvang je een herinnering op dit tijdstip.
+                Je ontvangt elke dag een push notificatie op dit tijdstip als je je check-in nog niet hebt ingevuld.
               </p>
             </div>
           )}

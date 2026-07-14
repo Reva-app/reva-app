@@ -5,7 +5,6 @@ const config: CapacitorConfig = {
   appName: "REVA",
   webDir: "out",
   server: {
-    // Gebruik altijd HTTPS voor cookies en Supabase auth
     androidScheme: "https",
   },
   ios: {
@@ -14,6 +13,12 @@ const config: CapacitorConfig = {
   },
   android: {
     allowMixedContent: false,
+  },
+  plugins: {
+    PushNotifications: {
+      // Toont het REVA app-icoon in de notificatie op Android
+      presentationOptions: ["badge", "sound", "alert"],
+    },
   },
 };
 

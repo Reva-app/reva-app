@@ -4,6 +4,34 @@ import type { NextConfig } from "next";
 // Draai `npm run build:cap` om de Capacitor-bundel te bouwen.
 const isCapacitor = process.env.NEXT_BUILD_TARGET === "capacitor";
 
+// Supabase-project host, nodig voor connect-src/img-src in de CSP hieronder
+// (signed storage-URLs en de auth/REST-calls van de browser-client gaan hierheen).
+const supabaseOrigin = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").origin;
+  } catch {
+    return "";
+  }
+})();
+
+// Basis-CSP zonder nonces (geen dynamic rendering vereist). 'unsafe-inline' voor
+// script/style blijft nodig zolang er geen nonce-infrastructuur is opgezet, maar
+// object-src/frame-ancestors/base-uri zijn wel hard dichtgezet.
+// Alleen relevant voor de server-build — bij static export (Capacitor) past
+// Next.js de `headers()`-config niet toe.
+const cspHeader = `
+  default-src 'self';
+  script-src 'self' 'unsafe-inline';
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' blob: data:${supabaseOrigin ? ` ${supabaseOrigin}` : ""};
+  font-src 'self';
+  connect-src 'self'${supabaseOrigin ? ` ${supabaseOrigin}` : ""};
+  object-src 'none';
+  base-uri 'self';
+  form-action 'self';
+  frame-ancestors 'none';
+`.replace(/\s{2,}/g, " ").trim();
+
 const nextConfig: NextConfig = {
   // Gzip-compressie voor alle responses
   compress: true,
@@ -13,6 +41,19 @@ const nextConfig: NextConfig = {
 
   // React Strict Mode voor betere ontwikkelbaarheid
   reactStrictMode: true,
+
+  // headers() wordt genegeerd bij output: 'export', dus alleen toevoegen
+  // voor de normale server-build (niet voor de Capacitor static export).
+  ...(!isCapacitor && {
+    async headers() {
+      return [
+        {
+          source: "/(.*)",
+          headers: [{ key: "Content-Security-Policy", value: cspHeader }],
+        },
+      ];
+    },
+  }),
 
   // Capacitor-specifieke instellingen
   ...(isCapacitor && {

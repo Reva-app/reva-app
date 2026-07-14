@@ -28,8 +28,8 @@ export async function upsertCheckIn(ci: CheckIn, userId: string): Promise<void> 
   if (error) logErr("upsertCheckIn", error);
 }
 
-export async function deleteCheckIn(id: string): Promise<void> {
+export async function deleteCheckIn(id: string, userId: string): Promise<void> {
   const supabase = createClient();
-  const { error } = await supabase.from("checkins").delete().eq("id", id);
+  const { error } = await supabase.from("checkins").delete().eq("id", id).eq("user_id", userId);
   if (error) logErr("deleteCheckIn", error);
 }

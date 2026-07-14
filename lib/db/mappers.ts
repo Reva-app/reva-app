@@ -14,6 +14,7 @@ import type {
   DbGoal, DbMilestone,
   DbDossierDocument, DbDossierPhotoUpdate, DbDossierContact,
 } from "./types";
+import { pathFromStorageValue } from "@/lib/services/storageService";
 
 // ─── Profile ──────────────────────────────────────────────────────────────────
 
@@ -428,7 +429,7 @@ export function dossierDocumentToDb(d: DossierDocument, userId: string): Omit<Db
     user_id:       userId,
     title:         d.title,
     file_name:     d.bestandsnaam ?? null,
-    file_url:      d.fileUrl ?? null,
+    file_url:      d.fileUrl ? pathFromStorageValue("dossier-documents", d.fileUrl) : null,
     file_type:     d.type,
     provider_type: d.zorgverlener || null,
     provider_name: d.zorgverlenerAnders ?? null,
@@ -454,7 +455,7 @@ export function fotoUpdateToDb(f: FotoUpdate, userId: string): Omit<DbDossierPho
     user_id:     userId,
     date:        f.date,
     week_number: null,
-    image_url:   f.imageUrl ?? null,
+    image_url:   f.imageUrl ? pathFromStorageValue("dossier-photos", f.imageUrl) : null,
     image_name:  null,
     note:        f.notitie ?? null,
   };
