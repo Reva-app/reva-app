@@ -1141,24 +1141,28 @@ export default function InstellingenPage() {
         <p className="text-xs" style={{ color: "#c4bfb7" }}>
           <span
             className="underline underline-offset-2 cursor-pointer hover:opacity-70 transition-opacity"
-            onClick={() => showToast("Disclaimer en algemene voorwaarden komen binnenkort beschikbaar.")}
+            onClick={() => showToast("Disclaimer komt binnenkort beschikbaar.")}
           >
             Disclaimer
           </span>
           {" · "}
-          <span
-            className="underline underline-offset-2 cursor-pointer hover:opacity-70 transition-opacity"
-            onClick={() => showToast("Disclaimer en algemene voorwaarden komen binnenkort beschikbaar.")}
+          <a
+            href="https://www.reva-app.nl/algemene-voorwaarden"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:opacity-70 transition-opacity"
           >
             Algemene voorwaarden
-          </span>
+          </a>
           {" · "}
-          <span
-            className="underline underline-offset-2 cursor-pointer hover:opacity-70 transition-opacity"
-            onClick={() => showToast("Disclaimer en algemene voorwaarden komen binnenkort beschikbaar.")}
+          <a
+            href="https://www.reva-app.nl/privacy-policy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:opacity-70 transition-opacity"
           >
             Privacybeleid
-          </span>
+          </a>
         </p>
       </div>
     </div>

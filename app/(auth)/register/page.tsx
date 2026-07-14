@@ -337,9 +337,23 @@ export default function RegisterPage() {
         {/* Disclaimer note */}
         <p className="text-[11px] text-gray-400 text-center mt-4 leading-relaxed">
           Door een account aan te maken ga je akkoord met onze{" "}
-          <span className="underline underline-offset-2">algemene voorwaarden</span>{" "}
+          <a
+            href="https://www.reva-app.nl/algemene-voorwaarden"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-gray-600"
+          >
+            algemene voorwaarden
+          </a>{" "}
           en het{" "}
-          <span className="underline underline-offset-2">privacybeleid</span>.
+          <a
+            href="https://www.reva-app.nl/privacy-policy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-gray-600"
+          >
+            privacybeleid
+          </a>.
         </p>
 
         {/* Login link */}
