@@ -23,7 +23,7 @@ const cspHeader = `
   default-src 'self';
   script-src 'self' 'unsafe-inline';
   style-src 'self' 'unsafe-inline';
-  img-src 'self' blob: data:${supabaseOrigin ? ` ${supabaseOrigin}` : ""};
+  img-src 'self' blob: data: https://*.googleusercontent.com${supabaseOrigin ? ` ${supabaseOrigin}` : ""};
   font-src 'self';
   connect-src 'self'${supabaseOrigin ? ` ${supabaseOrigin}` : ""};
   object-src 'none';

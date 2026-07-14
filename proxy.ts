@@ -46,8 +46,12 @@ export default async function proxy(request: NextRequest) {
     // The client-side AuthGate will re-check and redirect if needed.
   }
 
+  // Normaliseer trailing slash — anders matcht "/login/" nooit met AUTH_ROUTES
+  // (Next normaliseert intern soms naar een trailing slash) en loopt de
+  // redirect naar zichzelf oneindig door.
   const { pathname } = request.nextUrl;
-  const isAuthRoute = AUTH_ROUTES.has(pathname);
+  const normalizedPath = pathname.replace(/\/$/, "") || "/";
+  const isAuthRoute = AUTH_ROUTES.has(normalizedPath);
 
   // ── Unauthenticated → /login ───────────────────────────────────────────────
   if (!user && !isAuthRoute) {
@@ -83,8 +87,12 @@ export default async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Run on all paths except Next.js internals, static assets, and Supabase
-    // auth callback routes that need to complete without redirection
-    "/((?!_next/static|_next/image|favicon\\.ico|auth/callback|auth/reset-password|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // Run on all paths except Next.js internals, static assets, Supabase auth
+    // callback routes that need to complete without redirection, and API routes.
+    // API routes must never be redirected to an HTML page on an auth failure —
+    // each one already checks auth itself and returns a proper JSON error/401
+    // (see app/api/delete-account/route.ts). A middleware redirect here turns
+    // into a non-JSON response that breaks the calling fetch().
+    "/((?!_next/static|_next/image|favicon\\.ico|auth/callback|auth/reset-password|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
