@@ -1,6 +1,4 @@
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 // Tables to delete from (in order — junction tables before parent tables to avoid FK issues).
@@ -28,31 +26,35 @@ const USER_TABLES: string[] = [
 
 const STORAGE_BUCKETS = ["dossier-photos", "dossier-documents"] as const;
 
-export async function DELETE() {
-  const cookieStore = await cookies();
-
-  // Build server-side Supabase client (honors RLS with user's session)
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            try { cookieStore.set(name, value, options); } catch { /* read-only in route handler */ }
-          });
-        },
-      },
-    }
-  );
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
+export async function DELETE(request: Request) {
+  // De sessie wordt bewust NIET uit cookies gereconstrueerd — @supabase/ssr's
+  // cookie-gebaseerde sessie kan achterlopen op een stille token-refresh die de
+  // browser-client intern al heeft doorgevoerd, wat hier leidde tot valse
+  // "niet ingelogd"-afwijzingen ondanks een geldig ingelogde gebruiker. In
+  // plaats daarvan valideert de client zijn actuele, verse access token
+  // expliciet via de Authorization-header (zie instellingen/page.tsx).
+  const authHeader = request.headers.get("authorization");
+  const token = authHeader?.match(/^Bearer\s+(.+)$/i)?.[1];
+  if (!token) {
     return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
   }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anonKey     = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+  const authClient = createSupabaseClient(supabaseUrl, anonKey);
+  const { data: { user }, error: authError } = await authClient.auth.getUser(token);
+  if (authError || !user) {
+    console.error("[delete-account] auth check failed:", authError?.message ?? "no user for token");
+    return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
+  }
+
+  // RLS-gebonden client, geauthenticeerd met hetzelfde geverifieerde token —
+  // zodat ook de losse rij-verwijderingen hieronder niet alsnog op een
+  // cookie-mismatch kunnen stranden.
+  const supabase = createSupabaseClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
 
   const userId = user.id;
   const errors: string[] = [];
@@ -64,7 +66,7 @@ export async function DELETE() {
       { status: 500 }
     );
   }
-  const admin = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey);
+  const admin = createSupabaseClient(supabaseUrl, serviceRoleKey);
 
   // Delete all user data row by row, per table
   for (const table of USER_TABLES) {

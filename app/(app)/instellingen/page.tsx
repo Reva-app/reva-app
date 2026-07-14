@@ -545,7 +545,21 @@ export default function InstellingenPage() {
   async function handleDeleteAccount() {
     setDeleteLoading(true);
     try {
-      const res = await fetch(apiUrl("/api/delete-account"), { method: "DELETE" });
+      const supabase = createClient();
+      // Vraag de actuele sessie op bij de browser-client (in-memory, altijd vers)
+      // en stuur het token expliciet mee — vertrouw niet op de sessie-cookie,
+      // die soms achterloopt op een stille token-refresh.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        showToast("Verwijderen mislukt: niet ingelogd", "error");
+        setDeleteLoading(false);
+        return;
+      }
+
+      const res = await fetch(apiUrl("/api/delete-account"), {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
       const json = await res.json();
       if (!res.ok || json.error) {
         showToast("Verwijderen mislukt: " + (json.error ?? "Onbekende fout"), "error");
@@ -553,7 +567,6 @@ export default function InstellingenPage() {
         return;
       }
       // Sign out client-side after successful deletion
-      const supabase = createClient();
       await supabase.auth.signOut();
       router.push("/auth/login");
     } catch {
