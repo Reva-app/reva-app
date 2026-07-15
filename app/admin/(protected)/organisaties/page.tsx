@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Building2 } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Badge } from "@/components/ui/Badge";
@@ -8,13 +9,15 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { formatDate } from "@/lib/data";
 import { loadAdminOrganizations, type AdminOrganization } from "@/lib/services/adminService";
 
-function statusBadge(status: string) {
+export function orgStatusBadge(status: string) {
   if (status === "active") return <Badge variant="success">Actief</Badge>;
-  if (status === "suspended") return <Badge variant="danger">Geschorst</Badge>;
+  if (status === "trial") return <Badge variant="warning">Trial</Badge>;
+  if (status === "paused") return <Badge variant="danger">Gepauzeerd</Badge>;
   return <Badge variant="muted">{status}</Badge>;
 }
 
 export default function AdminOrganizationsPage() {
+  const router = useRouter();
   const [orgs, setOrgs] = useState<AdminOrganization[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -63,9 +66,14 @@ export default function AdminOrganizationsPage() {
               </thead>
               <tbody>
                 {orgs.map((org) => (
-                  <tr key={org.id} style={{ borderBottom: "1px solid #f8f7f4" }}>
+                  <tr
+                    key={org.id}
+                    onClick={() => router.push(`/admin/organisaties/${org.id}`)}
+                    className="cursor-pointer transition-colors hover:bg-gray-50"
+                    style={{ borderBottom: "1px solid #f8f7f4" }}
+                  >
                     <td className="px-5 py-3.5 font-medium text-gray-800">{org.name}</td>
-                    <td className="px-5 py-3.5">{statusBadge(org.status)}</td>
+                    <td className="px-5 py-3.5">{orgStatusBadge(org.status)}</td>
                     <td className="px-5 py-3.5 text-gray-600">{org.locationCount}</td>
                     <td className="px-5 py-3.5 text-gray-600">{org.patientCount}</td>
                     <td className="px-5 py-3.5 text-gray-400">{formatDate(org.createdAt)}</td>
