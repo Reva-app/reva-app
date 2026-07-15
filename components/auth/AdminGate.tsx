@@ -25,7 +25,7 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) router.replace("/login");
+    if (!user) router.replace("/admin/login");
   }, [authLoading, user, router]);
 
   if (authLoading || !checked) {

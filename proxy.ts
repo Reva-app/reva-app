@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const AUTH_ROUTES = new Set(["/login", "/register", "/forgot-password"]);
+const ADMIN_LOGIN_ROUTE = "/admin/login";
 
 export default async function proxy(request: NextRequest) {
   // If env vars aren't configured, let all requests through
@@ -52,9 +53,25 @@ export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const normalizedPath = pathname.replace(/\/$/, "") || "/";
   const isAuthRoute = AUTH_ROUTES.has(normalizedPath);
+  const isAdminRoute = normalizedPath === "/admin" || normalizedPath.startsWith("/admin/");
+  const isAdminLoginRoute = normalizedPath === ADMIN_LOGIN_ROUTE;
+
+  // ── Unauthenticated, admin-gedeelte → eigen /admin/login (nooit het
+  // patiënten-inlogscherm) ────────────────────────────────────────────────────
+  if (!user && isAdminRoute && !isAdminLoginRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = ADMIN_LOGIN_ROUTE;
+    url.searchParams.set("next", pathname);
+
+    const redirectResponse = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach(({ name, value, ...opts }) => {
+      redirectResponse.cookies.set(name, value, opts);
+    });
+    return redirectResponse;
+  }
 
   // ── Unauthenticated → /login ───────────────────────────────────────────────
-  if (!user && !isAuthRoute) {
+  if (!user && !isAuthRoute && !isAdminLoginRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname === "/" ? "" : pathname);
@@ -62,6 +79,19 @@ export default async function proxy(request: NextRequest) {
 
     const redirectResponse = NextResponse.redirect(url);
     // Forward any refreshed-token cookies so the browser stays in sync
+    supabaseResponse.cookies.getAll().forEach(({ name, value, ...opts }) => {
+      redirectResponse.cookies.set(name, value, opts);
+    });
+    return redirectResponse;
+  }
+
+  // ── Authenticated + op /admin/login → terug naar het admin-dashboard ───────
+  if (user && isAdminLoginRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/admin";
+    url.searchParams.delete("next");
+
+    const redirectResponse = NextResponse.redirect(url);
     supabaseResponse.cookies.getAll().forEach(({ name, value, ...opts }) => {
       redirectResponse.cookies.set(name, value, opts);
     });
