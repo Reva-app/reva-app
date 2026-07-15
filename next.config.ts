@@ -19,9 +19,16 @@ const supabaseOrigin = (() => {
 // object-src/frame-ancestors/base-uri zijn wel hard dichtgezet.
 // Alleen relevant voor de server-build — bij static export (Capacitor) past
 // Next.js de `headers()`-config niet toe.
+//
+// 'unsafe-eval' alleen in development: React's dev-mode gebruikt eval() voor
+// het reconstrueren van call stacks bij hot-reload/debugging (nooit in een
+// production build). Zonder dit blokkeert de CSP dat en toont Next.js een
+// permanente "1 Issue"-melding in de dev-overlay — puur een lokaal
+// ontwikkelgemak, geen verzwakking van de production-CSP.
+const isDev = process.env.NODE_ENV === "development";
 const cspHeader = `
   default-src 'self';
-  script-src 'self' 'unsafe-inline';
+  script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""};
   style-src 'self' 'unsafe-inline';
   img-src 'self' blob: data: https://*.googleusercontent.com${supabaseOrigin ? ` ${supabaseOrigin}` : ""};
   font-src 'self';
