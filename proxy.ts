@@ -2,7 +2,14 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const AUTH_ROUTES = new Set(["/login", "/register", "/forgot-password"]);
-const ADMIN_LOGIN_ROUTE = "/admin/login";
+
+// Elk los portaal (admin, practice) heeft een eigen inlogscherm, los van het
+// patiënten-inlogscherm — zie docs/REVA-V2-MASTERPLAN.md §16. Voegt een
+// nieuw portaal er later eentje toe? Dan hoeft alleen deze lijst te groeien.
+const PORTALS = [
+  { prefix: "/admin", loginRoute: "/admin/login" },
+  { prefix: "/portal", loginRoute: "/portal/login" },
+];
 
 export default async function proxy(request: NextRequest) {
   // If env vars aren't configured, let all requests through
@@ -47,68 +54,50 @@ export default async function proxy(request: NextRequest) {
     // The client-side AuthGate will re-check and redirect if needed.
   }
 
+  const redirectTo = (path: string, extra?: (url: URL) => void) => {
+    const url = request.nextUrl.clone();
+    url.pathname = path;
+    url.search = "";
+    extra?.(url);
+    const redirectResponse = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach(({ name, value, ...opts }) => {
+      redirectResponse.cookies.set(name, value, opts);
+    });
+    return redirectResponse;
+  };
+
   // Normaliseer trailing slash — anders matcht "/login/" nooit met AUTH_ROUTES
   // (Next normaliseert intern soms naar een trailing slash) en loopt de
   // redirect naar zichzelf oneindig door.
   const { pathname } = request.nextUrl;
   const normalizedPath = pathname.replace(/\/$/, "") || "/";
   const isAuthRoute = AUTH_ROUTES.has(normalizedPath);
-  const isAdminRoute = normalizedPath === "/admin" || normalizedPath.startsWith("/admin/");
-  const isAdminLoginRoute = normalizedPath === ADMIN_LOGIN_ROUTE;
 
-  // ── Unauthenticated, admin-gedeelte → eigen /admin/login (nooit het
-  // patiënten-inlogscherm) ────────────────────────────────────────────────────
-  if (!user && isAdminRoute && !isAdminLoginRoute) {
-    const url = request.nextUrl.clone();
-    url.pathname = ADMIN_LOGIN_ROUTE;
-    url.searchParams.set("next", pathname);
+  const portal = PORTALS.find(
+    (p) => normalizedPath === p.prefix || normalizedPath.startsWith(`${p.prefix}/`)
+  );
+  const isPortalLoginRoute = portal?.loginRoute === normalizedPath;
 
-    const redirectResponse = NextResponse.redirect(url);
-    supabaseResponse.cookies.getAll().forEach(({ name, value, ...opts }) => {
-      redirectResponse.cookies.set(name, value, opts);
-    });
-    return redirectResponse;
+  // ── Unauthenticated, binnen een portaal → dat portaal se eigen loginscherm ──
+  if (!user && portal && !isPortalLoginRoute) {
+    return redirectTo(portal.loginRoute, (url) => url.searchParams.set("next", pathname));
   }
 
-  // ── Unauthenticated → /login ───────────────────────────────────────────────
-  if (!user && !isAuthRoute && !isAdminLoginRoute) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", pathname === "/" ? "" : pathname);
-    if (!url.searchParams.get("next")) url.searchParams.delete("next");
-
-    const redirectResponse = NextResponse.redirect(url);
-    // Forward any refreshed-token cookies so the browser stays in sync
-    supabaseResponse.cookies.getAll().forEach(({ name, value, ...opts }) => {
-      redirectResponse.cookies.set(name, value, opts);
+  // ── Unauthenticated → /login (patiëntgedeelte) ──────────────────────────────
+  if (!user && !isAuthRoute && !isPortalLoginRoute) {
+    return redirectTo("/login", (url) => {
+      if (pathname !== "/") url.searchParams.set("next", pathname);
     });
-    return redirectResponse;
   }
 
-  // ── Authenticated + op /admin/login → terug naar het admin-dashboard ───────
-  if (user && isAdminLoginRoute) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/admin";
-    url.searchParams.delete("next");
-
-    const redirectResponse = NextResponse.redirect(url);
-    supabaseResponse.cookies.getAll().forEach(({ name, value, ...opts }) => {
-      redirectResponse.cookies.set(name, value, opts);
-    });
-    return redirectResponse;
+  // ── Authenticated + op een portaal-loginscherm → terug naar dat portaal ─────
+  if (user && portal && isPortalLoginRoute) {
+    return redirectTo(portal.prefix);
   }
 
-  // ── Authenticated + auth route → dashboard ────────────────────────────────
+  // ── Authenticated + patiënten-auth route → dashboard ────────────────────────
   if (user && isAuthRoute) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    url.searchParams.delete("next");
-
-    const redirectResponse = NextResponse.redirect(url);
-    supabaseResponse.cookies.getAll().forEach(({ name, value, ...opts }) => {
-      redirectResponse.cookies.set(name, value, opts);
-    });
-    return redirectResponse;
+    return redirectTo("/");
   }
 
   // Always return the supabaseResponse — it carries any refreshed session cookies

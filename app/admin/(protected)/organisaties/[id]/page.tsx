@@ -3,8 +3,8 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
-  ArrowLeft, Building2, MapPin, Users, HeartPulse, Activity,
-  MessageSquare, Camera, Loader2, Check,
+  ArrowLeft, Building2, MapPin, HeartPulse, Activity,
+  MessageSquare, Camera, Loader2, Check, UserPlus,
 } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
@@ -17,8 +17,9 @@ import { orgStatusBadge } from "../page";
 import {
   loadAdminOrganizationDetail, updateAdminOrganization, uploadOrganizationLogo,
   loadAdminOrgLocations, loadAdminOrgMembers, loadAdminOrgPatientStats, loadAdminOrgUsage,
+  loadAdminRoles, addAdminOrgMember,
   type AdminOrganizationDetail, type AdminOrgLocation, type AdminOrgMember,
-  type AdminOrgPatientStats, type AdminOrgUsage,
+  type AdminOrgPatientStats, type AdminOrgUsage, type AdminRoleOption,
 } from "@/lib/services/adminService";
 
 const inputStyle = {
@@ -79,6 +80,14 @@ export default function AdminOrganizationDetailPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [roles, setRoles] = useState<AdminRoleOption[]>([]);
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [memberEmail, setMemberEmail] = useState("");
+  const [memberRoleId, setMemberRoleId] = useState("");
+  const [memberLocationId, setMemberLocationId] = useState("");
+  const [addingMember, setAddingMember] = useState(false);
+  const [addMemberError, setAddMemberError] = useState("");
+
   useEffect(() => {
     let cancelled = false;
     Promise.all([
@@ -87,19 +96,43 @@ export default function AdminOrganizationDetailPage() {
       loadAdminOrgMembers(orgId),
       loadAdminOrgPatientStats(orgId),
       loadAdminOrgUsage(orgId),
-    ]).then(([detail, locs, mems, pStats, use]) => {
+      loadAdminRoles(),
+    ]).then(([detail, locs, mems, pStats, use, roleOptions]) => {
       if (cancelled) return;
       setOrg(detail);
       setLocations(locs);
       setMembers(mems);
       setPatientStats(pStats);
       setUsage(use);
+      setRoles(roleOptions);
+      if (roleOptions.length > 0) setMemberRoleId(roleOptions[0].id);
       setLoading(false);
     });
     return () => {
       cancelled = true;
     };
   }, [orgId]);
+
+  async function handleAddMember(e: React.FormEvent) {
+    e.preventDefault();
+    if (!memberEmail.trim() || !memberRoleId) {
+      setAddMemberError("Vul een e-mailadres in en kies een rol");
+      return;
+    }
+    setAddingMember(true);
+    setAddMemberError("");
+    const { error } = await addAdminOrgMember(orgId, memberEmail.trim(), memberRoleId, memberLocationId || null);
+    setAddingMember(false);
+    if (error) {
+      setAddMemberError(error);
+      return;
+    }
+    setMemberEmail("");
+    setMemberLocationId("");
+    setShowAddMember(false);
+    const updatedMembers = await loadAdminOrgMembers(orgId);
+    setMembers(updatedMembers);
+  }
 
   async function handleSave() {
     if (!org) return;
@@ -268,11 +301,69 @@ export default function AdminOrganizationDetailPage() {
         <CardHeader
           title="Gebruikers"
           subtitle="Medewerkers binnen deze organisatie"
-          action={<Users size={15} className="text-gray-400" />}
+          action={
+            <Button size="sm" variant="secondary" onClick={() => setShowAddMember((v) => !v)}>
+              <UserPlus size={13} />
+              Toevoegen
+            </Button>
+          }
         />
+
+        {showAddMember && (
+          <form onSubmit={handleAddMember} className="rounded-xl p-4 mb-4 space-y-3" style={{ background: "#f8f7f4" }}>
+            <p className="text-xs text-gray-500">
+              Koppelt een bestaand REVA-account aan deze organisatie. Diegene moet al eerder zelf een account hebben aangemaakt.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <FieldLabel>E-mailadres</FieldLabel>
+                <input
+                  type="email"
+                  value={memberEmail}
+                  onChange={(e) => setMemberEmail(e.target.value)}
+                  placeholder="naam@praktijk.nl"
+                  className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none"
+                  style={{ ...inputStyle, background: "#ffffff" }}
+                />
+              </div>
+              <div>
+                <FieldLabel>Rol</FieldLabel>
+                <select
+                  value={memberRoleId}
+                  onChange={(e) => setMemberRoleId(e.target.value)}
+                  className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none"
+                  style={{ ...inputStyle, background: "#ffffff" }}
+                >
+                  {roles.map((r) => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <FieldLabel>Vestiging (optioneel)</FieldLabel>
+                <select
+                  value={memberLocationId}
+                  onChange={(e) => setMemberLocationId(e.target.value)}
+                  className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none"
+                  style={{ ...inputStyle, background: "#ffffff" }}
+                >
+                  <option value="">Hele organisatie</option>
+                  {locations.map((l) => (
+                    <option key={l.id} value={l.id}>{l.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {addMemberError && <p className="text-xs" style={{ color: "#dc2626" }}>{addMemberError}</p>}
+            <Button type="submit" size="sm" disabled={addingMember}>
+              {addingMember ? <Loader2 size={13} className="animate-spin" /> : "Koppelen"}
+            </Button>
+          </form>
+        )}
+
         {membersByRole.length === 0 ? (
           <p className="text-sm text-gray-400 mt-2">
-            Nog geen medewerkers uitgenodigd. Dit vult zich zodra de Practice Portal medewerkers kan toevoegen.
+            Nog geen medewerkers gekoppeld.
           </p>
         ) : (
           <div className="space-y-0 mt-2">

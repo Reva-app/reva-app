@@ -329,6 +329,91 @@ export async function loadAdminOrgPatientStats(orgId: string): Promise<AdminOrgP
   };
 }
 
+// ─── Organisatie aanmaken & medewerkers koppelen ────────────────────────────
+
+export interface AdminRoleOption {
+  id: string;
+  key: string;
+  name: string;
+}
+
+/** Alle rollen behalve super_admin (die wordt niet via memberships toegekend, zie migratie 016). */
+export async function loadAdminRoles(): Promise<AdminRoleOption[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("roles")
+    .select("id, key, name")
+    .neq("key", "super_admin")
+    .order("scope")
+    .order("key");
+  if (error) { logErr("loadAdminRoles", error); return []; }
+  return (data ?? []) as AdminRoleOption[];
+}
+
+export async function createAdminOrganization(name: string): Promise<{ id: string | null; error: string | null }> {
+  const supabase = createClient();
+  const { data: org, error: orgError } = await supabase
+    .from("organizations")
+    .insert({ name, status: "trial" })
+    .select("id")
+    .single();
+  if (orgError) { logErr("createAdminOrganization(org)", orgError); return { id: null, error: orgError.message }; }
+
+  const { error: locError } = await supabase
+    .from("locations")
+    .insert({ organization_id: org.id, name: "Hoofdlocatie" });
+  if (locError) logErr("createAdminOrganization(location)", locError);
+
+  return { id: org.id, error: null };
+}
+
+/**
+ * Koppelt een BESTAAND REVA-account (op e-mailadres) aan een organisatie met
+ * een rol. Uitnodigen van iemand die nog geen account heeft, is bewust nog
+ * niet gebouwd — dat vereist een e-mail-uitnodigingsflow (Supabase admin API)
+ * die pas zinvol is zodra er een echte praktijk mee onboardt.
+ */
+export async function addAdminOrgMember(
+  orgId: string,
+  email: string,
+  roleId: string,
+  locationId: string | null
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("email", email.trim().toLowerCase())
+    .maybeSingle();
+  if (profileError) { logErr("addAdminOrgMember(profile)", profileError); return { error: profileError.message }; }
+  if (!profile) {
+    return { error: "Geen bestaand REVA-account gevonden met dit e-mailadres. Diegene moet eerst zelf een account aanmaken." };
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from("memberships")
+    .select("id")
+    .eq("user_id", profile.id)
+    .eq("organization_id", orgId)
+    .maybeSingle();
+  if (existingError) logErr("addAdminOrgMember(existing check)", existingError);
+  if (existing) {
+    return { error: "Deze persoon is al gekoppeld aan deze organisatie." };
+  }
+
+  const { error: insertError } = await supabase.from("memberships").insert({
+    user_id: profile.id,
+    organization_id: orgId,
+    role_id: roleId,
+    location_id: locationId,
+    status: "active",
+  });
+  if (insertError) { logErr("addAdminOrgMember(insert)", insertError); return { error: insertError.message }; }
+
+  return { error: null };
+}
+
 export async function loadAdminOrgUsage(orgId: string): Promise<AdminOrgUsage> {
   const supabase = createClient();
 
