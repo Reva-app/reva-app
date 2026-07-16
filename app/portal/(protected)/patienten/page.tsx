@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { HeartPulse, UserPlus, MoreVertical, Search } from "lucide-react";
+import { HeartPulse, UserPlus, MoreVertical, Search, ChevronUp, ChevronDown, Download } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -75,6 +75,92 @@ function matchesCheckinBucket(lastCheckinDate: string | null, bucket: string): b
   return true;
 }
 
+function genderLabel(gender: string | null) {
+  if (gender === "man") return "Man";
+  if (gender === "vrouw") return "Vrouw";
+  if (gender === "anders") return "Anders";
+  return "";
+}
+
+function statusLabel(status: string) {
+  if (status === "active") return "Actief";
+  if (status === "inactive") return "Inactief";
+  if (status === "archived") return "Gearchiveerd";
+  return status;
+}
+
+function accountStatusLabel(p: PortalPatient) {
+  if (p.hasAccount) return "Actief";
+  if (p.invitedAt) return `Uitgenodigd op ${formatDate(p.invitedAt)}`;
+  return "Nog geen account";
+}
+
+function escapeCsvField(field: string): string {
+  if (/[",\n\r]/.test(field)) {
+    return `"${field.replace(/"/g, '""')}"`;
+  }
+  return field;
+}
+
+function exportPatientsCsv(patients: PortalPatient[]) {
+  const headers = [
+    "Naam", "E-mail", "Telefoon", "Geboortedatum", "Geslacht", "Behandelaar", "Protocol",
+    "Vestiging", "Laatste check-in", "Dossierstatus", "Account", "Aangemaakt op",
+  ];
+  const rows = patients.map((p) => [
+    p.fullName ?? "",
+    p.email ?? "",
+    p.phone ?? "",
+    p.dateOfBirth ? formatDate(p.dateOfBirth) : "",
+    genderLabel(p.gender),
+    p.therapistName ?? "",
+    p.protocolName ?? "",
+    p.locationName ?? "",
+    p.lastCheckinDate ? formatDate(p.lastCheckinDate) : "",
+    statusLabel(p.status),
+    accountStatusLabel(p),
+    formatDate(p.createdAt),
+  ]);
+  const csvContent = [headers, ...rows].map((row) => row.map(escapeCsvField).join(",")).join("\r\n");
+  const blob = new Blob(["﻿" + csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `patienten-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+type SortKey = "name" | "therapist" | "protocol" | "location" | "lastCheckin" | "status";
+const PAGE_SIZE = 20;
+
+function compareNullableStrings(a: string | null, b: string | null): number {
+  if (!a && !b) return 0;
+  if (!a) return 1;
+  if (!b) return -1;
+  return a.localeCompare(b, "nl");
+}
+
+function SortableHeader({
+  label, sortKeyValue, activeKey, direction, onSort, align = "left",
+}: {
+  label: string; sortKeyValue: SortKey; activeKey: SortKey; direction: "asc" | "desc";
+  onSort: (key: SortKey) => void; align?: "left" | "right";
+}) {
+  const isActive = activeKey === sortKeyValue;
+  return (
+    <th
+      onClick={() => onSort(sortKeyValue)}
+      className={`${align === "left" ? "text-left" : "text-right"} font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3 cursor-pointer select-none hover:text-gray-600`}
+    >
+      <span className={`inline-flex items-center gap-1 ${align === "right" ? "flex-row-reverse" : ""}`}>
+        {label}
+        {isActive ? (direction === "asc" ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : null}
+      </span>
+    </th>
+  );
+}
+
 export default function PortalPatientsPage() {
   const router = useRouter();
   const { checked, membership } = usePortalMembership();
@@ -97,6 +183,10 @@ export default function PortalPatientsPage() {
   const [therapistFilter, setTherapistFilter] = useState("");
   const [protocolFilter, setProtocolFilter] = useState("");
   const [checkinFilter, setCheckinFilter] = useState("");
+
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [page, setPage] = useState(1);
 
   const canManagePatients = !!membership && MANAGE_PATIENTS_ROLES.includes(membership.roleKey);
 
@@ -159,6 +249,36 @@ export default function PortalPatientsPage() {
     });
   }, [patients, search, statusFilter, locationFilter, therapistFilter, protocolFilter, checkinFilter]);
 
+  const sortedPatients = useMemo(() => {
+    const sorted = [...filteredPatients].sort((a, b) => {
+      let cmp = 0;
+      switch (sortKey) {
+        case "name": cmp = compareNullableStrings(a.fullName, b.fullName); break;
+        case "therapist": cmp = compareNullableStrings(a.therapistName, b.therapistName); break;
+        case "protocol": cmp = compareNullableStrings(a.protocolName, b.protocolName); break;
+        case "location": cmp = compareNullableStrings(a.locationName, b.locationName); break;
+        case "lastCheckin": cmp = compareNullableStrings(a.lastCheckinDate, b.lastCheckinDate); break;
+        case "status": cmp = compareNullableStrings(a.status, b.status); break;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return sorted;
+  }, [filteredPatients, sortKey, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedPatients.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pagedPatients = sortedPatients.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  function handleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+    setPage(1);
+  }
+
   const activeMembers = members.filter((m) => m.membershipStatus === "active");
 
   function showMessage(patientId: string, ok: boolean, text: string) {
@@ -202,12 +322,18 @@ export default function PortalPatientsPage() {
           title="Patiënten"
           subtitle={loading ? "Laden…" : `${filteredPatients.length} van ${patients.length} ${patients.length === 1 ? "patiënt" : "patiënten"}`}
         />
-        {canManagePatients && !showWizard && !editingPatient && (
-          <Button size="sm" onClick={() => setShowWizard(true)}>
-            <UserPlus size={14} />
-            Patiënt toevoegen
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="secondary" onClick={() => exportPatientsCsv(sortedPatients)} disabled={sortedPatients.length === 0}>
+            <Download size={14} />
+            Exporteren
           </Button>
-        )}
+          {canManagePatients && !showWizard && !editingPatient && (
+            <Button size="sm" onClick={() => setShowWizard(true)}>
+              <UserPlus size={14} />
+              Patiënt toevoegen
+            </Button>
+          )}
+        </div>
       </div>
 
       {showWizard && membership && (
@@ -242,14 +368,14 @@ export default function PortalPatientsPage() {
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
-              type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+              type="text" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               placeholder="Naam of e-mailadres…" className="w-full text-sm rounded-xl border pl-9 pr-3 py-2 focus:outline-none" style={inputStyle}
             />
           </div>
         </div>
         <div className="w-[calc(50%-0.375rem)] sm:w-36">
           <label className="block text-xs font-medium text-gray-500 mb-1.5">Dossierstatus</label>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
             <option value="">Alle</option>
             <option value="active">Actief</option>
             <option value="inactive">Inactief</option>
@@ -258,28 +384,28 @@ export default function PortalPatientsPage() {
         </div>
         <div className="w-[calc(50%-0.375rem)] sm:w-44">
           <label className="block text-xs font-medium text-gray-500 mb-1.5">Vestiging</label>
-          <select value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+          <select value={locationFilter} onChange={(e) => { setLocationFilter(e.target.value); setPage(1); }} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
             <option value="">Alle</option>
             {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
           </select>
         </div>
         <div className="w-[calc(50%-0.375rem)] sm:w-40">
           <label className="block text-xs font-medium text-gray-500 mb-1.5">Behandelaar</label>
-          <select value={therapistFilter} onChange={(e) => setTherapistFilter(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+          <select value={therapistFilter} onChange={(e) => { setTherapistFilter(e.target.value); setPage(1); }} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
             <option value="">Alle</option>
             {activeMembers.map((m) => <option key={m.userId} value={m.userId}>{m.fullName || m.email}</option>)}
           </select>
         </div>
         <div className="w-[calc(50%-0.375rem)] sm:w-40">
           <label className="block text-xs font-medium text-gray-500 mb-1.5">Protocol</label>
-          <select value={protocolFilter} onChange={(e) => setProtocolFilter(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+          <select value={protocolFilter} onChange={(e) => { setProtocolFilter(e.target.value); setPage(1); }} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
             <option value="">Alle</option>
             {protocols.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>
         <div className="w-[calc(50%-0.375rem)] sm:w-44">
           <label className="block text-xs font-medium text-gray-500 mb-1.5">Laatste check-in</label>
-          <select value={checkinFilter} onChange={(e) => setCheckinFilter(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+          <select value={checkinFilter} onChange={(e) => { setCheckinFilter(e.target.value); setPage(1); }} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
             {CHECKIN_BUCKETS.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
           </select>
         </div>
@@ -302,17 +428,17 @@ export default function PortalPatientsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: "1px solid #e8e5df" }}>
-                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Naam</th>
-                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Behandelaar</th>
-                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Protocol</th>
-                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Vestiging</th>
-                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Laatste check-in</th>
-                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Dossierstatus</th>
+                  <SortableHeader label="Naam" sortKeyValue="name" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
+                  <SortableHeader label="Behandelaar" sortKeyValue="therapist" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
+                  <SortableHeader label="Protocol" sortKeyValue="protocol" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
+                  <SortableHeader label="Vestiging" sortKeyValue="location" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
+                  <SortableHeader label="Laatste check-in" sortKeyValue="lastCheckin" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
+                  <SortableHeader label="Dossierstatus" sortKeyValue="status" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
                   <th className="text-right font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Actie</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredPatients.map((p) => {
+                {pagedPatients.map((p) => {
                   const message = rowMessages[p.id];
                   return (
                     <tr
@@ -382,6 +508,17 @@ export default function PortalPatientsPage() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+        {!loading && sortedPatients.length > 0 && totalPages > 1 && (
+          <div className="flex items-center justify-between px-5 py-3 flex-wrap gap-2" style={{ borderTop: "1px solid #f8f7f4" }}>
+            <span className="text-xs text-gray-400">
+              Pagina {safePage} van {totalPages} — {sortedPatients.length} {sortedPatients.length === 1 ? "resultaat" : "resultaten"}
+            </span>
+            <div className="flex gap-2">
+              <Button size="sm" variant="secondary" disabled={safePage <= 1} onClick={() => setPage(safePage - 1)}>Vorige</Button>
+              <Button size="sm" variant="secondary" disabled={safePage >= totalPages} onClick={() => setPage(safePage + 1)}>Volgende</Button>
+            </div>
           </div>
         )}
       </div>
