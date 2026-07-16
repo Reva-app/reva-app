@@ -7,6 +7,7 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Modal } from "@/components/ui/Modal";
 import { formatDate } from "@/lib/data";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { PatientWizard } from "@/components/portal/PatientWizard";
@@ -210,15 +211,17 @@ export default function PortalPatientsPage() {
       </div>
 
       {showWizard && membership && (
-        <PatientWizard
-          organizationId={membership.organizationId}
-          locations={locations}
-          members={members}
-          protocols={protocols}
-          onProtocolCreated={(protocol) => setProtocols((prev) => [...prev, protocol].sort((a, b) => a.name.localeCompare(b.name)))}
-          onDone={() => { setShowWizard(false); if (membership) refresh(membership.organizationId); }}
-          onClose={() => setShowWizard(false)}
-        />
+        <Modal onClose={() => setShowWizard(false)} maxWidth="max-w-2xl">
+          <PatientWizard
+            organizationId={membership.organizationId}
+            locations={locations}
+            members={members}
+            protocols={protocols}
+            onProtocolCreated={(protocol) => setProtocols((prev) => [...prev, protocol].sort((a, b) => a.name.localeCompare(b.name)))}
+            onDone={() => { setShowWizard(false); if (membership) refresh(membership.organizationId); }}
+            onClose={() => setShowWizard(false)}
+          />
+        </Modal>
       )}
 
       {editingPatient && membership && (
@@ -384,8 +387,8 @@ export default function PortalPatientsPage() {
       </div>
 
       {confirmDeleteId && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.3)" }} onClick={() => setConfirmDeleteId(null)}>
-          <div className="rounded-2xl p-6 max-w-sm w-full" style={{ background: "#ffffff" }} onClick={(e) => e.stopPropagation()}>
+        <Modal onClose={() => setConfirmDeleteId(null)} maxWidth="max-w-sm">
+          <div className="rounded-2xl p-6" style={{ background: "#ffffff" }}>
             <h3 className="font-semibold text-gray-900 mb-2">Patiënt verwijderen?</h3>
             <p className="text-sm text-gray-500 mb-5">
               Dit verwijdert het volledige patiëntdossier permanent. Deze actie kan niet ongedaan worden gemaakt.
@@ -403,7 +406,7 @@ export default function PortalPatientsPage() {
               </Button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );
