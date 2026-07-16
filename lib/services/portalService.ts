@@ -20,12 +20,35 @@ export interface PortalPatient {
   id: string;
   fullName: string | null;
   email: string | null;
+  phone: string | null;
+  gender: string | null;
+  locationId: string | null;
   locationName: string | null;
+  therapistId: string | null;
+  therapistName: string | null;
+  protocolId: string | null;
+  protocolName: string | null;
+  treatmentStartDate: string | null;
+  surgeryDate: string | null;
   status: string;
   createdAt: string;
   hasAccount: boolean;
   invitedAt: string | null;
+  lastCheckinDate: string | null;
 }
+
+export interface PortalProtocolOption {
+  id: string;
+  name: string;
+}
+
+/**
+ * Rollen die patiëntdossiers mogen beheren (aanmaken/bewerken/archiveren/
+ * verwijderen) — moet in sync blijven met can_manage_org_patients() in
+ * migratie 034. Puur voor UI-gating (knoppen tonen/verbergen); RLS is de
+ * echte handhaving.
+ */
+export const MANAGE_PATIENTS_ROLES = ["organization_owner", "organization_admin", "location_manager", "therapist", "reception"];
 
 export interface PortalDashboardStats {
   patientCount: number;
@@ -126,43 +149,93 @@ export async function loadPortalPatients(organizationId: string): Promise<Portal
   const supabase = createClient();
   const { data, error } = await supabase
     .from("patients")
-    .select("id, user_id, location_id, status, created_at, first_name, last_name, email, invited_at")
+    .select("id, user_id, location_id, status, created_at, first_name, last_name, email, phone, gender, invited_at, assigned_therapist_id, protocol_id, treatment_start_date, surgery_date")
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false });
   if (error) { logErr("loadPortalPatients", error); return []; }
 
   const rows = data ?? [];
+  const patientIds = rows.map((r) => r.id as string);
   const userIds = [...new Set(rows.map((r) => r.user_id).filter((v): v is string => !!v))];
+  const therapistIds = [...new Set(rows.map((r) => r.assigned_therapist_id).filter((v): v is string => !!v))];
+  const profileIds = [...new Set([...userIds, ...therapistIds])];
   const locationIds = [...new Set(rows.map((r) => r.location_id).filter((v): v is string => !!v))];
+  const protocolIds = [...new Set(rows.map((r) => r.protocol_id).filter((v): v is string => !!v))];
 
-  const [profilesRes, locationsRes] = await Promise.all([
-    userIds.length > 0
-      ? supabase.from("profiles").select("id, full_name, email").in("id", userIds)
+  const [profilesRes, locationsRes, protocolsRes, checkinsRes] = await Promise.all([
+    profileIds.length > 0
+      ? supabase.from("profiles").select("id, full_name, email").in("id", profileIds)
       : Promise.resolve({ data: [] as { id: string; full_name: string | null; email: string | null }[], error: null }),
     locationIds.length > 0
       ? supabase.from("locations").select("id, name").in("id", locationIds)
       : Promise.resolve({ data: [] as { id: string; name: string }[], error: null }),
+    protocolIds.length > 0
+      ? supabase.from("protocols").select("id, name").in("id", protocolIds)
+      : Promise.resolve({ data: [] as { id: string; name: string }[], error: null }),
+    patientIds.length > 0
+      ? supabase.from("checkins").select("patient_id, date").in("patient_id", patientIds).order("date", { ascending: false })
+      : Promise.resolve({ data: [] as { patient_id: string; date: string }[], error: null }),
   ]);
   if (profilesRes.error) logErr("loadPortalPatients(profiles)", profilesRes.error);
   if (locationsRes.error) logErr("loadPortalPatients(locations)", locationsRes.error);
+  if (protocolsRes.error) logErr("loadPortalPatients(protocols)", protocolsRes.error);
+  if (checkinsRes.error) logErr("loadPortalPatients(checkins)", checkinsRes.error);
 
   const profileMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p]));
   const locationMap = new Map((locationsRes.data ?? []).map((l) => [l.id, l.name]));
+  const protocolMap = new Map((protocolsRes.data ?? []).map((p) => [p.id, p.name]));
+  const lastCheckinMap = new Map<string, string>();
+  for (const c of checkinsRes.data ?? []) {
+    if (!lastCheckinMap.has(c.patient_id)) lastCheckinMap.set(c.patient_id, c.date);
+  }
 
   return rows.map((r) => {
     const profile = r.user_id ? profileMap.get(r.user_id) : undefined;
     const dossierName = [r.first_name, r.last_name].filter(Boolean).join(" ") || null;
+    const therapist = r.assigned_therapist_id ? profileMap.get(r.assigned_therapist_id) : undefined;
     return {
       id: r.id as string,
       fullName: profile?.full_name ?? dossierName,
       email: profile?.email ?? (r.email as string | null),
+      phone: r.phone as string | null,
+      gender: r.gender as string | null,
+      locationId: r.location_id as string | null,
       locationName: r.location_id ? locationMap.get(r.location_id) ?? null : null,
+      therapistId: r.assigned_therapist_id as string | null,
+      therapistName: therapist?.full_name ?? null,
+      protocolId: r.protocol_id as string | null,
+      protocolName: r.protocol_id ? protocolMap.get(r.protocol_id) ?? null : null,
+      treatmentStartDate: r.treatment_start_date as string | null,
+      surgeryDate: r.surgery_date as string | null,
       status: r.status as string,
       createdAt: r.created_at as string,
       hasAccount: !!r.user_id,
       invitedAt: r.invited_at as string | null,
+      lastCheckinDate: lastCheckinMap.get(r.id as string) ?? null,
     };
   });
+}
+
+export async function loadPortalProtocols(organizationId: string): Promise<PortalProtocolOption[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("protocols")
+    .select("id, name")
+    .eq("organization_id", organizationId)
+    .order("name");
+  if (error) { logErr("loadPortalProtocols", error); return []; }
+  return data ?? [];
+}
+
+export async function createPortalProtocol(organizationId: string, name: string): Promise<{ id: string | null; error: string | null }> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("protocols")
+    .insert({ organization_id: organizationId, name: name.trim() })
+    .select("id")
+    .single();
+  if (error) { logErr("createPortalProtocol", error); return { id: null, error: "Aanmaken van het protocol is niet gelukt." }; }
+  return { id: data.id, error: null };
 }
 
 export async function loadPortalLocations(organizationId: string): Promise<PortalLocationOption[]> {
@@ -176,33 +249,88 @@ export async function loadPortalLocations(organizationId: string): Promise<Porta
   return data ?? [];
 }
 
-export interface NewPortalPatientInput {
+export interface PortalPatientInput {
   firstName: string;
   lastName: string;
   email: string;
   phone: string;
   dateOfBirth: string;
+  gender: string; // "man" | "vrouw" | "anders" | ""
   locationId: string | null;
+  therapistId: string | null;
+  protocolId: string | null;
+  treatmentStartDate: string;
+  surgeryDate: string;
 }
 
-export async function createPortalPatient(
-  organizationId: string,
-  input: NewPortalPatientInput
-): Promise<{ error: string | null }> {
-  const supabase = createClient();
-  const { error } = await supabase.from("patients").insert({
-    organization_id: organizationId,
+function patientInputToRow(input: PortalPatientInput) {
+  return {
     location_id: input.locationId,
     first_name: input.firstName.trim(),
     last_name: input.lastName.trim(),
     email: input.email.trim() || null,
     phone: input.phone.trim() || null,
     date_of_birth: input.dateOfBirth || null,
-    status: "active",
-  });
+    gender: input.gender || null,
+    assigned_therapist_id: input.therapistId,
+    protocol_id: input.protocolId,
+    treatment_start_date: input.treatmentStartDate || null,
+    surgery_date: input.surgeryDate || null,
+  };
+}
+
+export async function createPortalPatient(
+  organizationId: string,
+  input: PortalPatientInput
+): Promise<{ id: string | null; error: string | null }> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("patients")
+    .insert({ ...patientInputToRow(input), organization_id: organizationId, status: "active" })
+    .select("id")
+    .single();
   if (error) {
     logErr("createPortalPatient", error);
-    return { error: "Aanmaken van het patiëntdossier is niet gelukt." };
+    return { id: null, error: "Aanmaken van het patiëntdossier is niet gelukt." };
+  }
+  return { id: data.id, error: null };
+}
+
+export async function updatePortalPatient(
+  patientId: string,
+  input: PortalPatientInput
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("patients")
+    .update(patientInputToRow(input))
+    .eq("id", patientId);
+  if (error) {
+    logErr("updatePortalPatient", error);
+    return { error: "Bijwerken van het patiëntdossier is niet gelukt." };
+  }
+  return { error: null };
+}
+
+export async function updatePortalPatientStatus(
+  patientId: string,
+  status: "active" | "inactive" | "archived"
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("patients").update({ status }).eq("id", patientId);
+  if (error) {
+    logErr("updatePortalPatientStatus", error);
+    return { error: "Bijwerken van de status is niet gelukt." };
+  }
+  return { error: null };
+}
+
+export async function deletePortalPatient(patientId: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("patients").delete().eq("id", patientId);
+  if (error) {
+    logErr("deletePortalPatient", error);
+    return { error: "Verwijderen van het patiëntdossier is niet gelukt." };
   }
   return { error: null };
 }
@@ -267,6 +395,18 @@ export async function invitePortalPatient(
   if (markError) logErr("invitePortalPatient(mark)", markError);
 
   return { outcome: "invited", error: null };
+}
+
+/** Voor de intake-wizard: maakt het dossier aan en stuurt in één stap de uitnodiging. */
+export async function createAndInvitePortalPatient(
+  organizationId: string,
+  input: PortalPatientInput
+): Promise<InvitePortalPatientResult> {
+  const { id, error: createError } = await createPortalPatient(organizationId, input);
+  if (createError || !id) {
+    return { outcome: "failed", error: createError ?? "Aanmaken van het patiëntdossier is niet gelukt." };
+  }
+  return invitePortalPatient(id, input.email);
 }
 
 // ─── Vestigingen (zelf-service) ─────────────────────────────────────────────
