@@ -247,39 +247,39 @@ export default function PortalPatientsPage() {
             />
           </div>
         </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">Status</label>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+        <div className="w-[calc(50%-0.375rem)] sm:w-36">
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">Dossierstatus</label>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
             <option value="">Alle</option>
             <option value="active">Actief</option>
             <option value="inactive">Inactief</option>
             <option value="archived">Gearchiveerd</option>
           </select>
         </div>
-        <div>
+        <div className="w-[calc(50%-0.375rem)] sm:w-44">
           <label className="block text-xs font-medium text-gray-500 mb-1.5">Vestiging</label>
-          <select value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} className="text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+          <select value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
             <option value="">Alle</option>
             {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
           </select>
         </div>
-        <div>
+        <div className="w-[calc(50%-0.375rem)] sm:w-40">
           <label className="block text-xs font-medium text-gray-500 mb-1.5">Behandelaar</label>
-          <select value={therapistFilter} onChange={(e) => setTherapistFilter(e.target.value)} className="text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+          <select value={therapistFilter} onChange={(e) => setTherapistFilter(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
             <option value="">Alle</option>
             {activeMembers.map((m) => <option key={m.userId} value={m.userId}>{m.fullName || m.email}</option>)}
           </select>
         </div>
-        <div>
+        <div className="w-[calc(50%-0.375rem)] sm:w-40">
           <label className="block text-xs font-medium text-gray-500 mb-1.5">Protocol</label>
-          <select value={protocolFilter} onChange={(e) => setProtocolFilter(e.target.value)} className="text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+          <select value={protocolFilter} onChange={(e) => setProtocolFilter(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
             <option value="">Alle</option>
             {protocols.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>
-        <div>
+        <div className="w-[calc(50%-0.375rem)] sm:w-44">
           <label className="block text-xs font-medium text-gray-500 mb-1.5">Laatste check-in</label>
-          <select value={checkinFilter} onChange={(e) => setCheckinFilter(e.target.value)} className="text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+          <select value={checkinFilter} onChange={(e) => setCheckinFilter(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
             {CHECKIN_BUCKETS.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
           </select>
         </div>
@@ -307,7 +307,7 @@ export default function PortalPatientsPage() {
                   <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Protocol</th>
                   <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Vestiging</th>
                   <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Laatste check-in</th>
-                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Status</th>
+                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Dossierstatus</th>
                   <th className="text-right font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Actie</th>
                 </tr>
               </thead>

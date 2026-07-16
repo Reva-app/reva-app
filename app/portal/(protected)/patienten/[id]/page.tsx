@@ -73,6 +73,7 @@ export default function PortalPatientDetailPage() {
             <CardHeader title="Behandelgegevens" subtitle="Basisgegevens en behandeltraject" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
               <div><span className="text-gray-500">Telefoonnummer:</span> <span className="text-gray-800">{patient.phone || "—"}</span></div>
+              <div><span className="text-gray-500">Geboortedatum:</span> <span className="text-gray-800">{patient.dateOfBirth ? formatDate(patient.dateOfBirth) : "—"}</span></div>
               <div><span className="text-gray-500">Geslacht:</span> <span className="text-gray-800">{genderLabel(patient.gender)}</span></div>
               <div><span className="text-gray-500">Vestiging:</span> <span className="text-gray-800">{patient.locationName || "—"}</span></div>
               <div><span className="text-gray-500">Behandelend therapeut:</span> <span className="text-gray-800">{patient.therapistName || "—"}</span></div>

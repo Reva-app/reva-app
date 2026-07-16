@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, X } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { DatePicker } from "@/components/ui/DatePicker";
 import {
   updatePortalPatient,
   type PortalPatient, type PortalPatientInput, type PortalLocationOption, type PortalMember, type PortalProtocolOption,
@@ -26,7 +27,7 @@ function toInput(p: PortalPatient): PortalPatientInput {
     lastName: rest.join(" ") || "",
     email: p.email || "",
     phone: p.phone || "",
-    dateOfBirth: "",
+    dateOfBirth: p.dateOfBirth || "",
     gender: p.gender || "",
     locationId: p.locationId,
     therapistId: p.therapistId,
@@ -99,6 +100,10 @@ export function PatientEditForm({ patient, locations, members, protocols, onSave
               className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
           </div>
           <div>
+            <FieldLabel>Geboortedatum</FieldLabel>
+            <DatePicker value={input.dateOfBirth} onChange={(v) => update("dateOfBirth", v)} placeholder="Kies een datum" />
+          </div>
+          <div>
             <FieldLabel>Geslacht</FieldLabel>
             <select value={input.gender} onChange={(e) => update("gender", e.target.value)}
               className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
@@ -134,13 +139,11 @@ export function PatientEditForm({ patient, locations, members, protocols, onSave
           </div>
           <div>
             <FieldLabel>Startdatum behandeling</FieldLabel>
-            <input type="date" value={input.treatmentStartDate} onChange={(e) => update("treatmentStartDate", e.target.value)}
-              className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
+            <DatePicker value={input.treatmentStartDate} onChange={(v) => update("treatmentStartDate", v)} placeholder="Kies een datum" />
           </div>
           <div>
             <FieldLabel>Operatiedatum</FieldLabel>
-            <input type="date" value={input.surgeryDate} onChange={(e) => update("surgeryDate", e.target.value)}
-              className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
+            <DatePicker value={input.surgeryDate} onChange={(v) => update("surgeryDate", v)} placeholder="Kies een datum" />
           </div>
         </div>
         {error && <p className="text-xs" style={{ color: "#dc2626" }}>{error}</p>}

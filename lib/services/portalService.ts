@@ -22,6 +22,7 @@ export interface PortalPatient {
   email: string | null;
   phone: string | null;
   gender: string | null;
+  dateOfBirth: string | null;
   locationId: string | null;
   locationName: string | null;
   therapistId: string | null;
@@ -149,7 +150,7 @@ export async function loadPortalPatients(organizationId: string): Promise<Portal
   const supabase = createClient();
   const { data, error } = await supabase
     .from("patients")
-    .select("id, user_id, location_id, status, created_at, first_name, last_name, email, phone, gender, invited_at, assigned_therapist_id, protocol_id, treatment_start_date, surgery_date")
+    .select("id, user_id, location_id, status, created_at, first_name, last_name, email, phone, gender, date_of_birth, invited_at, assigned_therapist_id, protocol_id, treatment_start_date, surgery_date")
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false });
   if (error) { logErr("loadPortalPatients", error); return []; }
@@ -199,6 +200,7 @@ export async function loadPortalPatients(organizationId: string): Promise<Portal
       email: profile?.email ?? (r.email as string | null),
       phone: r.phone as string | null,
       gender: r.gender as string | null,
+      dateOfBirth: r.date_of_birth as string | null,
       locationId: r.location_id as string | null,
       locationName: r.location_id ? locationMap.get(r.location_id) ?? null : null,
       therapistId: r.assigned_therapist_id as string | null,

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, ChevronRight, ChevronLeft, Loader2, X } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { DatePicker } from "@/components/ui/DatePicker";
 import {
   createAndInvitePortalPatient, createPortalProtocol,
   type PortalPatientInput, type PortalLocationOption, type PortalMember, type PortalProtocolOption,
@@ -153,8 +154,7 @@ export function PatientWizard({
             </div>
             <div>
               <FieldLabel>Geboortedatum (optioneel)</FieldLabel>
-              <input type="date" value={input.dateOfBirth} onChange={(e) => update("dateOfBirth", e.target.value)}
-                className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
+              <DatePicker value={input.dateOfBirth} onChange={(v) => update("dateOfBirth", v)} placeholder="Kies een datum" />
             </div>
             <div>
               <FieldLabel>Geslacht (optioneel)</FieldLabel>
@@ -214,13 +214,11 @@ export function PatientWizard({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <FieldLabel>Startdatum behandeling (optioneel)</FieldLabel>
-              <input type="date" value={input.treatmentStartDate} onChange={(e) => update("treatmentStartDate", e.target.value)}
-                className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
+              <DatePicker value={input.treatmentStartDate} onChange={(v) => update("treatmentStartDate", v)} placeholder="Kies een datum" />
             </div>
             <div>
               <FieldLabel>Operatiedatum (indien bekend)</FieldLabel>
-              <input type="date" value={input.surgeryDate} onChange={(e) => update("surgeryDate", e.target.value)}
-                className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
+              <DatePicker value={input.surgeryDate} onChange={(v) => update("surgeryDate", v)} placeholder="Kies een datum" />
             </div>
           </div>
         </div>
