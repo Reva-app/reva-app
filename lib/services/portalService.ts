@@ -36,6 +36,33 @@ export interface PortalLocationOption {
   name: string;
 }
 
+export interface PortalLocationDetail {
+  id: string;
+  name: string;
+  city: string | null;
+  status: string;
+}
+
+export interface PortalRoleOption {
+  id: string;
+  key: string;
+  name: string;
+}
+
+export interface PortalMember {
+  membershipId: string;
+  userId: string;
+  fullName: string | null;
+  email: string | null;
+  roleId: string;
+  roleKey: string;
+  roleName: string;
+  locationId: string | null;
+  locationName: string | null;
+  membershipStatus: string;
+  lastSignInAt: string | null;
+}
+
 // ─── Membership (huidige gebruiker) ────────────────────────────────────────
 
 /**
@@ -174,6 +201,159 @@ export async function createPortalPatient(
   if (error) {
     logErr("createPortalPatient", error);
     return { error: "Aanmaken van het patiëntdossier is niet gelukt." };
+  }
+  return { error: null };
+}
+
+// ─── Vestigingen (zelf-service) ─────────────────────────────────────────────
+
+export async function loadPortalLocationDetails(organizationId: string): Promise<PortalLocationDetail[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("locations")
+    .select("id, name, city, status")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: true });
+  if (error) { logErr("loadPortalLocationDetails", error); return []; }
+  return (data ?? []) as PortalLocationDetail[];
+}
+
+export async function createPortalLocation(
+  organizationId: string,
+  name: string,
+  city: string
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("locations").insert({
+    organization_id: organizationId,
+    name: name.trim(),
+    city: city.trim() || null,
+  });
+  if (error) {
+    logErr("createPortalLocation", error);
+    return { error: "Aanmaken van de vestiging is niet gelukt." };
+  }
+  return { error: null };
+}
+
+export async function updatePortalLocationStatus(
+  locationId: string,
+  status: "active" | "suspended"
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("locations").update({ status }).eq("id", locationId);
+  if (error) {
+    logErr("updatePortalLocationStatus", error);
+    return { error: "Bijwerken van de vestiging is niet gelukt." };
+  }
+  return { error: null };
+}
+
+// ─── Medewerkers (zelf-service) ─────────────────────────────────────────────
+
+/** Alle rollen behalve super_admin (die wordt niet via memberships toegekend). */
+export async function loadPortalRoles(): Promise<PortalRoleOption[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("roles")
+    .select("id, key, name")
+    .neq("key", "super_admin")
+    .order("scope")
+    .order("key");
+  if (error) { logErr("loadPortalRoles", error); return []; }
+  return (data ?? []) as PortalRoleOption[];
+}
+
+export async function loadPortalMembers(organizationId: string): Promise<PortalMember[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("portal_list_org_members", { org_id: organizationId });
+  if (error) { logErr("loadPortalMembers", error); return []; }
+  return ((data ?? []) as {
+    membership_id: string;
+    user_id: string;
+    full_name: string | null;
+    email: string | null;
+    role_id: string;
+    role_key: string;
+    role_name: string;
+    location_id: string | null;
+    location_name: string | null;
+    membership_status: string;
+    last_sign_in_at: string | null;
+  }[]).map((row) => ({
+    membershipId: row.membership_id,
+    userId: row.user_id,
+    fullName: row.full_name,
+    email: row.email,
+    roleId: row.role_id,
+    roleKey: row.role_key,
+    roleName: row.role_name,
+    locationId: row.location_id,
+    locationName: row.location_name,
+    membershipStatus: row.membership_status,
+    lastSignInAt: row.last_sign_in_at,
+  }));
+}
+
+/**
+ * Koppelt een BESTAAND REVA-account (op e-mailadres) aan de organisatie met
+ * een rol en optioneel een vestiging. Iemand uitnodigen die nog geen account
+ * heeft is bewust nog niet gebouwd (zelfde reden als bij addAdminOrgMember).
+ */
+export async function addPortalMember(
+  organizationId: string,
+  email: string,
+  roleId: string,
+  locationId: string | null
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+
+  const { data: found, error: lookupError } = await supabase.rpc("portal_find_user_by_email", {
+    p_email: email.trim().toLowerCase(),
+  });
+  if (lookupError) { logErr("addPortalMember(lookup)", lookupError); return { error: lookupError.message }; }
+  const profile = (found as { id: string; full_name: string | null }[] | null)?.[0];
+  if (!profile) {
+    return { error: "Geen bestaand REVA-account gevonden met dit e-mailadres. Diegene moet eerst zelf een account aanmaken." };
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from("memberships")
+    .select("id")
+    .eq("user_id", profile.id)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (existingError) logErr("addPortalMember(existing check)", existingError);
+  if (existing) {
+    return { error: "Deze persoon is al gekoppeld aan jouw organisatie." };
+  }
+
+  const { error: insertError } = await supabase.from("memberships").insert({
+    user_id: profile.id,
+    organization_id: organizationId,
+    role_id: roleId,
+    location_id: locationId,
+    status: "active",
+  });
+  if (insertError) { logErr("addPortalMember(insert)", insertError); return { error: insertError.message }; }
+
+  return { error: null };
+}
+
+export async function updatePortalMember(
+  membershipId: string,
+  patch: { roleId?: string; locationId?: string | null; status?: "active" | "suspended" }
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const dbPatch: Record<string, unknown> = {};
+  if (patch.roleId !== undefined) dbPatch.role_id = patch.roleId;
+  if (patch.locationId !== undefined) dbPatch.location_id = patch.locationId;
+  if (patch.status !== undefined) dbPatch.status = patch.status;
+
+  const { error } = await supabase.from("memberships").update(dbPatch).eq("id", membershipId);
+  if (error) {
+    logErr("updatePortalMember", error);
+    return { error: "Bijwerken van de medewerker is niet gelukt." };
   }
   return { error: null };
 }

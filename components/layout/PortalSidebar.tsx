@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, HeartPulse, LogOut } from "lucide-react";
+import { LayoutDashboard, HeartPulse, MapPin, Users, LogOut } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 
 const nav = [
   { href: "/portal", label: "Dashboard", icon: LayoutDashboard },
   { href: "/portal/patienten", label: "Patiënten", icon: HeartPulse },
+  { href: "/portal/locaties", label: "Vestigingen", icon: MapPin },
+  { href: "/portal/medewerkers", label: "Medewerkers", icon: Users },
 ];
 
 export function PortalSidebar() {
