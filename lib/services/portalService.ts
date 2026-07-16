@@ -563,3 +563,190 @@ export async function updatePortalMember(
   }
   return { error: null };
 }
+
+// ─── Patiënt-detailpagina: "in één oogopslag" gegevens ─────────────────────
+
+export interface PortalCheckinTrendPoint {
+  date: string;
+  dayScore: number;
+  painScore: number | null;
+  mobilityScore: number | null;
+  energyScore: number | null;
+  moodScore: number | null;
+  sleepScore: number | null;
+  swelling: boolean | null;
+  note: string | null;
+}
+
+export interface PortalLatestMedication {
+  date: string;
+  time: string | null;
+  medicationName: string;
+  dosage: string | null;
+  quantity: string | null;
+  reason: string | null;
+  effect: string | null;
+}
+
+export interface PortalLatestPhoto {
+  date: string;
+  imagePath: string | null;
+  note: string | null;
+}
+
+export interface PortalUpcomingAppointment {
+  title: string;
+  appointmentType: string | null;
+  date: string;
+  time: string | null;
+  location: string | null;
+}
+
+export interface PortalTrainingWeekSummary {
+  completed: number;
+  total: number;
+}
+
+export interface PortalRecentMilestone {
+  title: string;
+  completedAt: string;
+}
+
+export interface PortalPatientExtras {
+  checkinTrend: PortalCheckinTrendPoint[]; // oudste → nieuwste, max 14
+  latestMedication: PortalLatestMedication | null;
+  latestPhoto: PortalLatestPhoto | null;
+  upcomingAppointment: PortalUpcomingAppointment | null;
+  trainingWeek: PortalTrainingWeekSummary;
+  recentMilestone: PortalRecentMilestone | null;
+}
+
+function dateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function daysAgoStr(n: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return dateStr(d);
+}
+
+/**
+ * Aanvullende gegevens voor de patiënt-detailpagina: check-in trend,
+ * laatste medicatie-inname, laatste foto-update, eerstvolgende afspraak,
+ * trainingsvoortgang deze week en de meest recente behaalde mijlpaal.
+ * Bewust apart van `loadPortalPatients` gehouden — die functie levert de
+ * basisgegevens (naam, therapeut, protocol, ...) al correct, dit is puur de
+ * nieuwe "oogopslag"-laag erbovenop.
+ */
+export async function loadPortalPatientExtras(patientId: string): Promise<PortalPatientExtras> {
+  const supabase = createClient();
+  const today = dateStr(new Date());
+  const weekAgo = daysAgoStr(6);
+
+  const [checkinsRes, medRes, photoRes, apptRes, trainingRes, milestoneRes] = await Promise.all([
+    supabase
+      .from("checkins")
+      .select("date, day_score, pain_score, mobility_score, energy_score, mood_score, sleep_score, swelling, note")
+      .eq("patient_id", patientId)
+      .order("date", { ascending: false })
+      .limit(14),
+    supabase
+      .from("medication_logs")
+      .select("date, time, medication_name, dosage, quantity, reason, effect")
+      .eq("patient_id", patientId)
+      .order("date", { ascending: false })
+      .order("time", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("dossier_photo_updates")
+      .select("date, image_url, note")
+      .eq("patient_id", patientId)
+      .order("date", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("appointments")
+      .select("title, appointment_type, date, time, location")
+      .eq("patient_id", patientId)
+      .gte("date", today)
+      .order("date", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("training_logs")
+      .select("completed")
+      .eq("patient_id", patientId)
+      .gte("date", weekAgo),
+    supabase
+      .from("milestones")
+      .select("title, completed_at")
+      .eq("patient_id", patientId)
+      .eq("completed", true)
+      .order("completed_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  if (checkinsRes.error) logErr("loadPortalPatientExtras(checkins)", checkinsRes.error);
+  if (medRes.error) logErr("loadPortalPatientExtras(medicatie)", medRes.error);
+  if (photoRes.error) logErr("loadPortalPatientExtras(foto)", photoRes.error);
+  if (apptRes.error) logErr("loadPortalPatientExtras(afspraak)", apptRes.error);
+  if (trainingRes.error) logErr("loadPortalPatientExtras(training)", trainingRes.error);
+  if (milestoneRes.error) logErr("loadPortalPatientExtras(mijlpaal)", milestoneRes.error);
+
+  const checkinTrend: PortalCheckinTrendPoint[] = (checkinsRes.data ?? [])
+    .map((c) => ({
+      date: c.date as string,
+      dayScore: c.day_score as number,
+      painScore: c.pain_score as number | null,
+      mobilityScore: c.mobility_score as number | null,
+      energyScore: c.energy_score as number | null,
+      moodScore: c.mood_score as number | null,
+      sleepScore: c.sleep_score as number | null,
+      swelling: c.swelling as boolean | null,
+      note: c.note as string | null,
+    }))
+    .reverse();
+
+  const med = medRes.data;
+  const photo = photoRes.data;
+  const appt = apptRes.data;
+  const milestone = milestoneRes.data;
+  const trainingRows = trainingRes.data ?? [];
+
+  return {
+    checkinTrend,
+    latestMedication: med
+      ? {
+          date: med.date as string,
+          time: med.time as string | null,
+          medicationName: med.medication_name as string,
+          dosage: med.dosage as string | null,
+          quantity: med.quantity as string | null,
+          reason: med.reason as string | null,
+          effect: med.effect as string | null,
+        }
+      : null,
+    latestPhoto: photo
+      ? { date: photo.date as string, imagePath: photo.image_url as string | null, note: photo.note as string | null }
+      : null,
+    upcomingAppointment: appt
+      ? {
+          title: appt.title as string,
+          appointmentType: appt.appointment_type as string | null,
+          date: appt.date as string,
+          time: appt.time as string | null,
+          location: appt.location as string | null,
+        }
+      : null,
+    trainingWeek: {
+      completed: trainingRows.filter((r) => r.completed).length,
+      total: trainingRows.length,
+    },
+    recentMilestone: milestone
+      ? { title: milestone.title as string, completedAt: milestone.completed_at as string }
+      : null,
+  };
+}
