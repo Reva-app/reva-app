@@ -23,11 +23,17 @@ export interface PortalPatient {
   locationName: string | null;
   status: string;
   createdAt: string;
+  hasAccount: boolean;
 }
 
 export interface PortalDashboardStats {
   patientCount: number;
   colleagueCount: number;
+}
+
+export interface PortalLocationOption {
+  id: string;
+  name: string;
 }
 
 // ─── Membership (huidige gebruiker) ────────────────────────────────────────
@@ -92,7 +98,7 @@ export async function loadPortalPatients(organizationId: string): Promise<Portal
   const supabase = createClient();
   const { data, error } = await supabase
     .from("patients")
-    .select("id, user_id, location_id, status, created_at")
+    .select("id, user_id, location_id, status, created_at, first_name, last_name, email")
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false });
   if (error) { logErr("loadPortalPatients", error); return []; }
@@ -117,13 +123,57 @@ export async function loadPortalPatients(organizationId: string): Promise<Portal
 
   return rows.map((r) => {
     const profile = r.user_id ? profileMap.get(r.user_id) : undefined;
+    const dossierName = [r.first_name, r.last_name].filter(Boolean).join(" ") || null;
     return {
       id: r.id as string,
-      fullName: profile?.full_name ?? null,
-      email: profile?.email ?? null,
+      fullName: profile?.full_name ?? dossierName,
+      email: profile?.email ?? (r.email as string | null),
       locationName: r.location_id ? locationMap.get(r.location_id) ?? null : null,
       status: r.status as string,
       createdAt: r.created_at as string,
+      hasAccount: !!r.user_id,
     };
   });
+}
+
+export async function loadPortalLocations(organizationId: string): Promise<PortalLocationOption[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("locations")
+    .select("id, name")
+    .eq("organization_id", organizationId)
+    .order("name");
+  if (error) { logErr("loadPortalLocations", error); return []; }
+  return data ?? [];
+}
+
+export interface NewPortalPatientInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  dateOfBirth: string;
+  locationId: string | null;
+}
+
+export async function createPortalPatient(
+  organizationId: string,
+  input: NewPortalPatientInput
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("patients").insert({
+    organization_id: organizationId,
+    location_id: input.locationId,
+    first_name: input.firstName.trim(),
+    last_name: input.lastName.trim(),
+    email: input.email.trim() || null,
+    phone: input.phone.trim() || null,
+    date_of_birth: input.dateOfBirth || null,
+    status: "active",
+  });
+  if (error) {
+    logErr("createPortalPatient", error);
+    return { error: "Aanmaken van het patiëntdossier is niet gelukt." };
+  }
+  return { error: null };
 }
