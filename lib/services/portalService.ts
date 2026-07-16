@@ -780,3 +780,97 @@ export async function loadPortalPatientExtras(patientId: string): Promise<Portal
       : null,
   };
 }
+
+// ─── Huisstijl (branding) ───────────────────────────────────────────────────
+
+const LOGO_BUCKET = "organization-logos";
+const LOGO_SIGNED_URL_TTL_SECONDS = 60 * 60;
+
+/**
+ * Rollen die de huisstijl (naam/kleur/logo) van de organisatie mogen
+ * beheren — moet in sync blijven met can_manage_org_branding() in migratie
+ * 038. Bewust beperkter dan MANAGE_PATIENTS_ROLES: branding is een
+ * organisatiebrede instelling, geen dagelijkse patiëntenzorg-taak.
+ */
+export const MANAGE_BRANDING_ROLES = ["organization_owner", "organization_admin"];
+
+export interface PortalBranding {
+  name: string;
+  primaryColor: string | null;
+  logoPath: string | null;
+  logoUrl: string | null;
+}
+
+export async function loadPortalBranding(organizationId: string): Promise<PortalBranding | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("organizations")
+    .select("name, primary_color, logo_path")
+    .eq("id", organizationId)
+    .maybeSingle();
+  if (error) { logErr("loadPortalBranding", error); return null; }
+  if (!data) return null;
+
+  let logoUrl: string | null = null;
+  if (data.logo_path) {
+    const { data: signed, error: signErr } = await supabase.storage
+      .from(LOGO_BUCKET)
+      .createSignedUrl(data.logo_path, LOGO_SIGNED_URL_TTL_SECONDS);
+    if (signErr) logErr("loadPortalBranding(logo)", signErr);
+    logoUrl = signed?.signedUrl ?? null;
+  }
+
+  return {
+    name: data.name,
+    primaryColor: data.primary_color,
+    logoPath: data.logo_path,
+    logoUrl,
+  };
+}
+
+export async function updatePortalBranding(
+  organizationId: string,
+  patch: { name?: string; primaryColor?: string | null }
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const dbPatch: Record<string, unknown> = {};
+  if (patch.name !== undefined) dbPatch.name = patch.name;
+  if (patch.primaryColor !== undefined) dbPatch.primary_color = patch.primaryColor;
+
+  const { error } = await supabase.from("organizations").update(dbPatch).eq("id", organizationId);
+  if (error) {
+    logErr("updatePortalBranding", error);
+    return { error: "Bijwerken van de huisstijl is niet gelukt." };
+  }
+  return { error: null };
+}
+
+export async function uploadPortalLogo(
+  organizationId: string,
+  file: File
+): Promise<{ logoUrl: string | null; error: string | null }> {
+  const supabase = createClient();
+  const ext = file.name.split(".").pop() ?? "png";
+  const path = `${organizationId}/${Date.now()}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(LOGO_BUCKET)
+    .upload(path, file, { upsert: false, contentType: file.type });
+  if (uploadError) {
+    logErr("uploadPortalLogo(upload)", uploadError);
+    return { logoUrl: null, error: "Uploaden van het logo is niet gelukt." };
+  }
+
+  const { error: updateError } = await supabase.from("organizations").update({ logo_path: path }).eq("id", organizationId);
+  if (updateError) {
+    logErr("uploadPortalLogo(update)", updateError);
+    return { logoUrl: null, error: "Opslaan van het logo is niet gelukt." };
+  }
+
+  const { data: signed, error: signErr } = await supabase.storage
+    .from(LOGO_BUCKET)
+    .createSignedUrl(path, LOGO_SIGNED_URL_TTL_SECONDS);
+  if (signErr) { logErr("uploadPortalLogo(sign)", signErr); return { logoUrl: null, error: null }; }
+
+  return { logoUrl: signed.signedUrl, error: null };
+}

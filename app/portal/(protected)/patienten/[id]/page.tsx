@@ -84,16 +84,16 @@ function CheckinTrendChart({ points }: { points: PortalCheckinTrendPoint[] }) {
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: H }}>
         <defs>
           <linearGradient id="checkin-trend-grad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#e8632a" stopOpacity="0.15" />
-            <stop offset="100%" stopColor="#e8632a" stopOpacity="0" />
+            <stop offset="0%" style={{ stopColor: "var(--portal-accent, #e8632a)" }} stopOpacity="0.15" />
+            <stop offset="100%" style={{ stopColor: "var(--portal-accent, #e8632a)" }} stopOpacity="0" />
           </linearGradient>
         </defs>
         {[0.25, 0.5, 0.75].map((f) => (
           <line key={f} x1={padX} y1={padY + f * (H - padY * 2)} x2={W - padX} y2={padY + f * (H - padY * 2)} stroke="#f0ede8" strokeWidth="1" />
         ))}
         <path d={area} fill="url(#checkin-trend-grad)" />
-        <polyline points={polyline} fill="none" stroke="#e8632a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="3" fill="#e8632a" />
+        <polyline points={polyline} fill="none" style={{ stroke: "var(--portal-accent, #e8632a)" }} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="3" style={{ fill: "var(--portal-accent, #e8632a)" }} />
       </svg>
       <div className="flex justify-between mt-1">
         <span className="text-[10px] text-gray-400">{formatDateShort(points[0].date)}</span>
@@ -125,8 +125,8 @@ function MainGoalCard({ goal }: { goal: PortalMainGoal }) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
-            <Star size={11} style={{ color: "#e8632a" }} />
-            <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "#e8632a" }}>Hoofddoel</span>
+            <Star size={11} style={{ color: "var(--portal-accent, #e8632a)" }} />
+            <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--portal-accent, #e8632a)" }}>Hoofddoel</span>
           </div>
           <h2
             className="text-sm font-semibold leading-snug"
@@ -301,7 +301,7 @@ export default function PortalPatientDetailPage() {
                 <p className="text-sm text-gray-400">Nog geen medicatie gelogd.</p>
               ) : (
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5"><Pill size={14} style={{ color: "#e8632a" }} /> {extras.latestMedication.medicationName}</p>
+                  <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5"><Pill size={14} style={{ color: "var(--portal-accent, #e8632a)" }} /> {extras.latestMedication.medicationName}</p>
                   {extras.latestMedication.dosage && <p className="text-xs text-gray-500">{extras.latestMedication.dosage}{extras.latestMedication.quantity ? ` · ${extras.latestMedication.quantity}` : ""}</p>}
                   <p className="text-xs text-gray-400">{formatDate(extras.latestMedication.date)}{extras.latestMedication.time ? ` om ${extras.latestMedication.time}` : ""}</p>
                   {extras.latestMedication.reason && <p className="text-xs text-gray-500">Reden: {extras.latestMedication.reason}</p>}
@@ -315,7 +315,7 @@ export default function PortalPatientDetailPage() {
                 <p className="text-sm text-gray-400">Geen geplande afspraak.</p>
               ) : (
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5"><CalendarClock size={14} style={{ color: "#e8632a" }} /> {extras.upcomingAppointment.title}</p>
+                  <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5"><CalendarClock size={14} style={{ color: "var(--portal-accent, #e8632a)" }} /> {extras.upcomingAppointment.title}</p>
                   {appointmentTypeLabel(extras.upcomingAppointment.appointmentType) && (
                     <p className="text-xs text-gray-500">{appointmentTypeLabel(extras.upcomingAppointment.appointmentType)}</p>
                   )}
@@ -332,7 +332,7 @@ export default function PortalPatientDetailPage() {
               ) : (
                 <div className="space-y-3">
                   <div className="flex items-center gap-1.5 text-sm text-gray-700">
-                    <Dumbbell size={14} style={{ color: "#e8632a" }} />
+                    <Dumbbell size={14} style={{ color: "var(--portal-accent, #e8632a)" }} />
                     {extras.trainingWeek.completed} van {extras.trainingWeek.total} voltooid
                   </div>
                   <ScoreBar label="Voortgang" value={extras.trainingWeek.completed} max={extras.trainingWeek.total} />
