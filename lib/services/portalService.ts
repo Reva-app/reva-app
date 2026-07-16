@@ -612,6 +612,15 @@ export interface PortalRecentMilestone {
   completedAt: string;
 }
 
+export interface PortalMainGoal {
+  icon: string;
+  title: string;
+  description: string | null;
+  targetDate: string | null;
+  completed: boolean;
+  completedAt: string | null;
+}
+
 export interface PortalPatientExtras {
   checkinTrend: PortalCheckinTrendPoint[]; // oudste → nieuwste, max 14
   latestMedication: PortalLatestMedication | null;
@@ -619,6 +628,7 @@ export interface PortalPatientExtras {
   upcomingAppointment: PortalUpcomingAppointment | null;
   trainingWeek: PortalTrainingWeekSummary;
   recentMilestone: PortalRecentMilestone | null;
+  mainGoal: PortalMainGoal | null;
 }
 
 function dateStr(d: Date): string {
@@ -634,17 +644,17 @@ function daysAgoStr(n: number): string {
 /**
  * Aanvullende gegevens voor de patiënt-detailpagina: check-in trend,
  * laatste medicatie-inname, laatste foto-update, eerstvolgende afspraak,
- * trainingsvoortgang deze week en de meest recente behaalde mijlpaal.
- * Bewust apart van `loadPortalPatients` gehouden — die functie levert de
- * basisgegevens (naam, therapeut, protocol, ...) al correct, dit is puur de
- * nieuwe "oogopslag"-laag erbovenop.
+ * trainingsvoortgang deze week, de meest recente behaalde mijlpaal en de
+ * hoofddoelstelling. Bewust apart van `loadPortalPatients` gehouden — die
+ * functie levert de basisgegevens (naam, therapeut, protocol, ...) al
+ * correct, dit is puur de nieuwe "oogopslag"-laag erbovenop.
  */
 export async function loadPortalPatientExtras(patientId: string): Promise<PortalPatientExtras> {
   const supabase = createClient();
   const today = dateStr(new Date());
   const weekAgo = daysAgoStr(6);
 
-  const [checkinsRes, medRes, photoRes, apptRes, trainingRes, milestoneRes] = await Promise.all([
+  const [checkinsRes, medRes, photoRes, apptRes, trainingRes, milestoneRes, goalRes] = await Promise.all([
     supabase
       .from("checkins")
       .select("date, day_score, pain_score, mobility_score, energy_score, mood_score, sleep_score, swelling, note")
@@ -687,6 +697,14 @@ export async function loadPortalPatientExtras(patientId: string): Promise<Portal
       .order("completed_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    supabase
+      .from("goals")
+      .select("icon, title, description, target_date, completed, completed_at")
+      .eq("patient_id", patientId)
+      .eq("goal_type", "main")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   if (checkinsRes.error) logErr("loadPortalPatientExtras(checkins)", checkinsRes.error);
@@ -695,6 +713,7 @@ export async function loadPortalPatientExtras(patientId: string): Promise<Portal
   if (apptRes.error) logErr("loadPortalPatientExtras(afspraak)", apptRes.error);
   if (trainingRes.error) logErr("loadPortalPatientExtras(training)", trainingRes.error);
   if (milestoneRes.error) logErr("loadPortalPatientExtras(mijlpaal)", milestoneRes.error);
+  if (goalRes.error) logErr("loadPortalPatientExtras(hoofddoel)", goalRes.error);
 
   const checkinTrend: PortalCheckinTrendPoint[] = (checkinsRes.data ?? [])
     .map((c) => ({
@@ -714,6 +733,7 @@ export async function loadPortalPatientExtras(patientId: string): Promise<Portal
   const photo = photoRes.data;
   const appt = apptRes.data;
   const milestone = milestoneRes.data;
+  const goal = goalRes.data;
   const trainingRows = trainingRes.data ?? [];
 
   return {
@@ -747,6 +767,16 @@ export async function loadPortalPatientExtras(patientId: string): Promise<Portal
     },
     recentMilestone: milestone
       ? { title: milestone.title as string, completedAt: milestone.completed_at as string }
+      : null,
+    mainGoal: goal
+      ? {
+          icon: goal.icon as string,
+          title: goal.title as string,
+          description: goal.description as string | null,
+          targetDate: goal.target_date as string | null,
+          completed: goal.completed as boolean,
+          completedAt: goal.completed_at as string | null,
+        }
       : null,
   };
 }

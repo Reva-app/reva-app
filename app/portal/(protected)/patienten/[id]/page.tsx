@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Camera, Pill, CalendarClock, Dumbbell, Award, Droplets, Pencil } from "lucide-react";
+import { ArrowLeft, Camera, Pill, CalendarClock, Dumbbell, Award, Droplets, Pencil, Star, Flag } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -22,6 +22,7 @@ import {
   type PortalPatient,
   type PortalPatientExtras,
   type PortalCheckinTrendPoint,
+  type PortalMainGoal,
   type PortalLocationOption,
   type PortalMember,
   type PortalProtocolOption,
@@ -97,6 +98,54 @@ function CheckinTrendChart({ points }: { points: PortalCheckinTrendPoint[] }) {
       <div className="flex justify-between mt-1">
         <span className="text-[10px] text-gray-400">{formatDateShort(points[0].date)}</span>
         <span className="text-[10px] text-gray-400">{formatDateShort(points[points.length - 1].date)}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Hoofddoelstelling — zelfde donkere kaartstijl als in de patiënt-app ────
+
+function MainGoalCard({ goal }: { goal: PortalMainGoal }) {
+  const isDone = goal.completed;
+  return (
+    <div
+      className="rounded-2xl p-5"
+      style={{
+        background: isDone ? "#1a2e1f" : "#0f1115",
+        border: `1px solid ${isDone ? "rgba(34,197,94,0.18)" : "rgba(255,255,255,0.06)"}`,
+        boxShadow: "0 4px 24px rgba(0,0,0,0.18)",
+      }}
+    >
+      <div className="flex items-start gap-4">
+        <div
+          className="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl shrink-0"
+          style={{ background: isDone ? "rgba(34,197,94,0.15)" : "rgba(232,99,42,0.15)" }}
+        >
+          {goal.icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <Star size={11} style={{ color: "#e8632a" }} />
+            <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "#e8632a" }}>Hoofddoel</span>
+          </div>
+          <h2
+            className="text-sm font-semibold leading-snug"
+            style={{ color: isDone ? "rgba(134,239,172,0.9)" : "#f5f4f2", textDecoration: isDone ? "line-through" : "none" }}
+          >
+            {goal.title}
+          </h2>
+          {goal.description && (
+            <p className="text-xs mt-1.5 leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>{goal.description}</p>
+          )}
+          {goal.targetDate && (
+            <p className="text-xs mt-2" style={{ color: "rgba(255,255,255,0.3)" }}>
+              <Flag size={10} className="inline mr-1 mb-0.5" /> Streefdatum: {formatDate(goal.targetDate)}
+            </p>
+          )}
+          {isDone && goal.completedAt && (
+            <p className="text-xs mt-1" style={{ color: "rgba(134,239,172,0.75)" }}>✓ Behaald op {formatDate(goal.completedAt.slice(0, 10))}</p>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -197,6 +246,8 @@ export default function PortalPatientDetailPage() {
               </Badge>
             )}
           </div>
+
+          {extras?.mainGoal && <MainGoalCard goal={extras.mainGoal} />}
 
           {/* Check-in status — hoe voelt de patiënt zich */}
           <Card>
