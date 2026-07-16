@@ -24,6 +24,7 @@ export interface PortalPatient {
   status: string;
   createdAt: string;
   hasAccount: boolean;
+  invitedAt: string | null;
 }
 
 export interface PortalDashboardStats {
@@ -125,7 +126,7 @@ export async function loadPortalPatients(organizationId: string): Promise<Portal
   const supabase = createClient();
   const { data, error } = await supabase
     .from("patients")
-    .select("id, user_id, location_id, status, created_at, first_name, last_name, email")
+    .select("id, user_id, location_id, status, created_at, first_name, last_name, email, invited_at")
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false });
   if (error) { logErr("loadPortalPatients", error); return []; }
@@ -159,6 +160,7 @@ export async function loadPortalPatients(organizationId: string): Promise<Portal
       status: r.status as string,
       createdAt: r.created_at as string,
       hasAccount: !!r.user_id,
+      invitedAt: r.invited_at as string | null,
     };
   });
 }
@@ -203,6 +205,68 @@ export async function createPortalPatient(
     return { error: "Aanmaken van het patiëntdossier is niet gelukt." };
   }
   return { error: null };
+}
+
+export type InvitePortalPatientResult =
+  | { outcome: "linked"; error: null }
+  | { outcome: "invited"; error: null }
+  | { outcome: "failed"; error: string };
+
+/**
+ * Koppelt een patiëntdossier aan een REVA-account:
+ * - heeft dat e-mailadres al een account? Dan wordt het dossier direct
+ *   gekoppeld (geen e-mail nodig).
+ * - anders wordt een echte magic-link uitnodiging verstuurd; de koppeling
+ *   voltooit zichzelf zodra de patiënt die link gebruikt (zie migratie 033,
+ *   ensure_personal_organization matcht dan op e-mailadres).
+ */
+export async function invitePortalPatient(
+  patientId: string,
+  email: string
+): Promise<InvitePortalPatientResult> {
+  const supabase = createClient();
+  const trimmedEmail = email.trim().toLowerCase();
+  if (!trimmedEmail) {
+    return { outcome: "failed", error: "Dit dossier heeft nog geen e-mailadres." };
+  }
+
+  const { data: found, error: lookupError } = await supabase.rpc("portal_find_user_by_email", {
+    p_email: trimmedEmail,
+  });
+  if (lookupError) { logErr("invitePortalPatient(lookup)", lookupError); return { outcome: "failed", error: lookupError.message }; }
+  const existingProfile = (found as { id: string; full_name: string | null }[] | null)?.[0];
+
+  if (existingProfile) {
+    const { error: linkError } = await supabase
+      .from("patients")
+      .update({ user_id: existingProfile.id })
+      .eq("id", patientId);
+    if (linkError) {
+      logErr("invitePortalPatient(link)", linkError);
+      if (linkError.code === "23505") {
+        return { outcome: "failed", error: "Dit account heeft al een patiëntdossier bij een andere organisatie. Koppelen aan een tweede organisatie wordt nog niet ondersteund." };
+      }
+      return { outcome: "failed", error: "Koppelen van het account is niet gelukt." };
+    }
+    return { outcome: "linked", error: null };
+  }
+
+  const { error: otpError } = await supabase.auth.signInWithOtp({
+    email: trimmedEmail,
+    options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+  });
+  if (otpError) {
+    logErr("invitePortalPatient(otp)", otpError);
+    return { outcome: "failed", error: "Versturen van de uitnodiging is niet gelukt." };
+  }
+
+  const { error: markError } = await supabase
+    .from("patients")
+    .update({ invited_at: new Date().toISOString() })
+    .eq("id", patientId);
+  if (markError) logErr("invitePortalPatient(mark)", markError);
+
+  return { outcome: "invited", error: null };
 }
 
 // ─── Vestigingen (zelf-service) ─────────────────────────────────────────────

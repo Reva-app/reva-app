@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { formatDate } from "@/lib/data";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import {
-  loadPortalPatients, loadPortalLocations, createPortalPatient,
+  loadPortalPatients, loadPortalLocations, createPortalPatient, invitePortalPatient,
   type PortalPatient, type PortalLocationOption,
 } from "@/lib/services/portalService";
 
@@ -46,6 +46,9 @@ export default function PortalPatientsPage() {
   const [locationId, setLocationId] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+
+  const [invitingId, setInvitingId] = useState<string | null>(null);
+  const [inviteMessages, setInviteMessages] = useState<Record<string, { ok: boolean; text: string }>>({});
 
   useEffect(() => {
     if (!checked || !membership) return;
@@ -91,6 +94,25 @@ export default function PortalPatientsPage() {
     setDateOfBirth("");
     setLocationId("");
     setShowAdd(false);
+  }
+
+  async function handleInvite(patient: PortalPatient) {
+    if (!membership || !patient.email) return;
+    setInvitingId(patient.id);
+    const result = await invitePortalPatient(patient.id, patient.email);
+    setInvitingId(null);
+
+    if (result.outcome === "linked") {
+      setInviteMessages((prev) => ({ ...prev, [patient.id]: { ok: true, text: "Direct gekoppeld aan bestaand account." } }));
+      const refreshed = await loadPortalPatients(membership.organizationId);
+      setPatients(refreshed);
+    } else if (result.outcome === "invited") {
+      setInviteMessages((prev) => ({ ...prev, [patient.id]: { ok: true, text: "Uitnodiging verstuurd." } }));
+      const refreshed = await loadPortalPatients(membership.organizationId);
+      setPatients(refreshed);
+    } else {
+      setInviteMessages((prev) => ({ ...prev, [patient.id]: { ok: false, text: result.error } }));
+    }
   }
 
   return (
@@ -193,21 +215,44 @@ export default function PortalPatientsPage() {
                   <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Account</th>
                   <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Status</th>
                   <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Toegevoegd op</th>
+                  <th className="text-right font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Actie</th>
                 </tr>
               </thead>
               <tbody>
-                {patients.map((p) => (
-                  <tr key={p.id} style={{ borderBottom: "1px solid #f8f7f4" }}>
-                    <td className="px-5 py-3.5 font-medium text-gray-800">{p.fullName || "Nog niet ingevuld"}</td>
-                    <td className="px-5 py-3.5 text-gray-600">{p.email || "—"}</td>
-                    <td className="px-5 py-3.5 text-gray-600">{p.locationName || "—"}</td>
-                    <td className="px-5 py-3.5">
-                      {p.hasAccount ? <Badge variant="success">Actief</Badge> : <Badge variant="muted">Nog geen account</Badge>}
-                    </td>
-                    <td className="px-5 py-3.5">{statusBadge(p.status)}</td>
-                    <td className="px-5 py-3.5 text-gray-400">{formatDate(p.createdAt)}</td>
-                  </tr>
-                ))}
+                {patients.map((p) => {
+                  const message = inviteMessages[p.id];
+                  return (
+                    <tr key={p.id} style={{ borderBottom: "1px solid #f8f7f4" }}>
+                      <td className="px-5 py-3.5 font-medium text-gray-800">{p.fullName || "Nog niet ingevuld"}</td>
+                      <td className="px-5 py-3.5 text-gray-600">{p.email || "—"}</td>
+                      <td className="px-5 py-3.5 text-gray-600">{p.locationName || "—"}</td>
+                      <td className="px-5 py-3.5">
+                        {p.hasAccount ? (
+                          <Badge variant="success">Actief</Badge>
+                        ) : p.invitedAt ? (
+                          <Badge variant="warning">Uitgenodigd op {formatDate(p.invitedAt)}</Badge>
+                        ) : (
+                          <Badge variant="muted">Nog geen account</Badge>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5">{statusBadge(p.status)}</td>
+                      <td className="px-5 py-3.5 text-gray-400">{formatDate(p.createdAt)}</td>
+                      <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                        {p.hasAccount ? (
+                          <span className="text-xs text-gray-400">—</span>
+                        ) : !p.email ? (
+                          <span className="text-xs text-gray-400">Geen e-mailadres</span>
+                        ) : message ? (
+                          <span className="text-xs" style={{ color: message.ok ? "#16a34a" : "#dc2626" }}>{message.text}</span>
+                        ) : (
+                          <Button size="sm" variant="secondary" disabled={invitingId === p.id} onClick={() => handleInvite(p)}>
+                            {invitingId === p.id ? <Loader2 size={13} className="animate-spin" /> : p.invitedAt ? "Opnieuw uitnodigen" : "Uitnodigen"}
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
