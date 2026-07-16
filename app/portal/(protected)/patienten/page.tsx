@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { HeartPulse, UserPlus, MoreVertical, Search, ChevronUp, ChevronDown, Download } from "lucide-react";
+import { HeartPulse, UserPlus, Search, ChevronUp, ChevronDown, Download } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
+import { ActionMenu } from "@/components/ui/ActionMenu";
 import { formatDate } from "@/lib/data";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { PatientWizard } from "@/components/portal/PatientWizard";
@@ -172,10 +173,8 @@ export default function PortalPatientsPage() {
 
   const [showWizard, setShowWizard] = useState(false);
   const [editingPatient, setEditingPatient] = useState<PortalPatient | null>(null);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [rowMessages, setRowMessages] = useState<Record<string, { ok: boolean; text: string }>>({});
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -225,16 +224,6 @@ export default function PortalPatientsPage() {
       cancelled = true;
     };
   }, [checked, membership]);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpenMenuId(null);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const filteredPatients = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -291,7 +280,6 @@ export default function PortalPatientsPage() {
   }
 
   async function handleInviteAction(p: PortalPatient) {
-    setOpenMenuId(null);
     if (!p.email) { showMessage(p.id, false, "Dit dossier heeft geen e-mailadres."); return; }
     const result = await invitePortalPatient(p.id, p.email);
     if (result.outcome === "failed") {
@@ -303,7 +291,6 @@ export default function PortalPatientsPage() {
   }
 
   async function handleArchive(p: PortalPatient) {
-    setOpenMenuId(null);
     const nextStatus = p.status === "archived" ? "active" : "archived";
     await updatePortalPatientStatus(p.id, nextStatus);
     if (membership) refresh(membership.organizationId);
@@ -351,14 +338,16 @@ export default function PortalPatientsPage() {
       )}
 
       {editingPatient && membership && (
-        <PatientEditForm
-          patient={editingPatient}
-          locations={locations}
-          members={members}
-          protocols={protocols}
-          onSaved={() => { setEditingPatient(null); refresh(membership.organizationId); }}
-          onClose={() => setEditingPatient(null)}
-        />
+        <Modal onClose={() => setEditingPatient(null)} maxWidth="max-w-2xl">
+          <PatientEditForm
+            patient={editingPatient}
+            locations={locations}
+            members={members}
+            protocols={protocols}
+            onSaved={() => { setEditingPatient(null); refresh(membership.organizationId); }}
+            onClose={() => setEditingPatient(null)}
+          />
+        </Modal>
       )}
 
       {/* Filters */}
@@ -468,39 +457,14 @@ export default function PortalPatientsPage() {
                       <td className="px-5 py-3.5">{statusBadge(p.status)}</td>
                       <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                         {canManagePatients && (
-                          <div className="relative inline-block" ref={openMenuId === p.id ? menuRef : undefined}>
-                            <button
-                              type="button"
-                              onClick={() => setOpenMenuId((id) => (id === p.id ? null : p.id))}
-                              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"
-                            >
-                              <MoreVertical size={16} />
-                            </button>
-                            {openMenuId === p.id && (
-                              <div
-                                className="absolute right-0 mt-1 w-52 rounded-xl border py-1 z-10 text-sm"
-                                style={{ background: "#ffffff", borderColor: "#e8e5df", boxShadow: "0 4px 16px rgba(0,0,0,0.08)" }}
-                              >
-                                <button type="button" className="w-full text-left px-4 py-2 hover:bg-gray-50" onClick={() => handleInviteAction(p)}>
-                                  Uitnodiging versturen
-                                </button>
-                                <button type="button" className="w-full text-left px-4 py-2 hover:bg-gray-50" onClick={() => { setOpenMenuId(null); setEditingPatient(p); }}>
-                                  Wijzigen
-                                </button>
-                                <button type="button" className="w-full text-left px-4 py-2 hover:bg-gray-50" onClick={() => handleArchive(p)}>
-                                  {p.status === "archived" ? "Dearchiveren" : "Archiveren"}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="w-full text-left px-4 py-2 hover:bg-gray-50"
-                                  style={{ color: "#dc2626" }}
-                                  onClick={() => { setOpenMenuId(null); setConfirmDeleteId(p.id); }}
-                                >
-                                  Verwijderen
-                                </button>
-                              </div>
-                            )}
-                          </div>
+                          <ActionMenu
+                            items={[
+                              { label: "Uitnodiging versturen", onClick: () => handleInviteAction(p) },
+                              { label: "Wijzigen", onClick: () => setEditingPatient(p) },
+                              { label: p.status === "archived" ? "Dearchiveren" : "Archiveren", onClick: () => handleArchive(p) },
+                              { label: "Verwijderen", onClick: () => setConfirmDeleteId(p.id), danger: true },
+                            ]}
+                          />
                         )}
                       </td>
                     </tr>

@@ -2,19 +2,29 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Camera, Pill, CalendarClock, Dumbbell, Award, Droplets } from "lucide-react";
+import { ArrowLeft, Camera, Pill, CalendarClock, Dumbbell, Award, Droplets, Pencil } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { ScoreBar } from "@/components/ui/ScoreBar";
+import { PatientEditForm } from "@/components/portal/PatientEditForm";
 import { formatDate, formatDateShort } from "@/lib/data";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import {
   loadPortalPatients,
   loadPortalPatientExtras,
+  loadPortalLocations,
+  loadPortalMembers,
+  loadPortalProtocols,
+  MANAGE_PATIENTS_ROLES,
   type PortalPatient,
   type PortalPatientExtras,
   type PortalCheckinTrendPoint,
+  type PortalLocationOption,
+  type PortalMember,
+  type PortalProtocolOption,
 } from "@/lib/services/portalService";
 import { resolveSignedUrl } from "@/lib/services/storageService";
 
@@ -99,22 +109,48 @@ export default function PortalPatientDetailPage() {
   const { checked, membership } = usePortalMembership();
   const [patient, setPatient] = useState<PortalPatient | null>(null);
   const [extras, setExtras] = useState<PortalPatientExtras | null>(null);
+  const [locations, setLocations] = useState<PortalLocationOption[]>([]);
+  const [members, setMembers] = useState<PortalMember[]>([]);
+  const [protocols, setProtocols] = useState<PortalProtocolOption[]>([]);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [editing, setEditing] = useState(false);
+
+  const canManagePatients = !!membership && MANAGE_PATIENTS_ROLES.includes(membership.roleKey);
+
+  function refresh(organizationId: string) {
+    Promise.all([
+      loadPortalPatients(organizationId),
+      loadPortalPatientExtras(patientId),
+    ]).then(([patients, extrasData]) => {
+      const found = patients.find((p) => p.id === patientId) ?? null;
+      setPatient(found);
+      setNotFound(!found);
+      setExtras(extrasData);
+      setLoading(false);
+    });
+  }
 
   useEffect(() => {
     if (!checked || !membership) return;
     let cancelled = false;
+    const organizationId = membership.organizationId;
     Promise.all([
-      loadPortalPatients(membership.organizationId),
+      loadPortalPatients(organizationId),
       loadPortalPatientExtras(patientId),
-    ]).then(([patients, extrasData]) => {
+      loadPortalLocations(organizationId),
+      loadPortalMembers(organizationId),
+      loadPortalProtocols(organizationId),
+    ]).then(([patients, extrasData, locationsData, membersData, protocolsData]) => {
       if (cancelled) return;
       const found = patients.find((p) => p.id === patientId) ?? null;
       setPatient(found);
       setNotFound(!found);
       setExtras(extrasData);
+      setLocations(locationsData);
+      setMembers(membersData);
+      setProtocols(protocolsData);
       setLoading(false);
     });
     return () => {
@@ -255,7 +291,15 @@ export default function PortalPatientDetailPage() {
           </div>
 
           <Card>
-            <CardHeader title="Behandelgegevens" subtitle="Basisgegevens en behandeltraject" />
+            <CardHeader
+              title="Behandelgegevens"
+              subtitle="Basisgegevens en behandeltraject"
+              action={canManagePatients ? (
+                <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
+                  <Pencil size={13} /> Wijzigen
+                </Button>
+              ) : undefined}
+            />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
               <div><span className="text-gray-500">Telefoonnummer:</span> <span className="text-gray-800">{patient.phone || "—"}</span></div>
               <div><span className="text-gray-500">Geboortedatum:</span> <span className="text-gray-800">{patient.dateOfBirth ? formatDate(patient.dateOfBirth) : "—"}</span></div>
@@ -271,6 +315,19 @@ export default function PortalPatientDetailPage() {
           <p className="text-xs text-gray-400">
             Volledige voortgang (tijdlijn, alle check-ins, documenten) volgt hier in een latere uitbreiding.
           </p>
+
+          {editing && membership && (
+            <Modal onClose={() => setEditing(false)} maxWidth="max-w-2xl">
+              <PatientEditForm
+                patient={patient}
+                locations={locations}
+                members={members}
+                protocols={protocols}
+                onSaved={() => { setEditing(false); refresh(membership.organizationId); }}
+                onClose={() => setEditing(false)}
+              />
+            </Modal>
+          )}
         </>
       )}
     </div>
