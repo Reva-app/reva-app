@@ -61,13 +61,6 @@ export interface PortalLocationOption {
   name: string;
 }
 
-export interface PortalLocationDetail {
-  id: string;
-  name: string;
-  city: string | null;
-  status: string;
-}
-
 export interface PortalRoleOption {
   id: string;
   key: string;
@@ -246,6 +239,7 @@ export async function loadPortalLocations(organizationId: string): Promise<Porta
     .from("locations")
     .select("id, name")
     .eq("organization_id", organizationId)
+    .eq("archived", false)
     .order("name");
   if (error) { logErr("loadPortalLocations", error); return []; }
   return data ?? [];
@@ -413,44 +407,311 @@ export async function createAndInvitePortalPatient(
 
 // ─── Vestigingen (zelf-service) ─────────────────────────────────────────────
 
-export async function loadPortalLocationDetails(organizationId: string): Promise<PortalLocationDetail[]> {
+/**
+ * Rollen die vestigingen mogen beheren (aanmaken/bewerken/archiveren/
+ * verwijderen/hoofdvestiging wijzigen) — moet in sync blijven met
+ * can_manage_org_locations() in migratie 040. Bewust beperkter dan
+ * MANAGE_PATIENTS_ROLES: vestigingenbeheer is een organisatiebrede
+ * structurele beslissing, geen dagelijkse patiëntenzorg-taak (zelfde
+ * redenering als MANAGE_BRANDING_ROLES).
+ */
+export const MANAGE_LOCATIONS_ROLES = ["organization_owner", "organization_admin"];
+
+/** Alleen platform-admin-beheerd (via /admin), praktijken kunnen dit niet zelf verhogen. */
+export async function loadPortalMaxLocations(organizationId: string): Promise<number> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("organizations")
+    .select("max_locations")
+    .eq("id", organizationId)
+    .maybeSingle();
+  if (error) { logErr("loadPortalMaxLocations", error); return 0; }
+  return data?.max_locations ?? 0;
+}
+
+const OPENING_HOURS_DAY_KEYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
+export type PortalOpeningHoursDayKey = (typeof OPENING_HOURS_DAY_KEYS)[number];
+
+export interface PortalOpeningHoursDay {
+  open: boolean;
+  from: string;
+  to: string;
+}
+
+export type PortalOpeningHours = Record<PortalOpeningHoursDayKey, PortalOpeningHoursDay>;
+
+export const OPENING_HOURS_DAY_LABELS: Record<PortalOpeningHoursDayKey, string> = {
+  monday: "Maandag", tuesday: "Dinsdag", wednesday: "Woensdag", thursday: "Donderdag",
+  friday: "Vrijdag", saturday: "Zaterdag", sunday: "Zondag",
+};
+
+const OPENING_HOURS_DAY_SHORT: Record<PortalOpeningHoursDayKey, string> = {
+  monday: "Ma", tuesday: "Di", wednesday: "Wo", thursday: "Do", friday: "Vr", saturday: "Za", sunday: "Zo",
+};
+
+export const DEFAULT_OPENING_HOURS: PortalOpeningHours = OPENING_HOURS_DAY_KEYS.reduce((acc, day) => {
+  acc[day] = { open: false, from: "09:00", to: "17:00" };
+  return acc;
+}, {} as PortalOpeningHours);
+
+/** Korte, leesbare samenvatting van de openingstijden voor op de kaart, bv. "Ma–Vr 09:00–17:00". */
+export function summarizeOpeningHours(hours: PortalOpeningHours): string {
+  const openDays = OPENING_HOURS_DAY_KEYS.filter((d) => hours[d]?.open);
+  if (openDays.length === 0) return "Gesloten";
+  const first = hours[openDays[0]];
+  const sameHours = openDays.every((d) => hours[d].from === first.from && hours[d].to === first.to);
+  if (!sameHours) return "Wisselende tijden";
+  const indices = openDays.map((d) => OPENING_HOURS_DAY_KEYS.indexOf(d));
+  const isContiguous = indices.every((idx, i) => i === 0 || idx === indices[i - 1] + 1);
+  const rangeLabel = isContiguous && openDays.length > 1
+    ? `${OPENING_HOURS_DAY_SHORT[openDays[0]]}–${OPENING_HOURS_DAY_SHORT[openDays[openDays.length - 1]]}`
+    : openDays.map((d) => OPENING_HOURS_DAY_SHORT[d]).join(", ");
+  return `${rangeLabel} ${first.from}–${first.to}`;
+}
+
+export interface PortalLocationCard {
+  id: string;
+  name: string;
+  isMainLocation: boolean;
+  archived: boolean;
+  street: string | null;
+  houseNumber: string | null;
+  postalCode: string | null;
+  city: string | null;
+  openingHours: PortalOpeningHours;
+  employeeCount: number;
+  patientCount: number;
+}
+
+export interface PortalLocationEmployee {
+  membershipId: string;
+  userId: string;
+  fullName: string | null;
+  avatarUrl: string | null;
+  roleName: string;
+}
+
+export interface PortalLocationFull {
+  id: string;
+  organizationId: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  street: string | null;
+  houseNumber: string | null;
+  postalCode: string | null;
+  city: string | null;
+  country: string;
+  isMainLocation: boolean;
+  archived: boolean;
+  openingHours: PortalOpeningHours;
+  employees: PortalLocationEmployee[];
+}
+
+export interface PortalLocationInput {
+  name: string;
+  phone: string;
+  email: string;
+  website: string;
+  street: string;
+  houseNumber: string;
+  postalCode: string;
+  city: string;
+  country: string;
+  openingHours: PortalOpeningHours;
+}
+
+function locationInputToRow(input: PortalLocationInput) {
+  return {
+    name: input.name.trim(),
+    phone: input.phone.trim() || null,
+    email: input.email.trim() || null,
+    website: input.website.trim() || null,
+    street: input.street.trim() || null,
+    house_number: input.houseNumber.trim() || null,
+    postal_code: input.postalCode.trim() || null,
+    city: input.city.trim() || null,
+    country: input.country.trim() || "Nederland",
+    opening_hours: input.openingHours,
+  };
+}
+
+export async function loadPortalLocationCards(organizationId: string): Promise<PortalLocationCard[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("locations")
-    .select("id, name, city, status")
+    .select("id, name, is_main_location, archived, street, house_number, postal_code, city, opening_hours, memberships(count), patients(count)")
     .eq("organization_id", organizationId)
-    .order("created_at", { ascending: true });
-  if (error) { logErr("loadPortalLocationDetails", error); return []; }
-  return (data ?? []) as PortalLocationDetail[];
+    .order("is_main_location", { ascending: false })
+    .order("name");
+  if (error) { logErr("loadPortalLocationCards", error); return []; }
+  return ((data ?? []) as unknown as {
+    id: string; name: string; is_main_location: boolean; archived: boolean;
+    street: string | null; house_number: string | null; postal_code: string | null; city: string | null;
+    opening_hours: PortalOpeningHours | null;
+    memberships: { count: number }[] | null;
+    patients: { count: number }[] | null;
+  }[]).map((r) => ({
+    id: r.id,
+    name: r.name,
+    isMainLocation: r.is_main_location,
+    archived: r.archived,
+    street: r.street,
+    houseNumber: r.house_number,
+    postalCode: r.postal_code,
+    city: r.city,
+    openingHours: r.opening_hours ?? DEFAULT_OPENING_HOURS,
+    employeeCount: r.memberships?.[0]?.count ?? 0,
+    patientCount: r.patients?.[0]?.count ?? 0,
+  }));
 }
 
-export async function createPortalLocation(
+export async function loadPortalLocationFull(locationId: string): Promise<PortalLocationFull | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("locations")
+    .select("id, organization_id, name, phone, email, website, street, house_number, postal_code, city, country, is_main_location, archived, opening_hours")
+    .eq("id", locationId)
+    .maybeSingle();
+  if (error) { logErr("loadPortalLocationFull", error); return null; }
+  if (!data) return null;
+
+  const { data: memberRows, error: memberErr } = await supabase
+    .from("memberships")
+    .select("id, user_id, role_id")
+    .eq("location_id", locationId)
+    .eq("status", "active");
+  if (memberErr) logErr("loadPortalLocationFull(memberships)", memberErr);
+
+  const rows = memberRows ?? [];
+  const userIds = [...new Set(rows.map((r) => r.user_id as string))];
+  const roleIds = [...new Set(rows.map((r) => r.role_id as string))];
+
+  const [profilesRes, rolesRes] = await Promise.all([
+    userIds.length > 0
+      ? supabase.from("profiles").select("id, full_name, avatar_url").in("id", userIds)
+      : Promise.resolve({ data: [] as { id: string; full_name: string | null; avatar_url: string | null }[], error: null }),
+    roleIds.length > 0
+      ? supabase.from("roles").select("id, name").in("id", roleIds)
+      : Promise.resolve({ data: [] as { id: string; name: string }[], error: null }),
+  ]);
+
+  const profileMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p]));
+  const roleMap = new Map((rolesRes.data ?? []).map((r) => [r.id, r.name]));
+
+  const employees: PortalLocationEmployee[] = rows.map((r) => {
+    const profile = profileMap.get(r.user_id as string);
+    return {
+      membershipId: r.id as string,
+      userId: r.user_id as string,
+      fullName: profile?.full_name ?? null,
+      avatarUrl: profile?.avatar_url ?? null,
+      roleName: roleMap.get(r.role_id as string) ?? "",
+    };
+  });
+
+  return {
+    id: data.id,
+    organizationId: data.organization_id,
+    name: data.name,
+    phone: data.phone,
+    email: data.email,
+    website: data.website,
+    street: data.street,
+    houseNumber: data.house_number,
+    postalCode: data.postal_code,
+    city: data.city,
+    country: data.country,
+    isMainLocation: data.is_main_location,
+    archived: data.archived,
+    openingHours: (data.opening_hours as PortalOpeningHours | null) ?? DEFAULT_OPENING_HOURS,
+    employees,
+  };
+}
+
+export async function createPortalLocationFull(
   organizationId: string,
-  name: string,
-  city: string
+  input: PortalLocationInput
+): Promise<{ id: string | null; error: string | null }> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("locations")
+    .insert({ ...locationInputToRow(input), organization_id: organizationId })
+    .select("id")
+    .single();
+  if (error) {
+    logErr("createPortalLocationFull", error);
+    if (error.message?.includes("Maximum aantal vestigingen")) {
+      return { id: null, error: "Je hebt het maximum aantal vestigingen voor je abonnement bereikt." };
+    }
+    return { id: null, error: "Aanmaken van de vestiging is niet gelukt." };
+  }
+  return { id: data.id, error: null };
+}
+
+export async function updatePortalLocationFull(
+  locationId: string,
+  input: PortalLocationInput
 ): Promise<{ error: string | null }> {
   const supabase = createClient();
-  const { error } = await supabase.from("locations").insert({
-    organization_id: organizationId,
-    name: name.trim(),
-    city: city.trim() || null,
-  });
+  const { error } = await supabase.from("locations").update(locationInputToRow(input)).eq("id", locationId);
   if (error) {
-    logErr("createPortalLocation", error);
-    return { error: "Aanmaken van de vestiging is niet gelukt." };
+    logErr("updatePortalLocationFull", error);
+    return { error: "Bijwerken van de vestiging is niet gelukt." };
   }
   return { error: null };
 }
 
-export async function updatePortalLocationStatus(
+export async function setPortalMainLocation(locationId: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("set_main_location", { p_location_id: locationId });
+  if (error) {
+    logErr("setPortalMainLocation", error);
+    return { error: error.message || "Instellen van de hoofdvestiging is niet gelukt." };
+  }
+  return { error: null };
+}
+
+export async function updatePortalLocationArchived(
   locationId: string,
-  status: "active" | "suspended"
+  archived: boolean
 ): Promise<{ error: string | null }> {
   const supabase = createClient();
-  const { error } = await supabase.from("locations").update({ status }).eq("id", locationId);
+  const { error } = await supabase.from("locations").update({ archived }).eq("id", locationId);
   if (error) {
-    logErr("updatePortalLocationStatus", error);
+    logErr("updatePortalLocationArchived", error);
+    if (error.message?.includes("hoofdvestiging")) {
+      return { error: error.message };
+    }
     return { error: "Bijwerken van de vestiging is niet gelukt." };
+  }
+  return { error: null };
+}
+
+export async function deletePortalLocationChecked(locationId: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const [membersRes, patientsRes] = await Promise.all([
+    supabase.from("memberships").select("id", { count: "exact", head: true }).eq("location_id", locationId),
+    supabase.from("patients").select("id", { count: "exact", head: true }).eq("location_id", locationId),
+  ]);
+  const memberCount = membersRes.count ?? 0;
+  const patientCount = patientsRes.count ?? 0;
+  if (memberCount > 0 || patientCount > 0) {
+    const parts: string[] = [];
+    if (memberCount > 0) parts.push(`${memberCount} ${memberCount === 1 ? "medewerker" : "medewerkers"}`);
+    if (patientCount > 0) parts.push(`${patientCount} ${patientCount === 1 ? "patiënt" : "patiënten"}`);
+    const verb = memberCount + patientCount === 1 ? "is" : "zijn";
+    return { error: `Deze vestiging kan niet verwijderd worden: er ${verb} nog ${parts.join(" en ")} aan gekoppeld.` };
+  }
+
+  const { error } = await supabase.from("locations").delete().eq("id", locationId);
+  if (error) {
+    logErr("deletePortalLocationChecked", error);
+    if (error.message?.includes("hoofdvestiging")) {
+      return { error: error.message };
+    }
+    return { error: "Verwijderen van de vestiging is niet gelukt." };
   }
   return { error: null };
 }

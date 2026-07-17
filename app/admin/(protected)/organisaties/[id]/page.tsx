@@ -150,6 +150,7 @@ export default function AdminOrganizationDetailPage() {
       address: org.address,
       supportNotes: org.supportNotes,
       lastContactAt: org.lastContactAt,
+      maxLocations: org.maxLocations,
     });
     setSaving(false);
     if (!error) {
@@ -263,6 +264,17 @@ export default function AdminOrganizationDetailPage() {
           <TextField label="KvK-nummer" value={org.kvkNumber ?? ""} onChange={(v) => setOrg({ ...org, kvkNumber: v })} />
           <TextField label="BTW-nummer" value={org.btwNumber ?? ""} onChange={(v) => setOrg({ ...org, btwNumber: v })} />
           <TextField label="Website" value={org.website ?? ""} onChange={(v) => setOrg({ ...org, website: v })} placeholder="https://" />
+          <div>
+            <FieldLabel>Max. aantal vestigingen</FieldLabel>
+            <input
+              type="number"
+              min={0}
+              value={org.maxLocations}
+              onChange={(e) => setOrg({ ...org, maxLocations: Math.max(0, Number(e.target.value) || 0) })}
+              className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors"
+              style={inputStyle}
+            />
+          </div>
           <TextField label="Contactpersoon" value={org.contactName ?? ""} onChange={(v) => setOrg({ ...org, contactName: v })} />
           <TextField label="E-mailadres" value={org.contactEmail ?? ""} onChange={(v) => setOrg({ ...org, contactEmail: v })} type="email" />
           <TextField label="Telefoonnummer" value={org.contactPhone ?? ""} onChange={(v) => setOrg({ ...org, contactPhone: v })} type="tel" />
@@ -289,7 +301,7 @@ export default function AdminOrganizationDetailPage() {
                   <p className="text-sm font-medium text-gray-800">{loc.name}</p>
                   <p className="text-xs text-gray-400 mt-0.5">{loc.city || "Geen plaats ingesteld"} · {loc.patientCount} {loc.patientCount === 1 ? "patiënt" : "patiënten"}</p>
                 </div>
-                {orgStatusBadge(loc.status)}
+                {loc.archived ? <Badge variant="muted">Gearchiveerd</Badge> : <Badge variant="success">Actief</Badge>}
               </div>
             ))}
           </div>
@@ -348,7 +360,7 @@ export default function AdminOrganizationDetailPage() {
                   style={{ ...inputStyle, background: "#ffffff" }}
                 >
                   <option value="">Hele organisatie</option>
-                  {locations.map((l) => (
+                  {locations.filter((l) => !l.archived).map((l) => (
                     <option key={l.id} value={l.id}>{l.name}</option>
                   ))}
                 </select>

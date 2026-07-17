@@ -138,6 +138,7 @@ export interface AdminOrganizationDetail {
   supportNotes: string | null;
   lastContactAt: string | null;
   createdAt: string;
+  maxLocations: number;
 }
 
 export interface AdminOrganizationPatch {
@@ -152,13 +153,14 @@ export interface AdminOrganizationPatch {
   address?: string | null;
   supportNotes?: string | null;
   lastContactAt?: string | null;
+  maxLocations?: number;
 }
 
 export interface AdminOrgLocation {
   id: string;
   name: string;
   city: string | null;
-  status: string;
+  archived: boolean;
   patientCount: number;
 }
 
@@ -189,7 +191,7 @@ export async function loadAdminOrganizationDetail(orgId: string): Promise<AdminO
   const supabase = createClient();
   const { data, error } = await supabase
     .from("organizations")
-    .select("id, name, status, logo_path, kvk_number, btw_number, website, contact_name, contact_email, contact_phone, address, support_notes, last_contact_at, created_at")
+    .select("id, name, status, logo_path, kvk_number, btw_number, website, contact_name, contact_email, contact_phone, address, support_notes, last_contact_at, created_at, max_locations")
     .eq("id", orgId)
     .maybeSingle();
   if (error) { logErr("loadAdminOrganizationDetail", error); return null; }
@@ -220,6 +222,7 @@ export async function loadAdminOrganizationDetail(orgId: string): Promise<AdminO
     supportNotes: data.support_notes,
     lastContactAt: data.last_contact_at,
     createdAt: data.created_at,
+    maxLocations: data.max_locations,
   };
 }
 
@@ -237,6 +240,7 @@ export async function updateAdminOrganization(orgId: string, patch: AdminOrganiz
   if (patch.address !== undefined) dbPatch.address = patch.address;
   if (patch.supportNotes !== undefined) dbPatch.support_notes = patch.supportNotes;
   if (patch.lastContactAt !== undefined) dbPatch.last_contact_at = patch.lastContactAt;
+  if (patch.maxLocations !== undefined) dbPatch.max_locations = patch.maxLocations;
 
   const { error } = await supabase.from("organizations").update(dbPatch).eq("id", orgId);
   if (error) { logErr("updateAdminOrganization", error); return { error: error.message }; }
@@ -268,15 +272,15 @@ export async function loadAdminOrgLocations(orgId: string): Promise<AdminOrgLoca
   const supabase = createClient();
   const { data, error } = await supabase
     .from("locations")
-    .select("id, name, city, status, patients(count)")
+    .select("id, name, city, archived, patients(count)")
     .eq("organization_id", orgId)
     .order("created_at", { ascending: true });
   if (error) { logErr("loadAdminOrgLocations", error); return []; }
-  return ((data ?? []) as unknown as { id: string; name: string; city: string | null; status: string; patients: { count: number }[] | null }[]).map((row) => ({
+  return ((data ?? []) as unknown as { id: string; name: string; city: string | null; archived: boolean; patients: { count: number }[] | null }[]).map((row) => ({
     id: row.id,
     name: row.name,
     city: row.city,
-    status: row.status,
+    archived: row.archived,
     patientCount: row.patients?.[0]?.count ?? 0,
   }));
 }
