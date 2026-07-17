@@ -35,7 +35,7 @@ export function Badge({ children, variant = "default", className }: BadgeProps) 
         variants[variant],
         className
       )}
-      style={variant === "accent" ? { background: "var(--portal-accent, #e8632a)" } : undefined}
+      style={variant === "accent" ? { background: "var(--brand-accent, #e8632a)" } : undefined}
     >
       {children}
     </span>

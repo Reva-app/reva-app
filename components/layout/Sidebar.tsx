@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useAppBranding } from "@/lib/hooks/useAppBranding";
 
 const primaryNav = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -36,6 +37,11 @@ export function Sidebar() {
   const pathname = usePathname();
   const { profile, dagsSindsBlessure, fase, hydrated } = useAppData();
   const { signOut, user } = useAuth();
+  const branding = useAppBranding();
+  // Alleen de praktijknaam/logo tonen zodra de praktijk daadwerkelijk iets
+  // heeft ingesteld — anders (bv. de eigen persoonlijke werkruimte) blijft
+  // de vertrouwde REVA-uitstraling ongewijzigd staan.
+  const hasOwnBranding = !!(branding?.logoUrl || branding?.primaryColor);
 
   // Display name: profile name if set, else auth email, else empty
   const displayNaam = hydrated
@@ -65,7 +71,7 @@ export function Sidebar() {
           background: isActive ? "rgba(255,255,255,0.07)" : "transparent",
         }}
       >
-        <Icon size={16} style={{ color: isActive ? "#e8632a" : "#52525e" }} />
+        <Icon size={16} style={{ color: isActive ? "var(--brand-accent, #e8632a)" : "#52525e" }} />
         {label}
       </Link>
     );
@@ -80,13 +86,18 @@ export function Sidebar() {
       <div className="px-5 py-5">
         <div className="flex items-center gap-2.5">
           <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-            style={{ background: "#e8632a" }}
+            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 overflow-hidden"
+            style={{ background: "var(--brand-accent, #e8632a)" }}
           >
-            <span className="text-white font-bold text-xs">R</span>
+            {hasOwnBranding && branding?.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={branding.logoUrl} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-white font-bold text-xs">{hasOwnBranding ? branding!.name[0].toUpperCase() : "R"}</span>
+            )}
           </div>
           <div className="leading-none">
-            <p className="text-white font-semibold text-sm tracking-tight">REVA</p>
+            <p className="text-white font-semibold text-sm tracking-tight">{hasOwnBranding ? branding!.name : "REVA"}</p>
             <p className="text-[11px] mt-0.5" style={{ color: "#52525e" }}>Herstel Dashboard</p>
           </div>
         </div>
@@ -115,7 +126,7 @@ export function Sidebar() {
         <div className="flex items-center gap-2.5">
           <div
             className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden"
-            style={{ background: hydrated && profile.profielfoto ? "transparent" : "#e8632a" }}
+            style={{ background: hydrated && profile.profielfoto ? "transparent" : "var(--brand-accent, #e8632a)" }}
           >
             {hydrated && profile.profielfoto ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -137,7 +148,7 @@ export function Sidebar() {
             onClick={signOut}
             title="Uitloggen"
             className="shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10"
-            style={{ color: "#e8632a" }}
+            style={{ color: "var(--brand-accent, #e8632a)" }}
           >
             <LogOut size={13} />
           </button>

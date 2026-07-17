@@ -1,3 +1,5 @@
+"use client";
+
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { MobileNav } from "./MobileNav";
@@ -7,13 +9,15 @@ import { AuthGate } from "@/components/auth/AuthGate";
 import { AppLoadingGate } from "@/components/auth/AppLoadingGate";
 import { TrialBanner } from "@/components/subscription/TrialBanner";
 import { SUBSCRIPTIONS_ENABLED } from "@/lib/subscription";
+import { useAppBranding } from "@/lib/hooks/useAppBranding";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
+  const branding = useAppBranding();
   return (
     <AppDataProvider>
       <AppLoadingGate>
         <AuthGate>
-          <div className="flex h-full">
+          <div className="flex h-full" style={{ ["--brand-accent" as string]: branding?.primaryColor || "#e8632a" }}>
             <Sidebar />
             <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
               {SUBSCRIPTIONS_ENABLED && <TrialBanner />}

@@ -110,7 +110,7 @@ export function MobileNav() {
           >
             <MoreHorizontal
               size={22}
-              style={{ color: isMeerActive || meerOpen ? "#e8632a" : "#5a5a6a" }}
+              style={{ color: isMeerActive || meerOpen ? "var(--brand-accent, #e8632a)" : "#5a5a6a" }}
               strokeWidth={1.8}
             />
             <span
@@ -183,7 +183,7 @@ export function MobileNav() {
                     border: active ? "1px solid rgba(232,99,42,0.35)" : "1px solid rgba(255,255,255,0.07)",
                   }}
                 >
-                  <Icon size={22} style={{ color: active ? "#e8632a" : "#9ca3af" }} strokeWidth={active ? 2.2 : 1.8} />
+                  <Icon size={22} style={{ color: active ? "var(--brand-accent, #e8632a)" : "#9ca3af" }} strokeWidth={active ? 2.2 : 1.8} />
                   <span
                     className="text-[11px] font-medium text-center leading-tight"
                     style={{ color: active ? "#ffffff" : "#9ca3af" }}
@@ -235,7 +235,7 @@ function NavItem({
       href={href}
       className="flex-1 flex flex-col items-center justify-end gap-1 pb-2 touch-press"
     >
-      <Icon size={22} style={{ color: active ? "#e8632a" : "#5a5a6a" }} strokeWidth={active ? 2.2 : 1.8} />
+      <Icon size={22} style={{ color: active ? "var(--brand-accent, #e8632a)" : "#5a5a6a" }} strokeWidth={active ? 2.2 : 1.8} />
       <span className="text-[10px] font-medium leading-none" style={{ color: active ? "#ffffff" : "#5a5a6a" }}>
         {label}
       </span>

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Bell } from "lucide-react";
 import { useAppData } from "@/lib/store";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useAppBranding } from "@/lib/hooks/useAppBranding";
 import {
   generateAllNotifications,
   type AppNotification,
@@ -47,6 +48,8 @@ export function TopBar() {
   } = useAppData();
 
   const { user } = useAuth();
+  const branding = useAppBranding();
+  const hasOwnBranding = !!(branding?.logoUrl || branding?.primaryColor);
 
   const title = pageTitles[pathname] ?? "REVA";
   const avatarLetter = hydrated
@@ -194,7 +197,7 @@ export function TopBar() {
         <button
           onClick={() => router.push("/instellingen")}
           className="lg:hidden w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold text-white overflow-hidden shrink-0"
-          style={{ background: hydrated && profile.profielfoto ? "transparent" : "#e8632a" }}
+          style={{ background: hydrated && profile.profielfoto ? "transparent" : "var(--brand-accent, #e8632a)" }}
           aria-label="Naar instellingen"
         >
           {hydrated && profile.profielfoto ? (
@@ -209,19 +212,24 @@ export function TopBar() {
         <div className="lg:hidden flex-1 flex justify-center">
           <div className="flex items-center gap-2">
             <div
-              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: "#e8632a" }}
+              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 overflow-hidden"
+              style={{ background: "var(--brand-accent, #e8632a)" }}
             >
-              <span className="text-white font-bold text-sm leading-none">R</span>
+              {hasOwnBranding && branding?.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={branding.logoUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-white font-bold text-sm leading-none">{hasOwnBranding ? branding!.name[0].toUpperCase() : "R"}</span>
+              )}
             </div>
-            <span className="font-bold text-base" style={{ color: "#1a1a1a" }}>REVA</span>
+            <span className="font-bold text-base" style={{ color: "#1a1a1a" }}>{hasOwnBranding ? branding!.name : "REVA"}</span>
           </div>
         </div>
 
         {/* Desktop avatar */}
         <div
           className="hidden lg:flex w-8 h-8 rounded-full items-center justify-center text-sm font-semibold text-white overflow-hidden shrink-0"
-          style={{ background: hydrated && profile.profielfoto ? "transparent" : "#e8632a" }}
+          style={{ background: hydrated && profile.profielfoto ? "transparent" : "var(--brand-accent, #e8632a)" }}
         >
           {hydrated && profile.profielfoto ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -236,7 +244,7 @@ export function TopBar() {
           <button
             onClick={() => setPanelOpen(v => !v)}
             className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-gray-100"
-            style={{ color: panelOpen ? "#e8632a" : "#6b7280" }}
+            style={{ color: panelOpen ? "var(--brand-accent, #e8632a)" : "#6b7280" }}
             aria-label="Meldingen openen"
           >
             <Bell size={16} />
@@ -245,7 +253,7 @@ export function TopBar() {
           {hydrated && unreadCount > 0 && (
             <span
               className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[10px] font-bold text-white pointer-events-none"
-              style={{ background: "#e8632a", lineHeight: 1 }}
+              style={{ background: "var(--brand-accent, #e8632a)", lineHeight: 1 }}
             >
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>

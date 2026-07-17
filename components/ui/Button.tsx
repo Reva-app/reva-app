@@ -41,7 +41,7 @@ export function Button({
       style={
         variant === "primary"
           ? {
-              background: "var(--portal-accent, #e8632a)",
+              background: "var(--brand-accent, #e8632a)",
               color: "#ffffff",
             }
           : variant === "secondary"

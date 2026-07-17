@@ -38,7 +38,7 @@ export function PortalSidebar() {
           background: isActive ? "rgba(255,255,255,0.07)" : "transparent",
         }}
       >
-        <Icon size={16} style={{ color: isActive ? "var(--portal-accent, #e8632a)" : "#52525e" }} />
+        <Icon size={16} style={{ color: isActive ? "var(--brand-accent, #e8632a)" : "#52525e" }} />
         {label}
       </Link>
     );
@@ -51,7 +51,7 @@ export function PortalSidebar() {
     >
       <div className="px-5 py-5">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 overflow-hidden" style={{ background: "var(--portal-accent, #e8632a)" }}>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 overflow-hidden" style={{ background: "var(--brand-accent, #e8632a)" }}>
             {branding?.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={branding.logoUrl} alt="" className="w-full h-full object-cover" />
@@ -76,7 +76,7 @@ export function PortalSidebar() {
 
       <div className="mx-2.5 mb-3 px-3 py-3 rounded-xl" style={{ background: "rgba(255,255,255,0.04)" }}>
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ background: "var(--portal-accent, #e8632a)" }}>
+          <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ background: "var(--brand-accent, #e8632a)" }}>
             {user?.email?.[0]?.toUpperCase() ?? "P"}
           </div>
           <div className="overflow-hidden min-w-0 flex-1">
@@ -88,7 +88,7 @@ export function PortalSidebar() {
             onClick={signOut}
             title="Uitloggen"
             className="shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10"
-            style={{ color: "var(--portal-accent, #e8632a)" }}
+            style={{ color: "var(--brand-accent, #e8632a)" }}
           >
             <LogOut size={13} />
           </button>

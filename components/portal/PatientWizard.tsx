@@ -115,7 +115,7 @@ export function PatientWizard({
             <div
               className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
               style={{
-                background: i < step ? "#16a34a" : i === step ? "var(--portal-accent, #e8632a)" : "#e8e5df",
+                background: i < step ? "#16a34a" : i === step ? "var(--brand-accent, #e8632a)" : "#e8e5df",
                 color: i <= step ? "#ffffff" : "#9ca3af",
               }}
             >

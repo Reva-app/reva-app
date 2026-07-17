@@ -154,7 +154,7 @@ function SaveBtn({
       onClick={onClick}
       className="w-full py-4 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 transition-all touch-press"
       style={{
-        background: saved ? "#16a34a" : "#e8632a",
+        background: saved ? "#16a34a" : "var(--brand-accent, #e8632a)",
         color: "#ffffff",
         animation: saved ? "successPop 0.3s ease" : undefined,
         pointerEvents: saved ? "none" : undefined,
@@ -288,7 +288,7 @@ export function QuickActionFAB() {
         style={{
           bottom: `calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 12px)`,
           right: "16px",
-          background: fabOpen ? "#1c1c1e" : "#e8632a",
+          background: fabOpen ? "#1c1c1e" : "var(--brand-accent, #e8632a)",
           boxShadow: fabOpen
             ? "0 6px 24px rgba(0,0,0,0.25)"
             : "0 6px 24px rgba(232,99,42,0.45)",

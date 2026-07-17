@@ -58,7 +58,7 @@ function Avatar({ patient }: { patient: PortalPatient }) {
   return (
     <div
       className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white shrink-0"
-      style={{ background: "var(--portal-accent, #e8632a)" }}
+      style={{ background: "var(--brand-accent, #e8632a)" }}
     >
       {initials(patient.fullName, patient.email)}
     </div>

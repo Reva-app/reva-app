@@ -33,7 +33,7 @@ export default function PortalDashboardPage() {
       />
 
       <div className="grid grid-cols-2 gap-4">
-        <StatCard label="Patiënten" value={loading ? "…" : stats?.patientCount ?? 0} icon={HeartPulse} iconColor="#16a34a" />
+        <StatCard label="Patiënten" value={loading ? "…" : stats?.patientCount ?? 0} icon={HeartPulse} />
         <StatCard label="Collega's" value={loading ? "…" : stats?.colleagueCount ?? 0} icon={Users} iconColor="#8b5cf6" />
       </div>
 

@@ -18,7 +18,7 @@ export function StatCard({
   value,
   subtitle,
   icon: Icon,
-  iconColor = "#e8632a",
+  iconColor = "var(--brand-accent, #e8632a)",
   accent,
   className,
 }: StatCardProps) {
