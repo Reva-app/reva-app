@@ -48,8 +48,8 @@ export function inviteEmailHtml({ accentColor, headerLabel, heading, bodyHtmlLin
               ${escapeHtml(ctaLabel)}
             </a>
           </div>
-          <p style="margin: 24px 0 0; font-size: 12px; color: #9ca3af; word-break: break-all;">
-            Werkt de knop niet? Kopieer deze link: <a href="${ctaUrl}" style="color: #9ca3af;">${ctaUrl}</a>
+          <p style="margin: 24px 0 0; font-size: 12px; color: #9ca3af;">
+            Werkt de knop niet? <a href="${ctaUrl}" style="color: #9ca3af; text-decoration: underline;">Klik hier om verder te gaan</a>.
           </p>
         </div>
         <div style="padding: 4px 32px 20px; font-size: 12px; color: #9ca3af;">
