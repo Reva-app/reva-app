@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { HeartPulse, Users } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StatCard } from "@/components/ui/StatCard";
+import { WelcomePanel } from "@/components/portal/WelcomePanel";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { loadPortalDashboardStats, type PortalDashboardStats } from "@/lib/services/portalService";
 
@@ -11,6 +12,7 @@ export default function PortalDashboardPage() {
   const { checked, membership } = usePortalMembership();
   const [stats, setStats] = useState<PortalDashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
 
   useEffect(() => {
     if (!checked || !membership) return;
@@ -25,12 +27,24 @@ export default function PortalDashboardPage() {
     };
   }, [checked, membership]);
 
+  const showWelcome = !!membership && !welcomeDismissed && !membership.welcomedAt && membership.roleKey === "organization_owner";
+
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-8">
       <SectionHeader
         title={membership ? membership.organizationName : "Dashboard"}
         subtitle={membership ? `Welkom terug — ${membership.roleName}` : undefined}
       />
+
+      {showWelcome && stats && (
+        <WelcomePanel
+          membershipId={membership.membershipId}
+          organizationId={membership.organizationId}
+          organizationName={membership.organizationName}
+          stats={stats}
+          onDismiss={() => setWelcomeDismissed(true)}
+        />
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <StatCard label="Patiënten" value={loading ? "…" : stats?.patientCount ?? 0} icon={HeartPulse} />

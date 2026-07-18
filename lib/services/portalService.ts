@@ -1,19 +1,46 @@
 import { createClient } from "@/lib/supabaseClient";
+import { apiUrl } from "@/lib/apiBase";
 
 function logErr(fn: string, error: { message?: string; code?: string; details?: string; hint?: string } | null) {
   if (!error) return;
   console.error(`[${fn}] Supabase error — message: "${error.message}" | code: ${error.code} | details: ${error.details} | hint: ${error.hint}`);
 }
 
+/**
+ * Verstuurt een op-maat gemaakte uitnodigingsmail via /api/send-invite (Resend +
+ * server-side gegenereerde magic-link, i.p.v. Supabase's generieke ingebouwde
+ * mail). Stuurt de actuele access token expliciet mee — niet vertrouwen op de
+ * sessie-cookie, die kan achterlopen op een stille token-refresh (zelfde reden
+ * als bij /api/delete-account).
+ */
+async function callSendInviteApi(body: Record<string, unknown>): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return { error: "Niet ingelogd." };
+
+  const res = await fetch(apiUrl("/api/send-invite"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || json.error) {
+    return { error: json.error ?? "Versturen van de uitnodiging is niet gelukt." };
+  }
+  return { error: null };
+}
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface PortalMembership {
+  membershipId: string;
   organizationId: string;
   organizationName: string;
   locationId: string | null;
   locationName: string | null;
   roleKey: string;
   roleName: string;
+  welcomedAt: string | null;
 }
 
 export interface PortalPatient {
@@ -54,6 +81,7 @@ export const MANAGE_PATIENTS_ROLES = ["organization_owner", "therapist", "practi
 export interface PortalDashboardStats {
   patientCount: number;
   colleagueCount: number;
+  locationCount: number;
 }
 
 export interface PortalLocationOption {
@@ -135,7 +163,7 @@ export async function loadCurrentMembership(userId: string): Promise<PortalMembe
   const supabase = createClient();
   const { data: membership, error } = await supabase
     .from("memberships")
-    .select("organization_id, location_id, role_id")
+    .select("id, organization_id, location_id, role_id, welcomed_at")
     .eq("user_id", userId)
     .eq("status", "active")
     .limit(1)
@@ -154,28 +182,48 @@ export async function loadCurrentMembership(userId: string): Promise<PortalMembe
   if (roleRes.error) logErr("loadCurrentMembership(role)", roleRes.error);
 
   return {
+    membershipId: membership.id,
     organizationId: membership.organization_id,
     organizationName: orgRes.data?.name ?? "Onbekende organisatie",
     locationId: membership.location_id,
     locationName: locRes.data?.name ?? null,
     roleKey: roleRes.data?.key ?? "",
     roleName: roleRes.data?.name ?? "",
+    welcomedAt: membership.welcomed_at,
   };
+}
+
+/**
+ * Markeert het welkomstscherm als gezien voor deze membership. Werkt vandaag
+ * alleen voor organization_owner: memberships-UPDATE is sinds migratie 041
+ * can_manage_org_staff()-gated (self-update door andere rollen is bewust
+ * geblokkeerd, zie de RLS-privilege-escalatiefix in die migratie) — als het
+ * welkomstscherm ooit naar andere rollen uitbreidt, is een gerichte
+ * SECURITY DEFINER RPC of een aparte additieve policy dan nodig.
+ */
+export async function markMembershipWelcomed(membershipId: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("memberships").update({ welcomed_at: new Date().toISOString() }).eq("id", membershipId);
+  if (error) { logErr("markMembershipWelcomed", error); return { error: "Bijwerken is niet gelukt." }; }
+  return { error: null };
 }
 
 // ─── Dashboard ──────────────────────────────────────────────────────────────
 
 export async function loadPortalDashboardStats(organizationId: string): Promise<PortalDashboardStats> {
   const supabase = createClient();
-  const [patients, colleagues] = await Promise.all([
+  const [patients, colleagues, locations] = await Promise.all([
     supabase.from("patients").select("id", { count: "exact", head: true }).eq("organization_id", organizationId),
     supabase.from("memberships").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("status", "active"),
+    supabase.from("locations").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("archived", false),
   ]);
   if (patients.error) logErr("loadPortalDashboardStats(patients)", patients.error);
   if (colleagues.error) logErr("loadPortalDashboardStats(memberships)", colleagues.error);
+  if (locations.error) logErr("loadPortalDashboardStats(locations)", locations.error);
   return {
     patientCount: patients.count ?? 0,
     colleagueCount: colleagues.count ?? 0,
+    locationCount: locations.count ?? 0,
   };
 }
 
@@ -388,6 +436,7 @@ export type InvitePortalPatientResult =
  */
 export async function invitePortalPatient(
   patientId: string,
+  organizationId: string,
   email: string
 ): Promise<InvitePortalPatientResult> {
   const supabase = createClient();
@@ -417,13 +466,9 @@ export async function invitePortalPatient(
     return { outcome: "linked", error: null };
   }
 
-  const { error: otpError } = await supabase.auth.signInWithOtp({
-    email: trimmedEmail,
-    options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-  });
-  if (otpError) {
-    logErr("invitePortalPatient(otp)", otpError);
-    return { outcome: "failed", error: "Versturen van de uitnodiging is niet gelukt." };
+  const { error: sendError } = await callSendInviteApi({ context: "portal-patient", organizationId, patientId });
+  if (sendError) {
+    return { outcome: "failed", error: sendError };
   }
 
   const { error: markError } = await supabase
@@ -444,7 +489,7 @@ export async function createAndInvitePortalPatient(
   if (createError || !id) {
     return { outcome: "failed", error: createError ?? "Aanmaken van het patiëntdossier is niet gelukt." };
   }
-  return invitePortalPatient(id, input.email);
+  return invitePortalPatient(id, organizationId, input.email);
 }
 
 // ─── Vestigingen (zelf-service) ─────────────────────────────────────────────
@@ -1064,41 +1109,35 @@ export async function inviteStaffMember(
     return { outcome: "linked", error: null };
   }
 
-  const { error: inviteInsertError } = await supabase.from("membership_invites").insert({
-    organization_id: organizationId,
-    email: trimmedEmail,
-    first_name: input.firstName.trim(),
-    last_name: input.lastName.trim(),
-    role_id: input.roleId,
-    location_id: input.locationId,
-  });
-  if (inviteInsertError) {
+  const { data: newInvite, error: inviteInsertError } = await supabase
+    .from("membership_invites")
+    .insert({
+      organization_id: organizationId,
+      email: trimmedEmail,
+      first_name: input.firstName.trim(),
+      last_name: input.lastName.trim(),
+      role_id: input.roleId,
+      location_id: input.locationId,
+    })
+    .select("id")
+    .single();
+  if (inviteInsertError || !newInvite) {
     logErr("inviteStaffMember(invite insert)", inviteInsertError);
-    if (inviteInsertError.code === "23505") return { outcome: "failed", error: "Er staat al een openstaande uitnodiging voor dit e-mailadres." };
-    if (inviteInsertError.message?.includes("medewerkers")) return { outcome: "failed", error: inviteInsertError.message };
+    if (inviteInsertError?.code === "23505") return { outcome: "failed", error: "Er staat al een openstaande uitnodiging voor dit e-mailadres." };
+    if (inviteInsertError?.message?.includes("medewerkers")) return { outcome: "failed", error: inviteInsertError.message };
     return { outcome: "failed", error: "Aanmaken van de uitnodiging is niet gelukt." };
   }
 
-  const { error: otpError } = await supabase.auth.signInWithOtp({
-    email: trimmedEmail,
-    options: { emailRedirectTo: `${window.location.origin}/auth/callback?flow=invite&next=${encodeURIComponent("/portal")}` },
-  });
-  if (otpError) {
-    logErr("inviteStaffMember(otp)", otpError);
+  const { error: sendError } = await callSendInviteApi({ context: "portal-staff", inviteId: newInvite.id });
+  if (sendError) {
     return { outcome: "failed", error: "Uitnodiging aangemaakt, maar het versturen van de e-mail is niet gelukt. Probeer 'Opnieuw uitnodigen'." };
   }
 
   return { outcome: "invited", error: null };
 }
 
-export async function resendStaffInvite(email: string): Promise<{ error: string | null }> {
-  const supabase = createClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email: email.trim().toLowerCase(),
-    options: { emailRedirectTo: `${window.location.origin}/auth/callback?flow=invite&next=${encodeURIComponent("/portal")}` },
-  });
-  if (error) { logErr("resendStaffInvite", error); return { error: "Opnieuw versturen is niet gelukt." }; }
-  return { error: null };
+export async function resendStaffInvite(inviteId: string): Promise<{ error: string | null }> {
+  return callSendInviteApi({ context: "portal-staff", inviteId });
 }
 
 export async function deleteStaffInvite(inviteId: string): Promise<{ error: string | null }> {

@@ -120,7 +120,7 @@ export default function PortalStaffPage() {
 
   async function handleResend(member: PortalStaffMember) {
     setBusyId(member.id);
-    const { error } = await resendStaffInvite(member.email ?? "");
+    const { error } = await resendStaffInvite(member.id);
     setBusyId(null);
     showRowMessage(member.id, error ?? "Uitnodiging opnieuw verstuurd.");
   }

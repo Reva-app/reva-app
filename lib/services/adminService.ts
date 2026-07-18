@@ -1,8 +1,32 @@
 import { createClient } from "@/lib/supabaseClient";
+import { apiUrl } from "@/lib/apiBase";
 
 function logErr(fn: string, error: { message?: string; code?: string; details?: string; hint?: string } | null) {
   if (!error) return;
   console.error(`[${fn}] Supabase error — message: "${error.message}" | code: ${error.code} | details: ${error.details} | hint: ${error.hint}`);
+}
+
+/**
+ * Verstuurt een op-maat gemaakte uitnodigingsmail via /api/send-invite (Resend +
+ * server-side gegenereerde magic-link, i.p.v. Supabase's generieke ingebouwde
+ * mail). Stuurt de actuele access token expliciet mee — niet vertrouwen op de
+ * sessie-cookie, die kan achterlopen op een stille token-refresh.
+ */
+async function callSendInviteApi(body: Record<string, unknown>): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return { error: "Niet ingelogd." };
+
+  const res = await fetch(apiUrl("/api/send-invite"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || json.error) {
+    return { error: json.error ?? "Versturen van de uitnodiging is niet gelukt." };
+  }
+  return { error: null };
 }
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -506,26 +530,26 @@ export async function inviteAdminOrgMember(
   const trimmedEmail = input.email.trim().toLowerCase();
   if (!trimmedEmail) return { error: "Vul een e-mailadres in." };
 
-  const { error: inviteInsertError } = await supabase.from("membership_invites").insert({
-    organization_id: orgId,
-    email: trimmedEmail,
-    first_name: input.firstName.trim(),
-    last_name: input.lastName.trim(),
-    role_id: input.roleId,
-    location_id: input.locationId,
-  });
-  if (inviteInsertError) {
+  const { data: newInvite, error: inviteInsertError } = await supabase
+    .from("membership_invites")
+    .insert({
+      organization_id: orgId,
+      email: trimmedEmail,
+      first_name: input.firstName.trim(),
+      last_name: input.lastName.trim(),
+      role_id: input.roleId,
+      location_id: input.locationId,
+    })
+    .select("id")
+    .single();
+  if (inviteInsertError || !newInvite) {
     logErr("inviteAdminOrgMember(invite insert)", inviteInsertError);
-    if (inviteInsertError.code === "23505") return { error: "Er staat al een openstaande uitnodiging voor dit e-mailadres." };
-    return { error: inviteInsertError.message };
+    if (inviteInsertError?.code === "23505") return { error: "Er staat al een openstaande uitnodiging voor dit e-mailadres." };
+    return { error: inviteInsertError?.message ?? "Aanmaken van de uitnodiging is niet gelukt." };
   }
 
-  const { error: otpError } = await supabase.auth.signInWithOtp({
-    email: trimmedEmail,
-    options: { emailRedirectTo: `${window.location.origin}/auth/callback?flow=invite&next=${encodeURIComponent("/portal")}` },
-  });
-  if (otpError) {
-    logErr("inviteAdminOrgMember(otp)", otpError);
+  const { error: sendError } = await callSendInviteApi({ context: "admin", inviteId: newInvite.id });
+  if (sendError) {
     return { error: "Uitnodiging aangemaakt, maar het versturen van de e-mail is niet gelukt. Probeer 'Opnieuw uitnodigen'." };
   }
 
@@ -586,14 +610,8 @@ export async function loadAdminOrgInvites(orgId: string): Promise<AdminOrgInvite
   });
 }
 
-export async function resendAdminOrgInvite(email: string): Promise<{ error: string | null }> {
-  const supabase = createClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email: email.trim().toLowerCase(),
-    options: { emailRedirectTo: `${window.location.origin}/auth/callback?flow=invite&next=${encodeURIComponent("/portal")}` },
-  });
-  if (error) { logErr("resendAdminOrgInvite", error); return { error: "Opnieuw versturen is niet gelukt." }; }
-  return { error: null };
+export async function resendAdminOrgInvite(inviteId: string): Promise<{ error: string | null }> {
+  return callSendInviteApi({ context: "admin", inviteId });
 }
 
 export async function cancelAdminOrgInvite(inviteId: string): Promise<{ error: string | null }> {

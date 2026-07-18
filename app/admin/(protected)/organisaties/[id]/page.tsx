@@ -204,7 +204,7 @@ function AdminOrganizationDetailContent() {
 
   async function handleResendInvite(invite: AdminOrgInvite) {
     setInviteRowBusyId(invite.id);
-    const { error } = await resendAdminOrgInvite(invite.email);
+    const { error } = await resendAdminOrgInvite(invite.id);
     setInviteRowBusyId(null);
     showInviteRowMessage(invite.id, error ?? "Uitnodiging opnieuw verstuurd.");
   }

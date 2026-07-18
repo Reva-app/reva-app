@@ -281,7 +281,8 @@ export default function PortalPatientsPage() {
 
   async function handleInviteAction(p: PortalPatient) {
     if (!p.email) { showMessage(p.id, false, "Dit dossier heeft geen e-mailadres."); return; }
-    const result = await invitePortalPatient(p.id, p.email);
+    if (!membership) return;
+    const result = await invitePortalPatient(p.id, membership.organizationId, p.email);
     if (result.outcome === "failed") {
       showMessage(p.id, false, result.error);
     } else {

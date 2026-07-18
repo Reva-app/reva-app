@@ -1,21 +1,6 @@
 import { Resend } from "resend";
 import { NextResponse } from "next/server";
-
-// Escapes HTML-significant characters so user input can't break out of the
-// markup it's interpolated into (e.g. inject <img>/<a> tags into the outbound email).
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-// Strips newlines so user input can't be used for header/subject-line injection.
-function stripNewlines(value: string): string {
-  return value.replace(/[\r\n]+/g, " ").trim();
-}
+import { escapeHtml, stripNewlines } from "@/lib/emailHtml";
 
 export async function POST(request: Request) {
   try {
