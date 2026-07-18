@@ -52,7 +52,7 @@ export function inviteEmailHtml({ accentColor, headerLabel, heading, bodyHtmlLin
             Werkt de knop niet? Kopieer deze link: <a href="${ctaUrl}" style="color: #9ca3af;">${ctaUrl}</a>
           </p>
         </div>
-        <div style="border-top: 1px solid #e8e5df; padding: 16px 32px; font-size: 12px; color: #9ca3af;">
+        <div style="padding: 4px 32px 20px; font-size: 12px; color: #9ca3af;">
           REVA — vragen? Mail <a href="mailto:info@reva-app.nl" style="color: #9ca3af;">info@reva-app.nl</a>
         </div>
       </div>
