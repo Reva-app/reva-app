@@ -122,10 +122,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Organisatie kon niet worden opgehaald" }, { status: 500 });
     }
 
+    // Geen ?flow=/?next=-parameters meer nodig: /auth/callback bepaalt de
+    // bestemming zelf op basis van of de gebruiker een actieve membership
+    // heeft, niet op basis van query-parameters — die bleken niet betrouwbaar
+    // te overleven als de exacte URL (incl. querystring) niet letterlijk op
+    // Supabase's eigen Redirect-URLs-allowlist staat.
     const origin = new URL(request.url).origin;
-    const redirectTo = body.context === "portal-patient"
-      ? `${origin}/auth/callback`
-      : `${origin}/auth/callback?flow=invite&next=${encodeURIComponent("/portal")}`;
+    const redirectTo = `${origin}/auth/callback`;
 
     const admin = createSupabaseClient(supabaseUrl, serviceRoleKey);
     const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
