@@ -1,12 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, AlertCircle, Loader2, Check } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
 
 export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={null}>
+      <ResetPasswordForm />
+    </Suspense>
+  );
+}
+
+function ResetPasswordForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = searchParams.get("next") || "/";
+  const isInvite = searchParams.get("mode") === "invite";
   const [password, setPassword] = useState("");
   const [herhaling, setHerhaling] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -48,7 +59,7 @@ export default function ResetPasswordPage() {
     }
 
     setDone(true);
-    setTimeout(() => router.push("/"), 2500);
+    setTimeout(() => router.push(next), 2500);
   }
 
   return (
@@ -65,10 +76,10 @@ export default function ResetPasswordPage() {
           <span className="font-bold text-lg" style={{ color: "#1a1a1a" }}>REVA</span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
-          Nieuw wachtwoord instellen
+          {isInvite ? "Welkom bij REVA" : "Nieuw wachtwoord instellen"}
         </h1>
         <p className="text-sm text-gray-500 mt-2">
-          Kies een nieuw, sterk wachtwoord voor je account
+          {isInvite ? "Stel een wachtwoord in om je account te activeren" : "Kies een nieuw, sterk wachtwoord voor je account"}
         </p>
       </div>
 

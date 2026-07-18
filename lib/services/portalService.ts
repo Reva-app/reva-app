@@ -1081,7 +1081,7 @@ export async function inviteStaffMember(
 
   const { error: otpError } = await supabase.auth.signInWithOtp({
     email: trimmedEmail,
-    options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    options: { emailRedirectTo: `${window.location.origin}/auth/callback?flow=invite&next=${encodeURIComponent("/portal")}` },
   });
   if (otpError) {
     logErr("inviteStaffMember(otp)", otpError);
@@ -1095,7 +1095,7 @@ export async function resendStaffInvite(email: string): Promise<{ error: string 
   const supabase = createClient();
   const { error } = await supabase.auth.signInWithOtp({
     email: email.trim().toLowerCase(),
-    options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    options: { emailRedirectTo: `${window.location.origin}/auth/callback?flow=invite&next=${encodeURIComponent("/portal")}` },
   });
   if (error) { logErr("resendStaffInvite", error); return { error: "Opnieuw versturen is niet gelukt." }; }
   return { error: null };

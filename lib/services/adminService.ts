@@ -422,6 +422,187 @@ export async function addAdminOrgMember(
   return { error: null };
 }
 
+// ─── Organisatie-eigenaar / medewerker uitnodigen (echte e-mail) ───────────
+
+export interface AdminAccountMatch {
+  id: string;
+  fullName: string | null;
+}
+
+/**
+ * Zoekt een bestaand REVA-account op e-mailadres — platform-admin-veilig
+ * (directe profiles-query, dezelfde die addAdminOrgMember hierboven al
+ * gebruikt). Bewust GEEN gebruik van portalService's portal_find_user_by_email
+ * RPC: die vereist dat de AANROEPER al een actieve membership heeft, wat een
+ * platform-admin per definitie nooit heeft — de lookup zou daar altijd leeg
+ * terugkomen.
+ */
+export async function findExistingAccountByEmail(email: string): Promise<AdminAccountMatch | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, full_name")
+    .eq("email", email.trim().toLowerCase())
+    .maybeSingle();
+  if (error) { logErr("findExistingAccountByEmail", error); return null; }
+  if (!data) return null;
+  return { id: data.id, fullName: data.full_name };
+}
+
+/**
+ * Koppelt een bestaand account (gevonden via findExistingAccountByEmail) aan
+ * een organisatie. Verstuurt bewust GEEN e-mail — de platform-admin heeft dit
+ * account al herkend/bevestigd, dus dit is een directe koppeling, geen
+ * uitnodiging.
+ */
+export async function linkExistingAccountToOrg(
+  orgId: string,
+  userId: string,
+  roleId: string,
+  locationId: string | null
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+
+  const { data: existing, error: existingError } = await supabase
+    .from("memberships")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("organization_id", orgId)
+    .maybeSingle();
+  if (existingError) logErr("linkExistingAccountToOrg(existing check)", existingError);
+  if (existing) return { error: "Deze persoon is al gekoppeld aan deze organisatie." };
+
+  const { error: insertError } = await supabase.from("memberships").insert({
+    user_id: userId,
+    organization_id: orgId,
+    role_id: roleId,
+    location_id: locationId,
+    status: "active",
+  });
+  if (insertError) { logErr("linkExistingAccountToOrg(insert)", insertError); return { error: insertError.message }; }
+  return { error: null };
+}
+
+export interface AdminMemberInviteInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  roleId: string;
+  locationId: string | null;
+}
+
+/**
+ * Nodigt iemand uit die nog GEEN bestaand REVA-account heeft (controleer dat
+ * zelf vooraf via findExistingAccountByEmail — deze functie doet zelf geen
+ * lookup). Zet een membership_invites-rij + verstuurt een echte magic-link
+ * e-mail; de koppeling voltooit zichzelf zodra iemand die link gebruikt (zie
+ * migratie 041, ensure_personal_organization).
+ */
+export async function inviteAdminOrgMember(
+  orgId: string,
+  input: AdminMemberInviteInput
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const trimmedEmail = input.email.trim().toLowerCase();
+  if (!trimmedEmail) return { error: "Vul een e-mailadres in." };
+
+  const { error: inviteInsertError } = await supabase.from("membership_invites").insert({
+    organization_id: orgId,
+    email: trimmedEmail,
+    first_name: input.firstName.trim(),
+    last_name: input.lastName.trim(),
+    role_id: input.roleId,
+    location_id: input.locationId,
+  });
+  if (inviteInsertError) {
+    logErr("inviteAdminOrgMember(invite insert)", inviteInsertError);
+    if (inviteInsertError.code === "23505") return { error: "Er staat al een openstaande uitnodiging voor dit e-mailadres." };
+    return { error: inviteInsertError.message };
+  }
+
+  const { error: otpError } = await supabase.auth.signInWithOtp({
+    email: trimmedEmail,
+    options: { emailRedirectTo: `${window.location.origin}/auth/callback?flow=invite&next=${encodeURIComponent("/portal")}` },
+  });
+  if (otpError) {
+    logErr("inviteAdminOrgMember(otp)", otpError);
+    return { error: "Uitnodiging aangemaakt, maar het versturen van de e-mail is niet gelukt. Probeer 'Opnieuw uitnodigen'." };
+  }
+
+  return { error: null };
+}
+
+export interface AdminOrgInvite {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  roleId: string;
+  roleKey: string;
+  roleName: string;
+  locationId: string | null;
+  locationName: string | null;
+  invitedAt: string;
+}
+
+export async function loadAdminOrgInvites(orgId: string): Promise<AdminOrgInvite[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("membership_invites")
+    .select("id, email, first_name, last_name, role_id, location_id, invited_at")
+    .eq("organization_id", orgId)
+    .eq("status", "pending")
+    .order("invited_at", { ascending: false });
+  if (error) { logErr("loadAdminOrgInvites", error); return []; }
+
+  const rows = data ?? [];
+  const roleIds = [...new Set(rows.map((r) => r.role_id))];
+  const locationIds = [...new Set(rows.map((r) => r.location_id).filter((v): v is string => !!v))];
+  const [rolesRes, locationsRes] = await Promise.all([
+    roleIds.length > 0
+      ? supabase.from("roles").select("id, key, name").in("id", roleIds)
+      : Promise.resolve({ data: [] as { id: string; key: string; name: string }[], error: null }),
+    locationIds.length > 0
+      ? supabase.from("locations").select("id, name").in("id", locationIds)
+      : Promise.resolve({ data: [] as { id: string; name: string }[], error: null }),
+  ]);
+  const roleMap = new Map((rolesRes.data ?? []).map((r) => [r.id, r]));
+  const locationMap = new Map((locationsRes.data ?? []).map((l) => [l.id, l.name]));
+
+  return rows.map((r) => {
+    const role = roleMap.get(r.role_id);
+    return {
+      id: r.id,
+      email: r.email,
+      firstName: r.first_name,
+      lastName: r.last_name,
+      roleId: r.role_id,
+      roleKey: role?.key ?? "",
+      roleName: role?.name ?? "",
+      locationId: r.location_id,
+      locationName: r.location_id ? locationMap.get(r.location_id) ?? null : null,
+      invitedAt: r.invited_at,
+    };
+  });
+}
+
+export async function resendAdminOrgInvite(email: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.auth.signInWithOtp({
+    email: email.trim().toLowerCase(),
+    options: { emailRedirectTo: `${window.location.origin}/auth/callback?flow=invite&next=${encodeURIComponent("/portal")}` },
+  });
+  if (error) { logErr("resendAdminOrgInvite", error); return { error: "Opnieuw versturen is niet gelukt." }; }
+  return { error: null };
+}
+
+export async function cancelAdminOrgInvite(inviteId: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("membership_invites").delete().eq("id", inviteId);
+  if (error) { logErr("cancelAdminOrgInvite", error); return { error: "Verwijderen van de uitnodiging is niet gelukt." }; }
+  return { error: null };
+}
+
 export async function loadAdminOrgUsage(orgId: string): Promise<AdminOrgUsage> {
   const supabase = createClient();
 

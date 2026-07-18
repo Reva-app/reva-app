@@ -23,6 +23,7 @@ export default function AuthCallbackPage() {
       const params = new URLSearchParams(window.location.search);
       const code = params.get("code");
       const next = params.get("next") ?? "/";
+      const flow = params.get("flow");
 
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
@@ -33,6 +34,14 @@ export default function AuthCallbackPage() {
           } = await supabase.auth.getUser();
 
           if (user) {
+            // Uitnodiging (medewerker of organisatie-eigenaar): geen wachtwoord
+            // gezet nog (magic link logt passwordless in) — eerst daarheen,
+            // vóór alle patiënt-app-onboardinglogica hieronder.
+            if (flow === "invite") {
+              router.replace(`/auth/reset-password?next=${encodeURIComponent(next)}&mode=invite`);
+              return;
+            }
+
             const { data: settings } = await supabase
               .from("settings")
               .select("setup_completed")

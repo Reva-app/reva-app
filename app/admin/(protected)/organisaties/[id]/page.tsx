@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useState, useRef } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft, Building2, MapPin, HeartPulse, Activity,
-  MessageSquare, Camera, Loader2, Check, UserPlus,
+  MessageSquare, Camera, Loader2, Check, UserPlus, AlertCircle,
 } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
@@ -17,9 +17,11 @@ import { orgStatusBadge } from "../page";
 import {
   loadAdminOrganizationDetail, updateAdminOrganization, uploadOrganizationLogo,
   loadAdminOrgLocations, loadAdminOrgMembers, loadAdminOrgPatientStats, loadAdminOrgUsage,
-  loadAdminRoles, addAdminOrgMember,
+  loadAdminRoles, findExistingAccountByEmail, linkExistingAccountToOrg,
+  inviteAdminOrgMember, loadAdminOrgInvites, resendAdminOrgInvite, cancelAdminOrgInvite,
   type AdminOrganizationDetail, type AdminOrgLocation, type AdminOrgMember,
   type AdminOrgPatientStats, type AdminOrgUsage, type AdminRoleOption,
+  type AdminAccountMatch, type AdminOrgInvite,
 } from "@/lib/services/adminService";
 
 const inputStyle = {
@@ -61,13 +63,24 @@ function roleBadgeVariant(roleKey: string): "accent" | "blue" | "purple" | "defa
 }
 
 export default function AdminOrganizationDetailPage() {
+  return (
+    <Suspense fallback={<div className="p-4 sm:p-6 max-w-5xl mx-auto"><p className="text-sm text-gray-400">Laden…</p></div>}>
+      <AdminOrganizationDetailContent />
+    </Suspense>
+  );
+}
+
+function AdminOrganizationDetailContent() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const orgId = params.id as string;
+  const inviteErrorFromRedirect = searchParams.get("inviteError");
 
   const [org, setOrg] = useState<AdminOrganizationDetail | null>(null);
   const [locations, setLocations] = useState<AdminOrgLocation[]>([]);
   const [members, setMembers] = useState<AdminOrgMember[]>([]);
+  const [invites, setInvites] = useState<AdminOrgInvite[]>([]);
   const [patientStats, setPatientStats] = useState<AdminOrgPatientStats | null>(null);
   const [usage, setUsage] = useState<AdminOrgUsage | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,11 +91,23 @@ export default function AdminOrganizationDetailPage() {
 
   const [roles, setRoles] = useState<AdminRoleOption[]>([]);
   const [showAddMember, setShowAddMember] = useState(false);
+  const [memberFirstName, setMemberFirstName] = useState("");
+  const [memberLastName, setMemberLastName] = useState("");
   const [memberEmail, setMemberEmail] = useState("");
   const [memberRoleId, setMemberRoleId] = useState("");
   const [memberLocationId, setMemberLocationId] = useState("");
   const [addingMember, setAddingMember] = useState(false);
   const [addMemberError, setAddMemberError] = useState("");
+  const [pendingMatch, setPendingMatch] = useState<AdminAccountMatch | null>(null);
+  const [invitedNotice, setInvitedNotice] = useState("");
+  const [inviteRowBusyId, setInviteRowBusyId] = useState<string | null>(null);
+  const [inviteRowMessages, setInviteRowMessages] = useState<Record<string, string>>({});
+
+  async function refreshMembersAndInvites() {
+    const [mems, invs] = await Promise.all([loadAdminOrgMembers(orgId), loadAdminOrgInvites(orgId)]);
+    setMembers(mems);
+    setInvites(invs);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -90,14 +115,16 @@ export default function AdminOrganizationDetailPage() {
       loadAdminOrganizationDetail(orgId),
       loadAdminOrgLocations(orgId),
       loadAdminOrgMembers(orgId),
+      loadAdminOrgInvites(orgId),
       loadAdminOrgPatientStats(orgId),
       loadAdminOrgUsage(orgId),
       loadAdminRoles(),
-    ]).then(([detail, locs, mems, pStats, use, roleOptions]) => {
+    ]).then(([detail, locs, mems, invs, pStats, use, roleOptions]) => {
       if (cancelled) return;
       setOrg(detail);
       setLocations(locs);
       setMembers(mems);
+      setInvites(invs);
       setPatientStats(pStats);
       setUsage(use);
       setRoles(roleOptions);
@@ -109,25 +136,85 @@ export default function AdminOrganizationDetailPage() {
     };
   }, [orgId]);
 
-  async function handleAddMember(e: React.FormEvent) {
+  function resetAddMemberForm() {
+    setMemberFirstName("");
+    setMemberLastName("");
+    setMemberEmail("");
+    setMemberLocationId("");
+    setPendingMatch(null);
+    setAddMemberError("");
+  }
+
+  async function handleAddMemberSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!memberEmail.trim() || !memberRoleId) {
       setAddMemberError("Vul een e-mailadres in en kies een rol");
       return;
     }
-    setAddingMember(true);
-    setAddMemberError("");
-    const { error } = await addAdminOrgMember(orgId, memberEmail.trim(), memberRoleId, memberLocationId || null);
-    setAddingMember(false);
-    if (error) {
-      setAddMemberError(error);
+
+    if (pendingMatch) {
+      setAddingMember(true);
+      setAddMemberError("");
+      const { error } = await linkExistingAccountToOrg(orgId, pendingMatch.id, memberRoleId, memberLocationId || null);
+      setAddingMember(false);
+      if (error) { setAddMemberError(error); return; }
+      resetAddMemberForm();
+      setShowAddMember(false);
+      setInvitedNotice("Bestaand account gekoppeld — er is geen e-mail verstuurd.");
+      setTimeout(() => setInvitedNotice(""), 6000);
+      refreshMembersAndInvites();
       return;
     }
-    setMemberEmail("");
-    setMemberLocationId("");
+
+    setAddingMember(true);
+    setAddMemberError("");
+    const match = await findExistingAccountByEmail(memberEmail.trim());
+    if (match) {
+      setAddingMember(false);
+      setPendingMatch(match);
+      return;
+    }
+
+    if (!memberFirstName.trim() || !memberLastName.trim()) {
+      setAddingMember(false);
+      setAddMemberError("Vul voornaam en achternaam in — dit e-mailadres heeft nog geen account, dus er gaat een uitnodiging uit.");
+      return;
+    }
+
+    const { error } = await inviteAdminOrgMember(orgId, {
+      firstName: memberFirstName, lastName: memberLastName, email: memberEmail, roleId: memberRoleId, locationId: memberLocationId || null,
+    });
+    setAddingMember(false);
+    if (error) { setAddMemberError(error); return; }
+    resetAddMemberForm();
     setShowAddMember(false);
-    const updatedMembers = await loadAdminOrgMembers(orgId);
-    setMembers(updatedMembers);
+    setInvitedNotice("Uitnodiging verstuurd.");
+    setTimeout(() => setInvitedNotice(""), 6000);
+    refreshMembersAndInvites();
+  }
+
+  function showInviteRowMessage(id: string, text: string) {
+    setInviteRowMessages((prev) => ({ ...prev, [id]: text }));
+    setTimeout(() => setInviteRowMessages((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    }), 5000);
+  }
+
+  async function handleResendInvite(invite: AdminOrgInvite) {
+    setInviteRowBusyId(invite.id);
+    const { error } = await resendAdminOrgInvite(invite.email);
+    setInviteRowBusyId(null);
+    showInviteRowMessage(invite.id, error ?? "Uitnodiging opnieuw verstuurd.");
+  }
+
+  async function handleCancelInvite(invite: AdminOrgInvite) {
+    setInviteRowBusyId(invite.id);
+    const { error } = await cancelAdminOrgInvite(invite.id);
+    setInviteRowBusyId(null);
+    if (error) { showInviteRowMessage(invite.id, error); return; }
+    refreshMembersAndInvites();
   }
 
   async function handleSave() {
@@ -322,18 +409,50 @@ export default function AdminOrganizationDetailPage() {
           title="Gebruikers"
           subtitle="Medewerkers binnen deze organisatie"
           action={
-            <Button size="sm" variant="secondary" onClick={() => setShowAddMember((v) => !v)}>
+            <Button size="sm" variant="secondary" onClick={() => { resetAddMemberForm(); setShowAddMember((v) => !v); }}>
               <UserPlus size={13} />
               Toevoegen
             </Button>
           }
         />
 
+        {inviteErrorFromRedirect && (
+          <div className="flex items-start gap-2.5 rounded-xl px-4 py-3 mb-4 text-sm" style={{ background: "#fff5f5", border: "1px solid #fecaca", color: "#dc2626" }}>
+            <AlertCircle size={15} className="mt-0.5 shrink-0" />
+            <span>{inviteErrorFromRedirect}</span>
+          </div>
+        )}
+        {invitedNotice && (
+          <p className="text-sm mb-4" style={{ color: "#16a34a" }}>{invitedNotice}</p>
+        )}
+
         {showAddMember && (
-          <form onSubmit={handleAddMember} className="rounded-xl p-4 mb-4 space-y-3" style={{ background: "#f8f7f4" }}>
-            <p className="text-xs text-gray-500">
-              Koppelt een bestaand REVA-account aan deze organisatie. Diegene moet al eerder zelf een account hebben aangemaakt.
-            </p>
+          <form onSubmit={handleAddMemberSubmit} className="rounded-xl p-4 mb-4 space-y-3" style={{ background: "#f8f7f4" }}>
+            {pendingMatch ? (
+              <>
+                <p className="text-sm text-gray-700">
+                  Dit e-mailadres hoort al bij een bestaand account: <span className="font-medium">{pendingMatch.fullName || memberEmail}</span>.
+                  Koppelen als <span className="font-medium">{roles.find((r) => r.id === memberRoleId)?.name}</span> aan deze organisatie?
+                </p>
+                <p className="text-xs text-gray-400">Er wordt geen e-mail verstuurd — dit account kan direct inloggen met het bestaande wachtwoord.</p>
+              </>
+            ) : (
+              <>
+                <p className="text-xs text-gray-500">
+                  Bestaat er al een REVA-account met dit e-mailadres, dan wordt het direct gekoppeld (na bevestiging). Anders ontvangt deze persoon een e-mail om zelf een wachtwoord in te stellen.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <input
+                    type="text" value={memberFirstName} onChange={(e) => setMemberFirstName(e.target.value)}
+                    placeholder="Voornaam" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={{ ...inputStyle, background: "#ffffff" }}
+                  />
+                  <input
+                    type="text" value={memberLastName} onChange={(e) => setMemberLastName(e.target.value)}
+                    placeholder="Achternaam" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={{ ...inputStyle, background: "#ffffff" }}
+                  />
+                </div>
+              </>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <FieldLabel>E-mailadres</FieldLabel>
@@ -342,7 +461,8 @@ export default function AdminOrganizationDetailPage() {
                   value={memberEmail}
                   onChange={(e) => setMemberEmail(e.target.value)}
                   placeholder="naam@praktijk.nl"
-                  className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none"
+                  disabled={!!pendingMatch}
+                  className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60"
                   style={{ ...inputStyle, background: "#ffffff" }}
                 />
               </div>
@@ -375,18 +495,39 @@ export default function AdminOrganizationDetailPage() {
               </div>
             </div>
             {addMemberError && <p className="text-xs" style={{ color: "#dc2626" }}>{addMemberError}</p>}
-            <Button type="submit" size="sm" disabled={addingMember}>
-              {addingMember ? <Loader2 size={13} className="animate-spin" /> : "Koppelen"}
-            </Button>
+            <div className="flex gap-2">
+              {pendingMatch && (
+                <Button type="button" size="sm" variant="secondary" onClick={() => setPendingMatch(null)}>Annuleren</Button>
+              )}
+              <Button type="submit" size="sm" disabled={addingMember}>
+                {addingMember ? <Loader2 size={13} className="animate-spin" /> : pendingMatch ? "Bevestigen" : "Toevoegen"}
+              </Button>
+            </div>
           </form>
         )}
 
-        {membersByRole.length === 0 ? (
+        {membersByRole.length === 0 && invites.length === 0 ? (
           <p className="text-sm text-gray-400 mt-2">
             Nog geen medewerkers gekoppeld.
           </p>
         ) : (
           <div className="space-y-0 mt-2">
+            {invites.map((inv) => (
+              <div key={inv.id} className="flex items-center justify-between py-3 flex-wrap gap-2" style={{ borderBottom: "1px solid #f8f7f4" }}>
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{inv.firstName} {inv.lastName}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {inviteRowMessages[inv.id] ?? `${inv.locationName || "Hele organisatie"} · Uitgenodigd ${formatDate(inv.invitedAt)}`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="warning">Uitgenodigd</Badge>
+                  <Badge variant={roleBadgeVariant(inv.roleKey)}>{inv.roleName}</Badge>
+                  <Button size="sm" variant="secondary" disabled={inviteRowBusyId === inv.id} onClick={() => handleResendInvite(inv)}>Opnieuw uitnodigen</Button>
+                  <Button size="sm" variant="secondary" disabled={inviteRowBusyId === inv.id} onClick={() => handleCancelInvite(inv)}>Annuleren</Button>
+                </div>
+              </div>
+            ))}
             {membersByRole.map((m) => (
               <div key={m.userId} className="flex items-center justify-between py-3" style={{ borderBottom: "1px solid #f8f7f4" }}>
                 <div>
