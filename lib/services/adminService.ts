@@ -382,6 +382,14 @@ export async function loadAdminRoles(): Promise<AdminRoleOption[]> {
   return (data ?? []) as AdminRoleOption[];
 }
 
+/**
+ * Maakt een lege organisatie aan, bewust ZONDER een placeholder-vestiging.
+ * De eigenaar (of platform-admin) maakt zelf de eerste, echte vestiging aan
+ * via /portal/locaties — die wordt dan automatisch de hoofdvestiging (zie
+ * de set_first_location_as_main-trigger in migratie 040). Vroeger werd hier
+ * altijd een lege "Hoofdlocatie" aangemaakt, die dan al hoofdvestiging was
+ * vóórdat de eigenaar ooit iets zelf had ingevoerd.
+ */
 export async function createAdminOrganization(name: string): Promise<{ id: string | null; error: string | null }> {
   const supabase = createClient();
   const { data: org, error: orgError } = await supabase
@@ -390,11 +398,6 @@ export async function createAdminOrganization(name: string): Promise<{ id: strin
     .select("id")
     .single();
   if (orgError) { logErr("createAdminOrganization(org)", orgError); return { id: null, error: orgError.message }; }
-
-  const { error: locError } = await supabase
-    .from("locations")
-    .insert({ organization_id: org.id, name: "Hoofdlocatie" });
-  if (locError) logErr("createAdminOrganization(location)", locError);
 
   return { id: org.id, error: null };
 }
