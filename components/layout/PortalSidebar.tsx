@@ -15,15 +15,20 @@ const nav = [
   { href: "/portal/medewerkers", label: "Medewerkers", icon: Users },
 ];
 
+/** Gedeeld door PortalSidebar (desktop) en PortalLayout's mobiele menu, zodat beide altijd dezelfde pagina's/rolgating tonen. */
+export function getPortalNavItems(canManageBranding: boolean) {
+  return canManageBranding
+    ? [...nav, { href: "/portal/huisstijl", label: "Huisstijl", icon: Palette }]
+    : nav;
+}
+
 export function PortalSidebar() {
   const pathname = usePathname();
   const { signOut, user } = useAuth();
   const { membership } = usePortalMembership();
   const { branding } = usePortalBranding();
   const canManageBranding = !!membership && MANAGE_BRANDING_ROLES.includes(membership.roleKey);
-  const navItems = canManageBranding
-    ? [...nav, { href: "/portal/huisstijl", label: "Huisstijl", icon: Palette }]
-    : nav;
+  const navItems = getPortalNavItems(canManageBranding);
 
   const NavLink = ({
     href, label, icon: Icon,
