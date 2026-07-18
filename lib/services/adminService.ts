@@ -139,6 +139,7 @@ export interface AdminOrganizationDetail {
   lastContactAt: string | null;
   createdAt: string;
   maxLocations: number;
+  maxMembers: number;
 }
 
 export interface AdminOrganizationPatch {
@@ -154,6 +155,7 @@ export interface AdminOrganizationPatch {
   supportNotes?: string | null;
   lastContactAt?: string | null;
   maxLocations?: number;
+  maxMembers?: number;
 }
 
 export interface AdminOrgLocation {
@@ -191,7 +193,7 @@ export async function loadAdminOrganizationDetail(orgId: string): Promise<AdminO
   const supabase = createClient();
   const { data, error } = await supabase
     .from("organizations")
-    .select("id, name, status, logo_path, kvk_number, btw_number, website, contact_name, contact_email, contact_phone, address, support_notes, last_contact_at, created_at, max_locations")
+    .select("id, name, status, logo_path, kvk_number, btw_number, website, contact_name, contact_email, contact_phone, address, support_notes, last_contact_at, created_at, max_locations, max_members")
     .eq("id", orgId)
     .maybeSingle();
   if (error) { logErr("loadAdminOrganizationDetail", error); return null; }
@@ -223,6 +225,7 @@ export async function loadAdminOrganizationDetail(orgId: string): Promise<AdminO
     lastContactAt: data.last_contact_at,
     createdAt: data.created_at,
     maxLocations: data.max_locations,
+    maxMembers: data.max_members,
   };
 }
 
@@ -241,6 +244,7 @@ export async function updateAdminOrganization(orgId: string, patch: AdminOrganiz
   if (patch.supportNotes !== undefined) dbPatch.support_notes = patch.supportNotes;
   if (patch.lastContactAt !== undefined) dbPatch.last_contact_at = patch.lastContactAt;
   if (patch.maxLocations !== undefined) dbPatch.max_locations = patch.maxLocations;
+  if (patch.maxMembers !== undefined) dbPatch.max_members = patch.maxMembers;
 
   const { error } = await supabase.from("organizations").update(dbPatch).eq("id", orgId);
   if (error) { logErr("updateAdminOrganization", error); return { error: error.message }; }
@@ -341,13 +345,13 @@ export interface AdminRoleOption {
   name: string;
 }
 
-/** Alle rollen behalve super_admin (die wordt niet via memberships toegekend, zie migratie 016). */
+/** Precies de 3 canonieke rollen (organization_owner/therapist/practice_staff) — zie migratie 041. */
 export async function loadAdminRoles(): Promise<AdminRoleOption[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("roles")
     .select("id, key, name")
-    .neq("key", "super_admin")
+    .in("key", ["organization_owner", "therapist", "practice_staff"])
     .order("scope")
     .order("key");
   if (error) { logErr("loadAdminRoles", error); return []; }

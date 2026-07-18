@@ -52,15 +52,11 @@ function TextField({
   );
 }
 
-const ROLE_ORDER = [
-  "organization_owner", "organization_admin", "finance",
-  "location_manager", "therapist", "assistant", "reception",
-];
+const ROLE_ORDER = ["organization_owner", "therapist", "practice_staff"];
 
 function roleBadgeVariant(roleKey: string): "accent" | "blue" | "purple" | "default" {
   if (roleKey === "organization_owner") return "accent";
-  if (roleKey === "organization_admin" || roleKey === "finance") return "purple";
-  if (roleKey === "location_manager") return "blue";
+  if (roleKey === "therapist") return "blue";
   return "default";
 }
 
@@ -151,6 +147,7 @@ export default function AdminOrganizationDetailPage() {
       supportNotes: org.supportNotes,
       lastContactAt: org.lastContactAt,
       maxLocations: org.maxLocations,
+      maxMembers: org.maxMembers,
     });
     setSaving(false);
     if (!error) {
@@ -271,6 +268,17 @@ export default function AdminOrganizationDetailPage() {
               min={0}
               value={org.maxLocations}
               onChange={(e) => setOrg({ ...org, maxLocations: Math.max(0, Number(e.target.value) || 0) })}
+              className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors"
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <FieldLabel>Max. aantal medewerkers</FieldLabel>
+            <input
+              type="number"
+              min={0}
+              value={org.maxMembers}
+              onChange={(e) => setOrg({ ...org, maxMembers: Math.max(0, Number(e.target.value) || 0) })}
               className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors"
               style={inputStyle}
             />

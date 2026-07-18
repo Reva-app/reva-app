@@ -1,76 +1,104 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, Loader2, UserPlus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Users, UserPlus } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
-import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Modal } from "@/components/ui/Modal";
+import { ActionMenu } from "@/components/ui/ActionMenu";
+import { StaffInviteForm } from "@/components/portal/StaffInviteForm";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
-  loadPortalMembers, loadPortalRoles, loadPortalLocations, addPortalMember, updatePortalMember,
-  type PortalMember, type PortalRoleOption, type PortalLocationOption,
+  loadPortalStaffOverview, loadPortalRoles, loadPortalLocations, loadPortalMaxMembers,
+  resendStaffInvite, deleteStaffInvite, updateStaffMember, deleteStaffMember,
+  MANAGE_STAFF_ROLES, PORTAL_STAFF_STATUS_LABELS,
+  type PortalStaffMember, type PortalRoleOption, type PortalLocationOption,
 } from "@/lib/services/portalService";
 
-const inputStyle = {
-  borderColor: "#e8e5df",
-  background: "#ffffff",
-  color: "#1a1a1a",
-};
-
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="block text-xs font-medium text-gray-500 mb-1.5">{children}</label>;
+function initials(name: string | null, email: string | null) {
+  const source = (name || email || "?").trim();
+  const parts = source.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return source.slice(0, 2).toUpperCase();
 }
 
-function roleBadgeVariant(roleKey: string): "accent" | "blue" | "purple" | "default" {
-  if (roleKey === "organization_owner" || roleKey === "organization_admin") return "accent";
-  if (roleKey === "therapist" || roleKey === "location_manager") return "blue";
-  if (roleKey === "finance") return "purple";
+function Avatar({ member }: { member: PortalStaffMember }) {
+  if (member.avatarUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={member.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+    );
+  }
+  return (
+    <div
+      className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold text-white shrink-0"
+      style={{ background: "var(--brand-accent, #e8632a)" }}
+    >
+      {initials(member.fullName, member.email)}
+    </div>
+  );
+}
+
+function roleBadgeVariant(roleKey: string): "accent" | "blue" | "default" {
+  if (roleKey === "organization_owner") return "accent";
+  if (roleKey === "therapist") return "blue";
   return "default";
 }
 
-function membershipStatusBadge(status: string) {
-  if (status === "active") return <Badge variant="success">Actief</Badge>;
-  if (status === "suspended") return <Badge variant="muted">Geschorst</Badge>;
-  if (status === "invited") return <Badge variant="warning">Uitgenodigd</Badge>;
-  return <Badge variant="muted">{status}</Badge>;
+function statusBadge(status: PortalStaffMember["status"]) {
+  if (status === "active") return <Badge variant="success">{PORTAL_STAFF_STATUS_LABELS.active}</Badge>;
+  if (status === "invited") return <Badge variant="warning">{PORTAL_STAFF_STATUS_LABELS.invited}</Badge>;
+  return <Badge variant="muted">{PORTAL_STAFF_STATUS_LABELS.suspended}</Badge>;
 }
 
-export default function PortalMembersPage() {
+export default function PortalStaffPage() {
+  const router = useRouter();
   const { checked, membership } = usePortalMembership();
   const { user } = useAuth();
-  const [members, setMembers] = useState<PortalMember[]>([]);
+
+  const [staff, setStaff] = useState<PortalStaffMember[]>([]);
   const [roles, setRoles] = useState<PortalRoleOption[]>([]);
   const [locations, setLocations] = useState<PortalLocationOption[]>([]);
+  const [maxMembers, setMaxMembers] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const [showAdd, setShowAdd] = useState(false);
-  const [email, setEmail] = useState("");
-  const [roleId, setRoleId] = useState("");
-  const [locationId, setLocationId] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState("");
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteMessage, setInviteMessage] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<PortalStaffMember | null>(null);
+  const [actionError, setActionError] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [rowMessages, setRowMessages] = useState<Record<string, string>>({});
 
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editRoleId, setEditRoleId] = useState("");
-  const [editLocationId, setEditLocationId] = useState("");
-  const [editSaving, setEditSaving] = useState(false);
+  const canManage = !!membership && MANAGE_STAFF_ROLES.includes(membership.roleKey);
+
+  async function refresh(organizationId: string) {
+    const [staffData, max] = await Promise.all([
+      loadPortalStaffOverview(organizationId),
+      loadPortalMaxMembers(organizationId),
+    ]);
+    setStaff(staffData);
+    setMaxMembers(max);
+    setLoading(false);
+  }
 
   useEffect(() => {
     if (!checked || !membership) return;
     let cancelled = false;
     Promise.all([
-      loadPortalMembers(membership.organizationId),
+      loadPortalStaffOverview(membership.organizationId),
       loadPortalRoles(),
       loadPortalLocations(membership.organizationId),
-    ]).then(([membersData, rolesData, locationsData]) => {
+      loadPortalMaxMembers(membership.organizationId),
+    ]).then(([staffData, rolesData, locationsData, max]) => {
       if (cancelled) return;
-      setMembers(membersData);
+      setStaff(staffData);
       setRoles(rolesData);
       setLocations(locationsData);
-      if (rolesData.length > 0) setRoleId(rolesData[0].id);
+      setMaxMembers(max);
       setLoading(false);
     });
     return () => {
@@ -78,112 +106,86 @@ export default function PortalMembersPage() {
     };
   }, [checked, membership]);
 
-  async function refresh() {
+  function showRowMessage(id: string, text: string) {
+    setRowMessages((prev) => ({ ...prev, [id]: text }));
+    setTimeout(() => setRowMessages((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    }), 5000);
+  }
+
+  const usedCount = staff.length;
+  const atLimit = maxMembers > 0 && usedCount >= maxMembers;
+
+  async function handleResend(member: PortalStaffMember) {
+    setBusyId(member.id);
+    const { error } = await resendStaffInvite(member.email ?? "");
+    setBusyId(null);
+    showRowMessage(member.id, error ?? "Uitnodiging opnieuw verstuurd.");
+  }
+
+  async function handleToggleBlocked(member: PortalStaffMember) {
     if (!membership) return;
-    const data = await loadPortalMembers(membership.organizationId);
-    setMembers(data);
+    setBusyId(member.id);
+    const { error } = await updateStaffMember(member.id, { status: member.status === "active" ? "suspended" : "active" });
+    setBusyId(null);
+    if (error) { showRowMessage(member.id, error); return; }
+    refresh(membership.organizationId);
   }
 
-  async function handleAdd(e: React.FormEvent) {
-    e.preventDefault();
-    if (!membership) return;
-    if (!email.trim() || !roleId) {
-      setSaveError("Vul een e-mailadres en rol in");
-      return;
-    }
-    setSaving(true);
-    setSaveError("");
-    const { error } = await addPortalMember(membership.organizationId, email, roleId, locationId || null);
-    setSaving(false);
-    if (error) {
-      setSaveError(error);
-      return;
-    }
-    await refresh();
-    setEmail("");
-    setLocationId("");
-    setShowAdd(false);
+  async function handleDelete() {
+    if (!confirmDelete || !membership) return;
+    setBusyId(confirmDelete.id);
+    const { error } = confirmDelete.kind === "invite"
+      ? await deleteStaffInvite(confirmDelete.id)
+      : await deleteStaffMember(confirmDelete.id);
+    setBusyId(null);
+    if (error) { setActionError(error); return; }
+    setConfirmDelete(null);
+    refresh(membership.organizationId);
   }
-
-  function startEdit(m: PortalMember) {
-    setEditingId(m.membershipId);
-    setEditRoleId(m.roleId);
-    setEditLocationId(m.locationId || "");
-  }
-
-  async function saveEdit(membershipId: string) {
-    setEditSaving(true);
-    await updatePortalMember(membershipId, { roleId: editRoleId, locationId: editLocationId || null });
-    setEditSaving(false);
-    setEditingId(null);
-    await refresh();
-  }
-
-  async function toggleActive(m: PortalMember) {
-    await updatePortalMember(m.membershipId, { status: m.membershipStatus === "active" ? "suspended" : "active" });
-    await refresh();
-  }
-
-  const membersByRole = [...members].sort((a, b) => a.roleKey.localeCompare(b.roleKey));
 
   return (
-    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-start justify-between flex-wrap gap-3">
         <SectionHeader
           title="Medewerkers"
-          subtitle={loading ? "Laden…" : `${members.length} ${members.length === 1 ? "medewerker" : "medewerkers"}`}
+          subtitle={loading ? "Laden…" : maxMembers > 0 ? `${usedCount} van ${maxMembers} medewerkers gebruikt` : `${usedCount} ${usedCount === 1 ? "medewerker" : "medewerkers"}`}
         />
-        <Button size="sm" onClick={() => setShowAdd((v) => !v)}>
-          <UserPlus size={14} />
-          Medewerker koppelen
-        </Button>
+        {canManage && (
+          <Button size="sm" onClick={() => { setInviteMessage(""); setShowInvite(true); }} disabled={atLimit}>
+            <UserPlus size={14} />
+            Medewerker uitnodigen
+          </Button>
+        )}
       </div>
 
-      {showAdd && (
-        <Card>
-          <CardHeader
-            title="Medewerker koppelen"
-            subtitle="Koppelt een bestaand REVA-account aan jouw organisatie. Diegene moet al eerder zelf een account hebben aangemaakt."
+      {!loading && atLimit && (
+        <p className="text-xs" style={{ color: "#dc2626" }}>
+          Je hebt het maximum aantal medewerkers voor je abonnement bereikt. Neem contact op om uit te breiden.
+        </p>
+      )}
+
+      {showInvite && membership && (
+        <Modal onClose={() => setShowInvite(false)} maxWidth="max-w-2xl">
+          <StaffInviteForm
+            organizationId={membership.organizationId}
+            roles={roles}
+            locations={locations}
+            onClose={() => setShowInvite(false)}
+            onInvited={(result) => {
+              setShowInvite(false);
+              setInviteMessage(result.outcome === "linked" ? "Account gekoppeld." : "Uitnodiging verstuurd.");
+              refresh(membership.organizationId);
+              setTimeout(() => setInviteMessage(""), 5000);
+            }}
           />
-          <form onSubmit={handleAdd} className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <FieldLabel>E-mailadres</FieldLabel>
-                <input
-                  type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                  placeholder="naam@praktijk.nl" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
-                />
-              </div>
-              <div>
-                <FieldLabel>Rol</FieldLabel>
-                <select
-                  value={roleId} onChange={(e) => setRoleId(e.target.value)}
-                  className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
-                >
-                  {roles.map((r) => (
-                    <option key={r.id} value={r.id}>{r.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <FieldLabel>Vestiging (optioneel)</FieldLabel>
-                <select
-                  value={locationId} onChange={(e) => setLocationId(e.target.value)}
-                  className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
-                >
-                  <option value="">Hele organisatie</option>
-                  {locations.map((l) => (
-                    <option key={l.id} value={l.id}>{l.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            {saveError && <p className="text-xs" style={{ color: "#dc2626" }}>{saveError}</p>}
-            <Button type="submit" size="sm" disabled={saving}>
-              {saving ? <Loader2 size={13} className="animate-spin" /> : "Koppelen"}
-            </Button>
-          </form>
-        </Card>
+        </Modal>
+      )}
+
+      {inviteMessage && (
+        <p className="text-sm" style={{ color: "#16a34a" }}>{inviteMessage}</p>
       )}
 
       <div
@@ -192,8 +194,8 @@ export default function PortalMembersPage() {
       >
         {loading ? (
           <p className="text-sm text-gray-400 p-6">Laden…</p>
-        ) : membersByRole.length === 0 ? (
-          <EmptyState icon={Users} title="Nog geen medewerkers" description="Koppel je eerste medewerker om te beginnen." />
+        ) : staff.length === 0 ? (
+          <EmptyState icon={Users} title="Nog geen medewerkers" description="Nodig je eerste medewerker uit om te beginnen." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -201,70 +203,55 @@ export default function PortalMembersPage() {
                 <tr style={{ borderBottom: "1px solid #e8e5df" }}>
                   <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Naam</th>
                   <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Rol</th>
-                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Vestiging</th>
+                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Hoofdvestiging</th>
                   <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Status</th>
-                  <th className="text-right font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Actie</th>
+                  {canManage && <th className="text-right font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Actie</th>}
                 </tr>
               </thead>
               <tbody>
-                {membersByRole.map((m) => {
-                  const isSelf = user?.id === m.userId;
-                  const isEditing = editingId === m.membershipId;
+                {staff.map((member) => {
+                  const isSelf = !!user && member.userId === user.id;
+                  const message = rowMessages[member.id];
                   return (
-                    <tr key={m.membershipId} style={{ borderBottom: "1px solid #f8f7f4" }}>
-                      <td className="px-5 py-3.5 font-medium text-gray-800">
-                        {m.fullName || m.email || "Onbekend"}
-                        {isSelf && <span className="text-xs text-gray-400 font-normal ml-2">(jij)</span>}
+                    <tr
+                      key={member.id}
+                      style={{ borderBottom: "1px solid #f8f7f4" }}
+                      className={member.kind === "member" ? "cursor-pointer hover:bg-gray-50" : undefined}
+                      onClick={() => { if (member.kind === "member") router.push(`/portal/medewerkers/${member.id}`); }}
+                    >
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <Avatar member={member} />
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-800 truncate">
+                              {member.fullName || member.email || "Onbekend"}
+                              {isSelf && <span className="text-xs text-gray-400 font-normal ml-2">(jij)</span>}
+                            </p>
+                            <p className="text-xs text-gray-400 truncate">{message || member.email}</p>
+                          </div>
+                        </div>
                       </td>
                       <td className="px-5 py-3.5">
-                        {isEditing ? (
-                          <select
-                            value={editRoleId} onChange={(e) => setEditRoleId(e.target.value)}
-                            className="text-sm rounded-lg border px-2 py-1 focus:outline-none" style={inputStyle}
-                          >
-                            {roles.map((r) => (
-                              <option key={r.id} value={r.id}>{r.name}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <Badge variant={roleBadgeVariant(m.roleKey)}>{m.roleName}</Badge>
-                        )}
+                        <Badge variant={roleBadgeVariant(member.roleKey)}>{member.roleName}</Badge>
                       </td>
-                      <td className="px-5 py-3.5 text-gray-600">
-                        {isEditing ? (
-                          <select
-                            value={editLocationId} onChange={(e) => setEditLocationId(e.target.value)}
-                            className="text-sm rounded-lg border px-2 py-1 focus:outline-none" style={inputStyle}
-                          >
-                            <option value="">Hele organisatie</option>
-                            {locations.map((l) => (
-                              <option key={l.id} value={l.id}>{l.name}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          m.locationName || "Hele organisatie"
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5">{membershipStatusBadge(m.membershipStatus)}</td>
-                      <td className="px-5 py-3.5 text-right whitespace-nowrap">
-                        {isSelf ? (
-                          <span className="text-xs text-gray-400">—</span>
-                        ) : isEditing ? (
-                          <div className="flex justify-end gap-2">
-                            <Button size="sm" variant="secondary" onClick={() => setEditingId(null)}>Annuleren</Button>
-                            <Button size="sm" disabled={editSaving} onClick={() => saveEdit(m.membershipId)}>
-                              {editSaving ? <Loader2 size={13} className="animate-spin" /> : "Opslaan"}
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="flex justify-end gap-2">
-                            <Button size="sm" variant="secondary" onClick={() => startEdit(m)}>Bewerken</Button>
-                            <Button size="sm" variant="secondary" onClick={() => toggleActive(m)}>
-                              {m.membershipStatus === "active" ? "Deactiveren" : "Activeren"}
-                            </Button>
-                          </div>
-                        )}
-                      </td>
+                      <td className="px-5 py-3.5 text-gray-600">{member.locationName || "Hele organisatie"}</td>
+                      <td className="px-5 py-3.5">{statusBadge(member.status)}</td>
+                      {canManage && (
+                        <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
+                          {isSelf ? (
+                            <span className="text-xs text-gray-400">—</span>
+                          ) : (
+                            <ActionMenu
+                              items={[
+                                ...(member.kind === "member" ? [{ label: "Bewerken", onClick: () => router.push(`/portal/medewerkers/${member.id}`) }] : []),
+                                ...(member.status === "invited" ? [{ label: "Opnieuw uitnodigen", onClick: () => handleResend(member) }] : []),
+                                ...(member.kind === "member" ? [{ label: member.status === "active" ? "Blokkeren" : "Deblokkeren", onClick: () => handleToggleBlocked(member) }] : []),
+                                { label: "Verwijderen", onClick: () => { setActionError(""); setConfirmDelete(member); }, danger: true },
+                              ]}
+                            />
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -273,6 +260,26 @@ export default function PortalMembersPage() {
           </div>
         )}
       </div>
+
+      {confirmDelete && (
+        <Modal onClose={() => setConfirmDelete(null)} maxWidth="max-w-sm">
+          <div className="rounded-2xl p-6" style={{ background: "#ffffff" }}>
+            <h3 className="font-semibold text-gray-900 mb-2">
+              {confirmDelete.kind === "invite" ? "Uitnodiging verwijderen?" : "Medewerker verwijderen?"}
+            </h3>
+            <p className="text-sm text-gray-500 mb-5">
+              {confirmDelete.kind === "invite"
+                ? "De openstaande uitnodiging wordt ingetrokken."
+                : "Dit verwijdert de medewerker permanent uit jouw organisatie. Deze actie kan niet ongedaan worden gemaakt."}
+            </p>
+            {actionError && <p className="text-xs mb-3" style={{ color: "#dc2626" }}>{actionError}</p>}
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="secondary" onClick={() => setConfirmDelete(null)}>Annuleren</Button>
+              <Button size="sm" variant="danger" disabled={busyId === confirmDelete.id} onClick={handleDelete}>Verwijderen</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

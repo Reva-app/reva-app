@@ -140,7 +140,6 @@ export default function PortalLocationsPage() {
 
   const activeCount = cards.filter((c) => !c.archived).length;
   const atLimit = maxLocations > 0 && activeCount >= maxLocations;
-  const usagePct = maxLocations > 0 ? Math.min(100, (activeCount / maxLocations) * 100) : 0;
   const visibleCards = cards.filter((c) => (filter === "active" ? !c.archived : c.archived));
 
   async function handleEdit(locationId: string) {
@@ -189,20 +188,10 @@ export default function PortalLocationsPage() {
         )}
       </div>
 
-      {!loading && maxLocations > 0 && (
-        <div className="rounded-2xl border p-4" style={{ background: "#ffffff", borderColor: "#e8e5df" }}>
-          <div className="h-2 rounded-full overflow-hidden" style={{ background: "#f3f0eb" }}>
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{ width: `${usagePct}%`, background: atLimit ? "#dc2626" : "var(--brand-accent, #e8632a)" }}
-            />
-          </div>
-          {atLimit && (
-            <p className="text-xs mt-2" style={{ color: "#dc2626" }}>
-              Je hebt het maximum aantal vestigingen voor je abonnement bereikt. Neem contact op om uit te breiden.
-            </p>
-          )}
-        </div>
+      {!loading && atLimit && (
+        <p className="text-xs" style={{ color: "#dc2626" }}>
+          Je hebt het maximum aantal vestigingen voor je abonnement bereikt. Neem contact op om uit te breiden.
+        </p>
       )}
 
       <div className="flex rounded-xl overflow-hidden w-fit" style={{ background: "#f3f0eb" }}>
