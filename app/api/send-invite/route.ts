@@ -122,11 +122,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Organisatie kon niet worden opgehaald" }, { status: 500 });
     }
 
-    // Geen ?flow=/?next=-parameters meer nodig: /auth/callback bepaalt de
-    // bestemming zelf op basis van of de gebruiker een actieve membership
-    // heeft, niet op basis van query-parameters — die bleken niet betrouwbaar
-    // te overleven als de exacte URL (incl. querystring) niet letterlijk op
-    // Supabase's eigen Redirect-URLs-allowlist staat.
+    // Let op: uit empirische tests (auth/v1/admin/generate_link direct
+    // aangeroepen en de teruggegeven `redirect_to` geïnspecteerd) blijkt dat
+    // Supabase's Redirect-URLs-allowlist op dit project ELKE aangevraagde
+    // redirectTo — inclusief dit pad — terugbrengt tot de kale Site URL,
+    // ondanks een toegevoegde wildcard-entry. De daadwerkelijke routering
+    // (uitnodiging herkennen, naar wachtwoord-instelstap sturen) gebeurt
+    // daarom niet meer hier maar in components/auth/AuthGate.tsx, de plek
+    // waar de gebruiker in de praktijk altijd landt. Dit pad wordt nog wel
+    // aangevraagd (onschadelijk) zodat /auth/callback het automatisch weer
+    // oppakt mocht de allowlist ooit alsnog kloppen.
     const origin = new URL(request.url).origin;
     const redirectTo = `${origin}/auth/callback`;
 
