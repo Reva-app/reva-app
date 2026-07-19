@@ -628,7 +628,7 @@ export async function loadPortalLocationCards(organizationId: string): Promise<P
   const supabase = createClient();
   const { data, error } = await supabase
     .from("locations")
-    .select("id, name, is_main_location, archived, street, house_number, postal_code, city, opening_hours, memberships(count), patients(count)")
+    .select("id, name, is_main_location, archived, street, house_number, postal_code, city, opening_hours, memberships!memberships_location_id_fkey(count), patients(count)")
     .eq("organization_id", organizationId)
     .order("is_main_location", { ascending: false })
     .order("name");

@@ -19,6 +19,7 @@ function ResetPasswordForm() {
   const next = searchParams.get("next") || "/";
   const isInvite = searchParams.get("mode") === "invite";
   const orgName = searchParams.get("org");
+  const isOwnerInvite = searchParams.get("role") === "owner";
   const [password, setPassword] = useState("");
   const [herhaling, setHerhaling] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -84,6 +85,13 @@ function ResetPasswordForm() {
             ? (orgName ? `Je bent uitgenodigd om toegevoegd te worden aan ${orgName}` : "Stel een wachtwoord in om je account te activeren")
             : "Kies een nieuw, sterk wachtwoord voor je account"}
         </p>
+        {isInvite && (
+          <p className="text-xs text-gray-400 mt-1.5">
+            {isOwnerInvite
+              ? "Na het opslaan kun je direct je team uitnodigen, vestigingen inrichten en de huisstijl aanpassen."
+              : "Na het opslaan heb je direct toegang tot het dashboard."}
+          </p>
+        )}
       </div>
 
       <div
@@ -99,7 +107,13 @@ function ResetPasswordForm() {
               <Check size={22} style={{ color: "#16a34a" }} />
             </div>
             <h2 className="text-base font-semibold text-gray-900 mb-1.5">Wachtwoord gewijzigd</h2>
-            <p className="text-sm text-gray-500">Je wordt doorgestuurd naar het dashboard…</p>
+            <p className="text-sm text-gray-500">
+              {isInvite
+                ? (isOwnerInvite
+                    ? "Je wordt doorgestuurd naar je REVA-dashboard…"
+                    : `Je wordt doorgestuurd naar het dashboard van ${orgName ?? "je organisatie"}…`)
+                : "Je wordt doorgestuurd naar het dashboard…"}
+            </p>
           </div>
         ) : (
           <>

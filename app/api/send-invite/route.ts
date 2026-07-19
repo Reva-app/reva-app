@@ -122,30 +122,36 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Organisatie kon niet worden opgehaald" }, { status: 500 });
     }
 
-    // Let op: uit empirische tests (auth/v1/admin/generate_link direct
-    // aangeroepen en de teruggegeven `redirect_to` geïnspecteerd) blijkt dat
-    // Supabase's Redirect-URLs-allowlist op dit project ELKE aangevraagde
-    // redirectTo — inclusief dit pad — terugbrengt tot de kale Site URL,
-    // ondanks een toegevoegde wildcard-entry. De daadwerkelijke routering
-    // (uitnodiging herkennen, naar wachtwoord-instelstap sturen) gebeurt
-    // daarom niet meer hier maar in components/auth/AuthGate.tsx, de plek
-    // waar de gebruiker in de praktijk altijd landt. Dit pad wordt nog wel
-    // aangevraagd (onschadelijk) zodat /auth/callback het automatisch weer
-    // oppakt mocht de allowlist ooit alsnog kloppen.
+    // We sturen NIET Supabase's eigen action_link (auth/v1/verify) in de mail:
+    // mailproviders (Gmail, Outlook, bedrijfsgateways) scannen links in
+    // e-mails automatisch door ze zelf al op te vragen, wat een eenmalig te
+    // gebruiken token al "verbruikt" vóórdat de ontvanger er zelf op klikt —
+    // bevestigd doordat testaccounts al enkele seconden na het versturen van
+    // de uitnodiging automatisch bleken bevestigd/ingelogd. In plaats daarvan
+    // wijst de mail naar onze eigen /auth/verify-pagina, die de token pas via
+    // JavaScript inwisselt (supabase.auth.verifyOtp) — een scanner haalt de
+    // pagina wel op, maar voert geen JS uit, dus verbruikt de token niet.
     const origin = new URL(request.url).origin;
-    const redirectTo = `${origin}/auth/callback`;
 
     const admin = createSupabaseClient(supabaseUrl, serviceRoleKey);
     const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
       type: "invite",
       email,
-      options: { redirectTo },
+      options: { redirectTo: origin },
     });
     if (linkError || !linkData) {
       console.error("[send-invite] generateLink:", linkError?.message);
       return NextResponse.json({ error: "Aanmaken van de uitnodigingslink is niet gelukt" }, { status: 500 });
     }
-    const actionLink = linkData.properties.action_link;
+    const tokenHash = linkData.properties.hashed_token;
+
+    // Medewerkers/eigenaars stellen eerst een wachtwoord in; patiënten niet
+    // (die behouden hun bestaande, wachtwoordloze toegang).
+    const postVerifyPath =
+      body.context === "portal-patient"
+        ? "/"
+        : `/auth/reset-password?next=${encodeURIComponent("/portal")}&mode=invite&org=${encodeURIComponent(org.name as string)}&role=${roleKey === "organization_owner" ? "owner" : "staff"}`;
+    const actionLink = `${origin}/auth/verify?token_hash=${tokenHash}&type=invite&next=${encodeURIComponent(postVerifyPath)}`;
 
     const resend = new Resend(resendApiKey);
     const orgName = org.name as string;
@@ -177,7 +183,7 @@ export async function POST(request: Request) {
         heading: `${safeFirstName ? `${safeFirstName}, w` : "W"}elkom bij REVA!`,
         bodyHtmlLines: [
           `Je bent uitgenodigd om <strong>${safeOrgName}</strong> te beheren op REVA — het platform waarmee jouw praktijk grip houdt op iedere fase van het hersteltraject van je patiënten.`,
-          `Stel hieronder je wachtwoord in om direct te starten: nodig je team uit, richt je vestigingen in, en pas het platform aan naar jullie eigen huisstijl.`,
+          `Klik op de knop hieronder, kies een wachtwoord, en je hebt direct toegang — er komt geen aparte bevestigingsmail. Daarna kun je meteen je team uitnodigen, vestigingen inrichten en het platform naar jullie eigen huisstijl aanpassen.`,
         ],
         ctaLabel: "Start met REVA",
         ctaUrl: actionLink,
@@ -190,7 +196,7 @@ export async function POST(request: Request) {
         heading: `${safeFirstName ? `${safeFirstName}, j` : "J"}e bent uitgenodigd bij ${safeOrgName}`,
         bodyHtmlLines: [
           `Je bent uitgenodigd om als <strong>${escapeHtml(roleName ?? "medewerker")}</strong> mee te werken binnen ${safeOrgName} op REVA.`,
-          `Stel hieronder je wachtwoord in om toegang te krijgen tot het platform.`,
+          `Klik op de knop hieronder en kies een wachtwoord — je hebt dan direct toegang, zonder aparte bevestigingsmail.`,
         ],
         ctaLabel: "Account activeren",
         ctaUrl: actionLink,

@@ -121,6 +121,6 @@ export const config = {
     // each one already checks auth itself and returns a proper JSON error/401
     // (see app/api/delete-account/route.ts). A middleware redirect here turns
     // into a non-JSON response that breaks the calling fetch().
-    "/((?!_next/static|_next/image|favicon\\.ico|auth/callback|auth/reset-password|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon\\.ico|auth/callback|auth/reset-password|auth/verify|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

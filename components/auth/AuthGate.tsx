@@ -15,14 +15,12 @@ import { createClient } from "@/lib/supabaseClient";
  *
  * Het laadscherm wordt afgehandeld door AppLoadingGate (hoger in de boom).
  *
- * BELANGRIJK: dit is in de praktijk ook de eerste plek waar iemand na een
- * magic-link/uitnodigingslink daadwerkelijk terechtkomt. Supabase's
- * redirect-URL-allowlist blijkt elke aangevraagde `redirectTo` (incl. het pad
- * naar /auth/callback) terug te brengen tot het kale Site-URL-domein, dus
- * /auth/callback's eigen routeringslogica wordt in de praktijk nooit bereikt
- * — de gebruiker landt altijd hier, op de kale `/`. Vandaar de
- * medewerker-/eigenaaruitnodiging-detectie hieronder, i.p.v. (alleen) in
- * /auth/callback.
+ * Uitnodigingsmails wijzen tegenwoordig naar /auth/verify, dat de sessie zelf
+ * opzet (supabase.auth.verifyOtp) en medewerkers/eigenaars daarna al gericht
+ * naar /auth/reset-password?mode=invite stuurt — dat pad raakt deze gate dus
+ * niet meer. De onderstaande fresh-membership-detectie blijft als defensieve
+ * vangnet staan voor het geval een sessie via een andere weg (bv. Supabase's
+ * eigen fragment-detectie) alsnog hier op `/` tot stand komt.
  */
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
