@@ -53,20 +53,25 @@ export default function AuthCallbackPage() {
         return;
       }
 
-      // Heeft deze gebruiker een actieve membership (medewerker/eigenaar van
-      // een organisatie)? Dan is dit altijd het accepteren van een
-      // uitnodiging — magic-link-logins zetten nooit een wachtwoord, dus
-      // eerst daarheen, ongeacht welke query-parameters de redirect via
-      // Supabase's eigen server heeft overleefd.
-      const { data: membership } = await supabase
+      // Is dit een ZOJUIST geaccepteerde medewerker-/eigenaaruitnodiging?
+      // ensure_personal_organization maakt de membership-rij aan op het
+      // exacte moment van deze inlog, dus "actief lid geworden in de
+      // afgelopen paar minuten" is een betrouwbaar signaal — in
+      // tegenstelling tot "heeft ooit een membership" (dat zou een
+      // terugkerende patiënt die ook ergens medewerker is, bv. via
+      // Google-inloggen, bij ELKE toekomstige login foutief naar de
+      // wachtwoord-instelstap sturen in plaats van naar hun dashboard).
+      const recentThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const { data: freshMembership } = await supabase
         .from("memberships")
         .select("id")
         .eq("user_id", user.id)
         .eq("status", "active")
+        .gte("created_at", recentThreshold)
         .limit(1)
         .maybeSingle();
 
-      if (membership) {
+      if (freshMembership) {
         router.replace(`/auth/reset-password?next=${encodeURIComponent("/portal")}&mode=invite`);
         return;
       }
