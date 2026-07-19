@@ -78,6 +78,7 @@ function AdminOrganizationDetailContent() {
   const inviteErrorFromRedirect = searchParams.get("inviteError");
 
   const [org, setOrg] = useState<AdminOrganizationDetail | null>(null);
+  const [initialOrg, setInitialOrg] = useState<AdminOrganizationDetail | null>(null);
   const [locations, setLocations] = useState<AdminOrgLocation[]>([]);
   const [members, setMembers] = useState<AdminOrgMember[]>([]);
   const [invites, setInvites] = useState<AdminOrgInvite[]>([]);
@@ -122,6 +123,7 @@ function AdminOrganizationDetailContent() {
     ]).then(([detail, locs, mems, invs, pStats, use, roleOptions]) => {
       if (cancelled) return;
       setOrg(detail);
+      setInitialOrg(detail);
       setLocations(locs);
       setMembers(mems);
       setInvites(invs);
@@ -217,6 +219,25 @@ function AdminOrganizationDetailContent() {
     refreshMembersAndInvites();
   }
 
+  const isDirty = !!org && !!initialOrg && JSON.stringify(org) !== JSON.stringify(initialOrg);
+
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (!isDirty) return;
+      e.preventDefault();
+      e.returnValue = "";
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
+
+  function handleBackNavigation() {
+    if (isDirty && !window.confirm("Je hebt niet-opgeslagen wijzigingen. Weet je zeker dat je wilt vertrekken zonder op te slaan?")) {
+      return;
+    }
+    router.push("/admin/organisaties");
+  }
+
   async function handleSave() {
     if (!org) return;
     setSaving(true);
@@ -230,7 +251,9 @@ function AdminOrganizationDetailContent() {
       contactName: org.contactName,
       contactEmail: org.contactEmail,
       contactPhone: org.contactPhone,
-      address: org.address,
+      addressStreet: org.addressStreet,
+      addressPostalCode: org.addressPostalCode,
+      addressCity: org.addressCity,
       supportNotes: org.supportNotes,
       lastContactAt: org.lastContactAt,
       maxLocations: org.maxLocations,
@@ -239,6 +262,7 @@ function AdminOrganizationDetailContent() {
     setSaving(false);
     if (!error) {
       setSaved(true);
+      setInitialOrg(org);
       setTimeout(() => setSaved(false), 2500);
     }
   }
@@ -276,7 +300,7 @@ function AdminOrganizationDetailContent() {
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
       <button
-        onClick={() => router.push("/admin/organisaties")}
+        onClick={handleBackNavigation}
         className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors"
       >
         <ArrowLeft size={14} />
@@ -374,8 +398,10 @@ function AdminOrganizationDetailContent() {
           <TextField label="E-mailadres" value={org.contactEmail ?? ""} onChange={(v) => setOrg({ ...org, contactEmail: v })} type="email" />
           <TextField label="Telefoonnummer" value={org.contactPhone ?? ""} onChange={(v) => setOrg({ ...org, contactPhone: v })} type="tel" />
           <div className="sm:col-span-2">
-            <TextField label="Adres" value={org.address ?? ""} onChange={(v) => setOrg({ ...org, address: v })} />
+            <TextField label="Straatnaam" value={org.addressStreet ?? ""} onChange={(v) => setOrg({ ...org, addressStreet: v })} />
           </div>
+          <TextField label="Postcode" value={org.addressPostalCode ?? ""} onChange={(v) => setOrg({ ...org, addressPostalCode: v })} placeholder="1234 AB" />
+          <TextField label="Plaats" value={org.addressCity ?? ""} onChange={(v) => setOrg({ ...org, addressCity: v })} />
         </div>
       </Card>
 

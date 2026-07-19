@@ -158,7 +158,9 @@ export interface AdminOrganizationDetail {
   contactName: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
-  address: string | null;
+  addressStreet: string | null;
+  addressPostalCode: string | null;
+  addressCity: string | null;
   supportNotes: string | null;
   lastContactAt: string | null;
   createdAt: string;
@@ -175,7 +177,9 @@ export interface AdminOrganizationPatch {
   contactName?: string | null;
   contactEmail?: string | null;
   contactPhone?: string | null;
-  address?: string | null;
+  addressStreet?: string | null;
+  addressPostalCode?: string | null;
+  addressCity?: string | null;
   supportNotes?: string | null;
   lastContactAt?: string | null;
   maxLocations?: number;
@@ -217,7 +221,7 @@ export async function loadAdminOrganizationDetail(orgId: string): Promise<AdminO
   const supabase = createClient();
   const { data, error } = await supabase
     .from("organizations")
-    .select("id, name, status, logo_path, kvk_number, btw_number, website, contact_name, contact_email, contact_phone, address, support_notes, last_contact_at, created_at, max_locations, max_members")
+    .select("id, name, status, logo_path, kvk_number, btw_number, website, contact_name, contact_email, contact_phone, address_street, address_postal_code, address_city, support_notes, last_contact_at, created_at, max_locations, max_members")
     .eq("id", orgId)
     .maybeSingle();
   if (error) { logErr("loadAdminOrganizationDetail", error); return null; }
@@ -244,7 +248,9 @@ export async function loadAdminOrganizationDetail(orgId: string): Promise<AdminO
     contactName: data.contact_name,
     contactEmail: data.contact_email,
     contactPhone: data.contact_phone,
-    address: data.address,
+    addressStreet: data.address_street,
+    addressPostalCode: data.address_postal_code,
+    addressCity: data.address_city,
     supportNotes: data.support_notes,
     lastContactAt: data.last_contact_at,
     createdAt: data.created_at,
@@ -264,7 +270,9 @@ export async function updateAdminOrganization(orgId: string, patch: AdminOrganiz
   if (patch.contactName !== undefined) dbPatch.contact_name = patch.contactName;
   if (patch.contactEmail !== undefined) dbPatch.contact_email = patch.contactEmail;
   if (patch.contactPhone !== undefined) dbPatch.contact_phone = patch.contactPhone;
-  if (patch.address !== undefined) dbPatch.address = patch.address;
+  if (patch.addressStreet !== undefined) dbPatch.address_street = patch.addressStreet;
+  if (patch.addressPostalCode !== undefined) dbPatch.address_postal_code = patch.addressPostalCode;
+  if (patch.addressCity !== undefined) dbPatch.address_city = patch.addressCity;
   if (patch.supportNotes !== undefined) dbPatch.support_notes = patch.supportNotes;
   if (patch.lastContactAt !== undefined) dbPatch.last_contact_at = patch.lastContactAt;
   if (patch.maxLocations !== undefined) dbPatch.max_locations = patch.maxLocations;
