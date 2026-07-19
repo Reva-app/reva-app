@@ -84,7 +84,16 @@ export default async function proxy(request: NextRequest) {
   }
 
   // ── Unauthenticated → /login (patiëntgedeelte) ──────────────────────────────
-  if (!user && !isAuthRoute && !isPortalLoginRoute) {
+  // Uitzondering voor de kale root: Supabase's redirect-URLs-allowlist blijkt
+  // elke aangevraagde redirectTo (uitnodigingslinks, magic links) terug te
+  // brengen tot exact deze URL, met de sessie in een URL-fragment (#access_
+  // token=...) — fragments bereiken de server nooit, dus een server-side
+  // sessiecheck ziet hier altijd "niet ingelogd", ook vlak vóórdat de
+  // client de echte sessie alsnog verwerkt. Zelfde uitzondering als
+  // auth/callback en auth/reset-password (zie matcher hieronder) — de
+  // client-side AuthGate (components/auth/AuthGate.tsx) handelt "/" zelf
+  // af, inclusief het wachten op een nog-te-verwerken fragment.
+  if (!user && !isAuthRoute && !isPortalLoginRoute && normalizedPath !== "/") {
     return redirectTo("/login", (url) => {
       if (pathname !== "/") url.searchParams.set("next", pathname);
     });
