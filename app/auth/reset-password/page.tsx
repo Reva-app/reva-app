@@ -18,6 +18,7 @@ function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/";
   const isInvite = searchParams.get("mode") === "invite";
+  const orgName = searchParams.get("org");
   const [password, setPassword] = useState("");
   const [herhaling, setHerhaling] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -76,10 +77,12 @@ function ResetPasswordForm() {
           <span className="font-bold text-lg" style={{ color: "#1a1a1a" }}>REVA</span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
-          {isInvite ? "Welkom bij REVA" : "Nieuw wachtwoord instellen"}
+          {isInvite ? "Welkom bij REVA App" : "Nieuw wachtwoord instellen"}
         </h1>
         <p className="text-sm text-gray-500 mt-2">
-          {isInvite ? "Stel een wachtwoord in om je account te activeren" : "Kies een nieuw, sterk wachtwoord voor je account"}
+          {isInvite
+            ? (orgName ? `Je bent uitgenodigd om toegevoegd te worden aan ${orgName}` : "Stel een wachtwoord in om je account te activeren")
+            : "Kies een nieuw, sterk wachtwoord voor je account"}
         </p>
       </div>
 

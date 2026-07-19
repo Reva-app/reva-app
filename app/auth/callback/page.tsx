@@ -55,16 +55,20 @@ export default function AuthCallbackPage() {
 
       // Is dit een ZOJUIST geaccepteerde medewerker-/eigenaaruitnodiging?
       // ensure_personal_organization maakt de membership-rij aan op het
-      // exacte moment van deze inlog, dus "actief lid geworden in de
-      // afgelopen paar minuten" is een betrouwbaar signaal — in
-      // tegenstelling tot "heeft ooit een membership" (dat zou een
-      // terugkerende patiënt die ook ergens medewerker is, bv. via
-      // Google-inloggen, bij ELKE toekomstige login foutief naar de
-      // wachtwoord-instelstap sturen in plaats van naar hun dashboard).
-      const recentThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      // moment dat de uitnodiging wordt VERSTUURD (niet pas bij het klikken
+      // op de link) — dus het venster moet ruim genoeg zijn om een normale
+      // vertraging tussen versturen en daadwerkelijk klikken op te vangen
+      // (e-mail lezen kost tijd; eerder stond dit op 5 minuten, wat al
+      // faalde bij een heel gewone ~8 minuten vertraging). 3 dagen dekt
+      // ruimschoots de levensduur van de uitnodigingslink zelf, en blijft
+      // nog steeds veel korter dan wanneer een teruggekeerde gebruiker
+      // normaal opnieuw zou inloggen — vandaar geen "heeft ooit een
+      // membership"-check (die zou terugkerende patiënten die ook ergens
+      // medewerker zijn, bv. via Google-inloggen, foutief blijven raken).
+      const recentThreshold = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
       const { data: freshMembership } = await supabase
         .from("memberships")
-        .select("id")
+        .select("id, organization_id")
         .eq("user_id", user.id)
         .eq("status", "active")
         .gte("created_at", recentThreshold)
@@ -72,7 +76,13 @@ export default function AuthCallbackPage() {
         .maybeSingle();
 
       if (freshMembership) {
-        router.replace(`/auth/reset-password?next=${encodeURIComponent("/portal")}&mode=invite`);
+        const { data: org } = await supabase
+          .from("organizations")
+          .select("name")
+          .eq("id", freshMembership.organization_id)
+          .maybeSingle();
+        const orgParam = org?.name ? `&org=${encodeURIComponent(org.name)}` : "";
+        router.replace(`/auth/reset-password?next=${encodeURIComponent("/portal")}&mode=invite${orgParam}`);
         return;
       }
 
