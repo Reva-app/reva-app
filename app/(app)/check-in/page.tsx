@@ -10,6 +10,7 @@ import { Check, TrendingUp, Pencil, X, Lock } from "lucide-react";
 import { useUserPlan } from "@/lib/hooks/useUserPlan";
 import { canUseFullCheckIn } from "@/lib/featureGates";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
+import { useToast } from "@/components/ui/Toast";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -496,6 +497,32 @@ function LockedScoreFields({ onUnlock }: { onUnlock: () => void }) {
   );
 }
 
+// ─── Check-in saved screen (shared between desktop and mobile) ────────────────
+
+function CheckInSavedScreen({ selectedDate, dagscore, onReset }: {
+  selectedDate: string; dagscore: number; onReset: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border bg-white text-center py-10 px-6"
+      style={{ borderColor: "#e8e5df", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+      <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
+        style={{ background: "#f0fdf4" }}>
+        <Check size={24} style={{ color: "#22c55e" }} />
+      </div>
+      <h3 className="text-base font-semibold text-gray-900 mb-1">Check-in opgeslagen</h3>
+      <p className="text-sm text-gray-400">
+        {new Date(selectedDate + "T12:00:00").toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" })}
+      </p>
+      <p className="text-sm text-gray-400 mt-0.5">
+        Dagscore {dagscore}/5: {dagscoreLabels[dagscore]}
+      </p>
+      <Button variant="secondary" size="sm" className="mt-5" onClick={onReset}>
+        Nieuwe check-in
+      </Button>
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function CheckInPage() {
@@ -503,6 +530,7 @@ export default function CheckInPage() {
   const planInfo = useUserPlan();
   const fullCheckIn = canUseFullCheckIn(planInfo);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const { showToast, toastNode } = useToast();
 
   const [mobileTab, setMobileTab] = useState<"formulier" | "dezeweek">("formulier");
 
@@ -567,23 +595,7 @@ export default function CheckInPage() {
 
   // ── Shared form content (used on both desktop and mobile formulier tab) ──────
   const formContent = submitted ? (
-    <div className="rounded-2xl border bg-white text-center py-10 px-6"
-      style={{ borderColor: "#e8e5df", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-      <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
-        style={{ background: "#f0fdf4" }}>
-        <Check size={24} style={{ color: "#22c55e" }} />
-      </div>
-      <h3 className="text-base font-semibold text-gray-900 mb-1">Check-in opgeslagen</h3>
-      <p className="text-sm text-gray-400">
-        {new Date(selectedDate + "T12:00:00").toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" })}
-      </p>
-      <p className="text-sm text-gray-400 mt-0.5">
-        Dagscore {dagscore}/5: {dagscoreLabels[dagscore]}
-      </p>
-      <Button variant="secondary" size="sm" className="mt-5" onClick={reset}>
-        Nieuwe check-in
-      </Button>
-    </div>
+    <CheckInSavedScreen selectedDate={selectedDate} dagscore={dagscore} onReset={reset} />
   ) : (
     <>
       <div className="rounded-2xl border bg-white"
@@ -710,23 +722,7 @@ export default function CheckInPage() {
         {mobileTab === "formulier" && (
           <div className="space-y-5">
             {submitted ? (
-              <div className="rounded-2xl border bg-white text-center py-10 px-6"
-                style={{ borderColor: "#e8e5df", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-                <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
-                  style={{ background: "#f0fdf4" }}>
-                  <Check size={24} style={{ color: "#22c55e" }} />
-                </div>
-                <h3 className="text-base font-semibold text-gray-900 mb-1">Check-in opgeslagen</h3>
-                <p className="text-sm text-gray-400">
-                  {new Date(selectedDate + "T12:00:00").toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" })}
-                </p>
-                <p className="text-sm text-gray-400 mt-0.5">
-                  Dagscore {dagscore}/5: {dagscoreLabels[dagscore]}
-                </p>
-                <Button variant="secondary" size="sm" className="mt-5" onClick={reset}>
-                  Nieuwe check-in
-                </Button>
-              </div>
+              <CheckInSavedScreen selectedDate={selectedDate} dagscore={dagscore} onReset={reset} />
             ) : (
               <>
                 {/* Context banner when editing a past check-in */}
@@ -831,6 +827,7 @@ export default function CheckInPage() {
           onSave={(ci) => {
             updateCheckIn(ci.id, ci);
             setEditModal(null);
+            showToast("Check-in opgeslagen");
           }}
         />
       )}
@@ -838,6 +835,7 @@ export default function CheckInPage() {
       {showUpgradeModal && (
         <UpgradeModal feature="checkIn" onClose={() => setShowUpgradeModal(false)} />
       )}
+      {toastNode}
     </div>
   );
 }

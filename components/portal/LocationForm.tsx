@@ -70,7 +70,7 @@ export function LocationForm({ organizationId, location, onSaved, onClose }: Loc
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!input.name.trim()) {
-      setError("Vul een naam voor de vestiging in");
+      setError("Vul een naam voor de locatie in");
       return;
     }
     setSaving(true);
@@ -89,7 +89,7 @@ export function LocationForm({ organizationId, location, onSaved, onClose }: Loc
   return (
     <Card>
       <div className="flex items-start justify-between">
-        <CardHeader title={location ? "Vestiging wijzigen" : "Nieuwe vestiging"} />
+        <CardHeader title={location ? "Locatie wijzigen" : "Nieuwe locatie"} />
         <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 shrink-0 -mt-1">
           <X size={18} />
         </button>
@@ -101,7 +101,7 @@ export function LocationForm({ organizationId, location, onSaved, onClose }: Loc
             <div className="sm:col-span-2">
               <FieldLabel>Naam</FieldLabel>
               <input type="text" value={input.name} onChange={(e) => update("name", e.target.value)}
-                placeholder="Bijv. Vestiging Centrum" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
+                placeholder="Bijv. Locatie Centrum" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
             </div>
             <div>
               <FieldLabel>Telefoonnummer</FieldLabel>

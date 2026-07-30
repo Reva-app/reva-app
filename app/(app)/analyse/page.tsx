@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { useAppData } from "@/lib/store";
@@ -12,6 +12,9 @@ import {
   Dumbbell, Pill, Target, Lightbulb, ChevronRight,
   CheckCircle2, Circle,
 } from "lucide-react";
+import { usePatientProtocol } from "@/lib/hooks/usePatientProtocol";
+import { loadExerciseProgressHistory, type ExerciseProgressPoint } from "@/lib/services/patientProtocolService";
+import { LineChart as ProtocolLineChart, Bar as ProtocolBar } from "@/components/ui/Charts";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -244,8 +247,31 @@ export default function AnalysePage() {
     appointments, mijlpalen, fotoUpdates,
   } = useAppData();
   const planInfo = useUserPlan();
+  const { checked: protocolChecked, hasActiveProtocol, protocol } = usePatientProtocol();
 
   const [period, setPeriod] = useState<Period>(14);
+  const [selectedExerciseId, setSelectedExerciseId] = useState<string>("");
+  const [exerciseProgress, setExerciseProgress] = useState<ExerciseProgressPoint[]>([]);
+
+  const protocolExercises = useMemo(() => {
+    if (!hasActiveProtocol || !protocol?.currentPhase) return [];
+    return protocol.currentPhase.schedules.flatMap((s) => s.exercises);
+  }, [hasActiveProtocol, protocol]);
+
+  useEffect(() => {
+    if (protocolExercises.length === 0) { setSelectedExerciseId(""); return; }
+    if (!protocolExercises.some((e) => e.id === selectedExerciseId)) setSelectedExerciseId(protocolExercises[0].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [protocolExercises]);
+
+  useEffect(() => {
+    if (!selectedExerciseId) { setExerciseProgress([]); return; }
+    let cancelled = false;
+    loadExerciseProgressHistory(selectedExerciseId).then((data) => {
+      if (!cancelled) setExerciseProgress(data);
+    });
+    return () => { cancelled = true; };
+  }, [selectedExerciseId]);
 
   const s = useMemo(() => {
     if (!hydrated) return null;
@@ -469,6 +495,85 @@ export default function AnalysePage() {
           </p>
         </Card>
       </div>
+
+      {/* ── Protocol-inzichten (alleen bij actief protocol) ─────────────── */}
+      {protocolChecked && hasActiveProtocol && protocol?.currentPhase && (() => {
+        const phase = protocol.currentPhase!;
+        return (
+          <div className="space-y-4">
+            <Card>
+              <CardHeader title="Huidige fase" subtitle={phase.name} />
+              {phase.description && <p className="text-sm text-gray-500 mb-3">{phase.description}</p>}
+              <ProtocolBar
+                label="Criteria behaald"
+                value={phase.criteria.filter((c) => c.met).length}
+                max={Math.max(1, phase.criteria.length)}
+                format={(v) => `${v} van ${phase.criteria.length} criteria behaald`}
+              />
+            </Card>
+
+            {phase.schedules.length > 0 && (
+              <Card>
+                <CardHeader title="Trainingsopbouw deze week" />
+                <div className="space-y-3">
+                  {phase.schedules.map((sch) => (
+                    <ProtocolBar
+                      key={sch.id}
+                      label={sch.title}
+                      value={sch.completedThisWeek}
+                      max={Math.max(1, sch.frequencyPerWeek)}
+                      format={(v) => `${v} van ${sch.frequencyPerWeek} keer deze week`}
+                    />
+                  ))}
+                </div>
+              </Card>
+            )}
+
+            <Card>
+              <CardHeader title="Mijlpalen van deze fase" />
+              {phase.milestones.length === 0 ? (
+                <p className="text-sm text-gray-400">Nog geen mijlpalen ingesteld voor deze fase.</p>
+              ) : (
+                <div className="space-y-2">
+                  {phase.milestones.map((m) => (
+                    <div key={m.id} className="flex items-center gap-2.5">
+                      {m.completed
+                        ? <CheckCircle2 size={16} style={{ color: "#22c55e" }} />
+                        : <Circle size={16} className="text-gray-300" />}
+                      <span className={`text-sm ${m.completed ? "text-gray-400 line-through" : "text-gray-700"}`}>{m.title}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            {protocolExercises.length > 0 && (
+              <Card>
+                <CardHeader title="Voortgang oefening" />
+                <select
+                  value={selectedExerciseId}
+                  onChange={(e) => setSelectedExerciseId(e.target.value)}
+                  className="w-full text-sm rounded-xl border px-3 py-2 mb-3 focus:outline-none"
+                  style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
+                >
+                  {protocolExercises.map((ex) => <option key={ex.id} value={ex.id}>{ex.title}</option>)}
+                </select>
+                {exerciseProgress.length < 2 ? (
+                  <p className="text-sm text-gray-400">Nog geen voortgang gelogd voor deze oefening.</p>
+                ) : (
+                  <ProtocolLineChart
+                    data={exerciseProgress.map((p) => p.weightKg ?? p.reps ?? 0)}
+                    dates={exerciseProgress.map((p) => p.date)}
+                    color="#e8632a"
+                    max={Math.max(1, ...exerciseProgress.map((p) => p.weightKg ?? p.reps ?? 0))}
+                    height={100}
+                  />
+                )}
+              </Card>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ── Rij 2: 3 inzichtkaarten ────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

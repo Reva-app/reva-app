@@ -8,6 +8,8 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { useToast } from "@/components/ui/Toast";
+import { Avatar } from "@/components/ui/Avatar";
 import { LocationForm } from "@/components/portal/LocationForm";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import {
@@ -28,29 +30,6 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   return <label className="block text-xs font-medium text-gray-500 mb-1.5">{children}</label>;
 }
 
-function initials(name: string | null) {
-  const source = (name || "?").trim();
-  const parts = source.split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return source.slice(0, 2).toUpperCase();
-}
-
-function EmployeeAvatar({ fullName, avatarUrl }: { fullName: string | null; avatarUrl: string | null }) {
-  return (
-    <div
-      className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold text-white shrink-0 overflow-hidden"
-      style={{ background: avatarUrl ? "transparent" : "var(--brand-accent, #e8632a)" }}
-    >
-      {avatarUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
-      ) : (
-        initials(fullName)
-      )}
-    </div>
-  );
-}
-
 export default function PortalLocationDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -67,6 +46,7 @@ export default function PortalLocationDetailPage() {
   const [employeeRoleId, setEmployeeRoleId] = useState("");
   const [addingEmployee, setAddingEmployee] = useState(false);
   const [addEmployeeError, setAddEmployeeError] = useState("");
+  const { showToast, toastNode } = useToast();
 
   const canManage = !!membership && MANAGE_LOCATIONS_ROLES.includes(membership.roleKey);
 
@@ -111,6 +91,7 @@ export default function PortalLocationDetailPage() {
     }
     setEmployeeEmail("");
     setShowAddEmployee(false);
+    showToast("Medewerker gekoppeld");
     refresh();
   }
 
@@ -121,20 +102,20 @@ export default function PortalLocationDetailPage() {
         onClick={() => router.push("/portal/locaties")}
         className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
       >
-        <ArrowLeft size={14} /> Terug naar vestigingen
+        <ArrowLeft size={14} /> Terug naar locaties
       </button>
 
       {loading ? (
         <p className="text-sm text-gray-400">Laden…</p>
       ) : notFound || !location ? (
-        <p className="text-sm text-gray-400">Deze vestiging is niet gevonden.</p>
+        <p className="text-sm text-gray-400">Deze locatie is niet gevonden.</p>
       ) : (
         <>
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3 flex-wrap">
               <SectionHeader title={location.name} />
               {location.isMainLocation && (
-                <Badge variant="accent" className="flex items-center gap-1"><Star size={10} /> Hoofdvestiging</Badge>
+                <Badge variant="accent" className="flex items-center gap-1"><Star size={10} /> Hoofdlocatie</Badge>
               )}
               {location.archived ? <Badge variant="muted">Gearchiveerd</Badge> : <Badge variant="success">Actief</Badge>}
             </div>
@@ -191,12 +172,12 @@ export default function PortalLocationDetailPage() {
               ) : undefined}
             />
             {location.employees.length === 0 ? (
-              <p className="text-sm text-gray-400">Nog geen medewerkers aan deze vestiging gekoppeld.</p>
+              <p className="text-sm text-gray-400">Nog geen medewerkers aan deze locatie gekoppeld.</p>
             ) : (
               <div className="space-y-3">
                 {location.employees.map((emp) => (
                   <div key={emp.membershipId} className="flex items-center gap-3">
-                    <EmployeeAvatar fullName={emp.fullName} avatarUrl={emp.avatarUrl} />
+                    <Avatar fullName={emp.fullName} avatarUrl={emp.avatarUrl} size={36} />
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-gray-800 truncate">{emp.fullName || "Onbekend"}</p>
                       <p className="text-xs text-gray-400">{emp.roleName}</p>
@@ -208,20 +189,20 @@ export default function PortalLocationDetailPage() {
           </Card>
 
           {editing && membership && (
-            <Modal onClose={() => setEditing(false)} maxWidth="max-w-2xl">
+            <Modal onClose={() => setEditing(false)} maxWidth="max-w-2xl" dismissOnBackdropClick={false}>
               <LocationForm
                 organizationId={membership.organizationId}
                 location={location}
-                onSaved={() => { setEditing(false); refresh(); }}
+                onSaved={() => { setEditing(false); refresh(); showToast("Locatie opgeslagen"); }}
                 onClose={() => setEditing(false)}
               />
             </Modal>
           )}
 
           {showAddEmployee && (
-            <Modal onClose={() => setShowAddEmployee(false)} maxWidth="max-w-sm">
+            <Modal onClose={() => setShowAddEmployee(false)} maxWidth="max-w-sm" dismissOnBackdropClick={false}>
               <Card>
-                <CardHeader title="Medewerker toevoegen" subtitle="Koppelt een bestaand REVA-account aan deze vestiging." />
+                <CardHeader title="Medewerker toevoegen" subtitle="Koppelt een bestaand REVA-account aan deze locatie." />
                 <form onSubmit={handleAddEmployee} className="space-y-3">
                   <div>
                     <FieldLabel>E-mailadres</FieldLabel>
@@ -249,6 +230,7 @@ export default function PortalLocationDetailPage() {
           )}
         </>
       )}
+      {toastNode}
     </div>
   );
 }

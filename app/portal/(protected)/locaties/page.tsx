@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 import { ActionMenu } from "@/components/ui/ActionMenu";
 import { LocationForm } from "@/components/portal/LocationForm";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
@@ -27,11 +29,10 @@ function formatAddress(card: PortalLocationCard): string | null {
 }
 
 function LocationCard({
-  card, canManage, message, onOpen, onEdit, onSetMain, onToggleArchive, onDeleteRequest,
+  card, canManage, onOpen, onEdit, onSetMain, onToggleArchive, onDeleteRequest,
 }: {
   card: PortalLocationCard;
   canManage: boolean;
-  message?: { ok: boolean; text: string };
   onOpen: () => void;
   onEdit: () => void;
   onSetMain: () => void;
@@ -47,22 +48,18 @@ function LocationCard({
               <h3 className="text-sm font-semibold text-gray-900 truncate">{card.name}</h3>
               {card.isMainLocation && (
                 <Badge variant="accent" className="flex items-center gap-1 shrink-0">
-                  <Star size={10} /> Hoofdvestiging
+                  <Star size={10} /> Hoofdlocatie
                 </Badge>
               )}
             </div>
-            {message ? (
-              <p className="text-xs mt-0.5" style={{ color: message.ok ? "#16a34a" : "#dc2626" }}>{message.text}</p>
-            ) : (
-              <p className="text-xs text-gray-400 mt-0.5">{formatAddress(card) || "Geen adres ingesteld"}</p>
-            )}
+            <p className="text-xs text-gray-400 mt-0.5">{formatAddress(card) || "Geen adres ingesteld"}</p>
           </div>
           {canManage && (
             <div onClick={(e) => e.stopPropagation()}>
               <ActionMenu
                 items={[
                   { label: "Bewerken", onClick: onEdit },
-                  ...(!card.isMainLocation ? [{ label: "Hoofdvestiging maken", onClick: onSetMain }] : []),
+                  ...(!card.isMainLocation ? [{ label: "Hoofdlocatie maken", onClick: onSetMain }] : []),
                   { label: card.archived ? "Dearchiveren" : "Archiveren", onClick: onToggleArchive },
                   { label: "Verwijderen", onClick: onDeleteRequest, danger: true },
                 ]}
@@ -96,18 +93,8 @@ export default function PortalLocationsPage() {
   const [formTarget, setFormTarget] = useState<FormTarget | null>(null);
   const [confirmMainId, setConfirmMainId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [actionError, setActionError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [cardMessages, setCardMessages] = useState<Record<string, { ok: boolean; text: string }>>({});
-
-  function showCardMessage(cardId: string, ok: boolean, text: string) {
-    setCardMessages((prev) => ({ ...prev, [cardId]: { ok, text } }));
-    setTimeout(() => setCardMessages((prev) => {
-      const next = { ...prev };
-      delete next[cardId];
-      return next;
-    }), 5000);
-  }
+  const { showToast, toastNode } = useToast();
 
   const canManage = !!membership && MANAGE_LOCATIONS_ROLES.includes(membership.roleKey);
 
@@ -153,16 +140,19 @@ export default function PortalLocationsPage() {
     const { error } = await setPortalMainLocation(confirmMainId);
     setBusyId(null);
     setConfirmMainId(null);
-    if (error) { setActionError(error); return; }
+    if (error) { showToast(error, "error"); return; }
+    showToast("Hoofdlocatie gewijzigd");
     refresh(membership.organizationId);
   }
 
   async function handleToggleArchive(card: PortalLocationCard) {
     if (!membership) return;
     setBusyId(card.id);
-    const { error } = await updatePortalLocationArchived(card.id, !card.archived);
+    const nextArchived = !card.archived;
+    const { error } = await updatePortalLocationArchived(card.id, nextArchived);
     setBusyId(null);
-    if (error) { showCardMessage(card.id, false, error); return; }
+    if (error) { showToast(error, "error"); return; }
+    showToast(nextArchived ? "Locatie gearchiveerd" : "Locatie gedearchiveerd");
     refresh(membership.organizationId);
   }
 
@@ -171,26 +161,27 @@ export default function PortalLocationsPage() {
     setBusyId(confirmDeleteId);
     const { error } = await deletePortalLocationChecked(confirmDeleteId);
     setBusyId(null);
-    if (error) { setActionError(error); return; }
     setConfirmDeleteId(null);
+    if (error) { showToast(error, "error"); return; }
+    showToast("Locatie verwijderd");
     refresh(membership.organizationId);
   }
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-start justify-between flex-wrap gap-3">
-        <SectionHeader title="Vestigingen" subtitle={loading ? "Laden…" : `${activeCount} van ${maxLocations} vestigingen gebruikt`} />
+        <SectionHeader title="Locaties" subtitle={loading ? "Laden…" : `${activeCount} van ${maxLocations} locaties gebruikt`} />
         {canManage && (
           <Button size="sm" onClick={() => setFormTarget("new")} disabled={atLimit}>
             <Plus size={14} />
-            Vestiging toevoegen
+            Locatie toevoegen
           </Button>
         )}
       </div>
 
       {!loading && atLimit && (
         <p className="text-xs" style={{ color: "#dc2626" }}>
-          Je hebt het maximum aantal vestigingen voor je abonnement bereikt. Neem contact op om uit te breiden.
+          Je hebt het maximum aantal locaties voor je abonnement bereikt. Neem contact op om uit te breiden.
         </p>
       )}
 
@@ -214,11 +205,11 @@ export default function PortalLocationsPage() {
       </div>
 
       {formTarget && membership && (
-        <Modal onClose={() => setFormTarget(null)} maxWidth="max-w-2xl">
+        <Modal onClose={() => setFormTarget(null)} maxWidth="max-w-2xl" dismissOnBackdropClick={false}>
           <LocationForm
             organizationId={membership.organizationId}
             location={formTarget === "new" ? undefined : formTarget}
-            onSaved={() => { setFormTarget(null); refresh(membership.organizationId); }}
+            onSaved={() => { setFormTarget(null); refresh(membership.organizationId); showToast("Locatie opgeslagen"); }}
             onClose={() => setFormTarget(null)}
           />
         </Modal>
@@ -229,8 +220,8 @@ export default function PortalLocationsPage() {
       ) : visibleCards.length === 0 ? (
         <EmptyState
           icon={MapPin}
-          title={filter === "active" ? "Nog geen actieve vestigingen" : "Geen gearchiveerde vestigingen"}
-          description={filter === "active" ? "Voeg je eerste vestiging toe om te beginnen." : undefined}
+          title={filter === "active" ? "Nog geen actieve locaties" : "Geen gearchiveerde locaties"}
+          description={filter === "active" ? "Voeg je eerste locatie toe om te beginnen." : undefined}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -239,48 +230,39 @@ export default function PortalLocationsPage() {
               key={card.id}
               card={card}
               canManage={canManage}
-              message={cardMessages[card.id]}
               onOpen={() => router.push(`/portal/locaties/${card.id}`)}
               onEdit={() => handleEdit(card.id)}
               onSetMain={() => setConfirmMainId(card.id)}
               onToggleArchive={() => handleToggleArchive(card)}
-              onDeleteRequest={() => { setActionError(""); setConfirmDeleteId(card.id); }}
+              onDeleteRequest={() => setConfirmDeleteId(card.id)}
             />
           ))}
         </div>
       )}
 
       {confirmMainId && (
-        <Modal onClose={() => setConfirmMainId(null)} maxWidth="max-w-sm">
-          <div className="rounded-2xl p-6" style={{ background: "#ffffff" }}>
-            <h3 className="font-semibold text-gray-900 mb-2">Hoofdvestiging wijzigen?</h3>
-            <p className="text-sm text-gray-500 mb-5">
-              Deze vestiging wordt de nieuwe hoofdvestiging. De huidige hoofdvestiging verliest die status.
-            </p>
-            {actionError && <p className="text-xs mb-3" style={{ color: "#dc2626" }}>{actionError}</p>}
-            <div className="flex justify-end gap-2">
-              <Button size="sm" variant="secondary" onClick={() => setConfirmMainId(null)}>Annuleren</Button>
-              <Button size="sm" disabled={busyId === confirmMainId} onClick={handleSetMain}>Bevestigen</Button>
-            </div>
-          </div>
-        </Modal>
+        <ConfirmDialog
+          title="Hoofdlocatie wijzigen?"
+          message="Deze locatie wordt de nieuwe hoofdlocatie. De huidige hoofdlocatie verliest die status."
+          confirmLabel="Bevestigen"
+          danger={false}
+          loading={busyId === confirmMainId}
+          onCancel={() => setConfirmMainId(null)}
+          onConfirm={handleSetMain}
+        />
       )}
 
       {confirmDeleteId && (
-        <Modal onClose={() => setConfirmDeleteId(null)} maxWidth="max-w-sm">
-          <div className="rounded-2xl p-6" style={{ background: "#ffffff" }}>
-            <h3 className="font-semibold text-gray-900 mb-2">Vestiging verwijderen?</h3>
-            <p className="text-sm text-gray-500 mb-5">
-              Dit verwijdert de vestiging permanent. Deze actie kan niet ongedaan worden gemaakt.
-            </p>
-            {actionError && <p className="text-xs mb-3" style={{ color: "#dc2626" }}>{actionError}</p>}
-            <div className="flex justify-end gap-2">
-              <Button size="sm" variant="secondary" onClick={() => setConfirmDeleteId(null)}>Annuleren</Button>
-              <Button size="sm" variant="danger" disabled={busyId === confirmDeleteId} onClick={handleDelete}>Verwijderen</Button>
-            </div>
-          </div>
-        </Modal>
+        <ConfirmDialog
+          title="Locatie verwijderen?"
+          message="Dit verwijdert de locatie permanent. Deze actie kan niet ongedaan worden gemaakt."
+          confirmLabel="Verwijderen"
+          loading={busyId === confirmDeleteId}
+          onCancel={() => setConfirmDeleteId(null)}
+          onConfirm={handleDelete}
+        />
       )}
+      {toastNode}
     </div>
   );
 }

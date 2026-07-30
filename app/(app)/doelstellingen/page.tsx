@@ -1,24 +1,23 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAppData } from "@/lib/store";
-import { type Doel, type Mijlpaal } from "@/lib/data";
+import { type Doel } from "@/lib/data";
 import { Button } from "@/components/ui/Button";
 import { useUserPlan } from "@/lib/hooks/useUserPlan";
 import { canAddDoel } from "@/lib/featureGates";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { usePatientProtocol } from "@/lib/hooks/usePatientProtocol";
+import { ProtocolGoalsView } from "@/components/training/ProtocolGoalsView";
+import { useToast } from "@/components/ui/Toast";
+import { Tabs } from "@/components/ui/Tabs";
 import {
   Target, Plus, Check, Pencil, Trash2, X,
-  Star, Flag, Trophy, Zap, GripVertical,
+  Star, Flag, Zap,
 } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function todayStr(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 function formatDate(str: string): string {
   if (!str) return "";
@@ -29,7 +28,6 @@ function formatDate(str: string): string {
 }
 
 const ICON_OPTIONS = ["🏃", "🚴", "💪", "🏋️", "⚽", "🎯", "🧘", "🏊", "🚶", "🦵", "🏆", "✨"];
-const FASE_OPTIONS = ["Fase 1: Basis", "Fase 2: Beweging", "Fase 3: Kracht", "Fase 4: Terugkeer"];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -240,122 +238,6 @@ function GoalFormModal({
   );
 }
 
-// ─── Mijlpaal form modal ──────────────────────────────────────────────────────
-
-type MijlpaalFormState = { title: string; fase: string; reflectionText: string; completedAt: string };
-
-function MijlpaalFormModal({
-  initial,
-  onSave,
-  onClose,
-  isNew,
-}: {
-  initial?: Partial<MijlpaalFormState>;
-  onSave: (data: MijlpaalFormState) => void;
-  onClose: () => void;
-  isNew?: boolean;
-}) {
-  const [form, setForm] = useState<MijlpaalFormState>({
-    title: initial?.title ?? "",
-    fase: initial?.fase ?? FASE_OPTIONS[0],
-    reflectionText: initial?.reflectionText ?? "",
-    completedAt: initial?.completedAt ?? "",
-  });
-  const [submitted, setSubmitted] = useState(false);
-
-  function set<K extends keyof MijlpaalFormState>(k: K, v: MijlpaalFormState[K]) {
-    setForm((p) => ({ ...p, [k]: v }));
-  }
-
-  function handleSave() {
-    setSubmitted(true);
-    if (!form.title.trim()) return;
-    onSave(form);
-  }
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.35)", backdropFilter: "blur(2px)" }}
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div
-        className="w-full max-w-md rounded-2xl overflow-hidden"
-        style={{ background: "#ffffff", boxShadow: "0 24px 64px rgba(0,0,0,0.18)", animation: "modalIn 0.18s ease" }}
-      >
-        <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "#f0ede8" }}>
-          <p className="text-sm font-semibold text-gray-900">{isNew ? "Nieuwe mijlpaal" : "Mijlpaal bewerken"}</p>
-          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-gray-100">
-            <X size={15} className="text-gray-400" />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-4">
-          <div>
-            <FieldLabel>Titel *</FieldLabel>
-            <TextInput value={form.title} onChange={(v) => set("title", v)} placeholder="Bijv. 30 minuten lopen" />
-            {submitted && !form.title.trim() && <p className="text-xs text-red-400 mt-1">Vul een titel in</p>}
-          </div>
-
-          <div>
-            <FieldLabel>Fase</FieldLabel>
-            <select
-              value={form.fase}
-              onChange={(e) => set("fase", e.target.value)}
-              className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none appearance-none"
-              style={{
-                borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a",
-                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
-                backgroundRepeat: "no-repeat", backgroundPosition: "right 14px center", paddingRight: "36px",
-              }}
-            >
-              {FASE_OPTIONS.map((f) => <option key={f} value={f}>{f}</option>)}
-            </select>
-          </div>
-
-          {initial?.completedAt !== undefined && (
-            <div>
-              <FieldLabel optional>Voltooiingsdatum</FieldLabel>
-              <div className="flex items-center gap-2">
-                <div className="flex-1">
-                  <DatePicker value={form.completedAt} onChange={(v) => set("completedAt", v)} placeholder="Geen datum gekozen" />
-                </div>
-                {form.completedAt && (
-                  <button
-                    type="button"
-                    onClick={() => set("completedAt", "")}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors shrink-0"
-                    title="Datum verwijderen"
-                  >
-                    <X size={13} className="text-gray-400" />
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          <div>
-            <FieldLabel optional>Reflectie</FieldLabel>
-            <Textarea value={form.reflectionText} onChange={(v) => set("reflectionText", v)} placeholder="Hoe voelde dit?" />
-          </div>
-
-          <div className="flex gap-2 justify-end pt-1">
-            <Button variant="secondary" size="sm" onClick={onClose}>Annuleren</Button>
-            <Button size="sm" onClick={handleSave}>Opslaan</Button>
-          </div>
-        </div>
-      </div>
-      <style>{`@keyframes modalIn { from { opacity: 0; transform: scale(0.97) translateY(6px); } to { opacity: 1; transform: scale(1) translateY(0); } }`}</style>
-    </div>
-  );
-}
-
 // ─── Confirm delete modal ─────────────────────────────────────────────────────
 
 function ConfirmDeleteModal({ label, title: dlgTitle, onConfirm, onClose }: {
@@ -544,208 +426,22 @@ function GoalCard({ doel, onToggle, onEdit, onDelete, onPromote }: {
   );
 }
 
-// ─── Milestone item ───────────────────────────────────────────────────────────
-
-function MijlpaalItem({
-  mijlpaal, isNext, onToggle, onUpdateReflection, onEdit, onDelete, isDragOver,
-}: {
-  mijlpaal: Mijlpaal; isNext: boolean;
-  onToggle: () => void;
-  onUpdateReflection: (text: string, score?: number) => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  isDragOver?: boolean;
-}) {
-  const [reflOpen, setReflOpen] = useState(false);
-  const [reflText, setReflText] = useState(mijlpaal.reflectionText ?? "");
-  const [reflScore, setReflScore] = useState<number | undefined>(mijlpaal.painScore);
-  const [confirmDel, setConfirmDel] = useState(false);
-
-  function saveReflection() {
-    onUpdateReflection(reflText, reflScore);
-    setReflOpen(false);
-  }
-
-  return (
-    <div className="flex gap-3 py-3 transition-all" style={{ borderBottom: "1px solid #f5f3f0", borderTop: isDragOver ? "2px solid #e8632a" : "2px solid transparent" }}>
-      <button onClick={onToggle}
-        className="mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all"
-        style={{ borderColor: mijlpaal.completed ? "#22c55e" : isNext ? "#e8632a" : "#d1d5db", background: mijlpaal.completed ? "#22c55e" : "transparent" }}>
-        {mijlpaal.completed && <Check size={11} className="text-white" strokeWidth={3} />}
-      </button>
-
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-sm leading-snug flex-1"
-            style={{ color: mijlpaal.completed ? "#9ca3af" : isNext ? "#1a1a1a" : "#374151", fontWeight: isNext && !mijlpaal.completed ? 600 : 400, textDecoration: mijlpaal.completed ? "line-through" : "none" }}>
-            {mijlpaal.title}
-            {isNext && !mijlpaal.completed && (
-              <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full align-middle"
-                style={{ background: "#fff3ee", color: "#e8632a" }}>Volgende</span>
-            )}
-          </p>
-          {/* Edit + delete actions */}
-          <div className="flex items-center gap-0.5 shrink-0 -mt-0.5">
-            <span className="w-6 h-6 flex items-center justify-center cursor-grab active:cursor-grabbing" title="Versleep om volgorde aan te passen">
-              <GripVertical size={13} className="text-gray-200" />
-            </span>
-            <button onClick={onEdit} className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors">
-              <Pencil size={11} className="text-gray-300 hover:text-gray-500" />
-            </button>
-            {confirmDel ? (
-              <div className="flex items-center gap-1 ml-1">
-                <button onClick={() => { onDelete(); setConfirmDel(false); }}
-                  className="text-[10px] font-medium px-2 py-0.5 rounded-md text-white"
-                  style={{ background: "#ef4444" }}>Ja</button>
-                <button onClick={() => setConfirmDel(false)} className="text-[10px] text-gray-400 hover:text-gray-600">Nee</button>
-              </div>
-            ) : (
-              <button onClick={() => setConfirmDel(true)} className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors">
-                <Trash2 size={11} className="text-gray-300 hover:text-red-400" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {mijlpaal.completed && (
-          <p className="text-[11px] mt-0.5" style={{ color: "#22c55e" }}>
-            ✓ {formatDate(mijlpaal.completedAt ?? "")}
-          </p>
-        )}
-
-        {mijlpaal.completed && (
-          <button onClick={() => setReflOpen((v) => !v)}
-            className="mt-1 text-[11px] font-medium transition-colors hover:opacity-70"
-            style={{ color: "#9ca3af" }}>
-            {reflOpen ? "Verberg reflectie" : mijlpaal.reflectionText ? "Reflectie bekijken" : "Reflectie toevoegen"}
-          </button>
-        )}
-
-        {reflOpen && (
-          <div className="mt-2 space-y-2 p-3 rounded-xl" style={{ background: "#faf9f7" }}>
-            <p className="text-xs font-medium text-gray-500">Hoe voelde dit?</p>
-            <Textarea value={reflText} onChange={setReflText} placeholder="Schrijf een korte reflectie..." rows={2} />
-            <div>
-              <p className="text-xs text-gray-400 mb-1.5">Pijnniveau (optioneel)</p>
-              <div className="flex gap-1">
-                {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-                  <button key={n} type="button" onClick={() => setReflScore(reflScore === n ? undefined : n)}
-                    className="w-7 h-7 rounded-lg text-xs font-medium transition-all"
-                    style={{ background: reflScore === n ? "#e8632a" : "#f3f0eb", color: reflScore === n ? "#ffffff" : "#6b7280" }}>
-                    {n}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={saveReflection}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-opacity hover:opacity-90"
-                style={{ background: "#1c1c1e", color: "#ffffff" }}>Opslaan</button>
-              <button onClick={() => setReflOpen(false)} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Annuleren</button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Phase group ──────────────────────────────────────────────────────────────
-
-function FaseGroep({
-  fase, mijlpalen, firstIncompleteId, onToggle, onUpdateReflection, onEdit, onDelete, onReorder,
-}: {
-  fase: string; mijlpalen: Mijlpaal[]; firstIncompleteId: string | null;
-  onToggle: (id: string) => void;
-  onUpdateReflection: (id: string, text: string, score?: number) => void;
-  onEdit: (m: Mijlpaal) => void;
-  onDelete: (id: string) => void;
-  onReorder: (orderedIds: string[]) => void;
-}) {
-  const [localItems, setLocalItems] = useState<Mijlpaal[]>(mijlpalen);
-  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
-  const dragFromIdx = useRef<number | null>(null);
-
-  // Sync local items when props change (external updates)
-  useEffect(() => { setLocalItems(mijlpalen); }, [mijlpalen]);
-
-  function handleDragStart(idx: number) { dragFromIdx.current = idx; }
-  function handleDragEnter(idx: number) { setDragOverIdx(idx); }
-  function handleDragOver(e: React.DragEvent) { e.preventDefault(); }
-  function handleDrop(toIdx: number) {
-    const fromIdx = dragFromIdx.current;
-    if (fromIdx === null || fromIdx === toIdx) { setDragOverIdx(null); return; }
-    const next = [...localItems];
-    const [moved] = next.splice(fromIdx, 1);
-    next.splice(toIdx, 0, moved);
-    setLocalItems(next);
-    setDragOverIdx(null);
-    dragFromIdx.current = null;
-    onReorder(next.map((m) => m.id));
-  }
-  function handleDragEnd() { setDragOverIdx(null); dragFromIdx.current = null; }
-
-  const completed = localItems.filter((m) => m.completed).length;
-  const total = localItems.length;
-
-  return (
-    <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "#e8e5df" }}>
-      <div className="flex items-center justify-between px-5 py-3"
-        style={{ background: "#faf9f7", borderBottom: "1px solid #f0ede8" }}>
-        <p className="text-sm font-semibold text-gray-800">{fase}</p>
-        <div className="flex items-center gap-2">
-          <div className="w-16 h-1.5 rounded-full overflow-hidden" style={{ background: "#f0ede8" }}>
-            <div className="h-full rounded-full transition-all"
-              style={{ width: `${total > 0 ? (completed / total) * 100 : 0}%`, background: completed === total ? "#22c55e" : "#e8632a" }} />
-          </div>
-          <span className="text-xs" style={{ color: "#9ca3af" }}>{completed}/{total}</span>
-        </div>
-      </div>
-      <div className="px-5 bg-white">
-        {localItems.map((m, idx) => (
-          <div
-            key={m.id}
-            draggable
-            onDragStart={() => handleDragStart(idx)}
-            onDragEnter={() => handleDragEnter(idx)}
-            onDragOver={handleDragOver}
-            onDrop={() => handleDrop(idx)}
-            onDragEnd={handleDragEnd}
-            style={{ opacity: dragFromIdx.current === idx ? 0.4 : 1, transition: "opacity 0.15s" }}
-          >
-            <MijlpaalItem
-              mijlpaal={m}
-              isNext={m.id === firstIncompleteId}
-              isDragOver={dragOverIdx === idx && dragFromIdx.current !== idx}
-              onToggle={() => onToggle(m.id)}
-              onUpdateReflection={(text, score) => onUpdateReflection(m.id, text, score)}
-              onEdit={() => onEdit(m)}
-              onDelete={() => onDelete(m.id)}
-            />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+type DoelTab = "herstelplan" | "eigen";
+
 export default function DoelstellingenPage() {
-  const {
-    hydrated, doelen, addDoel, updateDoel, deleteDoel, promoteToMain,
-    mijlpalen, addMijlpaal, updateMijlpaal, deleteMijlpaal, reorderMijlpalen,
-  } = useAppData();
+  const { hydrated, doelen, addDoel, updateDoel, deleteDoel, promoteToMain } = useAppData();
 
   const planInfo = useUserPlan();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const { checked: protocolChecked, hasActiveProtocol, protocol } = usePatientProtocol();
 
   const [toast, setToast] = useState<string | null>(null);
-  const [mobileTabDoel, setMobileTabDoel] = useState<"doelstellingen" | "mijlpalen">("doelstellingen");
+  const { showToast, toastNode } = useToast();
   const [goalModal, setGoalModal] = useState<{ mode: "add" } | { mode: "edit"; doel: Doel } | null>(null);
   const [deleteGoalTarget, setDeleteGoalTarget] = useState<Doel | null>(null);
-  const [mijlpaalModal, setMijlpaalModal] = useState<{ mode: "add" } | { mode: "edit"; mijlpaal: Mijlpaal } | null>(null);
-  const [deleteMijlpaalTarget, setDeleteMijlpaalTarget] = useState<Mijlpaal | null>(null);
+  const [tab, setTab] = useState<DoelTab>("herstelplan");
 
   const triggerToast = useCallback(() => {
     const msg = CELEBRATION_MESSAGES[Math.floor(Math.random() * CELEBRATION_MESSAGES.length)];
@@ -762,8 +458,10 @@ export default function DoelstellingenPage() {
     if (!goalModal) return;
     if (goalModal.mode === "add") {
       addDoel({ id: crypto.randomUUID(), type: "regular", icon: data.icon, title: data.title, description: data.description, targetDate: data.targetDate, completed: false, createdAt: now, updatedAt: now });
+      showToast("Doel opgeslagen");
     } else {
       updateDoel(goalModal.doel.id, { icon: data.icon, title: data.title, description: data.description, targetDate: data.targetDate, completedAt: data.behaaldOp || undefined });
+      showToast("Doel opgeslagen");
     }
     setGoalModal(null);
   }
@@ -774,224 +472,98 @@ export default function DoelstellingenPage() {
     else updateDoel(doel.id, { completed: false, completedAt: undefined });
   }
 
-  // ── Milestone actions ─────────────────────────────────────────────────────
+  if (!hydrated || !protocolChecked) return null;
 
-  function handleToggleMijlpaal(id: string) {
-    const m = mijlpalen.find((x) => x.id === id);
-    if (!m) return;
-    if (!m.completed) { updateMijlpaal(id, { completed: true, completedAt: todayStr() }); triggerToast(); }
-    else updateMijlpaal(id, { completed: false, completedAt: undefined });
-  }
+  const showProtocolSection = hasActiveProtocol && !!protocol;
 
-  function handleUpdateReflection(id: string, text: string, score?: number) {
-    updateMijlpaal(id, { reflectionText: text, painScore: score });
-  }
-
-  function handleSaveMijlpaal(data: MijlpaalFormState) {
-    const now = new Date().toISOString();
-    if (!mijlpaalModal) return;
-    if (mijlpaalModal.mode === "add") {
-      addMijlpaal({ id: crypto.randomUUID(), fase: data.fase, title: data.title, completed: false, reflectionText: data.reflectionText || undefined, createdAt: now, updatedAt: now });
-    } else {
-      updateMijlpaal(mijlpaalModal.mijlpaal.id, {
-        title: data.title,
-        fase: data.fase,
-        reflectionText: data.reflectionText || undefined,
-        completedAt: data.completedAt || undefined,
-        completed: data.completedAt ? mijlpaalModal.mijlpaal.completed : false,
-      });
-    }
-    setMijlpaalModal(null);
-  }
-
-  // ── Milestone grouping ────────────────────────────────────────────────────
-
-  const faseOrder = ["Fase 1: Basis", "Fase 2: Beweging", "Fase 3: Kracht", "Fase 4: Terugkeer"];
-  const groupedMijlpalen = faseOrder.reduce<Record<string, Mijlpaal[]>>((acc, fase) => {
-    acc[fase] = mijlpalen.filter((m) => m.fase === fase);
-    return acc;
-  }, {});
-
-  const totalMijlpalen = mijlpalen.length;
-  const completedMijlpalen = mijlpalen.filter((m) => m.completed).length;
-  const firstIncompleteId = faseOrder.flatMap((f) => groupedMijlpalen[f]).find((m) => !m.completed)?.id ?? null;
-
-  if (!hydrated) return null;
+  const showPersonalSection = !showProtocolSection || tab === "eigen";
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
+      {showProtocolSection && (
+        <Tabs
+          options={[
+            { value: "herstelplan", label: "Vanuit herstelplan" },
+            { value: "eigen", label: "Persoonlijke doelen" },
+          ]}
+          value={tab}
+          onChange={setTab}
+        />
+      )}
 
-      {/* Hoofddoelstelling — always visible */}
-      <section className="mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900">Hoofddoelstelling</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Jouw belangrijkste herstelgoal</p>
-          </div>
-        </div>
+      {showProtocolSection && tab === "herstelplan" && <ProtocolGoalsView protocol={protocol} />}
 
-        {mainGoal ? (
-          <MainGoalCard
-            doel={mainGoal}
-            onToggle={() => handleToggleDoel(mainGoal)}
-            onEdit={() => setGoalModal({ mode: "edit", doel: mainGoal })}
-          />
-        ) : (
-          <div className="rounded-2xl border border-dashed flex flex-col items-center justify-center py-10 gap-2"
-            style={{ borderColor: "#e8e5df" }}>
-            <Target size={24} style={{ color: "#d4cfc9" }} />
-            <p className="text-sm text-gray-400">Nog geen hoofddoel ingesteld</p>
-            <p className="text-xs text-gray-400">Voeg een doelstelling toe en maak het je hoofddoel</p>
-          </div>
-        )}
-      </section>
-
-      {/* Mobile tab switcher */}
-      <div className="sm:hidden flex rounded-xl overflow-hidden mb-5" style={{ background: "#f3f0eb" }}>
-        {(["doelstellingen", "mijlpalen"] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setMobileTabDoel(tab)}
-            className="flex-1 py-2.5 text-sm font-medium transition-all"
-            style={{
-              background: mobileTabDoel === tab ? "#ffffff" : "transparent",
-              color: mobileTabDoel === tab ? "#1a1a1a" : "#9ca3af",
-              borderRadius: "10px",
-              margin: "3px",
-              boxShadow: mobileTabDoel === tab ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
-            }}
-          >
-            {tab === "doelstellingen" ? "Doelstellingen" : "Mijlpalen"}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Two-column layout ─────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 items-start">
-
-        {/* ── LEFT COLUMN: Doelstellingen ─────────────────────────────────────── */}
-        <div className={`space-y-6 ${mobileTabDoel !== "doelstellingen" ? "hidden sm:block" : ""}`}>
-
-          {/* Blok 2: Overige doelstellingen */}
-          <section>
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h2 className="text-base font-semibold text-gray-900">Overige doelstellingen</h2>
-                <p className="text-xs text-gray-400 mt-0.5">{regularGoals.length} {regularGoals.length === 1 ? "doel" : "doelen"}</p>
-              </div>
-              <Button
-                size="sm"
-                onClick={() => {
-                  if (!canAddDoel(planInfo, regularGoals.length)) {
-                    setShowUpgradeModal(true);
-                    return;
-                  }
-                  setGoalModal({ mode: "add" });
-                }}
-              >
-                <Plus size={14} /> Nieuw doel
-              </Button>
-            </div>
-
-            {regularGoals.length === 0 ? (
-              <div className="rounded-2xl border border-dashed flex flex-col items-center justify-center py-8 gap-2"
-                style={{ borderColor: "#e8e5df" }}>
-                <Zap size={20} style={{ color: "#d4cfc9" }} />
-                <p className="text-sm text-gray-400">Voeg een eerste doelstelling toe</p>
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {regularGoals.map((d) => (
-                  <GoalCard
-                    key={d.id}
-                    doel={d}
-                    onToggle={() => handleToggleDoel(d)}
-                    onEdit={() => setGoalModal({ mode: "edit", doel: d })}
-                    onDelete={() => setDeleteGoalTarget(d)}
-                    onPromote={() => promoteToMain(d.id)}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
-
-        {/* ── RIGHT COLUMN: Mijlpalen ─────────────────────────────────────────── */}
-        <div className={`space-y-4 ${mobileTabDoel !== "mijlpalen" ? "hidden sm:block" : ""}`}>
-
-          {/* Mobile: title + count + button (matches Doelstellingen layout) + progress bar below */}
-          <div className="sm:hidden">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h2 className="text-base font-semibold text-gray-900">Mijlpalen</h2>
-                <p className="text-xs text-gray-400 mt-0.5">{completedMijlpalen} van {totalMijlpalen} behaald</p>
-              </div>
-              <Button size="sm" onClick={() => setMijlpaalModal({ mode: "add" })}>
-                <Plus size={14} /> Nieuwe mijlpaal
-              </Button>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-2.5 rounded-full overflow-hidden" style={{ background: "#f0ede8" }}>
-                <div className="h-full rounded-full transition-all"
-                  style={{ width: `${totalMijlpalen > 0 ? (completedMijlpalen / totalMijlpalen) * 100 : 0}%`, background: "#e8632a" }} />
-              </div>
-              <span className="text-xs font-semibold shrink-0" style={{ color: "#e8632a" }}>
-                {totalMijlpalen > 0 ? Math.round((completedMijlpalen / totalMijlpalen) * 100) : 0}%
-              </span>
-            </div>
-          </div>
-
-          {/* Desktop: title + compact progress + button inline */}
-          <div className="hidden sm:flex items-center justify-between">
+      {showPersonalSection && (
+      <div className="space-y-8">
+        {/* Hoofddoelstelling — always visible */}
+        <section className="mb-6">
+          <div className="flex items-center justify-between mb-3">
             <div>
-              <h2 className="text-base font-semibold text-gray-900">Mijlpalen</h2>
-              <p className="text-xs text-gray-400 mt-0.5">{completedMijlpalen} van {totalMijlpalen} behaald</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <div className="w-16 h-2 rounded-full overflow-hidden" style={{ background: "#f0ede8" }}>
-                  <div className="h-full rounded-full transition-all"
-                    style={{ width: `${totalMijlpalen > 0 ? (completedMijlpalen / totalMijlpalen) * 100 : 0}%`, background: "#e8632a" }} />
-                </div>
-                <span className="text-xs font-semibold" style={{ color: "#e8632a" }}>
-                  {totalMijlpalen > 0 ? Math.round((completedMijlpalen / totalMijlpalen) * 100) : 0}%
-                </span>
-              </div>
-              <Button size="sm" variant="secondary" onClick={() => setMijlpaalModal({ mode: "add" })}>
-                <Plus size={13} />
-              </Button>
+              <h2 className="text-base font-semibold text-gray-900">Hoofddoelstelling</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Jouw belangrijkste herstelgoal</p>
             </div>
           </div>
 
-          {completedMijlpalen === 0 && (
-            <div className="rounded-2xl border px-4 py-3 flex items-center gap-2.5"
-              style={{ background: "#fff3ee", borderColor: "#fde3d5" }}>
-              <Trophy size={15} style={{ color: "#e8632a" }} />
-              <p className="text-sm" style={{ color: "#e8632a" }}>Je eerste mijlpaal komt eraan: zet hem neer!</p>
+          {mainGoal ? (
+            <MainGoalCard
+              doel={mainGoal}
+              onToggle={() => handleToggleDoel(mainGoal)}
+              onEdit={() => setGoalModal({ mode: "edit", doel: mainGoal })}
+            />
+          ) : (
+            <div className="rounded-2xl border border-dashed flex flex-col items-center justify-center py-10 gap-2"
+              style={{ borderColor: "#e8e5df" }}>
+              <Target size={24} style={{ color: "#d4cfc9" }} />
+              <p className="text-sm text-gray-400">Nog geen hoofddoel ingesteld</p>
+              <p className="text-xs text-gray-400">Voeg een doelstelling toe en maak het je hoofddoel</p>
             </div>
           )}
+        </section>
 
-          <div className="space-y-3">
-            {faseOrder.map((fase) => {
-              const items = groupedMijlpalen[fase];
-              if (!items || items.length === 0) return null;
-              return (
-                <FaseGroep
-                  key={fase}
-                  fase={fase}
-                  mijlpalen={items}
-                  firstIncompleteId={firstIncompleteId}
-                  onToggle={handleToggleMijlpaal}
-                  onUpdateReflection={handleUpdateReflection}
-                  onEdit={(m) => setMijlpaalModal({ mode: "edit", mijlpaal: m })}
-                  onDelete={(id) => setDeleteMijlpaalTarget(mijlpalen.find((m) => m.id === id) ?? null)}
-                  onReorder={reorderMijlpalen}
-                />
-              );
-            })}
+        {/* Overige doelstellingen */}
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">Overige doelstellingen</h2>
+              <p className="text-xs text-gray-400 mt-0.5">{regularGoals.length} {regularGoals.length === 1 ? "doel" : "doelen"}</p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => {
+                if (!canAddDoel(planInfo, regularGoals.length)) {
+                  setShowUpgradeModal(true);
+                  return;
+                }
+                setGoalModal({ mode: "add" });
+              }}
+            >
+              <Plus size={14} /> Nieuw doel
+            </Button>
           </div>
-        </div>
+
+          {regularGoals.length === 0 ? (
+            <div className="rounded-2xl border border-dashed flex flex-col items-center justify-center py-8 gap-2"
+              style={{ borderColor: "#e8e5df" }}>
+              <Zap size={20} style={{ color: "#d4cfc9" }} />
+              <p className="text-sm text-gray-400">Voeg een eerste doelstelling toe</p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {regularGoals.map((d) => (
+                <GoalCard
+                  key={d.id}
+                  doel={d}
+                  onToggle={() => handleToggleDoel(d)}
+                  onEdit={() => setGoalModal({ mode: "edit", doel: d })}
+                  onDelete={() => setDeleteGoalTarget(d)}
+                  onPromote={() => promoteToMain(d.id)}
+                />
+              ))}
+            </div>
+          )}
+        </section>
       </div>
+      )}
 
       {/* ── Modals ─────────────────────────────────────────────────────────────── */}
       {goalModal && (
@@ -1013,35 +585,13 @@ export default function DoelstellingenPage() {
         <ConfirmDeleteModal
           title="Doelstelling verwijderen"
           label={deleteGoalTarget.title}
-          onConfirm={() => { deleteDoel(deleteGoalTarget.id); setDeleteGoalTarget(null); }}
+          onConfirm={() => { deleteDoel(deleteGoalTarget.id); setDeleteGoalTarget(null); showToast("Doel verwijderd"); }}
           onClose={() => setDeleteGoalTarget(null)}
         />
       )}
 
-      {mijlpaalModal && (
-        <MijlpaalFormModal
-          isNew={mijlpaalModal.mode === "add"}
-          initial={mijlpaalModal.mode === "edit" ? {
-            title: mijlpaalModal.mijlpaal.title,
-            fase: mijlpaalModal.mijlpaal.fase,
-            reflectionText: mijlpaalModal.mijlpaal.reflectionText ?? "",
-            completedAt: mijlpaalModal.mijlpaal.completedAt ?? "",
-          } : undefined}
-          onSave={handleSaveMijlpaal}
-          onClose={() => setMijlpaalModal(null)}
-        />
-      )}
-
-      {deleteMijlpaalTarget && (
-        <ConfirmDeleteModal
-          title="Mijlpaal verwijderen"
-          label={deleteMijlpaalTarget.title}
-          onConfirm={() => { deleteMijlpaal(deleteMijlpaalTarget.id); setDeleteMijlpaalTarget(null); }}
-          onClose={() => setDeleteMijlpaalTarget(null)}
-        />
-      )}
-
       {toast && <CelebrationToast message={toast} onDone={() => setToast(null)} />}
+      {toastNode}
 
       {showUpgradeModal && (
         <UpgradeModal feature="doel" onClose={() => setShowUpgradeModal(false)} />

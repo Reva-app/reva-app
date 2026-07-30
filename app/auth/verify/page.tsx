@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
+import { getSafeNextPath } from "@/lib/safeRedirect";
 import type { EmailOtpType } from "@supabase/supabase-js";
 
 /**
@@ -34,7 +35,7 @@ function VerifyHandler() {
   useEffect(() => {
     const tokenHash = searchParams.get("token_hash");
     const type = (searchParams.get("type") as EmailOtpType) || "invite";
-    const next = searchParams.get("next") || "/";
+    const next = getSafeNextPath(searchParams.get("next"));
 
     if (!tokenHash) {
       setError("Deze link is ongeldig.");

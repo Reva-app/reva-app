@@ -5,6 +5,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAppData } from "@/lib/store";
 import { createClient } from "@/lib/supabaseClient";
+import { usePatientStatus } from "@/lib/hooks/usePatientStatus";
+import { AccountInactiveScreen } from "@/components/auth/AccountInactiveScreen";
 
 /**
  * Client-side auth + onboarding guard.
@@ -23,8 +25,9 @@ import { createClient } from "@/lib/supabaseClient";
  * eigen fragment-detectie) alsnog hier op `/` tot stand komt.
  */
 export function AuthGate({ children }: { children: React.ReactNode }) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const { hydrated, setupCompleted } = useAppData();
+  const { checked: statusChecked, status: patientStatus } = usePatientStatus();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -102,6 +105,10 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (authLoading || !hydrated) return null;
   if (!user) return null;
+  if (!statusChecked) return null;
+  if (patientStatus && patientStatus !== "active") {
+    return <AccountInactiveScreen status={patientStatus} onSignOut={signOut} />;
+  }
   if (checkingInvite) return null;
   if (!setupCompleted && !onInstellingen) return null;
 

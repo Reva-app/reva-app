@@ -18,6 +18,8 @@ import type {
   Profile,
   FotoUpdate,
 } from "./data";
+import type { PatientProtocolPhaseView } from "./services/patientProtocolService";
+import { computeTrend, average, countLeadingStreak, dayOfYearIndex, type Trend } from "./insights";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -25,10 +27,10 @@ export type CoachMoodTag = "positief" | "stabiel" | "voorzichtig";
 
 export interface WeeklySummary {
   avgScore:       number | null;
-  trainedDays:    number;
+  trainingCount:  number;
   medCount:       number;
   completedMijl:  number;
-  trend:          "stijgend" | "dalend" | "stabiel" | "onbekend";
+  trend:          Trend;
   coachTekst:     string;
 }
 
@@ -37,6 +39,8 @@ export interface CoachInsights {
   nextStep:       string;
   nextStepAction: string; // "modal:checkin" | "navigate:/dagboek" | etc.
   weekly:         WeeklySummary;
+  /** Extra regel-gebaseerde observaties (streaks, correlaties, protocol-tips) — max 2, prioriteitsvolgorde. */
+  insights:       string[];
   moodTag:        CoachMoodTag;
   disclaimerTekst: string;
 }
@@ -54,6 +58,8 @@ export interface CoachInput {
   dagsSindsBlessure: number;
   fase:           string;
   now:            Date;
+  hasActiveProtocol: boolean;
+  protocolPhase:  PatientProtocolPhaseView | null;
 }
 
 // ─── Time helpers ─────────────────────────────────────────────────────────────
@@ -79,25 +85,6 @@ function prevWeekDates(d: Date): string[] {
   return weekDates(prev);
 }
 
-// ─── Trend helper ─────────────────────────────────────────────────────────────
-
-type Trend = "stijgend" | "dalend" | "stabiel" | "onbekend";
-
-function computeTrend(scores: number[]): Trend {
-  if (scores.length < 4) return "onbekend";
-  const mid      = Math.floor(scores.length / 2);
-  const earlyAvg = scores.slice(0, mid).reduce((s, v) => s + v, 0) / mid;
-  const lateAvg  = scores.slice(mid).reduce((s, v) => s + v, 0) / (scores.length - mid);
-  if (lateAvg > earlyAvg + 0.3) return "stijgend";
-  if (lateAvg < earlyAvg - 0.3) return "dalend";
-  return "stabiel";
-}
-
-function avg(nums: number[]): number | null {
-  if (!nums.length) return null;
-  return nums.reduce((s, v) => s + v, 0) / nums.length;
-}
-
 // ─── Daily insight generator ──────────────────────────────────────────────────
 
 function buildDailyInsight(input: CoachInput, today: string, weekDays: string[]): string {
@@ -107,12 +94,16 @@ function buildDailyInsight(input: CoachInput, today: string, weekDays: string[])
   const todayCheckIn   = checkIns.find(c => c.date === today);
   const weekCheckIns   = checkIns.filter(c => weekDays.includes(c.date));
   const weekScores     = weekCheckIns.map(c => c.dagscore);
-  const weekAvg        = avg(weekScores);
+  const weekAvg        = average(weekScores);
   const trend          = computeTrend(weekScores);
-  const trainedThisWeek = new Set(dagboekWorkouts.filter(w => weekDays.includes(w.date) && w.completed).map(w => w.date)).size;
+  const trainedThisWeek = input.hasActiveProtocol
+    ? (input.protocolPhase?.schedules.reduce((s, sc) => s + sc.completedThisWeek, 0) ?? 0)
+    : new Set(dagboekWorkouts.filter(w => weekDays.includes(w.date) && w.completed).map(w => w.date)).size;
   const todayWorkouts  = dagboekWorkouts.filter(w => w.date === today);
   const openToday      = todayWorkouts.filter(w => !w.completed);
-  const behaaldVandaag = mijlpalen.filter(m => m.completed && m.completedAt?.slice(0, 10) === today);
+  const behaaldVandaag = input.hasActiveProtocol
+    ? (input.protocolPhase?.milestones.filter(m => m.completed && m.completedAt?.slice(0, 10) === today) ?? [])
+    : mijlpalen.filter(m => m.completed && m.completedAt?.slice(0, 10) === today);
   const todayApts      = appointments.filter(a => a.date === today);
 
   // Milestone today — always lead with celebration
@@ -146,7 +137,7 @@ function buildDailyInsight(input: CoachInput, today: string, weekDays: string[])
 
   // Strong training week
   if (trainedThisWeek >= 4) {
-    return `Je hebt deze week al ${trainedThisWeek} trainingsdagen afgerond. Dat is een sterke week, goed bezig.`;
+    return `Je hebt deze week al ${trainedThisWeek} trainingen afgerond. Dat is een sterke week, goed bezig.`;
   }
 
   // Appointment today
@@ -182,11 +173,21 @@ function buildNextStep(input: CoachInput, today: string, tomorrow: string): {
   const openToday     = dagboekWorkouts.filter(w => w.date === today && !w.completed);
   const todayApts     = appointments.filter(a => a.date === today);
   const tomorrowApts  = appointments.filter(a => a.date === tomorrow);
-  const nextMijlpaal  = [...mijlpalen].filter(m => !m.completed).sort((a, b) => (a.fase ?? "").localeCompare(b.fase ?? ""))[0] ?? null;
+  const nextMijlpaal  = input.hasActiveProtocol
+    ? (input.protocolPhase?.milestones.find(m => !m.completed) ?? null)
+    : ([...mijlpalen].filter(m => !m.completed).sort((a, b) => (a.fase ?? "").localeCompare(b.fase ?? ""))[0] ?? null);
 
   // Priority 1: open training today
   if (openToday.length > 0) {
     return { nextStep: "Je training van vandaag staat nog open", nextStepAction: "navigate:/dagboek" };
+  }
+
+  // Priority 1.5: protocolpatiënt loopt achter op wekelijks schema
+  if (input.hasActiveProtocol && input.protocolPhase) {
+    const behind = input.protocolPhase.schedules.find(s => s.completedThisWeek < s.frequencyPerWeek);
+    if (behind) {
+      return { nextStep: `Je trainingsschema "${behind.title}" wacht nog op je deze week`, nextStepAction: "navigate:/training" };
+    }
   }
 
   // Priority 2: no check-in
@@ -232,11 +233,15 @@ function buildWeeklySummary(
   const weekScores    = weekCheckIns.map(c => c.dagscore);
   const prevScores    = prevCheckIns.map(c => c.dagscore);
 
-  const weekAvg    = avg(weekScores);
-  const prevAvg    = avg(prevScores);
-  const trainedDays = new Set(dagboekWorkouts.filter(w => weekDays.includes(w.date) && w.completed).map(w => w.date)).size;
+  const weekAvg    = average(weekScores);
+  const prevAvg    = average(prevScores);
+  const trainingCount = input.hasActiveProtocol
+    ? (input.protocolPhase?.schedules.reduce((s, sc) => s + sc.completedThisWeek, 0) ?? 0)
+    : new Set(dagboekWorkouts.filter(w => weekDays.includes(w.date) && w.completed).map(w => w.date)).size;
   const medCount   = medicatie.filter(m => weekDays.includes(m.date)).length;
-  const compMijl   = mijlpalen.filter(m => m.completed && weekDays.includes(m.completedAt?.slice(0, 10) ?? "")).length;
+  const compMijl   = input.hasActiveProtocol
+    ? (input.protocolPhase?.milestones.filter(m => m.completed && weekDays.includes(m.completedAt?.slice(0, 10) ?? "")).length ?? 0)
+    : mijlpalen.filter(m => m.completed && weekDays.includes(m.completedAt?.slice(0, 10) ?? "")).length;
 
   const trend: Trend = weekAvg !== null && prevAvg !== null
     ? weekAvg > prevAvg + 0.2 ? "stijgend" : weekAvg < prevAvg - 0.2 ? "dalend" : "stabiel"
@@ -245,7 +250,7 @@ function buildWeeklySummary(
   let coachTekst = "";
   if (weekCheckIns.length === 0) {
     coachTekst = "Je hebt deze week nog geen check-ins ingevuld. Door dit bij te houden krijg je steeds beter inzicht.";
-  } else if (trend === "stijgend" && trainedDays >= 3) {
+  } else if (trend === "stijgend" && trainingCount >= 3) {
     coachTekst = "Je zit in een mooie flow met training en structuur. Sterk herstelwerk deze week.";
   } else if (trend === "stijgend") {
     coachTekst = "Je herstel laat deze week een stijgende lijn zien. Goed bezig.";
@@ -253,7 +258,7 @@ function buildWeeklySummary(
     coachTekst = "Deze week was zwaarder dan de vorige. Neem de tijd, luister naar je lichaam.";
   } else if (trend === "dalend") {
     coachTekst = "De scores deze week zijn iets lager. Misschien is wat extra rust goed voor je herstel.";
-  } else if (trainedDays >= 4) {
+  } else if (trainingCount >= 4) {
     coachTekst = "Je hebt deze week consistent getraind. Dat is een sterk fundament voor je herstel.";
   } else if (compMijl > 0) {
     coachTekst = `Je hebt deze week ${compMijl} ${compMijl === 1 ? "mijlpaal" : "mijlpalen"} bereikt. Elke stap telt.`;
@@ -261,7 +266,7 @@ function buildWeeklySummary(
     coachTekst = "Je herstel laat deze week stabiele voortgang zien. Blijf dit ritme vasthouden.";
   }
 
-  return { avgScore: weekAvg, trainedDays, medCount, completedMijl: compMijl, trend, coachTekst };
+  return { avgScore: weekAvg, trainingCount, medCount, completedMijl: compMijl, trend, coachTekst };
 }
 
 // ─── Mood tag ─────────────────────────────────────────────────────────────────
@@ -272,6 +277,56 @@ function computeMoodTag(weekly: WeeklySummary, todayCheckIn: CheckIn | undefined
   if (score >= 4 && (weekly.trend === "stijgend" || weekly.trend === "stabiel")) return "positief";
   if (score <= 2 || weekly.trend === "dalend") return "voorzichtig";
   return "stabiel";
+}
+
+// ─── Extra inzichten (streaks, correlaties, protocol-tips) ────────────────────
+// Regel-gebaseerd, geen externe AI — zelfde uitgangspunt als de rest van dit
+// bestand. Streak-logica is hetzelfde patroon als analyse/page.tsx's "Wat
+// valt op"-sectie, hier hergebruikt via lib/insights.ts. Max 2 regels,
+// prioriteitsvolgorde: streak > trainingscorrelatie > protocol-tip.
+
+function buildExtraInsights(input: CoachInput): string[] {
+  const insights: string[] = [];
+  const recentSorted = [...input.checkIns].sort((a, b) => b.date.localeCompare(a.date));
+
+  const lowStreak = countLeadingStreak(recentSorted, c => c.dagscore <= 2);
+  if (lowStreak >= 3) {
+    insights.push(`Je check-in score is al ${lowStreak} dagen op rij lager dan 3.`);
+  } else {
+    const highStreak = countLeadingStreak(recentSorted, c => c.dagscore >= 4);
+    if (highStreak >= 3) {
+      insights.push(`Je check-in score is al ${highStreak} dagen op rij 4 of hoger: goed bezig.`);
+    }
+  }
+
+  // Trainingscorrelatie — laatste 30 dagen, op basis van de zelf-gerapporteerde
+  // trainingGedaan-vlag op de check-in (werkt voor zowel protocol- als vrije
+  // training, want die vlag is los van de trainingsbron).
+  const monthAgo = new Date(input.now);
+  monthAgo.setDate(monthAgo.getDate() - 30);
+  const monthAgoStr = dateStr(monthAgo);
+  const recentMonth = input.checkIns.filter(c => c.date >= monthAgoStr);
+  const trainingDays = recentMonth.filter(c => c.trainingGedaan);
+  const restDays = recentMonth.filter(c => !c.trainingGedaan);
+  const avgTrainingScore = average(trainingDays.map(c => c.dagscore));
+  const avgRestScore = average(restDays.map(c => c.dagscore));
+  if (
+    avgTrainingScore !== null && avgRestScore !== null &&
+    trainingDays.length >= 3 && restDays.length >= 3 &&
+    avgTrainingScore - avgRestScore >= 0.3
+  ) {
+    insights.push("Je scoort gemiddeld hoger op dagen dat je traint.");
+  }
+
+  // Protocol-tip van de dag — roteert dagelijks door de educatie-items van de
+  // huidige fase (al opgehaald via usePatientProtocol, hier voor het eerst gebruikt).
+  if (input.hasActiveProtocol && input.protocolPhase && input.protocolPhase.educationItems.length > 0) {
+    const items = input.protocolPhase.educationItems;
+    const tip = items[dayOfYearIndex(items.length, input.now)];
+    insights.push(`Wist je dat: ${tip.title}${tip.body ? `. ${tip.body}` : ""}`);
+  }
+
+  return insights.slice(0, 2);
 }
 
 // ─── Master export ────────────────────────────────────────────────────────────
@@ -287,12 +342,14 @@ export function generateCoachInsights(input: CoachInput): CoachInsights {
   const { nextStep, nextStepAction } = buildNextStep(input, today, tomorrow);
   const weekly = buildWeeklySummary(input, thisWeek, lastWeek);
   const moodTag = computeMoodTag(weekly, todayCheckIn);
+  const insights = buildExtraInsights(input);
 
   return {
     dailyInsight,
     nextStep,
     nextStepAction,
     weekly,
+    insights,
     moodTag,
     disclaimerTekst: "REVA geeft geen medisch advies. Raadpleeg altijd je zorgverlener bij vragen over je gezondheid.",
   };

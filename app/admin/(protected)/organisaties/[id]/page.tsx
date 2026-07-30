@@ -23,6 +23,7 @@ import {
   type AdminOrgPatientStats, type AdminOrgUsage, type AdminRoleOption,
   type AdminAccountMatch, type AdminOrgInvite,
 } from "@/lib/services/adminService";
+import { resetStaffMfa } from "@/lib/services/portalService";
 
 const inputStyle = {
   borderColor: "#e8e5df",
@@ -54,7 +55,7 @@ function TextField({
   );
 }
 
-const ROLE_ORDER = ["organization_owner", "therapist", "practice_staff"];
+const ROLE_ORDER = ["organization_owner", "therapist"];
 
 function roleBadgeVariant(roleKey: string): "accent" | "blue" | "purple" | "default" {
   if (roleKey === "organization_owner") return "accent";
@@ -85,6 +86,18 @@ function AdminOrganizationDetailContent() {
   const [patientStats, setPatientStats] = useState<AdminOrgPatientStats | null>(null);
   const [usage, setUsage] = useState<AdminOrgUsage | null>(null);
   const [loading, setLoading] = useState(true);
+  const [resettingMfaUserId, setResettingMfaUserId] = useState<string | null>(null);
+  const [mfaResetMessage, setMfaResetMessage] = useState<{ userId: string; text: string; ok: boolean } | null>(null);
+
+  async function handleMfaReset(userId: string) {
+    if (!window.confirm("Tweestapsverificatie resetten voor deze medewerker? Diegene moet dan opnieuw instellen bij de volgende keer inloggen.")) return;
+    setResettingMfaUserId(userId);
+    setMfaResetMessage(null);
+    const { error } = await resetStaffMfa(userId, orgId);
+    setResettingMfaUserId(null);
+    setMfaResetMessage({ userId, ok: !error, text: error ?? "Gereset." });
+    setTimeout(() => setMfaResetMessage(null), 4000);
+  }
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -288,7 +301,7 @@ function AdminOrganizationDetailContent() {
   if (!org) {
     return (
       <div className="p-4 sm:p-6 max-w-5xl mx-auto">
-        <EmptyState icon={Building2} title="Organisatie niet gevonden" />
+        <EmptyState icon={Building2} title="Bedrijf niet gevonden" />
       </div>
     );
   }
@@ -304,7 +317,7 @@ function AdminOrganizationDetailContent() {
         className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors"
       >
         <ArrowLeft size={14} />
-        Terug naar organisaties
+        Terug naar bedrijven
       </button>
 
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -329,7 +342,7 @@ function AdminOrganizationDetailContent() {
 
       {/* ── 1. Algemene gegevens ─────────────────────────────────────────── */}
       <Card>
-        <CardHeader title="Algemene gegevens" subtitle="Basisinformatie over deze organisatie" />
+        <CardHeader title="Algemene gegevens" subtitle="Basisinformatie over dit bedrijf" />
         <div className="flex items-start gap-5 mb-5">
           <div className="shrink-0">
             <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleLogoSelect} />
@@ -351,7 +364,7 @@ function AdminOrganizationDetailContent() {
             </button>
           </div>
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <TextField label="Organisatienaam" value={org.name} onChange={(v) => setOrg({ ...org, name: v })} />
+            <TextField label="Bedrijfsnaam" value={org.name} onChange={(v) => setOrg({ ...org, name: v })} />
             <div>
               <FieldLabel>Status</FieldLabel>
               <select
@@ -373,7 +386,7 @@ function AdminOrganizationDetailContent() {
           <TextField label="BTW-nummer" value={org.btwNumber ?? ""} onChange={(v) => setOrg({ ...org, btwNumber: v })} />
           <TextField label="Website" value={org.website ?? ""} onChange={(v) => setOrg({ ...org, website: v })} placeholder="https://" />
           <div>
-            <FieldLabel>Max. aantal vestigingen</FieldLabel>
+            <FieldLabel>Max. aantal locaties</FieldLabel>
             <input
               type="number"
               min={0}
@@ -405,15 +418,15 @@ function AdminOrganizationDetailContent() {
         </div>
       </Card>
 
-      {/* ── 3. Vestigingen ────────────────────────────────────────────────── */}
+      {/* ── 3. Locaties ────────────────────────────────────────────────── */}
       <Card>
         <CardHeader
-          title="Vestigingen"
-          subtitle={`${locations.length} ${locations.length === 1 ? "vestiging" : "vestigingen"}`}
+          title="Locaties"
+          subtitle={`${locations.length} ${locations.length === 1 ? "locatie" : "locaties"}`}
           action={<MapPin size={15} className="text-gray-400" />}
         />
         {locations.length === 0 ? (
-          <p className="text-sm text-gray-400 mt-2">Geen vestigingen.</p>
+          <p className="text-sm text-gray-400 mt-2">Geen locaties.</p>
         ) : (
           <div className="space-y-0 mt-2">
             {locations.map((loc) => (
@@ -433,7 +446,7 @@ function AdminOrganizationDetailContent() {
       <Card>
         <CardHeader
           title="Gebruikers"
-          subtitle="Medewerkers binnen deze organisatie"
+          subtitle="Medewerkers binnen dit bedrijf"
           action={
             <Button size="sm" variant="secondary" onClick={() => { resetAddMemberForm(); setShowAddMember((v) => !v); }}>
               <UserPlus size={13} />
@@ -458,7 +471,7 @@ function AdminOrganizationDetailContent() {
               <>
                 <p className="text-sm text-gray-700">
                   Dit e-mailadres hoort al bij een bestaand account: <span className="font-medium">{pendingMatch.fullName || memberEmail}</span>.
-                  Koppelen als <span className="font-medium">{roles.find((r) => r.id === memberRoleId)?.name}</span> aan deze organisatie?
+                  Koppelen als <span className="font-medium">{roles.find((r) => r.id === memberRoleId)?.name}</span> aan dit bedrijf?
                 </p>
                 <p className="text-xs text-gray-400">Er wordt geen e-mail verstuurd — dit account kan direct inloggen met het bestaande wachtwoord.</p>
               </>
@@ -506,14 +519,14 @@ function AdminOrganizationDetailContent() {
                 </select>
               </div>
               <div>
-                <FieldLabel>Vestiging (optioneel)</FieldLabel>
+                <FieldLabel>Locatie (optioneel)</FieldLabel>
                 <select
                   value={memberLocationId}
                   onChange={(e) => setMemberLocationId(e.target.value)}
                   className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none"
                   style={{ ...inputStyle, background: "#ffffff" }}
                 >
-                  <option value="">Hele organisatie</option>
+                  <option value="">Heel bedrijf</option>
                   {locations.filter((l) => !l.archived).map((l) => (
                     <option key={l.id} value={l.id}>{l.name}</option>
                   ))}
@@ -543,7 +556,7 @@ function AdminOrganizationDetailContent() {
                 <div>
                   <p className="text-sm font-medium text-gray-800">{inv.firstName} {inv.lastName}</p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    {inviteRowMessages[inv.id] ?? `${inv.locationName || "Hele organisatie"} · Uitgenodigd ${formatDate(inv.invitedAt)}`}
+                    {inviteRowMessages[inv.id] ?? `${inv.locationName || "Heel bedrijf"} · Uitgenodigd ${formatDate(inv.invitedAt)}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -559,10 +572,26 @@ function AdminOrganizationDetailContent() {
                 <div>
                   <p className="text-sm font-medium text-gray-800">{m.fullName || m.email || "Onbekend"}</p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    {m.locationName || "Hele organisatie"} · Laatste login {m.lastSignInAt ? formatDate(m.lastSignInAt) : "nooit"}
+                    {m.locationName || "Heel bedrijf"} · Laatste login {m.lastSignInAt ? formatDate(m.lastSignInAt) : "nooit"}
                   </p>
+                  {mfaResetMessage?.userId === m.userId && (
+                    <p className="text-[11px] mt-0.5" style={{ color: mfaResetMessage.ok ? "#16a34a" : "#dc2626" }}>
+                      {mfaResetMessage.text}
+                    </p>
+                  )}
                 </div>
-                <Badge variant={roleBadgeVariant(m.roleKey)}>{m.roleName}</Badge>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Badge variant={roleBadgeVariant(m.roleKey)}>{m.roleName}</Badge>
+                  <button
+                    type="button"
+                    disabled={resettingMfaUserId === m.userId}
+                    onClick={() => handleMfaReset(m.userId)}
+                    className="text-xs font-medium hover:opacity-70 disabled:opacity-40"
+                    style={{ color: "#9ca3af" }}
+                  >
+                    2FA resetten
+                  </button>
+                </div>
               </div>
             ))}
           </div>

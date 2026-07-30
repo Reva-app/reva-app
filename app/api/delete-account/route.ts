@@ -1,5 +1,9 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { checkRateLimit, rateLimitedResponse } from "@/lib/rateLimit";
+
+const RATE_LIMIT_MAX = 3;
+const RATE_LIMIT_WINDOW_SECONDS = 60 * 60;
 
 // Tables to delete from (in order — junction tables before parent tables to avoid FK issues).
 // Names must match supabase/schema.sql exactly — a mismatch here silently skips that table.
@@ -49,6 +53,9 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
   }
 
+  const rateLimitOk = await checkRateLimit(authClient, `delete-account:${user.id}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_SECONDS);
+  if (!rateLimitOk) return rateLimitedResponse();
+
   // RLS-gebonden client, geauthenticeerd met hetzelfde geverifieerde token —
   // zodat ook de losse rij-verwijderingen hieronder niet alsnog op een
   // cookie-mismatch kunnen stranden.
@@ -67,6 +74,22 @@ export async function DELETE(request: Request) {
     );
   }
   const admin = createSupabaseClient(supabaseUrl, serviceRoleKey);
+
+  // Is dit account ook gekoppeld aan een praktijkdossier (patients-rij)?
+  // Die rij or geen deel van USER_TABLES hieronder (die is op patient_id
+  // gekoppeld, niet user_id) en zou anders — samen met de hele
+  // Protocol Engine-historie (patient_protocols e.v., migratie 049/050,
+  // cascade op patient_id) — na accountverwijdering blijven staan, los van
+  // enig account. `on delete cascade` op patient_id (migratie 065) ruimt bij
+  // deze ene delete meteen ook alle klinische data van dit dossier op.
+  // Loopt via een RPC (i.p.v. een directe delete) zodat de acterende
+  // gebruiker in dezelfde transactie wordt doorgegeven aan de audit-trigger
+  // (migratie 066) — zie dezelfde toelichting in delete-patient/route.ts.
+  const { error: patientDeleteError } = await admin.rpc("delete_own_patient_dossier", { p_user_id: userId });
+  if (patientDeleteError) {
+    console.error("[delete-account] patients:", patientDeleteError.message);
+    errors.push(`patients: ${patientDeleteError.message}`);
+  }
 
   // Delete all user data row by row, per table
   for (const table of USER_TABLES) {

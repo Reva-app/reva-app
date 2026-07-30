@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabaseClient";
 import { apiUrl } from "@/lib/apiBase";
+import { mondayOfWeek } from "@/lib/dateUtils";
 
 function logErr(fn: string, error: { message?: string; code?: string; details?: string; hint?: string } | null) {
   if (!error) return;
@@ -30,6 +31,46 @@ async function callSendInviteApi(body: Record<string, unknown>): Promise<{ error
   return { error: null };
 }
 
+const AVATAR_BUCKET = "avatars";
+const AVATAR_SIGNED_URL_TTL_SECONDS = 60 * 60;
+
+/**
+ * Resolvet een avatar_path (interne opslag) naar een signed URL, met
+ * avatar_url (extern, bv. Google-profielfoto) als terugval — zelfde
+ * voorrangsvolgorde als de rest van deze module hanteert voor "eigen
+ * upload wint van automatisch ingevulde waarde".
+ */
+export async function resolveAvatarUrl(
+  supabase: ReturnType<typeof createClient>, avatarPath: string | null, avatarUrl: string | null
+): Promise<string | null> {
+  if (!avatarPath) return avatarUrl;
+  const { data, error } = await supabase.storage.from(AVATAR_BUCKET).createSignedUrl(avatarPath, AVATAR_SIGNED_URL_TTL_SECONDS);
+  if (error) { logErr("resolveAvatarUrl", error); return avatarUrl; }
+  return data?.signedUrl ?? avatarUrl;
+}
+
+/** Upload van een eigen profielfoto — altijd de ingelogde gebruiker zelf, nooit een collega. */
+export async function uploadOwnAvatar(file: File): Promise<{ avatarUrl: string | null; error: string | null }> {
+  const supabase = createClient();
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return { avatarUrl: null, error: "Niet ingelogd." };
+  const userId = userData.user.id;
+
+  const ext = file.name.split(".").pop() ?? "jpg";
+  const path = `${userId}/avatar-${Date.now()}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(AVATAR_BUCKET)
+    .upload(path, file, { upsert: false, contentType: file.type });
+  if (uploadError) { logErr("uploadOwnAvatar(upload)", uploadError); return { avatarUrl: null, error: "Uploaden van de foto is niet gelukt." }; }
+
+  const { error: updateError } = await supabase.from("profiles").update({ avatar_path: path }).eq("id", userId);
+  if (updateError) { logErr("uploadOwnAvatar(update)", updateError); return { avatarUrl: null, error: "Opslaan van de foto is niet gelukt." }; }
+
+  const avatarUrl = await resolveAvatarUrl(supabase, path, null);
+  return { avatarUrl, error: null };
+}
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface PortalMembership {
@@ -41,6 +82,8 @@ export interface PortalMembership {
   roleKey: string;
   roleName: string;
   welcomedAt: string | null;
+  userFullName: string | null;
+  avatarUrl: string | null;
 }
 
 export interface PortalPatient {
@@ -54,20 +97,16 @@ export interface PortalPatient {
   locationName: string | null;
   therapistId: string | null;
   therapistName: string | null;
-  protocolId: string | null;
   protocolName: string | null;
   treatmentStartDate: string | null;
   surgeryDate: string | null;
+  injuryDate: string | null;
+  injuryType: string | null;
   status: string;
   createdAt: string;
   hasAccount: boolean;
   invitedAt: string | null;
   lastCheckinDate: string | null;
-}
-
-export interface PortalProtocolOption {
-  id: string;
-  name: string;
 }
 
 /**
@@ -76,7 +115,20 @@ export interface PortalProtocolOption {
  * migratie 041. Puur voor UI-gating (knoppen tonen/verbergen); RLS is de
  * echte handhaving.
  */
-export const MANAGE_PATIENTS_ROLES = ["organization_owner", "therapist", "practice_staff"];
+export const MANAGE_PATIENTS_ROLES = ["organization_owner", "therapist"];
+
+/**
+ * Logt een bulk-CSV-export van de patiëntenlijst in audit_log (migratie 066)
+ * — exportPatientsCsv() zelf is puur client-side (geen serveraanroep), dus
+ * zonder deze aparte logaanroep zou zo'n bulk-onttrekking van
+ * persoonsgegevens nergens geregistreerd worden.
+ */
+export async function logPatientsExport(organizationId: string, count: number): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("log_patients_export", { p_organization_id: organizationId, p_count: count });
+  if (error) { logErr("logPatientsExport", error); return { error: "Loggen van de export is niet gelukt." }; }
+  return { error: null };
+}
 
 export interface PortalDashboardStats {
   patientCount: number;
@@ -141,6 +193,7 @@ export interface PortalStaffMember {
   title: string | null;
   bigNumber: string | null;
   avatarUrl: string | null;
+  avatarPath: string | null;
   roleId: string;
   roleKey: string;
   roleName: string;
@@ -171,15 +224,19 @@ export async function loadCurrentMembership(userId: string): Promise<PortalMembe
   if (error) { logErr("loadCurrentMembership", error); return null; }
   if (!membership) return null;
 
-  const [orgRes, locRes, roleRes] = await Promise.all([
+  const [orgRes, locRes, roleRes, profileRes] = await Promise.all([
     supabase.from("organizations").select("name").eq("id", membership.organization_id).maybeSingle(),
     membership.location_id
       ? supabase.from("locations").select("name").eq("id", membership.location_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
     supabase.from("roles").select("key, name").eq("id", membership.role_id).maybeSingle(),
+    supabase.from("profiles").select("full_name, avatar_url, avatar_path").eq("id", userId).maybeSingle(),
   ]);
   if (orgRes.error) logErr("loadCurrentMembership(org)", orgRes.error);
   if (roleRes.error) logErr("loadCurrentMembership(role)", roleRes.error);
+  if (profileRes.error) logErr("loadCurrentMembership(profile)", profileRes.error);
+
+  const avatarUrl = await resolveAvatarUrl(supabase, profileRes.data?.avatar_path ?? null, profileRes.data?.avatar_url ?? null);
 
   return {
     membershipId: membership.id,
@@ -190,20 +247,21 @@ export async function loadCurrentMembership(userId: string): Promise<PortalMembe
     roleKey: roleRes.data?.key ?? "",
     roleName: roleRes.data?.name ?? "",
     welcomedAt: membership.welcomed_at,
+    userFullName: profileRes.data?.full_name ?? null,
+    avatarUrl,
   };
 }
 
 /**
- * Markeert het welkomstscherm als gezien voor deze membership. Werkt vandaag
- * alleen voor organization_owner: memberships-UPDATE is sinds migratie 041
- * can_manage_org_staff()-gated (self-update door andere rollen is bewust
- * geblokkeerd, zie de RLS-privilege-escalatiefix in die migratie) — als het
- * welkomstscherm ooit naar andere rollen uitbreidt, is een gerichte
- * SECURITY DEFINER RPC of een aparte additieve policy dan nodig.
+ * Markeert het welkomstscherm als gezien voor deze membership. Loopt via een
+ * SECURITY DEFINER RPC (migratie 071) i.p.v. een directe update — memberships-
+ * UPDATE is sinds migratie 041 can_manage_org_staff()-gated (alleen
+ * organization_owner), dus zonder deze RPC zou een medewerker zijn eigen
+ * welcomed_at niet kunnen zetten.
  */
 export async function markMembershipWelcomed(membershipId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
-  const { error } = await supabase.from("memberships").update({ welcomed_at: new Date().toISOString() }).eq("id", membershipId);
+  const { error } = await supabase.rpc("mark_own_membership_welcomed", { p_membership_id: membershipId });
   if (error) { logErr("markMembershipWelcomed", error); return { error: "Bijwerken is niet gelukt." }; }
   return { error: null };
 }
@@ -227,13 +285,207 @@ export async function loadPortalDashboardStats(organizationId: string): Promise<
   };
 }
 
+// ─── Dashboard: persoonlijk, werkdruk & activiteit ─────────────────────────
+
+export const VIEW_ANALYTICS_ROLES = ["organization_owner"];
+export const PATIENT_INACTIVITY_THRESHOLD_DAYS = 30;
+export const STAFF_INACTIVITY_THRESHOLD_DAYS = 14;
+
+/** Geen datum (null) of ouder dan de meegegeven drempel telt als "stale". */
+export function isDateStale(value: string | null, thresholdDays: number): boolean {
+  if (!value) return true;
+  const days = (Date.now() - new Date(value).getTime()) / (1000 * 60 * 60 * 24);
+  return days > thresholdDays;
+}
+
+/**
+ * Een patiënt is "inactief" als de laatste check-in ouder is dan de drempel,
+ * of als er nog nooit is ingecheckt én het dossier zelf ouder is dan de
+ * drempel (zodat een net aangemaakt dossier niet meteen als inactief geldt).
+ */
+export function isPatientInactive(
+  lastCheckinDate: string | null, createdAt: string, thresholdDays: number = PATIENT_INACTIVITY_THRESHOLD_DAYS
+): boolean {
+  return isDateStale(lastCheckinDate ?? createdAt, thresholdDays);
+}
+
+export interface PortalMyPatientRow {
+  id: string;
+  fullName: string | null;
+  lastCheckinDate: string | null;
+  inactive: boolean;
+}
+
+export interface PortalMyPatientsSummary {
+  patients: PortalMyPatientRow[];
+  totalCount: number;
+  needsAttentionCount: number;
+  checkinsThisWeekCount: number;
+}
+
+/** "Mijn patiënten"-sectie op het dashboard — alleen de actieve patiënten van deze medewerker, niet de hele organisatie (zie loadPortalPatients daarvoor). */
+export async function loadMyPortalPatientsSummary(organizationId: string, userId: string): Promise<PortalMyPatientsSummary> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("patients")
+    .select("id, user_id, first_name, last_name, created_at")
+    .eq("organization_id", organizationId)
+    .eq("assigned_therapist_id", userId)
+    .eq("status", "active")
+    .order("created_at", { ascending: false });
+  if (error) { logErr("loadMyPortalPatientsSummary(patients)", error); return { patients: [], totalCount: 0, needsAttentionCount: 0, checkinsThisWeekCount: 0 }; }
+
+  const rows = data ?? [];
+  const patientIds = rows.map((r) => r.id as string);
+  const userIds = [...new Set(rows.map((r) => r.user_id).filter((v): v is string => !!v))];
+
+  const [profilesRes, checkinsRes, weekCheckinsRes] = await Promise.all([
+    userIds.length > 0
+      ? supabase.from("profiles").select("id, full_name").in("id", userIds)
+      : Promise.resolve({ data: [] as { id: string; full_name: string | null }[], error: null }),
+    patientIds.length > 0
+      ? supabase.from("checkins").select("patient_id, date").in("patient_id", patientIds).order("date", { ascending: false })
+      : Promise.resolve({ data: [] as { patient_id: string; date: string }[], error: null }),
+    patientIds.length > 0
+      ? supabase.from("checkins").select("id", { count: "exact", head: true }).in("patient_id", patientIds).gte("date", daysAgoStr(6))
+      : Promise.resolve({ count: 0, error: null }),
+  ]);
+  if (profilesRes.error) logErr("loadMyPortalPatientsSummary(profiles)", profilesRes.error);
+  if (checkinsRes.error) logErr("loadMyPortalPatientsSummary(checkins)", checkinsRes.error);
+  if (weekCheckinsRes.error) logErr("loadMyPortalPatientsSummary(week)", weekCheckinsRes.error);
+
+  const profileMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p.full_name]));
+  const lastCheckinMap = new Map<string, string>();
+  for (const c of checkinsRes.data ?? []) {
+    if (!lastCheckinMap.has(c.patient_id)) lastCheckinMap.set(c.patient_id, c.date);
+  }
+
+  const patients: PortalMyPatientRow[] = rows
+    .map((r) => {
+      const dossierName = [r.first_name, r.last_name].filter(Boolean).join(" ") || null;
+      const lastCheckinDate = lastCheckinMap.get(r.id as string) ?? null;
+      return {
+        id: r.id as string,
+        fullName: (r.user_id ? profileMap.get(r.user_id) : null) ?? dossierName,
+        lastCheckinDate,
+        inactive: isPatientInactive(lastCheckinDate, r.created_at as string),
+      };
+    })
+    .sort((a, b) => {
+      if (a.inactive !== b.inactive) return a.inactive ? -1 : 1;
+      return (a.fullName ?? "").localeCompare(b.fullName ?? "", "nl");
+    });
+
+  return {
+    patients,
+    totalCount: patients.length,
+    needsAttentionCount: patients.filter((p) => p.inactive).length,
+    checkinsThisWeekCount: (weekCheckinsRes as { count: number | null }).count ?? 0,
+  };
+}
+
+export interface PortalTherapistWorkload {
+  userId: string;
+  fullName: string | null;
+  roleKey: string;
+  patientCount: number;
+}
+
+/**
+ * Puur inzicht in werkdruk (aantal actieve patiënten per behandelaar) — geen
+ * automatische toewijzing. De aantallen zelf komen uit de
+ * portal_therapist_workload-RPC (migratie 064, eigenaar-only afgedwongen);
+ * namen/rol blijven uit loadPortalStaffOverview komen, want de
+ * medewerkerslijst is al voor iedereen zichtbaar.
+ */
+export async function loadTherapistWorkload(organizationId: string): Promise<{ rows: PortalTherapistWorkload[]; unassignedCount: number }> {
+  const supabase = createClient();
+  const [staff, rpcRes] = await Promise.all([
+    loadPortalStaffOverview(organizationId),
+    supabase.rpc("portal_therapist_workload", { p_organization_id: organizationId }),
+  ]);
+  if (rpcRes.error) logErr("loadTherapistWorkload(rpc)", rpcRes.error);
+
+  const data = (rpcRes.data ?? { rows: [], unassignedCount: 0 }) as {
+    rows: { userId: string; patientCount: number }[];
+    unassignedCount: number;
+  };
+  const counts = new Map(data.rows.map((r) => [r.userId, r.patientCount]));
+
+  const rows: PortalTherapistWorkload[] = staff
+    .filter((m): m is PortalStaffMember & { userId: string } => m.kind === "member" && m.status === "active" && !!m.userId)
+    .map((m) => ({
+      userId: m.userId,
+      fullName: m.fullName,
+      roleKey: m.roleKey,
+      patientCount: counts.get(m.userId) ?? 0,
+    }))
+    .sort((a, b) => b.patientCount - a.patientCount);
+
+  return { rows, unassignedCount: data.unassignedCount };
+}
+
+export interface PortalOrgActivitySummary {
+  inactivePatientCount: number;
+  inactiveStaffCount: number;
+}
+
+/**
+ * Org-brede activiteit voor de eigenaar: hoeveel patiënten/medewerkers weinig
+ * of geen gebruik maken van het systeem. Loopt via de
+ * portal_org_activity_summary-RPC (migratie 064, eigenaar-only afgedwongen)
+ * in plaats van directe tabel-leesacties.
+ */
+export async function loadOrgActivitySummary(organizationId: string): Promise<PortalOrgActivitySummary> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("portal_org_activity_summary", { p_organization_id: organizationId });
+  if (error) { logErr("loadOrgActivitySummary", error); return { inactivePatientCount: 0, inactiveStaffCount: 0 }; }
+  return data as PortalOrgActivitySummary;
+}
+
+export interface PortalUsageTrendPoint {
+  date: string;
+  checkins: number;
+  trainingsCompleted: number;
+}
+
+export interface PortalOrgUsageStats {
+  periodDays: 7 | 14 | 30;
+  trend: PortalUsageTrendPoint[];
+  totalCheckins: number;
+  totalTrainingsCompleted: number;
+  activePatientCount: number;
+  totalPatientCount: number;
+}
+
+/**
+ * Org-brede gebruiksstatistieken voor de analysepagina. `training_logs` is
+ * het legacy-activiteitspad; patiënten op de nieuwere Protocol Engine loggen
+ * via patient_protocol_session_logs/patient_protocol_exercise_logs (migratie
+ * 050), dus "trainingen afgerond" kan die patiënten ondertellen — bewuste,
+ * benoemde beperking, geen tweede parallelle registratie in deze slag.
+ * Loopt via de portal_org_usage_stats-RPC (migratie 064, eigenaar-only
+ * afgedwongen) in plaats van directe tabel-leesacties.
+ */
+export async function loadOrgUsageStats(organizationId: string, periodDays: 7 | 14 | 30): Promise<PortalOrgUsageStats> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("portal_org_usage_stats", {
+    p_organization_id: organizationId, p_period_days: periodDays,
+  });
+  if (error) {
+    logErr("loadOrgUsageStats", error);
+    return { periodDays, trend: [], totalCheckins: 0, totalTrainingsCompleted: 0, activePatientCount: 0, totalPatientCount: 0 };
+  }
+  return data as PortalOrgUsageStats;
+}
+
 // ─── Patiënten ──────────────────────────────────────────────────────────────
 
 export async function loadPortalPatients(organizationId: string): Promise<PortalPatient[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("patients")
-    .select("id, user_id, location_id, status, created_at, first_name, last_name, email, phone, gender, date_of_birth, invited_at, assigned_therapist_id, protocol_id, treatment_start_date, surgery_date")
+    .select("id, user_id, location_id, status, created_at, first_name, last_name, email, phone, gender, date_of_birth, invited_at, assigned_therapist_id, treatment_start_date, surgery_date, injury_date, injury_type")
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false });
   if (error) { logErr("loadPortalPatients", error); return []; }
@@ -244,7 +496,6 @@ export async function loadPortalPatients(organizationId: string): Promise<Portal
   const therapistIds = [...new Set(rows.map((r) => r.assigned_therapist_id).filter((v): v is string => !!v))];
   const profileIds = [...new Set([...userIds, ...therapistIds])];
   const locationIds = [...new Set(rows.map((r) => r.location_id).filter((v): v is string => !!v))];
-  const protocolIds = [...new Set(rows.map((r) => r.protocol_id).filter((v): v is string => !!v))];
 
   const [profilesRes, locationsRes, protocolsRes, checkinsRes] = await Promise.all([
     profileIds.length > 0
@@ -253,21 +504,25 @@ export async function loadPortalPatients(organizationId: string): Promise<Portal
     locationIds.length > 0
       ? supabase.from("locations").select("id, name").in("id", locationIds)
       : Promise.resolve({ data: [] as { id: string; name: string }[], error: null }),
-    protocolIds.length > 0
-      ? supabase.from("protocols").select("id, name").in("id", protocolIds)
-      : Promise.resolve({ data: [] as { id: string; name: string }[], error: null }),
+    patientIds.length > 0
+      // Actief toegewezen protocol (Protocol Engine, migratie 049/054) i.p.v. het
+      // legacy patients.protocol_id — dat wijst sinds migratie 048 naar
+      // protocol_labels_legacy en wordt door geen enkele huidige toewijs-flow
+      // meer bijgewerkt, dus toonde hier altijd "—" ongeacht een echte toewijzing.
+      ? supabase.from("patient_protocols").select("patient_id, name").in("patient_id", patientIds).in("status", ["active", "paused"])
+      : Promise.resolve({ data: [] as { patient_id: string; name: string }[], error: null }),
     patientIds.length > 0
       ? supabase.from("checkins").select("patient_id, date").in("patient_id", patientIds).order("date", { ascending: false })
       : Promise.resolve({ data: [] as { patient_id: string; date: string }[], error: null }),
   ]);
   if (profilesRes.error) logErr("loadPortalPatients(profiles)", profilesRes.error);
   if (locationsRes.error) logErr("loadPortalPatients(locations)", locationsRes.error);
-  if (protocolsRes.error) logErr("loadPortalPatients(protocols)", protocolsRes.error);
+  if (protocolsRes.error) logErr("loadPortalPatients(patient_protocols)", protocolsRes.error);
   if (checkinsRes.error) logErr("loadPortalPatients(checkins)", checkinsRes.error);
 
   const profileMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p]));
   const locationMap = new Map((locationsRes.data ?? []).map((l) => [l.id, l.name]));
-  const protocolMap = new Map((protocolsRes.data ?? []).map((p) => [p.id, p.name]));
+  const activeProtocolMap = new Map((protocolsRes.data ?? []).map((p) => [p.patient_id, p.name]));
   const lastCheckinMap = new Map<string, string>();
   for (const c of checkinsRes.data ?? []) {
     if (!lastCheckinMap.has(c.patient_id)) lastCheckinMap.set(c.patient_id, c.date);
@@ -288,10 +543,11 @@ export async function loadPortalPatients(organizationId: string): Promise<Portal
       locationName: r.location_id ? locationMap.get(r.location_id) ?? null : null,
       therapistId: r.assigned_therapist_id as string | null,
       therapistName: therapist?.full_name ?? null,
-      protocolId: r.protocol_id as string | null,
-      protocolName: r.protocol_id ? protocolMap.get(r.protocol_id) ?? null : null,
+      protocolName: activeProtocolMap.get(r.id as string) ?? null,
       treatmentStartDate: r.treatment_start_date as string | null,
       surgeryDate: r.surgery_date as string | null,
+      injuryDate: r.injury_date as string | null,
+      injuryType: r.injury_type as string | null,
       status: r.status as string,
       createdAt: r.created_at as string,
       hasAccount: !!r.user_id,
@@ -299,28 +555,6 @@ export async function loadPortalPatients(organizationId: string): Promise<Portal
       lastCheckinDate: lastCheckinMap.get(r.id as string) ?? null,
     };
   });
-}
-
-export async function loadPortalProtocols(organizationId: string): Promise<PortalProtocolOption[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("protocols")
-    .select("id, name")
-    .eq("organization_id", organizationId)
-    .order("name");
-  if (error) { logErr("loadPortalProtocols", error); return []; }
-  return data ?? [];
-}
-
-export async function createPortalProtocol(organizationId: string, name: string): Promise<{ id: string | null; error: string | null }> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("protocols")
-    .insert({ organization_id: organizationId, name: name.trim() })
-    .select("id")
-    .single();
-  if (error) { logErr("createPortalProtocol", error); return { id: null, error: "Aanmaken van het protocol is niet gelukt." }; }
-  return { id: data.id, error: null };
 }
 
 export async function loadPortalLocations(organizationId: string): Promise<PortalLocationOption[]> {
@@ -344,9 +578,10 @@ export interface PortalPatientInput {
   gender: string; // "man" | "vrouw" | "anders" | ""
   locationId: string | null;
   therapistId: string | null;
-  protocolId: string | null;
   treatmentStartDate: string;
   surgeryDate: string;
+  injuryDate: string;
+  injuryType: string;
 }
 
 function patientInputToRow(input: PortalPatientInput) {
@@ -359,9 +594,10 @@ function patientInputToRow(input: PortalPatientInput) {
     date_of_birth: input.dateOfBirth || null,
     gender: input.gender || null,
     assigned_therapist_id: input.therapistId,
-    protocol_id: input.protocolId,
     treatment_start_date: input.treatmentStartDate || null,
     surgery_date: input.surgeryDate || null,
+    injury_date: input.injuryDate || null,
+    injury_type: input.injuryType || null,
   };
 }
 
@@ -411,25 +647,45 @@ export async function updatePortalPatientStatus(
   return { error: null };
 }
 
+/**
+ * Verwijdert het patiëntdossier via /api/delete-patient (i.p.v. een directe
+ * client-delete) zodat een gekoppeld maar nooit geactiveerd REVA-account
+ * (bv. een mislukte eerdere uitnodiging) meteen wordt opgeruimd — anders
+ * blijft dat e-mailadres permanent "bezet" door een account waar niemand
+ * meer bij kan. Zie invitePortalPatient() voor het bijbehorende
+ * opnieuw-uitnodigen-probleem.
+ */
 export async function deletePortalPatient(patientId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
-  const { error } = await supabase.from("patients").delete().eq("id", patientId);
-  if (error) {
-    logErr("deletePortalPatient", error);
-    return { error: "Verwijderen van het patiëntdossier is niet gelukt." };
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return { error: "Niet ingelogd." };
+
+  const res = await fetch(apiUrl("/api/delete-patient"), {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ patientId }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || json.error) {
+    return { error: json.error ?? "Verwijderen van het patiëntdossier is niet gelukt." };
   }
   return { error: null };
 }
 
 export type InvitePortalPatientResult =
-  | { outcome: "linked"; error: null }
-  | { outcome: "invited"; error: null }
+  | { outcome: "linked"; error: null; patientId: string }
+  | { outcome: "invited"; error: null; patientId: string }
   | { outcome: "failed"; error: string };
 
 /**
  * Koppelt een patiëntdossier aan een REVA-account:
  * - heeft dat e-mailadres al een account? Dan wordt het dossier direct
- *   gekoppeld (geen e-mail nodig).
+ *   gekoppeld (geen e-mail nodig) — tenzij dit een expliciete
+ *   "opnieuw uitnodigen"-actie is (isResend), want dan kan dat bestaande
+ *   account net zo goed een nooit-afgeronde eerdere uitnodiging zijn
+ *   (het e-mailadres al "bezet" maar niemand kan er ooit meer inloggen).
+ *   In dat geval sturen we alsnog een echte mail, via een "recovery"-link
+ *   (die werkt voor elk bestaand account, in tegenstelling tot "invite").
  * - anders wordt een echte magic-link uitnodiging verstuurd; de koppeling
  *   voltooit zichzelf zodra de patiënt die link gebruikt (zie migratie 033,
  *   ensure_personal_organization matcht dan op e-mailadres).
@@ -437,7 +693,8 @@ export type InvitePortalPatientResult =
 export async function invitePortalPatient(
   patientId: string,
   organizationId: string,
-  email: string
+  email: string,
+  isResend = false
 ): Promise<InvitePortalPatientResult> {
   const supabase = createClient();
   const trimmedEmail = email.trim().toLowerCase();
@@ -463,7 +720,18 @@ export async function invitePortalPatient(
       }
       return { outcome: "failed", error: "Koppelen van het account is niet gelukt." };
     }
-    return { outcome: "linked", error: null };
+    if (!isResend) {
+      return { outcome: "linked", error: null, patientId };
+    }
+    // isResend: het account bestaat al, maar de gebruiker vroeg expliciet om
+    // een nieuwe mail — bv. omdat de vorige uitnodiging nooit is afgerond.
+    const { error: resendError } = await callSendInviteApi({
+      context: "portal-patient", organizationId, patientId, linkType: "recovery",
+    });
+    if (resendError) {
+      return { outcome: "failed", error: resendError };
+    }
+    return { outcome: "invited", error: null, patientId };
   }
 
   const { error: sendError } = await callSendInviteApi({ context: "portal-patient", organizationId, patientId });
@@ -477,7 +745,7 @@ export async function invitePortalPatient(
     .eq("id", patientId);
   if (markError) logErr("invitePortalPatient(mark)", markError);
 
-  return { outcome: "invited", error: null };
+  return { outcome: "invited", error: null, patientId };
 }
 
 /** Voor de intake-wizard: maakt het dossier aan en stuurt in één stap de uitnodiging. */
@@ -492,13 +760,13 @@ export async function createAndInvitePortalPatient(
   return invitePortalPatient(id, organizationId, input.email);
 }
 
-// ─── Vestigingen (zelf-service) ─────────────────────────────────────────────
+// ─── Locaties (zelf-service) ─────────────────────────────────────────────
 
 /**
- * Rollen die vestigingen mogen beheren (aanmaken/bewerken/archiveren/
- * verwijderen/hoofdvestiging wijzigen) — moet in sync blijven met
+ * Rollen die locaties mogen beheren (aanmaken/bewerken/archiveren/
+ * verwijderen/hoofdlocatie wijzigen) — moet in sync blijven met
  * can_manage_org_locations() in migratie 041. Bewust beperkter dan
- * MANAGE_PATIENTS_ROLES: vestigingenbeheer is een organisatiebrede
+ * MANAGE_PATIENTS_ROLES: locatiesbeheer is een organisatiebrede
  * structurele beslissing, geen dagelijkse patiëntenzorg-taak (zelfde
  * redenering als MANAGE_BRANDING_ROLES/MANAGE_STAFF_ROLES).
  */
@@ -628,18 +896,50 @@ export async function loadPortalLocationCards(organizationId: string): Promise<P
   const supabase = createClient();
   const { data, error } = await supabase
     .from("locations")
-    .select("id, name, is_main_location, archived, street, house_number, postal_code, city, opening_hours, memberships!memberships_location_id_fkey(count), patients(count)")
+    .select("id, name, is_main_location, archived, street, house_number, postal_code, city, opening_hours, patients(count)")
     .eq("organization_id", organizationId)
     .order("is_main_location", { ascending: false })
     .order("name");
   if (error) { logErr("loadPortalLocationCards", error); return []; }
-  return ((data ?? []) as unknown as {
+
+  const rows = (data ?? []) as unknown as {
     id: string; name: string; is_main_location: boolean; archived: boolean;
     street: string | null; house_number: string | null; postal_code: string | null; city: string | null;
     opening_hours: PortalOpeningHours | null;
-    memberships: { count: number }[] | null;
     patients: { count: number }[] | null;
-  }[]).map((r) => ({
+  }[];
+  const locationIds = rows.map((r) => r.id);
+
+  // Aantal medewerkers per locatie moet ook organisatiebrede koppelingen
+  // (location_id null — "alle locaties") en expliciete extra locaties
+  // (membership_locations, migratie 041) meetellen — anders toont een
+  // locatie "0 medewerkers" zodra iemand organisatiebreed is gekoppeld.
+  const [membershipsRes, membershipLocationsRes] = await Promise.all([
+    supabase.from("memberships").select("id, location_id").eq("organization_id", organizationId).eq("status", "active"),
+    locationIds.length > 0
+      ? supabase.from("membership_locations").select("membership_id, location_id").in("location_id", locationIds)
+      : Promise.resolve({ data: [] as { membership_id: string; location_id: string }[], error: null }),
+  ]);
+  if (membershipsRes.error) logErr("loadPortalLocationCards(memberships)", membershipsRes.error);
+  if (membershipLocationsRes.error) logErr("loadPortalLocationCards(membership_locations)", membershipLocationsRes.error);
+
+  const orgWideMembershipIds = new Set(
+    (membershipsRes.data ?? []).filter((m) => m.location_id === null).map((m) => m.id as string)
+  );
+  const employeeIdsByLocation = new Map<string, Set<string>>();
+  for (const m of membershipsRes.data ?? []) {
+    if (!m.location_id) continue;
+    const set = employeeIdsByLocation.get(m.location_id as string) ?? new Set<string>();
+    set.add(m.id as string);
+    employeeIdsByLocation.set(m.location_id as string, set);
+  }
+  for (const ml of membershipLocationsRes.data ?? []) {
+    const set = employeeIdsByLocation.get(ml.location_id as string) ?? new Set<string>();
+    set.add(ml.membership_id as string);
+    employeeIdsByLocation.set(ml.location_id as string, set);
+  }
+
+  return rows.map((r) => ({
     id: r.id,
     name: r.name,
     isMainLocation: r.is_main_location,
@@ -649,7 +949,7 @@ export async function loadPortalLocationCards(organizationId: string): Promise<P
     postalCode: r.postal_code,
     city: r.city,
     openingHours: r.opening_hours ?? DEFAULT_OPENING_HOURS,
-    employeeCount: r.memberships?.[0]?.count ?? 0,
+    employeeCount: (employeeIdsByLocation.get(r.id)?.size ?? 0) + orgWideMembershipIds.size,
     patientCount: r.patients?.[0]?.count ?? 0,
   }));
 }
@@ -664,21 +964,50 @@ export async function loadPortalLocationFull(locationId: string): Promise<Portal
   if (error) { logErr("loadPortalLocationFull", error); return null; }
   if (!data) return null;
 
-  const { data: memberRows, error: memberErr } = await supabase
-    .from("memberships")
-    .select("id, user_id, role_id")
-    .eq("location_id", locationId)
-    .eq("status", "active");
-  if (memberErr) logErr("loadPortalLocationFull(memberships)", memberErr);
+  // Een medewerker werkt op deze locatie als: dit hun hoofdlocatie is, ze
+  // organisatiebreed zijn gekoppeld (location_id null — "alle locaties"),
+  // of deze locatie expliciet als extra locatie is toegevoegd via het
+  // "Overige locaties"-tabblad (membership_locations, migratie 041). Zonder
+  // de eerste twee gevallen erbij te betrekken toonde deze lijst
+  // ten onrechte "0 medewerkers" zodra iemand organisatiebreed was gekoppeld.
+  const [primaryOrOrgWideRes, extraLocationRes] = await Promise.all([
+    supabase
+      .from("memberships")
+      .select("id, user_id, role_id")
+      .eq("organization_id", data.organization_id)
+      .or(`location_id.eq.${locationId},location_id.is.null`)
+      .eq("status", "active"),
+    supabase
+      .from("membership_locations")
+      .select("membership_id")
+      .eq("location_id", locationId),
+  ]);
+  if (primaryOrOrgWideRes.error) logErr("loadPortalLocationFull(memberships)", primaryOrOrgWideRes.error);
+  if (extraLocationRes.error) logErr("loadPortalLocationFull(membership_locations)", extraLocationRes.error);
 
-  const rows = memberRows ?? [];
+  const extraMembershipIds = (extraLocationRes.data ?? []).map((r) => r.membership_id as string);
+  let extraRows: { id: string; user_id: string; role_id: string }[] = [];
+  if (extraMembershipIds.length > 0) {
+    const { data: extraMemberRows, error: extraMemberErr } = await supabase
+      .from("memberships")
+      .select("id, user_id, role_id")
+      .in("id", extraMembershipIds)
+      .eq("status", "active");
+    if (extraMemberErr) logErr("loadPortalLocationFull(extra memberships)", extraMemberErr);
+    extraRows = extraMemberRows ?? [];
+  }
+
+  const rowsById = new Map(
+    [...(primaryOrOrgWideRes.data ?? []), ...extraRows].map((r) => [r.id as string, r])
+  );
+  const rows = [...rowsById.values()];
   const userIds = [...new Set(rows.map((r) => r.user_id as string))];
   const roleIds = [...new Set(rows.map((r) => r.role_id as string))];
 
   const [profilesRes, rolesRes] = await Promise.all([
     userIds.length > 0
-      ? supabase.from("profiles").select("id, full_name, avatar_url").in("id", userIds)
-      : Promise.resolve({ data: [] as { id: string; full_name: string | null; avatar_url: string | null }[], error: null }),
+      ? supabase.from("profiles").select("id, full_name, avatar_url, avatar_path").in("id", userIds)
+      : Promise.resolve({ data: [] as { id: string; full_name: string | null; avatar_url: string | null; avatar_path: string | null }[], error: null }),
     roleIds.length > 0
       ? supabase.from("roles").select("id, name").in("id", roleIds)
       : Promise.resolve({ data: [] as { id: string; name: string }[], error: null }),
@@ -687,16 +1016,16 @@ export async function loadPortalLocationFull(locationId: string): Promise<Portal
   const profileMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p]));
   const roleMap = new Map((rolesRes.data ?? []).map((r) => [r.id, r.name]));
 
-  const employees: PortalLocationEmployee[] = rows.map((r) => {
+  const employees: PortalLocationEmployee[] = await Promise.all(rows.map(async (r) => {
     const profile = profileMap.get(r.user_id as string);
     return {
       membershipId: r.id as string,
       userId: r.user_id as string,
       fullName: profile?.full_name ?? null,
-      avatarUrl: profile?.avatar_url ?? null,
+      avatarUrl: await resolveAvatarUrl(supabase, profile?.avatar_path ?? null, profile?.avatar_url ?? null),
       roleName: roleMap.get(r.role_id as string) ?? "",
     };
-  });
+  }));
 
   return {
     id: data.id,
@@ -729,10 +1058,10 @@ export async function createPortalLocationFull(
     .single();
   if (error) {
     logErr("createPortalLocationFull", error);
-    if (error.message?.includes("Maximum aantal vestigingen")) {
-      return { id: null, error: "Je hebt het maximum aantal vestigingen voor je abonnement bereikt." };
+    if (error.message?.includes("Maximum aantal locaties")) {
+      return { id: null, error: "Je hebt het maximum aantal locaties voor je abonnement bereikt." };
     }
-    return { id: null, error: "Aanmaken van de vestiging is niet gelukt." };
+    return { id: null, error: "Aanmaken van de locatie is niet gelukt." };
   }
   return { id: data.id, error: null };
 }
@@ -745,7 +1074,7 @@ export async function updatePortalLocationFull(
   const { error } = await supabase.from("locations").update(locationInputToRow(input)).eq("id", locationId);
   if (error) {
     logErr("updatePortalLocationFull", error);
-    return { error: "Bijwerken van de vestiging is niet gelukt." };
+    return { error: "Bijwerken van de locatie is niet gelukt." };
   }
   return { error: null };
 }
@@ -755,7 +1084,7 @@ export async function setPortalMainLocation(locationId: string): Promise<{ error
   const { error } = await supabase.rpc("set_main_location", { p_location_id: locationId });
   if (error) {
     logErr("setPortalMainLocation", error);
-    return { error: error.message || "Instellen van de hoofdvestiging is niet gelukt." };
+    return { error: error.message || "Instellen van de hoofdlocatie is niet gelukt." };
   }
   return { error: null };
 }
@@ -768,10 +1097,10 @@ export async function updatePortalLocationArchived(
   const { error } = await supabase.from("locations").update({ archived }).eq("id", locationId);
   if (error) {
     logErr("updatePortalLocationArchived", error);
-    if (error.message?.includes("hoofdvestiging")) {
+    if (error.message?.includes("hoofdlocatie")) {
       return { error: error.message };
     }
-    return { error: "Bijwerken van de vestiging is niet gelukt." };
+    return { error: "Bijwerken van de locatie is niet gelukt." };
   }
   return { error: null };
 }
@@ -789,16 +1118,16 @@ export async function deletePortalLocationChecked(locationId: string): Promise<{
     if (memberCount > 0) parts.push(`${memberCount} ${memberCount === 1 ? "medewerker" : "medewerkers"}`);
     if (patientCount > 0) parts.push(`${patientCount} ${patientCount === 1 ? "patiënt" : "patiënten"}`);
     const verb = memberCount + patientCount === 1 ? "is" : "zijn";
-    return { error: `Deze vestiging kan niet verwijderd worden: er ${verb} nog ${parts.join(" en ")} aan gekoppeld.` };
+    return { error: `Deze locatie kan niet verwijderd worden: er ${verb} nog ${parts.join(" en ")} aan gekoppeld.` };
   }
 
   const { error } = await supabase.from("locations").delete().eq("id", locationId);
   if (error) {
     logErr("deletePortalLocationChecked", error);
-    if (error.message?.includes("hoofdvestiging")) {
+    if (error.message?.includes("hoofdlocatie")) {
       return { error: error.message };
     }
-    return { error: "Verwijderen van de vestiging is niet gelukt." };
+    return { error: "Verwijderen van de locatie is niet gelukt." };
   }
   return { error: null };
 }
@@ -813,8 +1142,8 @@ export async function deletePortalLocationChecked(locationId: string): Promise<{
  */
 export const MANAGE_STAFF_ROLES = ["organization_owner"];
 
-/** De drie canonieke rollen (organization_owner/therapist/practice_staff) — zie migratie 041. */
-const CANONICAL_ROLE_KEYS = ["organization_owner", "therapist", "practice_staff"];
+/** De twee canonieke rollen (organization_owner/therapist) — zie migratie 041/063. */
+const CANONICAL_ROLE_KEYS = ["organization_owner", "therapist"];
 
 /** Precies de 3 canonieke rollen — de overige 5 rolrijen blijven in de database staan maar worden niet meer aangeboden (migratie 041). */
 export async function loadPortalRoles(): Promise<PortalRoleOption[]> {
@@ -862,7 +1191,7 @@ export async function loadPortalMembers(organizationId: string): Promise<PortalM
 
 /**
  * Koppelt een BESTAAND REVA-account (op e-mailadres) aan de organisatie met
- * een rol en optioneel een vestiging. Iemand uitnodigen die nog geen account
+ * een rol en optioneel een locatie. Iemand uitnodigen die nog geen account
  * heeft is bewust nog niet gebouwd (zelfde reden als bij addAdminOrgMember).
  */
 export async function addPortalMember(
@@ -984,6 +1313,7 @@ async function loadPortalStaffInvites(organizationId: string): Promise<PortalSta
       title: null,
       bigNumber: null,
       avatarUrl: null,
+      avatarPath: null,
       roleId: r.role_id,
       roleKey: role?.key ?? "",
       roleName: role?.name ?? "",
@@ -1000,7 +1330,7 @@ async function loadPortalActiveStaff(organizationId: string): Promise<PortalStaf
   const supabase = createClient();
   const { data, error } = await supabase.rpc("portal_list_org_members", { org_id: organizationId });
   if (error) { logErr("loadPortalActiveStaff", error); return []; }
-  return ((data ?? []) as {
+  const rows = (data ?? []) as {
     membership_id: string;
     user_id: string;
     full_name: string | null;
@@ -1011,6 +1341,7 @@ async function loadPortalActiveStaff(organizationId: string): Promise<PortalStaf
     title: string | null;
     big_number: string | null;
     avatar_url: string | null;
+    avatar_path: string | null;
     role_id: string;
     role_key: string;
     role_name: string;
@@ -1018,9 +1349,10 @@ async function loadPortalActiveStaff(organizationId: string): Promise<PortalStaf
     location_name: string | null;
     membership_status: string;
     last_sign_in_at: string | null;
-  }[]).map((row) => ({
+  }[];
+  return Promise.all(rows.map(async (row) => ({
     id: row.membership_id,
-    kind: "member",
+    kind: "member" as const,
     userId: row.user_id,
     fullName: row.full_name,
     firstName: row.first_name,
@@ -1029,7 +1361,8 @@ async function loadPortalActiveStaff(organizationId: string): Promise<PortalStaf
     phone: row.phone,
     title: row.title,
     bigNumber: row.big_number,
-    avatarUrl: row.avatar_url,
+    avatarUrl: await resolveAvatarUrl(supabase, row.avatar_path, row.avatar_url),
+    avatarPath: row.avatar_path,
     roleId: row.role_id,
     roleKey: row.role_key,
     roleName: row.role_name,
@@ -1038,7 +1371,7 @@ async function loadPortalActiveStaff(organizationId: string): Promise<PortalStaf
     status: row.membership_status === "suspended" ? "suspended" : "active",
     lastSignInAt: row.last_sign_in_at,
     invitedAt: null,
-  }));
+  })));
 }
 
 /** Combineert actieve/geblokkeerde medewerkers met openstaande uitnodigingen tot één lijst (uitgenodigd eerst). */
@@ -1106,6 +1439,16 @@ export async function inviteStaffMember(
       if (insertError.message?.includes("medewerkers")) return { outcome: "failed", error: insertError.message };
       return { outcome: "failed", error: "Koppelen van het account is niet gelukt." };
     }
+    // Zonder deze mail zou deze persoon nooit merken dat ze toegang hebben
+    // gekregen — en als het account nog nooit echt is geactiveerd, ook geen
+    // enkele manier om ooit in te loggen (zelfde les als bij invitePortalPatient).
+    // De membership zelf is al succesvol aangemaakt, dus een mislukte mail
+    // hier laat deze actie niet als geheel falen — alleen loggen.
+    const { error: notifyError } = await callSendInviteApi({
+      context: "portal-staff-linked", organizationId, email: trimmedEmail,
+      firstName: input.firstName.trim(), roleId: input.roleId,
+    });
+    if (notifyError) console.error("[inviteStaffMember(notify linked)]", notifyError);
     return { outcome: "linked", error: null };
   }
 
@@ -1147,7 +1490,7 @@ export async function deleteStaffInvite(inviteId: string): Promise<{ error: stri
   return { error: null };
 }
 
-/** Rol/hoofdvestiging/status van een medewerker bijwerken — hergebruikt updatePortalMember. */
+/** Rol/hoofdlocatie/status van een medewerker bijwerken — hergebruikt updatePortalMember. */
 export async function updateStaffMember(
   membershipId: string,
   patch: { roleId?: string; locationId?: string | null; status?: "active" | "suspended" }
@@ -1166,6 +1509,28 @@ export async function deleteStaffMember(membershipId: string): Promise<{ error: 
   return { error: null };
 }
 
+/**
+ * Reset (verwijdert) de tweestapsverificatie-factor van een collega — het
+ * herstelpad bij een kwijtgeraakte authenticator-app (zie /api/mfa-reset,
+ * migratie 067). De collega moet bij de volgende poging opnieuw instellen.
+ */
+export async function resetStaffMfa(targetUserId: string, organizationId: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return { error: "Niet ingelogd." };
+
+  const res = await fetch(apiUrl("/api/mfa-reset"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ targetUserId, organizationId }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || json.error) {
+    return { error: json.error ?? "Resetten van tweestapsverificatie is niet gelukt." };
+  }
+  return { error: null };
+}
+
 export async function loadMembershipLocations(membershipId: string): Promise<string[]> {
   const supabase = createClient();
   const { data, error } = await supabase
@@ -1179,12 +1544,12 @@ export async function loadMembershipLocations(membershipId: string): Promise<str
 export async function updateMembershipLocations(membershipId: string, locationIds: string[]): Promise<{ error: string | null }> {
   const supabase = createClient();
   const { error: delError } = await supabase.from("membership_locations").delete().eq("membership_id", membershipId);
-  if (delError) { logErr("updateMembershipLocations(delete)", delError); return { error: "Bijwerken van de vestigingen is niet gelukt." }; }
+  if (delError) { logErr("updateMembershipLocations(delete)", delError); return { error: "Bijwerken van de locaties is niet gelukt." }; }
   if (locationIds.length === 0) return { error: null };
   const { error: insError } = await supabase
     .from("membership_locations")
     .insert(locationIds.map((locationId) => ({ membership_id: membershipId, location_id: locationId })));
-  if (insError) { logErr("updateMembershipLocations(insert)", insError); return { error: "Bijwerken van de vestigingen is niet gelukt." }; }
+  if (insError) { logErr("updateMembershipLocations(insert)", insError); return { error: "Bijwerken van de locaties is niet gelukt." }; }
   return { error: null };
 }
 
@@ -1246,6 +1611,26 @@ export async function updateWorkSchedule(membershipId: string, schedule: PortalW
   const { error } = await supabase.from("work_schedules").upsert(rows, { onConflict: "membership_id,weekday" });
   if (error) { logErr("updateWorkSchedule", error); return { error: "Bijwerken van de werkuren is niet gelukt." }; }
   return { error: null };
+}
+
+export interface PortalEmployeeOnboardingStatus {
+  hasWorkSchedule: boolean;
+  hasAvatar: boolean;
+}
+
+/** Voor het rolgebonden welkomstpaneel van een medewerker (EmployeeWelcomePanel). */
+export async function loadEmployeeOnboardingStatus(membershipId: string, userId: string): Promise<PortalEmployeeOnboardingStatus> {
+  const supabase = createClient();
+  const [scheduleRes, profileRes] = await Promise.all([
+    supabase.from("work_schedules").select("id", { count: "exact", head: true }).eq("membership_id", membershipId),
+    supabase.from("profiles").select("avatar_url").eq("id", userId).maybeSingle(),
+  ]);
+  if (scheduleRes.error) logErr("loadEmployeeOnboardingStatus(work_schedules)", scheduleRes.error);
+  if (profileRes.error) logErr("loadEmployeeOnboardingStatus(profiles)", profileRes.error);
+  return {
+    hasWorkSchedule: (scheduleRes.count ?? 0) > 0,
+    hasAvatar: !!profileRes.data?.avatar_url,
+  };
 }
 
 /**
@@ -1334,7 +1719,7 @@ export interface PortalMainGoal {
 }
 
 export interface PortalPatientExtras {
-  checkinTrend: PortalCheckinTrendPoint[]; // oudste → nieuwste, max 14
+  checkinTrend: PortalCheckinTrendPoint[]; // oudste → nieuwste, max 30 (voor het 7/14/30-dagenfilter)
   latestMedication: PortalLatestMedication | null;
   latestPhoto: PortalLatestPhoto | null;
   upcomingAppointment: PortalUpcomingAppointment | null;
@@ -1354,6 +1739,55 @@ function daysAgoStr(n: number): string {
 }
 
 /**
+ * Trainingsvoortgang deze week — via de Protocol Engine (patient_protocols →
+ * actieve fase → schema's → sessielogs), niet de oude losstaande
+ * training_logs-tabel. Die laatste wordt door geen enkele huidige
+ * toewijs-/logflow meer beschreven zodra een patiënt via een protocol
+ * traint (wat de enige manier is om via de portal een trainingsschema toe
+ * te wijzen) — vandaar dat deze kaart altijd "nog geen trainingen gelogd"
+ * toonde, ook met een actief, druk gebruikt schema. Zelfde kalenderweek-
+ * definitie (maandag) als loadPatientProtocolAssignment, voor consistentie
+ * tussen wat de praktijk en de patiënt zelf zien.
+ */
+async function loadTrainingWeekSummary(patientId: string): Promise<PortalTrainingWeekSummary> {
+  const supabase = createClient();
+
+  const { data: activeProtocol } = await supabase
+    .from("patient_protocols")
+    .select("id")
+    .eq("patient_id", patientId)
+    .eq("status", "active")
+    .maybeSingle();
+  if (!activeProtocol) return { completed: 0, total: 0 };
+
+  const { data: activePhase } = await supabase
+    .from("patient_protocol_phases")
+    .select("id")
+    .eq("patient_protocol_id", activeProtocol.id)
+    .eq("status", "active")
+    .maybeSingle();
+  if (!activePhase) return { completed: 0, total: 0 };
+
+  const { data: schedules } = await supabase
+    .from("patient_protocol_schedules")
+    .select("id, frequency_per_week")
+    .eq("phase_id", activePhase.id);
+  const scheduleRows = schedules ?? [];
+  if (scheduleRows.length === 0) return { completed: 0, total: 0 };
+
+  const total = scheduleRows.reduce((sum, s) => sum + (s.frequency_per_week as number), 0);
+  const weekStart = mondayOfWeek();
+  const { count } = await supabase
+    .from("patient_protocol_session_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("patient_id", patientId)
+    .in("schedule_id", scheduleRows.map((s) => s.id))
+    .gte("date", weekStart);
+
+  return { completed: count ?? 0, total };
+}
+
+/**
  * Aanvullende gegevens voor de patiënt-detailpagina: check-in trend,
  * laatste medicatie-inname, laatste foto-update, eerstvolgende afspraak,
  * trainingsvoortgang deze week, de meest recente behaalde mijlpaal en de
@@ -1364,15 +1798,14 @@ function daysAgoStr(n: number): string {
 export async function loadPortalPatientExtras(patientId: string): Promise<PortalPatientExtras> {
   const supabase = createClient();
   const today = dateStr(new Date());
-  const weekAgo = daysAgoStr(6);
 
-  const [checkinsRes, medRes, photoRes, apptRes, trainingRes, milestoneRes, goalRes] = await Promise.all([
+  const [checkinsRes, medRes, photoRes, apptRes, trainingWeek, milestoneRes, goalRes] = await Promise.all([
     supabase
       .from("checkins")
       .select("date, day_score, pain_score, mobility_score, energy_score, mood_score, sleep_score, swelling, note")
       .eq("patient_id", patientId)
       .order("date", { ascending: false })
-      .limit(14),
+      .limit(30),
     supabase
       .from("medication_logs")
       .select("date, time, medication_name, dosage, quantity, reason, effect")
@@ -1396,11 +1829,7 @@ export async function loadPortalPatientExtras(patientId: string): Promise<Portal
       .order("date", { ascending: true })
       .limit(1)
       .maybeSingle(),
-    supabase
-      .from("training_logs")
-      .select("completed")
-      .eq("patient_id", patientId)
-      .gte("date", weekAgo),
+    loadTrainingWeekSummary(patientId),
     supabase
       .from("milestones")
       .select("title, completed_at")
@@ -1423,7 +1852,6 @@ export async function loadPortalPatientExtras(patientId: string): Promise<Portal
   if (medRes.error) logErr("loadPortalPatientExtras(medicatie)", medRes.error);
   if (photoRes.error) logErr("loadPortalPatientExtras(foto)", photoRes.error);
   if (apptRes.error) logErr("loadPortalPatientExtras(afspraak)", apptRes.error);
-  if (trainingRes.error) logErr("loadPortalPatientExtras(training)", trainingRes.error);
   if (milestoneRes.error) logErr("loadPortalPatientExtras(mijlpaal)", milestoneRes.error);
   if (goalRes.error) logErr("loadPortalPatientExtras(hoofddoel)", goalRes.error);
 
@@ -1446,7 +1874,6 @@ export async function loadPortalPatientExtras(patientId: string): Promise<Portal
   const appt = apptRes.data;
   const milestone = milestoneRes.data;
   const goal = goalRes.data;
-  const trainingRows = trainingRes.data ?? [];
 
   return {
     checkinTrend,
@@ -1473,10 +1900,7 @@ export async function loadPortalPatientExtras(patientId: string): Promise<Portal
           location: appt.location as string | null,
         }
       : null,
-    trainingWeek: {
-      completed: trainingRows.filter((r) => r.completed).length,
-      total: trainingRows.length,
-    },
+    trainingWeek,
     recentMilestone: milestone
       ? { title: milestone.title as string, completedAt: milestone.completed_at as string }
       : null,
@@ -1505,6 +1929,17 @@ const LOGO_SIGNED_URL_TTL_SECONDS = 60 * 60;
  * organisatiebrede instelling, geen dagelijkse patiëntenzorg-taak.
  */
 export const MANAGE_BRANDING_ROLES = ["organization_owner"];
+
+/**
+ * Tijdelijk uitgeschakeld op verzoek: de Huisstijl-instellingenpagina en elke
+ * link ernaartoe (nav, onboarding-checklist) worden overal verborgen — geen
+ * must-have voor nu. De onderliggende logica (RLS, service-functies,
+ * `usePortalBranding`/`useAppBranding` die een reeds ingestelde orgkleur/logo
+ * toepassen) blijft volledig intact en actief; alleen de UI-toegang tot de
+ * instellingenpagina zelf wordt gated. Zelfde patroon als
+ * `SUBSCRIPTIONS_ENABLED` in lib/subscription.ts.
+ */
+export const BRANDING_SETTINGS_ENABLED = false;
 
 export interface PortalBranding {
   name: string;

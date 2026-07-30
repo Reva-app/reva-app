@@ -3,7 +3,7 @@
 import { useRef, useEffect, useState } from "react";
 import {
   Bell, Check, CheckCheck, Clock, Pill,
-  ClipboardCheck, Calendar, Dumbbell, Image, Trophy, ArrowRight,
+  ClipboardCheck, Calendar, Image, ArrowRight,
 } from "lucide-react";
 import type { AppNotification, NotificationType } from "@/lib/notifications";
 
@@ -17,9 +17,7 @@ const TYPE_CONFIG: Record<NotificationType, {
   medicatie: { icon: Pill,          color: "#e8632a", bg: "#fff3ee" },
   checkin:   { icon: ClipboardCheck, color: "#e8632a", bg: "#fff3ee" },
   afspraak:  { icon: Calendar,       color: "#3b82f6", bg: "#eff6ff" },
-  training:  { icon: Dumbbell,       color: "#0ea5e9", bg: "#f0f9ff" },
   foto:      { icon: Image,          color: "#6b7280", bg: "#f3f4f6" },
-  mijlpaal:  { icon: Trophy,         color: "#e8632a", bg: "#fff3ee" },
 };
 
 // ─── Individual notification item ─────────────────────────────────────────────
@@ -234,8 +232,7 @@ export function NotificationPanel({
     return acc;
   }, {});
   const typeLabels: Record<string, string> = {
-    medicatie: "medicatie", checkin: "check-in", afspraak: "afspraken",
-    training: "training", foto: "foto", mijlpaal: "mijlpaal",
+    medicatie: "medicatie", checkin: "check-in", afspraak: "afspraken", foto: "foto",
   };
   const footerParts = Object.entries(typeCount)
     .map(([t, c]) => `${c} ${typeLabels[t] ?? t}`)

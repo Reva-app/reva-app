@@ -6,6 +6,8 @@ interface CardProps {
   padding?: "none" | "sm" | "md" | "lg";
   onClick?: () => void;
   hoverable?: boolean;
+  /** Extra inline stijl, samengevoegd bovenop de standaard achtergrond/rand/schaduw (bv. een accentrand). */
+  style?: React.CSSProperties;
 }
 
 const paddings = {
@@ -21,6 +23,7 @@ export function Card({
   padding = "md",
   onClick,
   hoverable,
+  style,
 }: CardProps) {
   return (
     <div
@@ -35,6 +38,7 @@ export function Card({
         background: "#ffffff",
         borderColor: "#e8e5df",
         boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+        ...style,
       }}
       onClick={onClick}
     >
@@ -51,8 +55,8 @@ interface CardHeaderProps {
 
 export function CardHeader({ title, subtitle, action }: CardHeaderProps) {
   return (
-    <div className="flex items-start justify-between mb-4">
-      <div>
+    <div className="flex items-start justify-between flex-wrap gap-2 mb-4">
+      <div className="min-w-0 flex-1">
         <h3 className="font-semibold text-gray-900 text-sm">{title}</h3>
         {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
       </div>

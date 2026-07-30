@@ -5,13 +5,13 @@ import Link from "next/link";
 import { X, Check, MapPin, Palette, Users, HeartPulse } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { loadPortalBranding, markMembershipWelcomed, type PortalDashboardStats } from "@/lib/services/portalService";
+import { loadPortalBranding, markMembershipWelcomed, BRANDING_SETTINGS_ENABLED, type PortalDashboardStats } from "@/lib/services/portalService";
 
 const USPS = [
   "Nodig je hele team uit en regel rollen en rechten in een paar klikken.",
-  "Beheer al je vestigingen overzichtelijk op één plek.",
+  "Beheer al je locaties overzichtelijk op één plek.",
   "Patiënten krijgen een eigen dashboard voor afspraken, oefeningen en voortgang.",
-  "Alles in jouw eigen huisstijl — logo en kleur naar keuze.",
+  ...(BRANDING_SETTINGS_ENABLED ? ["Alles in jouw eigen huisstijl — logo en kleur naar keuze."] : []),
 ];
 
 interface WelcomePanelProps {
@@ -44,8 +44,10 @@ export function WelcomePanel({ membershipId, organizationId, organizationName, s
   }
 
   const checklist = [
-    { label: "Voeg een vestiging toe", done: stats.locationCount > 1, href: "/portal/locaties", icon: MapPin },
-    { label: "Stel je huisstijl in", done: brandingSet === true, href: "/portal/huisstijl", icon: Palette },
+    { label: "Voeg een locatie toe", done: stats.locationCount > 0, href: "/portal/locaties", icon: MapPin },
+    ...(BRANDING_SETTINGS_ENABLED
+      ? [{ label: "Stel je huisstijl in", done: brandingSet === true, href: "/portal/huisstijl", icon: Palette }]
+      : []),
     { label: "Nodig een collega uit", done: stats.colleagueCount > 1, href: "/portal/medewerkers", icon: Users },
     { label: "Voeg je eerste patiënt toe", done: stats.patientCount > 0, href: "/portal/patienten", icon: HeartPulse },
   ];

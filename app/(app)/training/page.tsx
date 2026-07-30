@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useAppData } from "@/lib/store";
 import dynamic from "next/dynamic";
 import type { DagboekWorkout } from "@/lib/data";
@@ -23,6 +23,11 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { useUserPlan } from "@/lib/hooks/useUserPlan";
 import { canAddTrainingOefening } from "@/lib/featureGates";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
+import { usePatientProtocol } from "@/lib/hooks/usePatientProtocol";
+import { ProtocolTrainingView } from "@/components/training/ProtocolTrainingView";
+import { TrainingWeekOverview, type WeekDayEntry } from "@/components/training/TrainingWeekOverview";
+import { loadSessionLogsInRange } from "@/lib/services/patientProtocolService";
+import { useToast } from "@/components/ui/Toast";
 import {
   Plus, Pencil, Trash2, X, Check, ChevronDown, ChevronUp,
   Dumbbell, Activity, Zap, Move, Minus, HelpCircle, Clock,
@@ -804,6 +809,9 @@ export default function TrainingPage() {
 
   const planInfo = useUserPlan();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const { showToast, toastNode } = useToast();
+  const { checked: protocolChecked, hasActiveProtocol, protocol, patientId, refresh: refreshProtocol } = usePatientProtocol();
+  const [protocolSessionLogs, setProtocolSessionLogs] = useState<{ id: string; date: string; scheduleId: string }[]>([]);
 
   function openOefeningModal(editing?: TrainingOefening) {
     if (!editing && !canAddTrainingOefening(planInfo, trainingOefeningen.length)) {
@@ -820,24 +828,19 @@ export default function TrainingPage() {
   const [oefeningTypeFilter, setOefeningTypeFilter] = useState<TrainingOefeningType | "Alles">("Alles");
   const [schemaStatusFilter, setSchemaStatusFilter] = useState<TrainingSchemaStatus | "Alles">("Alles");
 
-  const weekScrollRef = useRef<HTMLDivElement>(null);
-  const todayCardRef = useRef<HTMLDivElement>(null);
-
-  // Auto-scroll week view to today on mount
-  useEffect(() => {
-    if (todayCardRef.current && weekScrollRef.current) {
-      const card = todayCardRef.current;
-      const container = weekScrollRef.current;
-      const cardLeft = card.offsetLeft;
-      const cardWidth = card.offsetWidth;
-      const containerWidth = container.offsetWidth;
-      container.scrollLeft = cardLeft - containerWidth / 2 + cardWidth / 2;
-    }
-  }, []);
-
   // Week calendar — visual only, ready for agenda/dagboek integration
   const weekDays = getWeekDays();
   const today = todayStr();
+
+  useEffect(() => {
+    if (!hasActiveProtocol || !patientId) return;
+    let cancelled = false;
+    loadSessionLogsInRange(patientId, weekDays[0].date, weekDays[6].date).then((logs) => {
+      if (!cancelled) setProtocolSessionLogs(logs);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasActiveProtocol, patientId, protocol]);
 
   // Stats
   const actieveSchemas = trainingSchemas.filter((s) => s.status === "actief");
@@ -856,6 +859,7 @@ export default function TrainingPage() {
       addTrainingOefening({ id: uid(), ...data, createdAt: now, updatedAt: now });
     }
     setOefeningModal({ open: false });
+    showToast("Oefening opgeslagen");
   }
 
   function handleSaveSchema(data: SchemaFormState) {
@@ -866,6 +870,35 @@ export default function TrainingPage() {
       addTrainingSchema({ id: uid(), ...data, createdAt: now, updatedAt: now });
     }
     setSchemaModal({ open: false });
+    showToast("Schema opgeslagen");
+  }
+
+  function handleDeleteOefening(id: string) {
+    deleteTrainingOefening(id);
+    showToast("Oefening verwijderd");
+  }
+
+  function handleDeleteSchema(id: string) {
+    deleteTrainingSchema(id);
+    showToast("Schema verwijderd");
+  }
+
+  if (!protocolChecked) return null;
+
+  if (hasActiveProtocol && protocol && patientId) {
+    const scheduleTitleById = new Map(protocol.currentPhase?.schedules.map((s) => [s.id, s.title]) ?? []);
+    const protocolWeekDays: WeekDayEntry[] = weekDays.map(({ date, label }) => ({
+      date, label,
+      items: protocolSessionLogs
+        .filter((log) => log.date === date)
+        .map((log) => ({ id: log.id, label: scheduleTitleById.get(log.scheduleId) ?? "Sessie", completed: true })),
+    }));
+    return (
+      <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6 overflow-x-hidden">
+        <TrainingWeekOverview days={protocolWeekDays} today={today} />
+        <ProtocolTrainingView protocol={protocol} patientId={patientId} onLogged={refreshProtocol} />
+      </div>
+    );
   }
 
   return (
@@ -900,150 +933,31 @@ export default function TrainingPage() {
         </div>
       </div>
 
-      {/* Week overview — dark card, visual only, ready for future dagboek integration */}
-      <div
-        className="rounded-2xl p-5"
-        style={{ background: "#18181a", border: "1px solid rgba(255,255,255,0.06)" }}
-      >
-        <p className="text-sm font-semibold mb-0.5" style={{ color: "#f5f4f2" }}>Deze week</p>
-        <p className="text-xs mb-4" style={{ color: "#7c7c8a" }}>Weekoverzicht van je revalidatieschema</p>
-        {/* Desktop: equal-width columns in one row */}
-        <div className="hidden sm:flex gap-2">
-          {weekDays.map(({ date, label }) => {
-            const isToday = date === today;
-            const dayWorkouts = dagboekWorkouts.filter((w) => w.date === date);
-            const visible = dayWorkouts.slice(0, 2);
-            const overflow = dayWorkouts.length - visible.length;
-            return (
-              <div key={date}
-                className="flex-1 flex flex-col gap-1.5 py-3 px-2 rounded-xl transition-all"
-                style={{
-                  background: isToday ? "#fff5f0" : "#ffffff",
-                  border: isToday ? "1.5px solid #e8632a" : "1.5px solid #e8e5df",
-                  boxShadow: isToday ? "0 0 0 3px rgba(232,99,42,0.08)" : "0 1px 4px rgba(0,0,0,0.05)",
-                  minWidth: 0,
-                }}
-              >
-                <span className="text-xs font-semibold text-center"
-                  style={{ color: isToday ? "#e8632a" : "#1a1a1a" }}>
-                  {label}
-                </span>
-                {dayWorkouts.length === 0 ? (
-                  <div className="flex justify-center">
-                    <div className="w-1.5 h-1.5 rounded-full mt-0.5"
-                      style={{ background: isToday ? "#e8632a" : "#e8e5df" }} />
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-1">
-                    {visible.map((w) => {
-                      const schema = trainingSchemas.find((s) => s.id === w.schemaId);
-                      const wLabel = schema ? schema.title : w.title;
-                      return (
-                        <div key={w.id}
-                          className="flex items-center gap-1 px-1.5 py-1 rounded-lg"
-                          style={{ background: w.completed ? "rgba(34,197,94,0.10)" : "rgba(0,0,0,0.04)" }}
-                        >
-                          {w.completed ? (
-                            <div className="w-3 h-3 rounded-full flex items-center justify-center shrink-0"
-                              style={{ background: "#22c55e" }}>
-                              <Check size={7} className="text-white" strokeWidth={3} />
-                            </div>
-                          ) : (
-                            <div className="w-3 h-3 rounded-full shrink-0"
-                              style={{ border: "1.5px solid #d1d5db" }} />
-                          )}
-                          <span className="text-[9px] font-medium leading-tight truncate"
-                            style={{ color: w.completed ? "#15803d" : "#374151" }}>
-                            {wLabel}
-                          </span>
-                        </div>
-                      );
-                    })}
-                    {overflow > 0 && (
-                      <p className="text-[9px] font-medium text-center" style={{ color: "#9ca3af" }}>+{overflow} meer</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+      <TrainingWeekOverview
+        days={weekDays.map(({ date, label }) => ({
+          date, label,
+          items: dagboekWorkouts.filter((w) => w.date === date).map((w) => {
+            const schema = trainingSchemas.find((s) => s.id === w.schemaId);
+            return { id: w.id, label: schema ? schema.title : w.title, completed: w.completed };
+          }),
+        }))}
+        subtitle="Weekoverzicht van je revalidatieschema"
+        today={today}
+      />
+      <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: "#18181a", border: "1px solid rgba(255,255,255,0.06)" }}>
+        <div>
+          <p className="text-xl font-bold" style={{ color: "#f5f4f2" }}>{actieveSchemas.length}</p>
+          <p className="text-xs" style={{ color: "#7c7c8a" }}>Actieve schema's</p>
         </div>
-
-        {/* Mobile: horizontal scroll with wider cards */}
-        <div ref={weekScrollRef} className="sm:hidden flex gap-2.5 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-          {weekDays.map(({ date, label }) => {
-            const isToday = date === today;
-            const dayWorkouts = dagboekWorkouts.filter((w) => w.date === date);
-            const visible = dayWorkouts.slice(0, 3);
-            const overflow = dayWorkouts.length - visible.length;
-            return (
-              <div key={date}
-                ref={isToday ? todayCardRef : undefined}
-                className="flex flex-col gap-2 py-3 px-3 rounded-xl shrink-0"
-                style={{
-                  width: "120px",
-                  background: isToday ? "#fff5f0" : "#ffffff",
-                  border: isToday ? "1.5px solid #e8632a" : "1.5px solid #e8e5df",
-                  boxShadow: isToday ? "0 0 0 3px rgba(232,99,42,0.08)" : "0 1px 4px rgba(0,0,0,0.05)",
-                }}
-              >
-                <span className="text-xs font-bold"
-                  style={{ color: isToday ? "#e8632a" : "#1a1a1a" }}>
-                  {label}
-                </span>
-                {dayWorkouts.length === 0 ? (
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full shrink-0"
-                      style={{ background: isToday ? "#e8632a" : "#e8e5df" }} />
-                    <span className="text-[10px]" style={{ color: "#9ca3af" }}>Rust</span>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-1">
-                    {visible.map((w) => {
-                      const schema = trainingSchemas.find((s) => s.id === w.schemaId);
-                      const wLabel = schema ? schema.title : w.title;
-                      return (
-                        <div key={w.id} className="flex items-center gap-1.5">
-                          {w.completed ? (
-                            <div className="w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0"
-                              style={{ background: "#22c55e" }}>
-                              <Check size={8} className="text-white" strokeWidth={3} />
-                            </div>
-                          ) : (
-                            <div className="w-3.5 h-3.5 rounded-full shrink-0"
-                              style={{ border: "1.5px solid #d1d5db" }} />
-                          )}
-                          <span className="text-[10px] font-medium leading-tight line-clamp-2"
-                            style={{ color: w.completed ? "#15803d" : "#374151" }}>
-                            {wLabel}
-                          </span>
-                        </div>
-                      );
-                    })}
-                    {overflow > 0 && (
-                      <p className="text-[10px]" style={{ color: "#9ca3af" }}>+{overflow}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        <div className="h-8 w-px" style={{ background: "rgba(255,255,255,0.07)" }} />
+        <div>
+          <p className="text-xl font-bold" style={{ color: "#f5f4f2" }}>{trainingSchemas.length}</p>
+          <p className="text-xs" style={{ color: "#7c7c8a" }}>Schema's totaal</p>
         </div>
-        <div className="flex items-center gap-4 mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-          <div>
-            <p className="text-xl font-bold" style={{ color: "#f5f4f2" }}>{actieveSchemas.length}</p>
-            <p className="text-xs" style={{ color: "#7c7c8a" }}>Actieve schema's</p>
-          </div>
-          <div className="h-8 w-px" style={{ background: "rgba(255,255,255,0.07)" }} />
-          <div>
-            <p className="text-xl font-bold" style={{ color: "#f5f4f2" }}>{trainingSchemas.length}</p>
-            <p className="text-xs" style={{ color: "#7c7c8a" }}>Schema's totaal</p>
-          </div>
-          <div className="h-8 w-px" style={{ background: "rgba(255,255,255,0.07)" }} />
-          <div>
-            <p className="text-xl font-bold" style={{ color: "#f5f4f2" }}>{trainingOefeningen.length}</p>
-            <p className="text-xs" style={{ color: "#7c7c8a" }}>Oefeningen in database</p>
-          </div>
+        <div className="h-8 w-px" style={{ background: "rgba(255,255,255,0.07)" }} />
+        <div>
+          <p className="text-xl font-bold" style={{ color: "#f5f4f2" }}>{trainingOefeningen.length}</p>
+          <p className="text-xs" style={{ color: "#7c7c8a" }}>Oefeningen in database</p>
         </div>
       </div>
 
@@ -1148,7 +1062,7 @@ export default function TrainingPage() {
                           schema={s}
                           oefeningen={trainingOefeningen}
                           onEdit={() => setSchemaModal({ open: true, editing: s })}
-                          onDelete={() => deleteTrainingSchema(s.id)}
+                          onDelete={() => handleDeleteSchema(s.id)}
                           onStatusChange={(st) => updateTrainingSchema(s.id, { status: st })}
                         />
                       ))}
@@ -1166,7 +1080,7 @@ export default function TrainingPage() {
                           schema={s}
                           oefeningen={trainingOefeningen}
                           onEdit={() => setSchemaModal({ open: true, editing: s })}
-                          onDelete={() => deleteTrainingSchema(s.id)}
+                          onDelete={() => handleDeleteSchema(s.id)}
                           onStatusChange={(st) => updateTrainingSchema(s.id, { status: st })}
                         />
                       ))}
@@ -1184,7 +1098,7 @@ export default function TrainingPage() {
                           schema={s}
                           oefeningen={trainingOefeningen}
                           onEdit={() => setSchemaModal({ open: true, editing: s })}
-                          onDelete={() => deleteTrainingSchema(s.id)}
+                          onDelete={() => handleDeleteSchema(s.id)}
                           onStatusChange={(st) => updateTrainingSchema(s.id, { status: st })}
                         />
                       ))}
@@ -1241,7 +1155,7 @@ export default function TrainingPage() {
                               oefening={oe}
                               usedInCount={usedInCount(oe.id)}
                               onEdit={() => setOefeningModal({ open: true, editing: oe })}
-                              onDelete={() => deleteTrainingOefening(oe.id)}
+                              onDelete={() => handleDeleteOefening(oe.id)}
                             />
                           ))}
                         </div>
@@ -1270,7 +1184,7 @@ export default function TrainingPage() {
                         oefening={oe}
                         usedInCount={usedInCount(oe.id)}
                         onEdit={() => setOefeningModal({ open: true, editing: oe })}
-                        onDelete={() => deleteTrainingOefening(oe.id)}
+                        onDelete={() => handleDeleteOefening(oe.id)}
                       />
                     ));
                   })()}
@@ -1310,6 +1224,7 @@ export default function TrainingPage() {
       {showUpgradeModal && (
         <UpgradeModal feature="training" onClose={() => setShowUpgradeModal(false)} />
       )}
+      {toastNode}
     </div>
   );
 }

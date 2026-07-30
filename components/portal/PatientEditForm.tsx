@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/Button";
 import { DatePicker } from "@/components/ui/DatePicker";
 import {
   updatePortalPatient,
-  type PortalPatient, type PortalPatientInput, type PortalLocationOption, type PortalMember, type PortalProtocolOption,
+  type PortalPatient, type PortalPatientInput, type PortalLocationOption, type PortalMember,
 } from "@/lib/services/portalService";
+import { isValidEmail, BLESSURE_TYPEN } from "@/lib/data";
 
 const inputStyle = {
   borderColor: "#e8e5df",
@@ -31,9 +32,10 @@ function toInput(p: PortalPatient): PortalPatientInput {
     gender: p.gender || "",
     locationId: p.locationId,
     therapistId: p.therapistId,
-    protocolId: p.protocolId,
     treatmentStartDate: p.treatmentStartDate || "",
     surgeryDate: p.surgeryDate || "",
+    injuryDate: p.injuryDate || "",
+    injuryType: p.injuryType || "",
   };
 }
 
@@ -41,12 +43,11 @@ interface PatientEditFormProps {
   patient: PortalPatient;
   locations: PortalLocationOption[];
   members: PortalMember[];
-  protocols: PortalProtocolOption[];
   onSaved: () => void;
   onClose: () => void;
 }
 
-export function PatientEditForm({ patient, locations, members, protocols, onSaved, onClose }: PatientEditFormProps) {
+export function PatientEditForm({ patient, locations, members, onSaved, onClose }: PatientEditFormProps) {
   const [input, setInput] = useState<PortalPatientInput>(toInput(patient));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -61,6 +62,10 @@ export function PatientEditForm({ patient, locations, members, protocols, onSave
     e.preventDefault();
     if (!input.firstName.trim() || !input.lastName.trim()) {
       setError("Vul voornaam en achternaam in");
+      return;
+    }
+    if (input.email.trim() && !isValidEmail(input.email)) {
+      setError("Vul een geldig e-mailadres in (bijv. naam@voorbeeld.nl)");
       return;
     }
     setSaving(true);
@@ -114,10 +119,10 @@ export function PatientEditForm({ patient, locations, members, protocols, onSave
             </select>
           </div>
           <div>
-            <FieldLabel>Vestiging</FieldLabel>
+            <FieldLabel>Locatie</FieldLabel>
             <select value={input.locationId ?? ""} onChange={(e) => update("locationId", e.target.value || null)}
               className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
-              <option value="">Geen specifieke vestiging</option>
+              <option value="">Geen specifieke locatie</option>
               {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
             </select>
           </div>
@@ -130,12 +135,16 @@ export function PatientEditForm({ patient, locations, members, protocols, onSave
             </select>
           </div>
           <div>
-            <FieldLabel>Protocol</FieldLabel>
-            <select value={input.protocolId ?? ""} onChange={(e) => update("protocolId", e.target.value || null)}
+            <FieldLabel>Blessuretype</FieldLabel>
+            <select value={input.injuryType} onChange={(e) => update("injuryType", e.target.value)}
               className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
-              <option value="">Geen protocol</option>
-              {protocols.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              <option value="">Nog niet bekend</option>
+              {BLESSURE_TYPEN.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
             </select>
+          </div>
+          <div>
+            <FieldLabel>Datum blessure</FieldLabel>
+            <DatePicker value={input.injuryDate} onChange={(v) => update("injuryDate", v)} placeholder="Kies een datum" />
           </div>
           <div>
             <FieldLabel>Startdatum behandeling</FieldLabel>

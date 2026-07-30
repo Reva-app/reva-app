@@ -377,13 +377,13 @@ export interface AdminRoleOption {
   name: string;
 }
 
-/** Precies de 3 canonieke rollen (organization_owner/therapist/practice_staff) — zie migratie 041. */
+/** Precies de 2 canonieke rollen (organization_owner/therapist) — zie migratie 041/063. */
 export async function loadAdminRoles(): Promise<AdminRoleOption[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("roles")
     .select("id, key, name")
-    .in("key", ["organization_owner", "therapist", "practice_staff"])
+    .in("key", ["organization_owner", "therapist"])
     .order("scope")
     .order("key");
   if (error) { logErr("loadAdminRoles", error); return []; }
@@ -391,11 +391,11 @@ export async function loadAdminRoles(): Promise<AdminRoleOption[]> {
 }
 
 /**
- * Maakt een lege organisatie aan, bewust ZONDER een placeholder-vestiging.
- * De eigenaar (of platform-admin) maakt zelf de eerste, echte vestiging aan
- * via /portal/locaties — die wordt dan automatisch de hoofdvestiging (zie
+ * Maakt een lege organisatie aan, bewust ZONDER een placeholder-locatie.
+ * De eigenaar (of platform-admin) maakt zelf de eerste, echte locatie aan
+ * via /portal/locaties — die wordt dan automatisch de hoofdlocatie (zie
  * de set_first_location_as_main-trigger in migratie 040). Vroeger werd hier
- * altijd een lege "Hoofdlocatie" aangemaakt, die dan al hoofdvestiging was
+ * altijd een lege "Hoofdlocatie" aangemaakt, die dan al hoofdlocatie was
  * vóórdat de eigenaar ooit iets zelf had ingevoerd.
  */
 export async function createAdminOrganization(name: string): Promise<{ id: string | null; error: string | null }> {
@@ -666,4 +666,38 @@ export async function loadAdminOrgUsage(orgId: string): Promise<AdminOrgUsage> {
     .sort((a, b) => b.localeCompare(a))[0] ?? null;
 
   return { lastSignInAt, checkinsLast30Days };
+}
+
+export interface AdminPlatformActivity {
+  checkinsLast30Days: number;
+}
+
+/** Platformbrede versie van de check-ins-laatste-30-dagen-telling in loadAdminOrgUsage, voor het dashboard. */
+export async function loadAdminPlatformActivity(): Promise<AdminPlatformActivity> {
+  const supabase = createClient();
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const { count, error } = await supabase
+    .from("checkins")
+    .select("id", { count: "exact", head: true })
+    .gte("date", cutoffStr);
+  if (error) { logErr("loadAdminPlatformActivity", error); return { checkinsLast30Days: 0 }; }
+  return { checkinsLast30Days: count ?? 0 };
+}
+
+export interface AdminOrgActivityRow {
+  organizationId: string;
+  lastSignInAt: string | null;
+}
+
+/** Eén rij per organisatie met de meest recente ledenlogin — voorkomt een N+1 round-trip per organisatie. */
+export async function loadAdminOrgLastActivity(): Promise<AdminOrgActivityRow[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("admin_org_last_activity");
+  if (error) { logErr("loadAdminOrgLastActivity", error); return []; }
+  return ((data ?? []) as { organization_id: string; last_sign_in_at: string | null }[]).map((r) => ({
+    organizationId: r.organization_id,
+    lastSignInAt: r.last_sign_in_at,
+  }));
 }

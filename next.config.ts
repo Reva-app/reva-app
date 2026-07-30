@@ -51,12 +51,28 @@ const nextConfig: NextConfig = {
 
   // headers() wordt genegeerd bij output: 'export', dus alleen toevoegen
   // voor de normale server-build (niet voor de Capacitor static export).
+  // Naast de al aanwezige CSP: standaard hardening-headers die er nog
+  // ontbraken (gevonden bij het veiligheidsonderzoek vóór de eerste
+  // praktijk) — geen van deze verandert app-gedrag, puur browser-instructies.
   ...(!isCapacitor && {
     async headers() {
       return [
         {
           source: "/(.*)",
-          headers: [{ key: "Content-Security-Policy", value: cspHeader }],
+          headers: [
+            { key: "Content-Security-Policy", value: cspHeader },
+            // Dwingt de browser om altijd HTTPS te gebruiken voor dit domein,
+            // ook bij een eerste bezoek via een http://-link.
+            { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+            // Voorkomt dat de browser een bestand als ander MIME-type
+            // interpreteert dan de server aangeeft (MIME-sniffing-aanvallen).
+            { key: "X-Content-Type-Options", value: "nosniff" },
+            // Stuurt geen volledige URL mee als Referer naar andere origins
+            // (bv. geen patiënt-id's in de pad-structuur die zouden lekken).
+            { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+            // Schakelt browser-API's uit die deze app nooit gebruikt.
+            { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          ],
         },
       ];
     },

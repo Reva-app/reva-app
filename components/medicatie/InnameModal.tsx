@@ -47,6 +47,22 @@ export type InnameFormFields = {
 import { todayStr, nowTimeStr } from "@/lib/dateUtils";
 export { todayStr, nowTimeStr };
 
+const SAVED_DISMISS_MS = 900;
+
+function SavedScreen() {
+  return (
+    <div className="flex flex-col items-center justify-center py-14 gap-3">
+      <div
+        className="w-12 h-12 rounded-full flex items-center justify-center"
+        style={{ background: "#f0fdf4" }}
+      >
+        <Check size={22} style={{ color: "#22c55e" }} />
+      </div>
+      <p className="text-sm font-semibold text-gray-800">Inname opgeslagen</p>
+    </div>
+  );
+}
+
 // ─── Shared form primitives ───────────────────────────────────────────────────
 
 export function FieldLabel({
@@ -254,15 +270,7 @@ function InnameFormBody({
       </div>
 
       {saved ? (
-        <div className="flex flex-col items-center justify-center py-14 gap-3">
-          <div
-            className="w-12 h-12 rounded-full flex items-center justify-center"
-            style={{ background: "#f0fdf4" }}
-          >
-            <Check size={22} style={{ color: "#22c55e" }} />
-          </div>
-          <p className="text-sm font-semibold text-gray-800">Inname opgeslagen</p>
-        </div>
+        <SavedScreen />
       ) : (
         <div className="p-6 space-y-5">
           <InnameFormFields fields={fields} setField={setField} submitted={submitted} />
@@ -322,7 +330,7 @@ export function InnameModal({
     setSubmitted(true);
     if (!canSave) return;
     setSaved(true);
-    setTimeout(() => onSave(fields), 1100);
+    setTimeout(() => onSave(fields), SAVED_DISMISS_MS);
   }
 
   useEffect(() => {
@@ -398,14 +406,8 @@ export function InnameModal({
         </div>
 
         {saved ? (
-          <div className="flex flex-col items-center justify-center py-14 gap-3 flex-1">
-            <div
-              className="w-12 h-12 rounded-full flex items-center justify-center"
-              style={{ background: "#f0fdf4" }}
-            >
-              <Check size={22} style={{ color: "#22c55e" }} />
-            </div>
-            <p className="text-sm font-semibold text-gray-800">Inname opgeslagen</p>
+          <div className="flex-1 flex items-center justify-center">
+            <SavedScreen />
           </div>
         ) : (
           <>

@@ -2,24 +2,41 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, HeartPulse, MapPin, Users, Palette, LogOut } from "lucide-react";
+import { LayoutDashboard, HeartPulse, MapPin, Users, ClipboardList, ListChecks, Dumbbell, Palette, LogOut, BarChart3, History } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { usePortalBranding } from "@/lib/hooks/usePortalBranding";
-import { MANAGE_BRANDING_ROLES } from "@/lib/services/portalService";
+import { Avatar } from "@/components/ui/Avatar";
+import { MANAGE_BRANDING_ROLES, BRANDING_SETTINGS_ENABLED, VIEW_ANALYTICS_ROLES } from "@/lib/services/portalService";
+import { VIEW_AUDIT_LOG_ROLES } from "@/lib/services/auditService";
 
 const nav = [
   { href: "/portal", label: "Dashboard", icon: LayoutDashboard },
   { href: "/portal/patienten", label: "Patiënten", icon: HeartPulse },
-  { href: "/portal/locaties", label: "Vestigingen", icon: MapPin },
+  { href: "/portal/herstelplannen", label: "Herstelplannen", icon: ClipboardList },
+  { href: "/portal/schemas", label: "Schema's", icon: ListChecks },
+  { href: "/portal/oefeningen", label: "Oefeningen", icon: Dumbbell },
+  { href: "/portal/locaties", label: "Locaties", icon: MapPin },
   { href: "/portal/medewerkers", label: "Medewerkers", icon: Users },
 ];
 
-/** Gedeeld door PortalSidebar (desktop) en PortalLayout's mobiele menu, zodat beide altijd dezelfde pagina's/rolgating tonen. */
-export function getPortalNavItems(canManageBranding: boolean) {
-  return canManageBranding
+/**
+ * Gedeeld door PortalSidebar (desktop) en PortalLayout's mobiele menu, zodat
+ * beide altijd dezelfde pagina's/rolgating tonen. `secondary` (Analyse,
+ * Activiteitenlog) hoort onderaan de balk, boven het accountblok — zelfde
+ * indeling als primaryNav/secondaryNav bij de patiënten-sidebar.
+ */
+export function getPortalNavItems(canManageBranding: boolean, canViewAnalytics: boolean, canViewAuditLog: boolean) {
+  const primary = canManageBranding && BRANDING_SETTINGS_ENABLED
     ? [...nav, { href: "/portal/huisstijl", label: "Huisstijl", icon: Palette }]
     : nav;
+
+  const secondary = [
+    ...(canViewAnalytics ? [{ href: "/portal/analyse", label: "Analyse", icon: BarChart3 }] : []),
+    ...(canViewAuditLog ? [{ href: "/portal/activiteitenlog", label: "Activiteitenlog", icon: History }] : []),
+  ];
+
+  return { primary, secondary };
 }
 
 export function PortalSidebar() {
@@ -28,7 +45,9 @@ export function PortalSidebar() {
   const { membership } = usePortalMembership();
   const { branding } = usePortalBranding();
   const canManageBranding = !!membership && MANAGE_BRANDING_ROLES.includes(membership.roleKey);
-  const navItems = getPortalNavItems(canManageBranding);
+  const canViewAnalytics = !!membership && VIEW_ANALYTICS_ROLES.includes(membership.roleKey);
+  const canViewAuditLog = !!membership && VIEW_AUDIT_LOG_ROLES.includes(membership.roleKey);
+  const { primary, secondary } = getPortalNavItems(canManageBranding, canViewAnalytics, canViewAuditLog);
 
   const NavLink = ({
     href, label, icon: Icon,
@@ -74,20 +93,29 @@ export function PortalSidebar() {
       </div>
 
       <nav className="flex-1 px-2.5 space-y-0.5">
-        {navItems.map((item) => (
+        {primary.map((item) => (
           <NavLink key={item.href} {...item} />
         ))}
       </nav>
 
+      {secondary.length > 0 && (
+        <div className="px-2.5 pb-3">
+          <div className="my-3" style={{ height: "1px", background: "rgba(255,255,255,0.05)" }} />
+          {secondary.map((item) => (
+            <NavLink key={item.href} {...item} />
+          ))}
+        </div>
+      )}
+
       <div className="mx-2.5 mb-3 px-3 py-3 rounded-xl" style={{ background: "rgba(255,255,255,0.04)" }}>
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ background: "var(--brand-accent, #e8632a)" }}>
-            {user?.email?.[0]?.toUpperCase() ?? "P"}
-          </div>
-          <div className="overflow-hidden min-w-0 flex-1">
-            <p className="text-white text-xs font-medium truncate">{user?.email ?? ""}</p>
-            <p className="text-[11px] truncate" style={{ color: "#52525e" }}>{membership?.roleName ?? ""}</p>
-          </div>
+          <Link href="/portal/account" className="flex items-center gap-2.5 flex-1 min-w-0 rounded-lg -m-1 p-1 transition-colors hover:bg-white/5">
+            <Avatar fullName={membership?.userFullName ?? null} email={user?.email} avatarUrl={membership?.avatarUrl ?? null} size={28} />
+            <div className="overflow-hidden min-w-0 flex-1">
+              <p className="text-white text-xs font-medium truncate">{membership?.userFullName || user?.email || ""}</p>
+              <p className="text-[11px] truncate" style={{ color: "var(--brand-accent, #e8632a)" }}>Account instellingen</p>
+            </div>
+          </Link>
           <button
             type="button"
             onClick={signOut}

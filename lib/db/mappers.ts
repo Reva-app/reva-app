@@ -85,9 +85,7 @@ export function dbToNotificationSettings(
     checkin:    row?.checkin_reminder_enabled   ?? (raw.checkin    as boolean | undefined) ?? true,
     afspraken:  (raw.afspraken  as boolean | undefined) ?? true,
     medicatie:  (raw.medicatie  as boolean | undefined) ?? true,
-    training:   (raw.training   as boolean | undefined) ?? false,
     foto:       (raw.foto       as boolean | undefined) ?? false,
-    mijlpalen:  (raw.mijlpalen  as boolean | undefined) ?? true,
     checkinTijd: row?.checkin_reminder_time ?? (raw.checkinTijd as string | undefined) ?? "20:00",
   };
 }

@@ -27,8 +27,13 @@ interface LoadingScreenProps {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function LoadingScreen({ done, onExited }: LoadingScreenProps) {
-  // Kies één zin per mount (willekeurig, stabiel)
-  const [zin] = useState(() => ZINNEN[Math.floor(Math.random() * ZINNEN.length)]);
+  // Server en client kiezen anders bij Math.random() tijdens de eerste render
+  // (hydration mismatch) — start daarom met een vaste zin, en kies pas na
+  // mount willekeurig, als de server-gerenderde HTML al vaststaat.
+  const [zin, setZin] = useState(ZINNEN[0]);
+  useEffect(() => {
+    setZin(ZINNEN[Math.floor(Math.random() * ZINNEN.length)]);
+  }, []);
   const [progress, setProgress] = useState(0);
   const [exiting, setExiting] = useState(false);
   const [hidden, setHidden] = useState(false);

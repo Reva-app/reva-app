@@ -19,9 +19,11 @@ import { uploadPhoto, uploadDocument } from "@/lib/services/storageService";
 import { useUserPlan } from "@/lib/hooks/useUserPlan";
 import { canAddDossierDocument } from "@/lib/featureGates";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
+import { useToast } from "@/components/ui/Toast";
+import { useMergedContactpersonen, THERAPIST_CONTACT_ID } from "@/lib/hooks/useMergedContactpersonen";
 import {
   FileText, Users, Plus, Phone, Mail, Building,
-  Download, Eye, Trash2, X, Pencil, Check, Camera, Upload, Image as ImageIcon,
+  Download, Eye, Trash2, X, Pencil, Check, Camera, Upload, Image as ImageIcon, Lock,
 } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -550,11 +552,11 @@ function FotoTimeline({ fotos, blessureDatum, onDelete }: {
                 {/* Photo */}
                 <div
                   className="mx-4 mb-3 rounded-xl overflow-hidden"
-                  style={{ background: "#f3f0eb", height: "200px" }}
+                  style={{ background: "#f3f0eb", height: "340px" }}
                 >
                   {f.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={f.imageUrl} alt="Foto update" className="w-full h-full object-cover" />
+                    <img src={f.imageUrl} alt="Foto update" className="w-full h-full object-contain" />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center gap-2">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -592,7 +594,7 @@ export default function DossierPage() {
     profile, hydrated,
     dossierDocumenten, addDossierDocument, updateDossierDocument, deleteDossierDocument,
     fotoUpdates, addFotoUpdate, deleteFotoUpdate,
-    contactpersonen, addContactpersoon, updateContactpersoon, deleteContactpersoon,
+    addContactpersoon, updateContactpersoon, deleteContactpersoon,
   } = useAppData();
   const { user } = useAuth();
   const userId = user?.id ?? "";
@@ -600,6 +602,8 @@ export default function DossierPage() {
   const planInfo = useUserPlan();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [tab, setTab] = useState<Tab>("foto-updates");
+  const { showToast, toastNode } = useToast();
+  const mergedContactpersonen = useMergedContactpersonen();
 
   // Set active tab from URL query param (e.g. /dossier?tab=documenten)
   useEffect(() => {
@@ -624,7 +628,7 @@ export default function DossierPage() {
 
   const tabs: { key: Tab; label: string; icon: React.ElementType; count: number }[] = [
     { key: "foto-updates",    label: "Foto updates",     icon: ImageIcon, count: fotoUpdates.length },
-    { key: "contactpersonen", label: "Contactpersonen",  icon: Users,    count: contactpersonen.length },
+    { key: "contactpersonen", label: "Contactpersonen",  icon: Users,    count: mergedContactpersonen.length },
     { key: "documenten",      label: "Documenten",       icon: FileText, count: dossierDocumenten.length },
   ];
 
@@ -800,12 +804,14 @@ export default function DossierPage() {
 
       {/* ── Contactpersonen ──────────────────────────────────────────────── */}
       {tab === "contactpersonen" && (
-        contactpersonen.length === 0 ? (
+        mergedContactpersonen.length === 0 ? (
           <EmptyState icon={Users} title="Nog geen contactpersonen" sub="Voeg je zorgverleners toe voor snel overzicht"
             onAdd={() => setContactModal({ open: true })} label="Contactpersoon toevoegen" />
         ) : (
           <div className="space-y-3">
-            {contactpersonen.map((c) => (
+            {mergedContactpersonen.map((c) => {
+              const isTherapistContact = c.id === THERAPIST_CONTACT_ID;
+              return (
               <div key={c.id} className="rounded-2xl border bg-white p-4 flex items-start gap-4"
                 style={{ borderColor: "#e8e5df", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
                 {/* Avatar */}
@@ -819,16 +825,22 @@ export default function DossierPage() {
                       <p className="text-sm font-semibold text-gray-900">{c.naam}</p>
                       {c.functie && <p className="text-xs text-gray-400 mt-0.5">{c.functie}</p>}
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={() => setContactModal({ open: true, editing: c })}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors" title="Bewerken">
-                        <Pencil size={12} className="text-gray-400" />
-                      </button>
-                      <button onClick={() => setConfirmDel({ type: "contact", id: c.id })}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50 transition-colors" title="Verwijderen">
-                        <Trash2 size={12} className="text-gray-300 hover:text-red-400" />
-                      </button>
-                    </div>
+                    {isTherapistContact ? (
+                      <span className="flex items-center gap-1 text-[11px] text-gray-400 shrink-0" title="Automatisch toegevoegd vanuit je fysiopraktijk">
+                        <Lock size={11} /> Behandelteam
+                      </span>
+                    ) : (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button onClick={() => setContactModal({ open: true, editing: c })}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors" title="Bewerken">
+                          <Pencil size={12} className="text-gray-400" />
+                        </button>
+                        <button onClick={() => setConfirmDel({ type: "contact", id: c.id })}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50 transition-colors" title="Verwijderen">
+                          <Trash2 size={12} className="text-gray-300 hover:text-red-400" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2.5">
                     {c.organisatie && (
@@ -852,7 +864,8 @@ export default function DossierPage() {
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )
       )}
@@ -864,12 +877,13 @@ export default function DossierPage() {
             if (docModal.editing) updateDossierDocument(d.id, d);
             else addDossierDocument(d);
             setDocModal({ open: false });
+            showToast("Document opgeslagen");
           }} />
       )}
 
       {fotoModal && (
         <FotoModal userId={userId} onClose={() => setFotoModal(false)}
-          onSave={(f) => { addFotoUpdate(f); setFotoModal(false); }} />
+          onSave={(f) => { addFotoUpdate(f); setFotoModal(false); showToast("Foto toegevoegd"); }} />
       )}
 
       {contactModal.open && (
@@ -878,6 +892,7 @@ export default function DossierPage() {
             if (contactModal.editing) updateContactpersoon(c.id, c);
             else addContactpersoon(c);
             setContactModal({ open: false });
+            showToast("Contactpersoon opgeslagen");
           }} />
       )}
 
@@ -891,9 +906,11 @@ export default function DossierPage() {
             <div className="flex gap-2 justify-end">
               <Button variant="secondary" size="sm" onClick={() => setConfirmDel(null)}>Annuleren</Button>
               <button onClick={() => {
+                const labels = { doc: "Document", foto: "Foto", contact: "Contactpersoon" } as const;
                 if (confirmDel.type === "doc")     deleteDossierDocument(confirmDel.id);
                 if (confirmDel.type === "foto")    deleteFotoUpdate(confirmDel.id);
                 if (confirmDel.type === "contact") deleteContactpersoon(confirmDel.id);
+                showToast(`${labels[confirmDel.type]} verwijderd`);
                 setConfirmDel(null);
               }} className="text-sm font-semibold px-3 py-1.5 rounded-xl transition-colors"
                 style={{ background: "#fef2f2", color: "#ef4444" }}>
@@ -907,6 +924,7 @@ export default function DossierPage() {
       {showUpgradeModal && (
         <UpgradeModal feature="dossier" onClose={() => setShowUpgradeModal(false)} />
       )}
+      {toastNode}
     </div>
   );
 }

@@ -34,7 +34,7 @@ export function pathFromStorageValue(bucket: string, value: string): string {
 
 /** Resolves one stored value (path or legacy URL) to a fresh, working signed URL. */
 export async function resolveSignedUrl(
-  bucket: "dossier-photos" | "dossier-documents",
+  bucket: "dossier-photos" | "dossier-documents" | "protocol-media",
   storedValue: string
 ): Promise<string | null> {
   const supabase = createClient();
@@ -51,7 +51,7 @@ export async function resolveSignedUrl(
 
 /** Resolves many stored values in one batch call (used when loading a list). */
 export async function resolveSignedUrls(
-  bucket: "dossier-photos" | "dossier-documents",
+  bucket: "dossier-photos" | "dossier-documents" | "protocol-media",
   storedValues: string[]
 ): Promise<Map<string, string>> {
   const result = new Map<string, string>();

@@ -16,8 +16,15 @@ import {
   type DocumentType, type CheckIn,
 } from "@/lib/data";
 import { generateCoachInsights } from "@/lib/coach";
+import { computeTrend } from "@/lib/insights";
+import { getQuoteOfTheDay } from "@/lib/motivationalQuotes";
 import dynamic from "next/dynamic";
 import type { InnameFormFields } from "@/components/medicatie/InnameModal";
+import { usePatientProtocol } from "@/lib/hooks/usePatientProtocol";
+import { usePatientCareContext } from "@/lib/hooks/usePatientCareContext";
+import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
+import { CoachPanel } from "@/components/dashboard/CoachPanel";
+import { WeekSummaryCard } from "@/components/dashboard/WeekSummaryCard";
 
 // ─── Lazy-loaded modals ────────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -62,40 +69,6 @@ function greeting(hour: number, voornaam: string): string {
   if (hour >= 12 && hour < 18) return `Goedemiddag${name}`;
   if (hour >= 18 && hour < 23) return `Goedenavond${name}`;
   return `Goede nacht${name}`;
-}
-
-type Trend = "stijgend" | "dalend" | "stabiel" | "geen";
-
-function computeTrend(scores: number[]): Trend {
-  if (scores.length < 4) return "geen";
-  const mid = Math.floor(scores.length / 2);
-  const earlyAvg = scores.slice(0, mid).reduce((s, v) => s + v, 0) / mid;
-  const lateAvg  = scores.slice(mid).reduce((s, v) => s + v, 0) / (scores.length - mid);
-  if (lateAvg > earlyAvg + 0.3) return "stijgend";
-  if (lateAvg < earlyAvg - 0.3) return "dalend";
-  return "stabiel";
-}
-
-function contextMotivatie(score: number | null, trend: Trend, checkInVandaag: boolean, trainedToday: boolean): string {
-  if (!checkInVandaag) {
-    if (trend === "stijgend") return "Je herstel laat vooruitgang zien. Hoe gaat het vandaag?";
-    return "Hoe gaat het vandaag met je herstel?";
-  }
-  if (score !== null) {
-    if (score <= 2) return "Vandaag is een nieuwe kans. Kleine stappen zijn ook vooruitgang.";
-    if (score === 3) {
-      if (trend === "dalend") return "Je lichaam geeft signalen. Neem vandaag bewust de tijd.";
-      return "Je bent op de goede weg. Blijf dit ritme vasthouden.";
-    }
-    if (score >= 4) {
-      if (trend === "stijgend") return "Je herstel laat duidelijk vooruitgang zien. Ga zo door.";
-      if (trainedToday) return "Sterk bezig. Training én een goede score: dat is herstel.";
-      return "Sterk bezig. Je herstel zit duidelijk in een goede flow.";
-    }
-  }
-  if (trend === "stijgend") return "Je herstel laat vooruitgang zien. Ga zo door.";
-  if (trend === "dalend")  return "Je lichaam geeft signalen. Neem vandaag bewust de tijd.";
-  return "Geduld is ook een vorm van kracht.";
 }
 
 function todayStr() {
@@ -149,6 +122,29 @@ function StatusPill({ label, color, bg }: { label: string; color: string; bg: st
       {label}
     </span>
   );
+}
+
+function QuickActionTile({ label, icon: Icon, color, bg, onClick, href, hoverLift }: {
+  label: string; icon: React.ElementType; color: string; bg: string;
+  onClick?: () => void; href?: string; hoverLift?: boolean;
+}) {
+  const className = `rounded-2xl border p-4 flex flex-col items-center gap-2.5 text-center transition-all cursor-pointer w-full${hoverLift ? " hover:shadow-sm hover:-translate-y-px" : ""}`;
+  const style = { background: "#ffffff", borderColor: "#e8e5df", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" };
+  const content = (
+    <>
+      <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: bg }}>
+        <Icon size={16} style={{ color }} />
+      </div>
+      <div className="flex items-center gap-1">
+        <Plus size={10} style={{ color }} />
+        <span className="text-xs font-semibold text-gray-700">{label}</span>
+      </div>
+    </>
+  );
+  if (href) {
+    return <Link href={href} className={className} style={style}>{content}</Link>;
+  }
+  return <button onClick={onClick} className={className} style={style}>{content}</button>;
 }
 
 const APT_BADGE: Record<AppointmentType, "default" | "blue" | "warning" | "danger" | "purple" | "muted"> = {
@@ -535,6 +531,9 @@ export default function Dashboard() {
     dagsSindsBlessure, dagsSindsOperatie, fase,
   } = useAppData();
 
+  const { checked: protocolChecked, hasActiveProtocol, protocol } = usePatientProtocol();
+  const careContext = usePatientCareContext();
+
   const [quickModal, setQuickModal] = useState<QuickModal>(null);
 
   // Open modal from URL query param (from TopBar notification CTAs or other deeplinks)
@@ -550,7 +549,7 @@ export default function Dashboard() {
     }
   }, []);
 
-  if (!hydrated) return null;
+  if (!hydrated || !protocolChecked) return null;
 
   const today      = todayStr();
   const weekDates  = getWeekDates();
@@ -561,6 +560,9 @@ export default function Dashboard() {
   const weekCheckIns  = checkIns.filter(c => weekDates.includes(c.date));
   const avgScore      = weekCheckIns.length
     ? weekCheckIns.reduce((s, c) => s + c.dagscore, 0) / weekCheckIns.length
+    : null;
+  const avgPijn       = weekCheckIns.length
+    ? weekCheckIns.reduce((s, c) => s + c.pijn, 0) / weekCheckIns.length
     : null;
 
   const todayApts     = [...appointments].filter(a => a.date === today).sort((a, b) => a.time.localeCompare(b.time));
@@ -576,9 +578,15 @@ export default function Dashboard() {
   const latestFoto    = [...fotoUpdates].sort((a, b) => b.date.localeCompare(a.date))[0] ?? null;
 
   const mainGoal      = doelen.find(d => d.type === "main") ?? null;
-  const completedMijl = mijlpalen.filter(m => m.completed).length;
+  const regularGoals  = doelen.filter(d => d.type === "regular");
   const nextMijlpaal  = [...mijlpalen].filter(m => !m.completed)
     .sort((a, b) => (a.fase ?? "").localeCompare(b.fase ?? ""))[0] ?? null;
+
+  const protocolPhase = hasActiveProtocol ? protocol?.currentPhase ?? null : null;
+  const protocolSchedulesTotal = protocolPhase
+    ? { completed: protocolPhase.schedules.reduce((s, sc) => s + sc.completedThisWeek, 0), prescribed: protocolPhase.schedules.reduce((s, sc) => s + sc.frequencyPerWeek, 0) }
+    : null;
+  const nextProtocolMilestoneForWeek = protocolPhase?.milestones.find((m) => !m.completed) ?? null;
 
   const tomorrow = (() => {
     const d = new Date(); d.setDate(d.getDate() + 1);
@@ -604,7 +612,7 @@ export default function Dashboard() {
         ...(a.location ? [{ icon: MapPin as React.ElementType, value: a.location }] : []),
         ...(a.behandelaar ? [{ value: `Met ${a.behandelaar}` }] : []),
       ],
-      cta: "Bekijk in dagboek",
+      cta: "Bekijk in kalender",
       ctaHref: "/dagboek",
     };
   } else {
@@ -617,7 +625,7 @@ export default function Dashboard() {
         title: schema ? schema.title : openWorkout.title,
         details: [],
         cta: "Training openen",
-        ctaHref: "/dagboek",
+        ctaHref: "/training",
       };
     } else if (medVandaag.length > 0) {
       focusCard = {
@@ -637,6 +645,28 @@ export default function Dashboard() {
         cta: "Check-in invullen",
         ctaModal: "checkin",
       };
+    } else if (hasActiveProtocol && protocol?.currentPhase) {
+      const behindSchedule = protocol.currentPhase.schedules.find((s) => s.completedThisWeek < s.frequencyPerWeek);
+      const nextProtocolMilestone = protocol.currentPhase.milestones.find((m) => !m.completed);
+      if (behindSchedule) {
+        focusCard = {
+          kind: "training", color: "#0ea5e9", bg: "#f0f9ff", icon: Dumbbell,
+          microcopy: "Dit trainingsschema wacht nog op je deze week",
+          title: behindSchedule.title,
+          details: [{ value: `${behindSchedule.completedThisWeek}/${behindSchedule.frequencyPerWeek} keer deze week` }],
+          cta: "Training openen",
+          ctaHref: "/training",
+        };
+      } else if (nextProtocolMilestone) {
+        focusCard = {
+          kind: "doel", color: "#e8632a", bg: "#fff3ee", icon: Target,
+          microcopy: "Dit is je volgende mijlpaal in je herstelplan",
+          title: nextProtocolMilestone.title,
+          details: [],
+          cta: "Doelstellingen bekijken",
+          ctaHref: "/doelstellingen",
+        };
+      }
     } else if (nextMijlpaal) {
       focusCard = {
         kind: "doel", color: "#e8632a", bg: "#fff3ee", icon: Target,
@@ -686,11 +716,13 @@ export default function Dashboard() {
     icon: Pill, iconColor: "#8b5cf6", iconBg: "#f5f3ff",
     title: m.naam, sub: `${m.dosering} · ${fmtShort(m.date)} ${m.time}`, href: "/medicatie",
   }));
-  mijlpalen.filter(m => m.completed && m.completedAt).slice(0, 3).forEach(m => activity.push({
-    id: `mij-${m.id}`, date: m.completedAt!, sortKey: m.completedAt! + "T12:00",
-    icon: Trophy, iconColor: "#e8632a", iconBg: "#fff3ee",
-    title: m.title, sub: `Mijlpaal behaald · ${fmtShort(m.completedAt!)}`, href: "/doelstellingen",
-  }));
+  if (hasActiveProtocol && protocolPhase) {
+    protocolPhase.milestones.filter(m => m.completed && m.completedAt).slice(0, 3).forEach(m => activity.push({
+      id: `pmij-${m.id}`, date: m.completedAt!, sortKey: m.completedAt! + "T12:00",
+      icon: Trophy, iconColor: "#e8632a", iconBg: "#fff3ee",
+      title: m.title, sub: `Mijlpaal behaald · ${fmtShort(m.completedAt!)}`, href: "/doelstellingen",
+    }));
+  }
   dossierDocumenten.slice(0, 3).forEach(d => activity.push({
     id: `doc-${d.id}`, date: d.date, sortKey: d.date + "T12:00",
     icon: FileText, iconColor: "#6b7280", iconBg: "#f9fafb",
@@ -710,11 +742,7 @@ export default function Dashboard() {
     .slice(-7)
     .map(c => c.dagscore);
   const trend = computeTrend(recentScores);
-
-  const gisterscheckIn = checkIns.find(c => c.date === yesterday);
-  const contextScore = todayCheckIn?.dagscore ?? gisterscheckIn?.dagscore ?? null;
-  const trainedToday = todayWorkouts.some(w => w.completed);
-  const motivatie = contextMotivatie(contextScore, trend, !!todayCheckIn, trainedToday);
+  const dailyQuote = getQuoteOfTheDay(now);
 
   const isOchtend = hour >= 5  && hour < 12;
   const isMiddag  = hour >= 12 && hour < 18;
@@ -745,15 +773,9 @@ export default function Dashboard() {
     dagsSindsBlessure,
     fase,
     now,
+    hasActiveProtocol,
+    protocolPhase,
   });
-
-  const MOOD_CONFIG = {
-    positief:    { label: "Positief",    color: "#16a34a", bg: "#f0fdf4", dot: "#22c55e" },
-    stabiel:     { label: "Stabiel",     color: "#e8632a", bg: "#fff3ee", dot: "#e8632a" },
-    voorzichtig: { label: "Voorzichtig", color: "#ca8a04", bg: "#fefce8", dot: "#eab308" },
-  } as const;
-
-  const moodCfg = MOOD_CONFIG[coachInsights.moodTag];
 
   function handleCoachAction(action: string) {
     if (action === "modal:checkin") { setQuickModal("checkin"); return; }
@@ -766,6 +788,17 @@ export default function Dashboard() {
 
   return (
     <div className="px-4 py-4 sm:px-6 sm:py-6 max-w-5xl mx-auto space-y-6 sm:space-y-8">
+
+      <OnboardingChecklist
+        hasActiveProtocol={hasActiveProtocol}
+        protocol={protocol}
+        checkIns={checkIns}
+        doelen={doelen}
+        dagboekWorkouts={dagboekWorkouts}
+        appointments={appointments}
+        medicatie={medicatie}
+        fotoUpdates={fotoUpdates}
+      />
 
       {/* ════════════════════════════════════════════════════════════════════
           RIJ 1 — HERO (twee losse kaarten)
@@ -784,18 +817,23 @@ export default function Dashboard() {
             <p className="text-xl font-bold text-gray-900 mb-1 leading-tight">{begroeting}</p>
 
             {/* Context: blessure + fase */}
-            <p className="text-xs text-gray-400 mb-4 leading-none">
-              Herstel van {blessureContext}
-              {" · "}dag {dagsSindsBlessure}
-              {isOchtend && " · Goeie dag gewenst"}
-              {isMiddag && " · Halverwege de dag"}
-              {isAvond && " · Tijd om terug te blikken"}
-            </p>
+            <div className="mb-4">
+              <p className="text-xs text-gray-400 leading-none">
+                Herstel van {blessureContext}
+                {" · "}dag {dagsSindsBlessure}
+                {isOchtend && " · Goeie dag gewenst"}
+                {isMiddag && " · Halverwege de dag"}
+                {isAvond && " · Tijd om terug te blikken"}
+              </p>
+              {careContext?.therapistName && (
+                <p className="text-xs text-gray-400 mt-1 leading-none">Behandeld door {careContext.therapistName}</p>
+              )}
+            </div>
 
-            {/* Motivatie — both desktop and mobile, inline between context and badges */}
-            <p className="text-sm leading-relaxed mb-5 max-w-sm"
-              style={{ color: "#4a4a52" }}>
-              {motivatie}
+            {/* Quote van de dag — zelfde zin voor iedereen, wisselt dagelijks */}
+            <p className="text-sm leading-relaxed mb-5 max-w-sm pl-3"
+              style={{ color: "#4a4a52", borderLeft: "2px solid #e8632a" }}>
+              {dailyQuote}
             </p>
 
             {/* Fase + trend badge */}
@@ -803,7 +841,7 @@ export default function Dashboard() {
               <span className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full"
                 style={{ background: "#fff3ee", color: "#e8632a", border: "1px solid rgba(232,99,42,0.2)" }}>
                 <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#e8632a" }} />
-                {fase}
+                {hasActiveProtocol && protocol?.currentPhase ? protocol.currentPhase.name : fase}
               </span>
               {trend === "stijgend" && (
                 <span className="inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full"
@@ -835,44 +873,23 @@ export default function Dashboard() {
           </div>
         </Panel>
 
-        {/* Rechts: donker vlak met wit binnenkaartje */}
-        <div className="rounded-2xl p-4"
-          style={{ background: "#18181a", border: "1px solid rgba(255,255,255,0.06)" }}>
-          <p className="text-[10px] font-semibold uppercase tracking-widest mb-3 px-1" style={{ color: "#ffffff" }}>
-            Deze week
-          </p>
-          <div className="rounded-xl p-4" style={{ background: "#ffffff" }}>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-gray-400">Gem. check-in score</p>
-                {avgScore !== null ? (
-                  <p className="text-lg font-bold leading-none" style={{ color: scoreColor(Math.round(avgScore)) }}>
-                    {avgScore.toFixed(1)}<span className="text-xs font-normal ml-0.5 text-gray-400">/5</span>
-                  </p>
-                ) : (
-                  <p className="text-lg font-bold leading-none text-gray-300">n.v.t.</p>
-                )}
-              </div>
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-gray-400">Trainingen afgerond</p>
-                <p className="text-lg font-bold leading-none text-gray-900">
-                  {trainedDays}<span className="text-xs font-normal ml-0.5 text-gray-400">/7</span>
-                </p>
-              </div>
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-gray-400">Medicijn innames</p>
-                <p className="text-lg font-bold leading-none text-gray-900">
-                  {medicatie.filter(m => weekDates.includes(m.date)).length}
-                </p>
-              </div>
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-gray-400">Mijlpalen behaald</p>
-                <p className="text-lg font-bold leading-none text-gray-900">{completedMijl}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Rechts: Deze week — 3 KPI's */}
+        <WeekSummaryCard
+          phaseName={protocolPhase?.name}
+          avgScore={avgScore}
+          avgPijn={avgPijn}
+          trainingCompleted={protocolSchedulesTotal?.completed ?? trainedDays}
+          trainingTotal={protocolSchedulesTotal?.prescribed ?? 7}
+        />
 
+      </div>
+
+      {/* ════════════════════════════════════════════════════════════════════
+          RIJ 2 — JOUW COACH (tweede blok van het dashboard)
+      ════════════════════════════════════════════════════════════════════ */}
+      <div>
+        <RowLabel>Jouw coach</RowLabel>
+        <CoachPanel coachInsights={coachInsights} onAction={handleCoachAction} />
       </div>
 
       {/* ════════════════════════════════════════════════════════════════════
@@ -948,40 +965,6 @@ export default function Dashboard() {
           </button>
         </div>
       )}
-
-      {/* ════════════════════════════════════════════════════════════════════
-          MOBILE AI COACH — boven Vandaag, alleen op mobiel
-      ════════════════════════════════════════════════════════════════════ */}
-      <div className="lg:hidden rounded-2xl overflow-hidden"
-        style={{ background: moodCfg.bg, border: `1px solid ${moodCfg.color}28` }}>
-        <div className="px-4 py-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full" style={{ background: moodCfg.dot }} />
-              <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: moodCfg.color }}>
-                {moodCfg.label}
-              </span>
-            </div>
-            <span className="text-[10px] font-medium uppercase tracking-widest" style={{ color: "#c4bfb7" }}>
-              Coach
-            </span>
-          </div>
-          <p className="text-sm leading-relaxed mb-3" style={{ color: "#374151" }}>
-            {coachInsights.dailyInsight}
-          </p>
-          <div className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5"
-            style={{ background: "rgba(255,255,255,0.75)", border: "1px solid rgba(0,0,0,0.06)" }}>
-            <p className="text-xs leading-snug flex-1 text-gray-700">{coachInsights.nextStep}</p>
-            <button
-              onClick={() => handleCoachAction(coachInsights.nextStepAction)}
-              className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-white touch-press"
-              style={{ background: "#1c1c1e" }}
-            >
-              Doen
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* ════════════════════════════════════════════════════════════════════
           RIJ 2 — VANDAAG
@@ -1075,7 +1058,7 @@ export default function Dashboard() {
                       <p className="text-[10px] mt-1.5" style={{ color: "#b5b0a8" }}>{fmtShort(show.date)}</p>
                     )}
                     <Link href="/dagboek" className="mt-auto pt-3 block">
-                      <span className="text-xs font-medium" style={{ color: "#3b82f6" }}>Dagboek →</span>
+                      <span className="text-xs font-medium" style={{ color: "#3b82f6" }}>Naar Afspraken →</span>
                     </Link>
                   </>
                 );
@@ -1086,49 +1069,97 @@ export default function Dashboard() {
           {/* 2.3 Training */}
           <Panel>
             <div className="p-4 flex flex-col h-full">
-              <div className="mb-2.5">
-                {todayWorkouts.length > 0 && (() => {
-                  const allDone = todayWorkouts.every(w => w.completed);
-                  return allDone
-                    ? <StatusPill label="Afgerond" color="#16a34a" bg="#f0fdf4" />
-                    : <StatusPill label="Open" color="#0ea5e9" bg="#f0f9ff" />;
-                })()}
-              </div>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#f0f9ff" }}>
-                  <Dumbbell size={13} style={{ color: "#0ea5e9" }} />
-                </div>
-                <span className="text-xs font-semibold text-gray-500">Training</span>
-              </div>
-              {todayWorkouts.length > 0 ? (
+              {hasActiveProtocol && protocolPhase ? (
                 <>
-                  {todayWorkouts.slice(0, 2).map((w) => {
-                    const schema = trainingSchemas.find(s => s.id === w.schemaId);
-                    return (
-                      <div key={w.id} className="flex items-center gap-2 mb-1.5">
-                        <div className="w-3 h-3 rounded-full flex items-center justify-center shrink-0"
-                          style={{ background: w.completed ? "#22c55e" : "#e8e5df" }}>
-                          {w.completed && <Check size={7} className="text-white" strokeWidth={3} />}
+                  <div className="mb-2.5">
+                    {protocolSchedulesTotal && (
+                      protocolSchedulesTotal.completed >= protocolSchedulesTotal.prescribed
+                        ? <StatusPill label="Op schema" color="#16a34a" bg="#f0fdf4" />
+                        : <StatusPill label={`${protocolSchedulesTotal.prescribed - protocolSchedulesTotal.completed} open`} color="#0ea5e9" bg="#f0f9ff" />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#f0f9ff" }}>
+                      <Dumbbell size={13} style={{ color: "#0ea5e9" }} />
+                    </div>
+                    <span className="text-xs font-semibold text-gray-500">Training</span>
+                  </div>
+                  {protocolPhase.schedules.length > 0 ? (
+                    <>
+                      {protocolPhase.schedules.slice(0, 2).map((s) => (
+                        <div key={s.id} className="flex items-center gap-2 mb-1.5">
+                          <div className="w-3 h-3 rounded-full flex items-center justify-center shrink-0"
+                            style={{ background: s.completedThisWeek >= s.frequencyPerWeek ? "#22c55e" : "#e8e5df" }}>
+                            {s.completedThisWeek >= s.frequencyPerWeek && <Check size={7} className="text-white" strokeWidth={3} />}
+                          </div>
+                          <p className="text-xs font-medium text-gray-800 truncate leading-snug">
+                            {s.title} · {s.completedThisWeek}/{s.frequencyPerWeek}
+                          </p>
                         </div>
-                        <p className="text-xs font-medium text-gray-800 truncate leading-snug">
-                          {schema ? schema.title : w.title}
-                        </p>
-                      </div>
-                    );
-                  })}
-                  {todayWorkouts.length > 2 && (
-                    <p className="text-[10px] text-gray-400 mb-1">+{todayWorkouts.length - 2} meer</p>
+                      ))}
+                      {protocolPhase.schedules.length > 2 && (
+                        <p className="text-[10px] text-gray-400 mb-1">+{protocolPhase.schedules.length - 2} meer</p>
+                      )}
+                      <Link href="/training" className="mt-auto pt-3 block">
+                        <span className="text-xs font-medium" style={{ color: "#0ea5e9" }}>Training →</span>
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs text-gray-400 flex-1">Geen trainingsschema deze week</p>
+                      <Link href="/training" className="mt-3 block">
+                        <span className="text-xs font-medium" style={{ color: "#0ea5e9" }}>Bekijken →</span>
+                      </Link>
+                    </>
                   )}
-                  <Link href="/training" className="mt-auto pt-3 block">
-                    <span className="text-xs font-medium" style={{ color: "#0ea5e9" }}>Training →</span>
-                  </Link>
                 </>
               ) : (
                 <>
-                  <p className="text-xs text-gray-400 flex-1">Geen training vandaag</p>
-                  <Link href="/dagboek?modal=training" className="mt-3 block">
-                    <span className="text-xs font-medium" style={{ color: "#0ea5e9" }}>Inplannen →</span>
-                  </Link>
+                  <div className="mb-2.5">
+                    {todayWorkouts.length > 0 && (() => {
+                      const allDone = todayWorkouts.every(w => w.completed);
+                      return allDone
+                        ? <StatusPill label="Afgerond" color="#16a34a" bg="#f0fdf4" />
+                        : <StatusPill label="Open" color="#0ea5e9" bg="#f0f9ff" />;
+                    })()}
+                  </div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#f0f9ff" }}>
+                      <Dumbbell size={13} style={{ color: "#0ea5e9" }} />
+                    </div>
+                    <span className="text-xs font-semibold text-gray-500">Training</span>
+                  </div>
+                  {todayWorkouts.length > 0 ? (
+                    <>
+                      {todayWorkouts.slice(0, 2).map((w) => {
+                        const schema = trainingSchemas.find(s => s.id === w.schemaId);
+                        return (
+                          <div key={w.id} className="flex items-center gap-2 mb-1.5">
+                            <div className="w-3 h-3 rounded-full flex items-center justify-center shrink-0"
+                              style={{ background: w.completed ? "#22c55e" : "#e8e5df" }}>
+                              {w.completed && <Check size={7} className="text-white" strokeWidth={3} />}
+                            </div>
+                            <p className="text-xs font-medium text-gray-800 truncate leading-snug">
+                              {schema ? schema.title : w.title}
+                            </p>
+                          </div>
+                        );
+                      })}
+                      {todayWorkouts.length > 2 && (
+                        <p className="text-[10px] text-gray-400 mb-1">+{todayWorkouts.length - 2} meer</p>
+                      )}
+                      <Link href="/training" className="mt-auto pt-3 block">
+                        <span className="text-xs font-medium" style={{ color: "#0ea5e9" }}>Training →</span>
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs text-gray-400 flex-1">Geen training vandaag</p>
+                      <Link href="/training" className="mt-3 block">
+                        <span className="text-xs font-medium" style={{ color: "#0ea5e9" }}>Inplannen →</span>
+                      </Link>
+                    </>
+                  )}
                 </>
               )}
             </div>
@@ -1174,86 +1205,6 @@ export default function Dashboard() {
             </div>
           </Panel>
         </div>
-      </div>
-
-      {/* ════════════════════════════════════════════════════════════════════
-          RIJ 3 — AI COACH (desktop only — mobiel toont compact blok bovenaan)
-      ════════════════════════════════════════════════════════════════════ */}
-      <div className="hidden lg:block">
-        <RowLabel>Jouw coach</RowLabel>
-        <Panel>
-          <div className="p-5">
-
-            {/* Header: mood tag + label */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full" style={{ background: moodCfg.dot }} />
-                <span className="text-xs font-semibold uppercase tracking-widest"
-                  style={{ color: moodCfg.color }}>
-                  {moodCfg.label}
-                </span>
-              </div>
-              <span className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">AI Coach</span>
-            </div>
-
-            {/* Daily insight */}
-            <p className="text-sm leading-relaxed text-gray-800 mb-5">
-              {coachInsights.dailyInsight}
-            </p>
-
-            {/* Next step */}
-            <div className="flex items-center justify-between gap-4 rounded-xl px-4 py-3 mb-5"
-              style={{ background: "#f8f7f4", border: "1px solid #e8e5df" }}>
-              <div className="flex items-center gap-2.5 min-w-0">
-                <Target size={14} style={{ color: "#e8632a" }} className="shrink-0" />
-                <p className="text-xs font-medium text-gray-700 leading-snug truncate">
-                  {coachInsights.nextStep}
-                </p>
-              </div>
-              <button
-                onClick={() => handleCoachAction(coachInsights.nextStepAction)}
-                className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-90"
-                style={{ background: "#1c1c1e" }}>
-                Doen
-              </button>
-            </div>
-
-            {/* Weekly summary */}
-            <div className="rounded-xl px-4 py-3 mb-4"
-              style={{ background: moodCfg.bg, border: `1px solid ${moodCfg.color}22` }}>
-              <p className="text-[10px] font-semibold uppercase tracking-widest mb-2.5"
-                style={{ color: moodCfg.color }}>
-                Samenvatting deze week
-              </p>
-              <div className="grid grid-cols-4 gap-3 mb-3">
-                <div>
-                  <p className="text-base font-bold leading-none text-gray-900">
-                    {coachInsights.weekly.avgScore !== null ? coachInsights.weekly.avgScore.toFixed(1) : "n.v.t."}
-                  </p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">gem. score</p>
-                </div>
-                <div>
-                  <p className="text-base font-bold leading-none text-gray-900">{coachInsights.weekly.trainedDays}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">trainingen</p>
-                </div>
-                <div>
-                  <p className="text-base font-bold leading-none text-gray-900">{coachInsights.weekly.medCount}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">medicatie</p>
-                </div>
-                <div>
-                  <p className="text-base font-bold leading-none text-gray-900">{coachInsights.weekly.completedMijl}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">mijlpalen</p>
-                </div>
-              </div>
-              <p className="text-xs text-gray-600 leading-relaxed">{coachInsights.weekly.coachTekst}</p>
-            </div>
-
-            {/* Disclaimer */}
-            <p className="text-[10px] leading-relaxed" style={{ color: "#c4bfb7" }}>
-              {coachInsights.disclaimerTekst}
-            </p>
-          </div>
-        </Panel>
       </div>
 
       {/* ════════════════════════════════════════════════════════════════════
@@ -1310,32 +1261,64 @@ export default function Dashboard() {
                 </div>
               )}
 
-              <div className="flex items-center gap-2 mb-2">
-                <Trophy size={12} style={{ color: "#e8632a" }} />
-                <span className="text-xs text-gray-500">
-                  <span className="font-semibold text-gray-800">{completedMijl}</span>
-                  {" / "}
-                  <span className="font-semibold text-gray-800">{mijlpalen.length}</span>
-                  {" mijlpalen"}
-                </span>
-              </div>
-
-              {mijlpalen.length > 0 && (
-                <div className="h-1.5 rounded-full overflow-hidden mb-4" style={{ background: "#f0ede8" }}>
-                  <div className="h-full rounded-full"
-                    style={{ width: `${(completedMijl / mijlpalen.length) * 100}%`, background: "#e8632a" }} />
-                </div>
-              )}
-
-              {nextMijlpaal && (
-                <div className="flex items-start gap-2">
-                  <Target size={11} className="mt-0.5 shrink-0" style={{ color: "#e8632a" }} />
-                  <div className="min-w-0">
-                    <p className="text-[10px] text-gray-400 mb-0.5">Volgende</p>
-                    <p className="text-xs font-medium text-gray-700 leading-snug">{nextMijlpaal.title}</p>
-                    {nextMijlpaal.fase && <p className="text-[10px] text-gray-400 mt-0.5">{nextMijlpaal.fase}</p>}
+              {hasActiveProtocol && protocolPhase ? (
+                <>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Trophy size={12} style={{ color: "#e8632a" }} />
+                    <span className="text-xs text-gray-500">
+                      <span className="font-semibold text-gray-800">{protocolPhase.milestones.filter(m => m.completed).length}</span>
+                      {" / "}
+                      <span className="font-semibold text-gray-800">{protocolPhase.milestones.length}</span>
+                      {" mijlpalen"}
+                    </span>
                   </div>
-                </div>
+
+                  {protocolPhase.milestones.length > 0 && (
+                    <div className="h-1.5 rounded-full overflow-hidden mb-4" style={{ background: "#f0ede8" }}>
+                      <div className="h-full rounded-full"
+                        style={{ width: `${(protocolPhase.milestones.filter(m => m.completed).length / protocolPhase.milestones.length) * 100}%`, background: "#e8632a" }} />
+                    </div>
+                  )}
+
+                  {nextProtocolMilestoneForWeek && (
+                    <div className="flex items-start gap-2">
+                      <Target size={11} className="mt-0.5 shrink-0" style={{ color: "#e8632a" }} />
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-gray-400 mb-0.5">Volgende</p>
+                        <p className="text-xs font-medium text-gray-700 leading-snug">{nextProtocolMilestoneForWeek.title}</p>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Target size={12} style={{ color: "#e8632a" }} />
+                    <span className="text-xs text-gray-500">
+                      <span className="font-semibold text-gray-800">{regularGoals.filter(d => d.completed).length}</span>
+                      {" / "}
+                      <span className="font-semibold text-gray-800">{regularGoals.length}</span>
+                      {" doelen"}
+                    </span>
+                  </div>
+
+                  {regularGoals.length > 0 && (
+                    <div className="h-1.5 rounded-full overflow-hidden mb-4" style={{ background: "#f0ede8" }}>
+                      <div className="h-full rounded-full"
+                        style={{ width: `${(regularGoals.filter(d => d.completed).length / regularGoals.length) * 100}%`, background: "#e8632a" }} />
+                    </div>
+                  )}
+
+                  {regularGoals.find(d => !d.completed) && (
+                    <div className="flex items-start gap-2">
+                      <Target size={11} className="mt-0.5 shrink-0" style={{ color: "#e8632a" }} />
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-gray-400 mb-0.5">Volgende</p>
+                        <p className="text-xs font-medium text-gray-700 leading-snug">{regularGoals.find(d => !d.completed)!.title}</p>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </Panel>
@@ -1510,10 +1493,10 @@ export default function Dashboard() {
                       <p className="text-xs text-gray-400">Geen notitie</p>
                     )}
                     {fotoOud && (
-                      <button onClick={() => {}} className="mt-2 text-xs font-medium flex items-center gap-1"
+                      <Link href="/dossier?tab=foto-updates" className="mt-2 text-xs font-medium flex items-center gap-1"
                         style={{ color: "#e8632a" }}>
                         <Plus size={10} /> Nieuwe foto update toevoegen?
-                      </button>
+                      </Link>
                     )}
                   </div>
                 </div>
@@ -1537,17 +1520,12 @@ export default function Dashboard() {
             { label: "Training",  icon: Dumbbell,       modal: "training" , color: "#0ea5e9", bg: "#f0f9ff" },
             { label: "Medicatie", icon: Pill,           modal: "medicatie", color: "#8b5cf6", bg: "#f5f3ff" },
           ]) as { label: string; icon: React.ElementType; modal: NonNullable<QuickModal>; color: string; bg: string }[]).map((a) => (
-            <button key={a.modal} onClick={() => setQuickModal(a.modal)}
-              className="rounded-2xl border p-4 flex flex-col items-center gap-2.5 text-center transition-all cursor-pointer w-full"
-              style={{ background: "#ffffff", borderColor: "#e8e5df", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: a.bg }}>
-                <a.icon size={16} style={{ color: a.color }} />
-              </div>
-              <div className="flex items-center gap-1">
-                <Plus size={10} style={{ color: a.color }} />
-                <span className="text-xs font-semibold text-gray-700">{a.label}</span>
-              </div>
-            </button>
+            <QuickActionTile
+              key={a.modal}
+              label={a.label} icon={a.icon} color={a.color} bg={a.bg}
+              onClick={a.modal === "training" && hasActiveProtocol ? undefined : () => setQuickModal(a.modal)}
+              href={a.modal === "training" && hasActiveProtocol ? "/training" : undefined}
+            />
           ))}
         </div>
 
@@ -1560,17 +1538,13 @@ export default function Dashboard() {
             { label: "Medicatie", icon: Pill,           modal: "medicatie", color: "#8b5cf6", bg: "#f5f3ff" },
             { label: "Document",  icon: FileText,       modal: "document" , color: "#10b981", bg: "#f0fdf4" },
           ]) as { label: string; icon: React.ElementType; modal: NonNullable<QuickModal>; color: string; bg: string }[]).map((a) => (
-            <button key={a.modal} onClick={() => setQuickModal(a.modal)}
-              className="rounded-2xl border p-4 flex flex-col items-center gap-2.5 text-center transition-all hover:shadow-sm hover:-translate-y-px cursor-pointer w-full"
-              style={{ background: "#ffffff", borderColor: "#e8e5df", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: a.bg }}>
-                <a.icon size={16} style={{ color: a.color }} />
-              </div>
-              <div className="flex items-center gap-1">
-                <Plus size={10} style={{ color: a.color }} />
-                <span className="text-xs font-semibold text-gray-700">{a.label}</span>
-              </div>
-            </button>
+            <QuickActionTile
+              key={a.modal}
+              label={a.label} icon={a.icon} color={a.color} bg={a.bg}
+              onClick={a.modal === "training" && hasActiveProtocol ? undefined : () => setQuickModal(a.modal)}
+              href={a.modal === "training" && hasActiveProtocol ? "/training" : undefined}
+              hoverLift
+            />
           ))}
         </div>
       </div>

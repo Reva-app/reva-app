@@ -24,7 +24,7 @@ const InnameModal = dynamic<any>(
 
 const pageTitles: Record<string, string> = {
   "/":              "Dashboard",
-  "/dagboek":       "Dagboek",
+  "/dagboek":       "Afspraken",
   "/check-in":      "Dagelijkse Check-in",
   "/training":      "Training & Oefeningen",
   "/dossier":       "Medisch Dossier",
@@ -40,8 +40,8 @@ export function TopBar() {
   const {
     profile, hydrated,
     medicatieSchemas, addMedicatie,
-    checkIns, appointments, dagboekWorkouts, trainingSchemas,
-    fotoUpdates, mijlpalen,
+    checkIns, appointments,
+    fotoUpdates,
     readNotificationIds, markNotificationRead, markAllNotificationsRead,
     loggedNotificationIds, markNotificationLogged,
     notificationSettings,
@@ -78,21 +78,19 @@ export function TopBar() {
   const notifications = useMemo(() => {
     if (!hydrated || !now) return [];
     const all = generateAllNotifications(
-      { medicatieSchemas, checkIns, appointments, dagboekWorkouts, trainingSchemas, fotoUpdates, mijlpalen },
+      { medicatieSchemas, checkIns, appointments, fotoUpdates },
       now
     );
     return all.filter((n) => {
       if (n.type === "checkin")  return notificationSettings.checkin;
       if (n.type === "afspraak") return notificationSettings.afspraken;
       if (n.type === "medicatie") return notificationSettings.medicatie;
-      if (n.type === "training") return notificationSettings.training;
       if (n.type === "foto")     return notificationSettings.foto;
-      if (n.type === "mijlpaal") return notificationSettings.mijlpalen;
       return true;
     });
   }, [
     hydrated, now,
-    medicatieSchemas, checkIns, appointments, dagboekWorkouts, trainingSchemas, fotoUpdates, mijlpalen,
+    medicatieSchemas, checkIns, appointments, fotoUpdates,
     notificationSettings,
   ]);
 

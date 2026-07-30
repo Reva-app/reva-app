@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown } from "lucide-react";
+import { Calendar } from "lucide-react";
 
 interface DatePickerProps {
   value: string; // "YYYY-MM-DD" or ""
@@ -40,6 +40,37 @@ function formatDisplay(dateStr: string): string {
   if (!parsed) return dateStr;
   const date = new Date(parsed.y, parsed.m, parsed.d);
   return date.toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" });
+}
+
+// ─── Typbare invoer (DD-MM-JJJJ) ────────────────────────────────────────────
+// Naast klikken in de kalender moet een datum ook gewoon te typen zijn
+// (bv. "19-11-1994") — vooral bij geboortedatums scheelt dat tientallen
+// klikken t.o.v. een maanden/jaren-kalender helemaal terugbladeren.
+
+function toTypedFormat(dateStr: string): string {
+  const p = parseDate(dateStr);
+  if (!p) return "";
+  return `${String(p.d).padStart(2, "0")}-${String(p.m + 1).padStart(2, "0")}-${p.y}`;
+}
+
+/** Maskeert vrije invoer naar "DD-MM-JJJJ" terwijl je typt, cijfers-only. */
+function maskTypedInput(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 8);
+  const parts = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean);
+  return parts.join("-");
+}
+
+/** Zet "DD-MM-JJJJ" (of cijfers zonder scheiding) om naar "YYYY-MM-DD", of null als ongeldig/onvolledig. */
+function parseTypedInput(text: string): string | null {
+  const digits = text.replace(/\D/g, "");
+  if (digits.length !== 8) return null;
+  const d = Number(digits.slice(0, 2));
+  const m = Number(digits.slice(2, 4));
+  const y = Number(digits.slice(4, 8));
+  if (!d || !m || !y) return null;
+  const date = new Date(y, m - 1, d);
+  if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) return null;
+  return toDateStr(y, m - 1, d);
 }
 
 function buildCalendarDays(year: number, month: number) {
@@ -89,6 +120,8 @@ export function DatePicker({
   const [open, setOpen] = useState(false);
   const [dropdownPos, setDropdownPos] = useState<DropdownPos>({ top: 0, left: 0, width: DROPDOWN_WIDTH });
   const [mounted, setMounted] = useState(false);
+  const [typedText, setTypedText] = useState(() => toTypedFormat(value));
+  const [typedFocused, setTypedFocused] = useState(false);
 
   const triggerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -102,8 +135,25 @@ export function DatePicker({
     setPending(value || "");
     setNavYear(p?.y ?? today.getFullYear());
     setNavMonth(p?.m ?? today.getMonth());
+    if (!typedFocused) setTypedText(toTypedFormat(value));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
+
+  function handleTypedChange(raw: string) {
+    setTypedText(maskTypedInput(raw));
+  }
+
+  function commitTypedInput() {
+    setTypedFocused(false);
+    const parsedValue = parseTypedInput(typedText);
+    if (parsedValue) {
+      onChange(parsedValue);
+      setTypedText(toTypedFormat(parsedValue));
+    } else {
+      // Onvolledig/ongeldig getypt: terug naar de laatst geldige waarde.
+      setTypedText(toTypedFormat(value));
+    }
+  }
 
   useEffect(() => {
     function onOutsideClick(e: MouseEvent) {
@@ -290,20 +340,31 @@ export function DatePicker({
 
   return (
     <div className="relative" ref={triggerRef}>
-      {/* Trigger button */}
-      <button
-        type="button"
-        onClick={openPicker}
-        className="w-full flex items-center justify-between text-sm rounded-xl border px-4 py-2.5 text-left transition-colors hover:bg-gray-50 focus:outline-none"
-        style={{
-          borderColor: "#e8e5df",
-          background: "#f8f7f4",
-          color: value ? "#1a1a1a" : "#9ca3af",
-        }}
+      {/* Trigger: typbaar tekstveld (DD-MM-JJJJ) + knop voor de kalender */}
+      <div
+        className="w-full flex items-center gap-2 text-sm rounded-xl border pl-4 pr-2 py-2.5 transition-colors focus-within:bg-white"
+        style={{ borderColor: "#e8e5df", background: "#f8f7f4" }}
       >
-        <span>{value ? formatDisplay(value) : placeholder}</span>
-        <ChevronDown size={14} className="text-gray-400 shrink-0 ml-2" />
-      </button>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={typedText}
+          onChange={(e) => handleTypedChange(e.target.value)}
+          onFocus={() => setTypedFocused(true)}
+          onBlur={commitTypedInput}
+          placeholder={placeholder || "DD-MM-JJJJ"}
+          className="flex-1 min-w-0 bg-transparent focus:outline-none"
+          style={{ color: value || typedText ? "#1a1a1a" : "#9ca3af" }}
+        />
+        <button
+          type="button"
+          onClick={openPicker}
+          aria-label="Kalender openen"
+          className="shrink-0 p-1 -mr-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+        >
+          <Calendar size={15} />
+        </button>
+      </div>
 
       {/* Dropdown rendered via portal to escape any overflow constraints */}
       {mounted && open && createPortal(dropdown, document.body)}

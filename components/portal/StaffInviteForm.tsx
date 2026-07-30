@@ -60,7 +60,7 @@ export function StaffInviteForm({ organizationId, roles, locations, onInvited, o
       <div className="flex items-start justify-between">
         <CardHeader
           title="Medewerker uitnodigen"
-          subtitle="Heeft deze persoon al een REVA-account, dan wordt die direct gekoppeld. Anders ontvangt diegene een e-mail om zelf een wachtwoord te kiezen."
+          subtitle="Heeft deze persoon al een REVA-account, dan wordt die direct gekoppeld en krijgt diegene een e-mail. Anders ontvangt diegene een e-mail om zelf een wachtwoord te kiezen."
         />
         <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 shrink-0 -mt-1">
           <X size={18} />
@@ -95,7 +95,7 @@ export function StaffInviteForm({ organizationId, roles, locations, onInvited, o
             </select>
           </div>
           <div>
-            <FieldLabel>Hoofdvestiging (optioneel)</FieldLabel>
+            <FieldLabel>Hoofdlocatie (optioneel)</FieldLabel>
             <select
               value={locationId} onChange={(e) => setLocationId(e.target.value)}
               className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}

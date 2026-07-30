@@ -91,9 +91,7 @@ const defaultNotificationSettings: NotificationSettings = {
   checkin: true,
   afspraken: true,
   medicatie: true,
-  training: false,
   foto: false,
-  mijlpalen: true,
   checkinTijd: "20:00",
 };
 

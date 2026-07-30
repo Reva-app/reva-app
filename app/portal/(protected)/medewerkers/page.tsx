@@ -8,40 +8,19 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 import { ActionMenu } from "@/components/ui/ActionMenu";
 import { StaffInviteForm } from "@/components/portal/StaffInviteForm";
+import { Avatar } from "@/components/ui/Avatar";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
   loadPortalStaffOverview, loadPortalRoles, loadPortalLocations, loadPortalMaxMembers,
   resendStaffInvite, deleteStaffInvite, updateStaffMember, deleteStaffMember,
-  MANAGE_STAFF_ROLES, PORTAL_STAFF_STATUS_LABELS,
+  MANAGE_STAFF_ROLES, PORTAL_STAFF_STATUS_LABELS, STAFF_INACTIVITY_THRESHOLD_DAYS, isDateStale,
   type PortalStaffMember, type PortalRoleOption, type PortalLocationOption,
 } from "@/lib/services/portalService";
-
-function initials(name: string | null, email: string | null) {
-  const source = (name || email || "?").trim();
-  const parts = source.split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return source.slice(0, 2).toUpperCase();
-}
-
-function Avatar({ member }: { member: PortalStaffMember }) {
-  if (member.avatarUrl) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={member.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
-    );
-  }
-  return (
-    <div
-      className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold text-white shrink-0"
-      style={{ background: "var(--brand-accent, #e8632a)" }}
-    >
-      {initials(member.fullName, member.email)}
-    </div>
-  );
-}
 
 function roleBadgeVariant(roleKey: string): "accent" | "blue" | "default" {
   if (roleKey === "organization_owner") return "accent";
@@ -67,11 +46,9 @@ export default function PortalStaffPage() {
   const [loading, setLoading] = useState(true);
 
   const [showInvite, setShowInvite] = useState(false);
-  const [inviteMessage, setInviteMessage] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<PortalStaffMember | null>(null);
-  const [actionError, setActionError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [rowMessages, setRowMessages] = useState<Record<string, string>>({});
+  const { showToast, toastNode } = useToast();
 
   const canManage = !!membership && MANAGE_STAFF_ROLES.includes(membership.roleKey);
 
@@ -106,15 +83,6 @@ export default function PortalStaffPage() {
     };
   }, [checked, membership]);
 
-  function showRowMessage(id: string, text: string) {
-    setRowMessages((prev) => ({ ...prev, [id]: text }));
-    setTimeout(() => setRowMessages((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    }), 5000);
-  }
-
   const usedCount = staff.length;
   const atLimit = maxMembers > 0 && usedCount >= maxMembers;
 
@@ -122,27 +90,31 @@ export default function PortalStaffPage() {
     setBusyId(member.id);
     const { error } = await resendStaffInvite(member.id);
     setBusyId(null);
-    showRowMessage(member.id, error ?? "Uitnodiging opnieuw verstuurd.");
+    showToast(error ?? "Uitnodiging opnieuw verstuurd.", error ? "error" : "success");
   }
 
   async function handleToggleBlocked(member: PortalStaffMember) {
     if (!membership) return;
     setBusyId(member.id);
-    const { error } = await updateStaffMember(member.id, { status: member.status === "active" ? "suspended" : "active" });
+    const nextBlocked = member.status === "active";
+    const { error } = await updateStaffMember(member.id, { status: nextBlocked ? "suspended" : "active" });
     setBusyId(null);
-    if (error) { showRowMessage(member.id, error); return; }
+    if (error) { showToast(error, "error"); return; }
+    showToast(nextBlocked ? "Medewerker geblokkeerd" : "Medewerker gedeblokkeerd");
     refresh(membership.organizationId);
   }
 
   async function handleDelete() {
     if (!confirmDelete || !membership) return;
+    const wasInvite = confirmDelete.kind === "invite";
     setBusyId(confirmDelete.id);
-    const { error } = confirmDelete.kind === "invite"
+    const { error } = wasInvite
       ? await deleteStaffInvite(confirmDelete.id)
       : await deleteStaffMember(confirmDelete.id);
     setBusyId(null);
-    if (error) { setActionError(error); return; }
     setConfirmDelete(null);
+    if (error) { showToast(error, "error"); return; }
+    showToast(wasInvite ? "Uitnodiging verwijderd" : "Medewerker verwijderd");
     refresh(membership.organizationId);
   }
 
@@ -154,7 +126,7 @@ export default function PortalStaffPage() {
           subtitle={loading ? "Laden…" : maxMembers > 0 ? `${usedCount} van ${maxMembers} medewerkers gebruikt` : `${usedCount} ${usedCount === 1 ? "medewerker" : "medewerkers"}`}
         />
         {canManage && (
-          <Button size="sm" onClick={() => { setInviteMessage(""); setShowInvite(true); }} disabled={atLimit}>
+          <Button size="sm" onClick={() => setShowInvite(true)} disabled={atLimit}>
             <UserPlus size={14} />
             Medewerker uitnodigen
           </Button>
@@ -168,7 +140,7 @@ export default function PortalStaffPage() {
       )}
 
       {showInvite && membership && (
-        <Modal onClose={() => setShowInvite(false)} maxWidth="max-w-2xl">
+        <Modal onClose={() => setShowInvite(false)} maxWidth="max-w-2xl" dismissOnBackdropClick={false}>
           <StaffInviteForm
             organizationId={membership.organizationId}
             roles={roles}
@@ -176,16 +148,11 @@ export default function PortalStaffPage() {
             onClose={() => setShowInvite(false)}
             onInvited={(result) => {
               setShowInvite(false);
-              setInviteMessage(result.outcome === "linked" ? "Account gekoppeld." : "Uitnodiging verstuurd.");
+              showToast(result.outcome === "linked" ? "Account gekoppeld en e-mail verstuurd." : "Uitnodiging verstuurd.");
               refresh(membership.organizationId);
-              setTimeout(() => setInviteMessage(""), 5000);
             }}
           />
         </Modal>
-      )}
-
-      {inviteMessage && (
-        <p className="text-sm" style={{ color: "#16a34a" }}>{inviteMessage}</p>
       )}
 
       <div
@@ -203,7 +170,7 @@ export default function PortalStaffPage() {
                 <tr style={{ borderBottom: "1px solid #e8e5df" }}>
                   <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Naam</th>
                   <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Rol</th>
-                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Hoofdvestiging</th>
+                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Hoofdlocatie</th>
                   <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Status</th>
                   {canManage && <th className="text-right font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Actie</th>}
                 </tr>
@@ -211,7 +178,6 @@ export default function PortalStaffPage() {
               <tbody>
                 {staff.map((member) => {
                   const isSelf = !!user && member.userId === user.id;
-                  const message = rowMessages[member.id];
                   return (
                     <tr
                       key={member.id}
@@ -221,13 +187,13 @@ export default function PortalStaffPage() {
                     >
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
-                          <Avatar member={member} />
+                          <Avatar fullName={member.fullName} email={member.email} avatarUrl={member.avatarUrl} size={36} />
                           <div className="min-w-0">
                             <p className="font-medium text-gray-800 truncate">
                               {member.fullName || member.email || "Onbekend"}
                               {isSelf && <span className="text-xs text-gray-400 font-normal ml-2">(jij)</span>}
                             </p>
-                            <p className="text-xs text-gray-400 truncate">{message || member.email}</p>
+                            <p className="text-xs text-gray-400 truncate">{member.email}</p>
                           </div>
                         </div>
                       </td>
@@ -235,7 +201,14 @@ export default function PortalStaffPage() {
                         <Badge variant={roleBadgeVariant(member.roleKey)}>{member.roleName}</Badge>
                       </td>
                       <td className="px-5 py-3.5 text-gray-600">{member.locationName || "Hele organisatie"}</td>
-                      <td className="px-5 py-3.5">{statusBadge(member.status)}</td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {statusBadge(member.status)}
+                          {member.kind === "member" && member.status === "active" && isDateStale(member.lastSignInAt, STAFF_INACTIVITY_THRESHOLD_DAYS) && (
+                            <Badge variant="warning">Niet recent ingelogd</Badge>
+                          )}
+                        </div>
+                      </td>
                       {canManage && (
                         <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                           {isSelf ? (
@@ -246,7 +219,7 @@ export default function PortalStaffPage() {
                                 ...(member.kind === "member" ? [{ label: "Bewerken", onClick: () => router.push(`/portal/medewerkers/${member.id}`) }] : []),
                                 ...(member.status === "invited" ? [{ label: "Opnieuw uitnodigen", onClick: () => handleResend(member) }] : []),
                                 ...(member.kind === "member" ? [{ label: member.status === "active" ? "Blokkeren" : "Deblokkeren", onClick: () => handleToggleBlocked(member) }] : []),
-                                { label: "Verwijderen", onClick: () => { setActionError(""); setConfirmDelete(member); }, danger: true },
+                                { label: "Verwijderen", onClick: () => setConfirmDelete(member), danger: true },
                               ]}
                             />
                           )}
@@ -262,24 +235,18 @@ export default function PortalStaffPage() {
       </div>
 
       {confirmDelete && (
-        <Modal onClose={() => setConfirmDelete(null)} maxWidth="max-w-sm">
-          <div className="rounded-2xl p-6" style={{ background: "#ffffff" }}>
-            <h3 className="font-semibold text-gray-900 mb-2">
-              {confirmDelete.kind === "invite" ? "Uitnodiging verwijderen?" : "Medewerker verwijderen?"}
-            </h3>
-            <p className="text-sm text-gray-500 mb-5">
-              {confirmDelete.kind === "invite"
-                ? "De openstaande uitnodiging wordt ingetrokken."
-                : "Dit verwijdert de medewerker permanent uit jouw organisatie. Deze actie kan niet ongedaan worden gemaakt."}
-            </p>
-            {actionError && <p className="text-xs mb-3" style={{ color: "#dc2626" }}>{actionError}</p>}
-            <div className="flex justify-end gap-2">
-              <Button size="sm" variant="secondary" onClick={() => setConfirmDelete(null)}>Annuleren</Button>
-              <Button size="sm" variant="danger" disabled={busyId === confirmDelete.id} onClick={handleDelete}>Verwijderen</Button>
-            </div>
-          </div>
-        </Modal>
+        <ConfirmDialog
+          title={confirmDelete.kind === "invite" ? "Uitnodiging verwijderen?" : "Medewerker verwijderen?"}
+          message={confirmDelete.kind === "invite"
+            ? "De openstaande uitnodiging wordt ingetrokken."
+            : "Dit verwijdert de medewerker permanent uit jouw organisatie. Deze actie kan niet ongedaan worden gemaakt."}
+          confirmLabel="Verwijderen"
+          loading={busyId === confirmDelete.id}
+          onCancel={() => setConfirmDelete(null)}
+          onConfirm={handleDelete}
+        />
       )}
+      {toastNode}
     </div>
   );
 }

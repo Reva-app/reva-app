@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, AlertCircle, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
+import { validatePassword, passwordStrength } from "@/lib/passwordPolicy";
 
 // ─── Google icon ──────────────────────────────────────────────────────────────
 function GoogleIcon() {
@@ -37,7 +38,8 @@ export default function RegisterPage() {
     if (!email.trim()) { setError("E-mailadres is verplicht"); return false; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("Voer een geldig e-mailadres in"); return false; }
     if (!password) { setError("Wachtwoord is verplicht"); return false; }
-    if (password.length < 8) { setError("Wachtwoord moet minimaal 8 tekens bevatten"); return false; }
+    const passwordError = validatePassword(password);
+    if (passwordError) { setError(passwordError); return false; }
     if (password !== passwordHerhaling) { setError("Wachtwoorden komen niet overeen"); return false; }
     return true;
   }
@@ -129,18 +131,12 @@ export default function RegisterPage() {
     }
   }
 
-  const passwordStrength = !password
-    ? null
-    : password.length < 8
-    ? "zwak"
-    : password.length < 12
-    ? "matig"
-    : "sterk";
+  const strength = passwordStrength(password);
 
   const strengthColor =
-    passwordStrength === "sterk"
+    strength === "sterk"
       ? "#16a34a"
-      : passwordStrength === "matig"
+      : strength === "matig"
       ? "#d97706"
       : "#dc2626";
 
@@ -227,7 +223,7 @@ export default function RegisterPage() {
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Minimaal 8 tekens"
+                placeholder="Minimaal 10 tekens, letters en cijfers"
                 className="w-full text-sm rounded-xl border px-4 py-3 pr-11 focus:outline-none transition-colors"
                 style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
               />
@@ -240,7 +236,7 @@ export default function RegisterPage() {
               </button>
             </div>
             {/* Strength indicator */}
-            {passwordStrength && (
+            {strength && (
               <div className="flex items-center gap-2 mt-1.5">
                 <div className="flex gap-1">
                   {["zwak", "matig", "sterk"].map((level, i) => (
@@ -249,9 +245,9 @@ export default function RegisterPage() {
                       className="h-1 w-8 rounded-full transition-colors"
                       style={{
                         background:
-                          (passwordStrength === "zwak" && i === 0) ||
-                          (passwordStrength === "matig" && i <= 1) ||
-                          (passwordStrength === "sterk" && i <= 2)
+                          (strength === "zwak" && i === 0) ||
+                          (strength === "matig" && i <= 1) ||
+                          (strength === "sterk" && i <= 2)
                             ? strengthColor
                             : "#e8e5df",
                       }}
@@ -259,7 +255,7 @@ export default function RegisterPage() {
                   ))}
                 </div>
                 <span className="text-[11px] font-medium" style={{ color: strengthColor }}>
-                  {passwordStrength === "zwak" ? "Zwak" : passwordStrength === "matig" ? "Matig" : "Sterk"}
+                  {strength === "zwak" ? "Zwak" : strength === "matig" ? "Matig" : "Sterk"}
                 </span>
               </div>
             )}

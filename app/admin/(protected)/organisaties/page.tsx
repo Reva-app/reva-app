@@ -58,7 +58,7 @@ export default function AdminOrganizationsPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!newName.trim()) {
-      setCreateError("Vul een organisatienaam in");
+      setCreateError("Vul een bedrijfsnaam in");
       return;
     }
     const ownerFieldsUsed = ownerFirstName.trim() || ownerLastName.trim() || ownerEmail.trim();
@@ -81,7 +81,7 @@ export default function AdminOrganizationsPage() {
       const ownerRole = roles.find((r) => r.key === "organization_owner");
       if (!ownerRole) {
         setCreating(false);
-        router.push(`/admin/organisaties/${id}?inviteError=${encodeURIComponent("Rol 'Practice Owner' niet gevonden — organisatie is wel aangemaakt.")}`);
+        router.push(`/admin/organisaties/${id}?inviteError=${encodeURIComponent("Rol 'Practice Owner' niet gevonden: bedrijf is wel aangemaakt.")}`);
         return;
       }
       const { error: inviteError } = await inviteAdminOrgMember(id, {
@@ -114,12 +114,12 @@ export default function AdminOrganizationsPage() {
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
       <div className="flex items-start justify-between flex-wrap gap-3">
         <SectionHeader
-          title="Organisaties"
-          subtitle={loading ? "Laden…" : `${orgs.length} ${orgs.length === 1 ? "organisatie" : "organisaties"} op het platform`}
+          title="Bedrijven"
+          subtitle={loading ? "Laden…" : `${orgs.length} ${orgs.length === 1 ? "bedrijf" : "bedrijven"} op het platform`}
         />
         <Button size="sm" onClick={() => setShowCreate((v) => !v)}>
           <Plus size={14} />
-          Nieuwe organisatie
+          Nieuw bedrijf
         </Button>
       </div>
 
@@ -130,7 +130,7 @@ export default function AdminOrganizationsPage() {
         >
           <form onSubmit={handleCreate} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">Organisatienaam</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">Bedrijfsnaam</label>
               <input
                 type="text"
                 value={newName}
@@ -158,7 +158,7 @@ export default function AdminOrganizationsPage() {
                 />
               </div>
               <p className="text-xs text-gray-400 mt-2">
-                Ingevuld? Dan ontvangt deze persoon direct een e-mail om zelf een wachtwoord in te stellen en de organisatie als Practice Owner te beheren. Leeg gelaten: alleen een lege organisatie wordt aangemaakt.
+                Ingevuld? Dan ontvangt deze persoon direct een e-mail om zelf een wachtwoord in te stellen en het bedrijf als Practice Owner te beheren. Leeg gelaten: alleen een leeg bedrijf wordt aangemaakt.
               </p>
             </div>
 
@@ -176,7 +176,7 @@ export default function AdminOrganizationsPage() {
           type="text"
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          placeholder="Zoek op organisatienaam…"
+          placeholder="Zoek op bedrijfsnaam…"
           className="w-full text-sm rounded-xl border pl-9 pr-4 py-2.5 focus:outline-none"
           style={inputStyle}
         />
@@ -191,8 +191,8 @@ export default function AdminOrganizationsPage() {
         ) : filteredOrgs.length === 0 ? (
           <EmptyState
             icon={Building2}
-            title={search ? "Geen organisaties gevonden" : "Nog geen organisaties"}
-            description={search ? "Probeer een andere zoekterm." : "Zodra er organisaties worden aangemaakt, verschijnen ze hier."}
+            title={search ? "Geen bedrijven gevonden" : "Nog geen bedrijven"}
+            description={search ? "Probeer een andere zoekterm." : "Zodra er bedrijven worden aangemaakt, verschijnen ze hier."}
           />
         ) : (
           <>
@@ -202,7 +202,7 @@ export default function AdminOrganizationsPage() {
                   <tr style={{ borderBottom: "1px solid #e8e5df" }}>
                     <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Naam</th>
                     <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Status</th>
-                    <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Vestigingen</th>
+                    <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Locaties</th>
                     <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Patiënten</th>
                     <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Aangemaakt op</th>
                   </tr>

@@ -1,10 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Camera, Loader2, Check } from "lucide-react";
+import { Camera, Loader2 } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { usePortalBranding } from "@/lib/hooks/usePortalBranding";
 import { updatePortalBranding, uploadPortalLogo, MANAGE_BRANDING_ROLES } from "@/lib/services/portalService";
@@ -29,10 +30,9 @@ export default function PortalHuisstijlPage() {
   const [nameEdit, setNameEdit] = useState<string | null>(null);
   const [colorEdit, setColorEdit] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState("");
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { showToast, toastNode } = useToast();
 
   const name = nameEdit ?? branding?.name ?? "";
   const color = colorEdit ?? branding?.primaryColor ?? DEFAULT_ACCENT;
@@ -43,34 +43,33 @@ export default function PortalHuisstijlPage() {
     const file = e.target.files?.[0];
     if (!file || !membership) return;
     setUploadingLogo(true);
-    setError("");
     const { error: uploadError } = await uploadPortalLogo(membership.organizationId, file);
     setUploadingLogo(false);
-    if (uploadError) { setError(uploadError); return; }
+    if (uploadError) { showToast(uploadError, "error"); return; }
     refresh();
-    // De zijbalk/mobiele balk laden hun eigen huisstijl onafhankelijk in — een
-    // volledige herlaad is de eenvoudigste manier om het nieuwe logo daar ook
-    // meteen te tonen, zonder een globale branding-context op te tuigen voor
-    // één zeldzaam veranderende instelling.
-    setTimeout(() => window.location.reload(), 400);
+    showToast("Logo opgeslagen");
+    // usePortalBranding houdt geen gedeelde cache bij — de zijbalk/mobiele balk
+    // laden hun eigen huisstijl onafhankelijk in, dus een volledige herlaad is
+    // hier nog steeds nodig om het nieuwe logo daar ook te tonen.
+    setTimeout(() => window.location.reload(), 800);
   }
 
   async function handleSave() {
     if (!membership) return;
-    if (!name.trim()) { setError("Vul een praktijknaam in."); return; }
-    if (!HEX_PATTERN.test(color)) { setError("Kies een geldige kleur (bijv. #E8632A)."); return; }
+    if (!name.trim()) { showToast("Vul een praktijknaam in.", "error"); return; }
+    if (!HEX_PATTERN.test(color)) { showToast("Kies een geldige kleur (bijv. #E8632A).", "error"); return; }
 
     setSaving(true);
-    setError("");
-    setSaved(false);
     const { error: saveError } = await updatePortalBranding(membership.organizationId, {
       name: name.trim(),
       primaryColor: color,
     });
     setSaving(false);
-    if (saveError) { setError(saveError); return; }
-    setSaved(true);
-    setTimeout(() => window.location.reload(), 600);
+    if (saveError) { showToast(saveError, "error"); return; }
+    showToast("Huisstijl opgeslagen");
+    // Zie handleLogoSelect: geen gedeelde branding-cache, dus reload nodig voor
+    // de zijbalk/mobiele balk.
+    setTimeout(() => window.location.reload(), 800);
   }
 
   if (checked && membership && !canManage) {
@@ -94,8 +93,6 @@ export default function PortalHuisstijlPage() {
         <Button size="sm" onClick={handleSave} disabled={saving || !branding}>
           {saving ? (
             <><Loader2 size={14} className="animate-spin" /> Opslaan…</>
-          ) : saved ? (
-            <><Check size={14} /> Opgeslagen</>
           ) : (
             "Wijzigingen opslaan"
           )}
@@ -161,7 +158,7 @@ export default function PortalHuisstijlPage() {
         />
       </Card>
 
-      {error && <p className="text-xs" style={{ color: "#dc2626" }}>{error}</p>}
+      {toastNode}
     </div>
   );
 }

@@ -11,7 +11,7 @@ import {
   Settings,
   Pill,
   Target,
-  BookOpen,
+  Calendar,
   LogOut,
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
@@ -20,11 +20,11 @@ import { useAppBranding } from "@/lib/hooks/useAppBranding";
 
 const primaryNav = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dagboek", label: "Dagboek", icon: BookOpen },
   { href: "/check-in", label: "Check-in", icon: ClipboardCheck },
   { href: "/doelstellingen", label: "Doelstellingen", icon: Target },
   { href: "/training", label: "Training", icon: Dumbbell },
   { href: "/medicatie", label: "Medicatie", icon: Pill },
+  { href: "/dagboek", label: "Afspraken", icon: Calendar },
   { href: "/dossier", label: "Dossier", icon: FolderOpen },
 ];
 

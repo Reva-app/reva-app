@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Building2, Users } from "lucide-react";
+import { LayoutDashboard, Building2, Users, Kanban } from "lucide-react";
 import { AdminSidebar } from "./AdminSidebar";
 import { AdminGate } from "@/components/auth/AdminGate";
 
 const mobileNav = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/organisaties", label: "Organisaties", icon: Building2 },
+  { href: "/admin/organisaties", label: "Bedrijven", icon: Building2 },
+  { href: "/admin/pijplijn", label: "Pijplijn", icon: Kanban },
   { href: "/admin/gebruikers", label: "Gebruikers", icon: Users },
 ];
 

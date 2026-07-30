@@ -5,11 +5,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, LogOut } from "lucide-react";
 import { PortalSidebar, getPortalNavItems } from "./PortalSidebar";
+import { PortalMobileNav } from "./PortalMobileNav";
 import { PortalGate } from "@/components/auth/PortalGate";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { usePortalBranding } from "@/lib/hooks/usePortalBranding";
-import { MANAGE_BRANDING_ROLES } from "@/lib/services/portalService";
+import { MANAGE_BRANDING_ROLES, VIEW_ANALYTICS_ROLES } from "@/lib/services/portalService";
+import { VIEW_AUDIT_LOG_ROLES } from "@/lib/services/auditService";
+import { Avatar } from "@/components/ui/Avatar";
 
 function PortalMobileTopBar() {
   const pathname = usePathname();
@@ -19,7 +22,9 @@ function PortalMobileTopBar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const canManageBranding = !!membership && MANAGE_BRANDING_ROLES.includes(membership.roleKey);
-  const navItems = getPortalNavItems(canManageBranding);
+  const canViewAnalytics = !!membership && VIEW_ANALYTICS_ROLES.includes(membership.roleKey);
+  const canViewAuditLog = !!membership && VIEW_AUDIT_LOG_ROLES.includes(membership.roleKey);
+  const { primary, secondary } = getPortalNavItems(canManageBranding, canViewAnalytics, canViewAuditLog);
 
   return (
     <>
@@ -74,7 +79,7 @@ function PortalMobileTopBar() {
         </div>
 
         <nav className="flex-1 px-2.5 py-3 space-y-0.5 overflow-y-auto">
-          {navItems.map(({ href, label, icon: Icon }) => {
+          {primary.map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href;
             return (
               <Link
@@ -92,17 +97,41 @@ function PortalMobileTopBar() {
               </Link>
             );
           })}
+
+          {secondary.length > 0 && (
+            <>
+              <div className="my-3" style={{ height: "1px", background: "rgba(255,255,255,0.05)" }} />
+              {secondary.map(({ href, label, icon: Icon }) => {
+                const isActive = pathname === href;
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium"
+                    style={{
+                      color: isActive ? "#ffffff" : "#7c7c8a",
+                      background: isActive ? "rgba(255,255,255,0.07)" : "transparent",
+                    }}
+                  >
+                    <Icon size={16} style={{ color: isActive ? "var(--brand-accent, #e8632a)" : "#52525e" }} />
+                    {label}
+                  </Link>
+                );
+              })}
+            </>
+          )}
         </nav>
 
         <div className="mx-2.5 mb-4 px-3 py-3 rounded-xl" style={{ background: "rgba(255,255,255,0.04)" }}>
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ background: "var(--brand-accent, #e8632a)" }}>
-              {user?.email?.[0]?.toUpperCase() ?? "P"}
-            </div>
-            <div className="overflow-hidden min-w-0 flex-1">
-              <p className="text-white text-xs font-medium truncate">{user?.email ?? ""}</p>
-              <p className="text-[11px] truncate" style={{ color: "#52525e" }}>{membership?.roleName ?? ""}</p>
-            </div>
+            <Link href="/portal/account" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 flex-1 min-w-0">
+              <Avatar fullName={membership?.userFullName ?? null} email={user?.email} avatarUrl={membership?.avatarUrl ?? null} size={28} />
+              <div className="overflow-hidden min-w-0 flex-1">
+                <p className="text-white text-xs font-medium truncate">{membership?.userFullName || user?.email || ""}</p>
+                <p className="text-[11px] truncate" style={{ color: "var(--brand-accent, #e8632a)" }}>Account instellingen</p>
+              </div>
+            </Link>
             <button
               type="button"
               onClick={signOut}
@@ -127,10 +156,11 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
         <PortalSidebar />
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           <PortalMobileTopBar />
-          <main className="flex-1 overflow-y-auto" style={{ background: "#f8f7f4" }}>
+          <main className="flex-1 overflow-y-auto pb-nav lg:pb-0" style={{ background: "#f8f7f4" }}>
             {children}
           </main>
         </div>
+        <PortalMobileNav />
       </div>
     </PortalGate>
   );

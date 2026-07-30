@@ -6,9 +6,11 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { DatePicker } from "@/components/ui/DatePicker";
 import {
-  createAndInvitePortalPatient, createPortalProtocol,
-  type PortalPatientInput, type PortalLocationOption, type PortalMember, type PortalProtocolOption,
+  createAndInvitePortalPatient,
+  type PortalPatientInput, type PortalLocationOption, type PortalMember,
 } from "@/lib/services/portalService";
+import { assignProtocolToPatient, type PortalProtocolCard } from "@/lib/services/protocolService";
+import { isValidEmail, BLESSURE_TYPEN } from "@/lib/data";
 
 const inputStyle = {
   borderColor: "#e8e5df",
@@ -24,34 +26,36 @@ const STEPS = ["Basisgegevens", "Behandeltraject", "Uitnodiging"];
 
 const emptyInput: PortalPatientInput = {
   firstName: "", lastName: "", email: "", phone: "", dateOfBirth: "", gender: "",
-  locationId: null, therapistId: null, protocolId: null, treatmentStartDate: "", surgeryDate: "",
+  locationId: null, therapistId: null, treatmentStartDate: "", surgeryDate: "",
+  injuryDate: "", injuryType: "",
 };
 
 interface PatientWizardProps {
   organizationId: string;
   locations: PortalLocationOption[];
   members: PortalMember[];
-  protocols: PortalProtocolOption[];
-  onProtocolCreated: (protocol: PortalProtocolOption) => void;
+  revaProtocols: PortalProtocolCard[];
+  orgProtocols: PortalProtocolCard[];
   onDone: () => void;
   onClose: () => void;
 }
 
 export function PatientWizard({
-  organizationId, locations, members, protocols, onProtocolCreated, onDone, onClose,
+  organizationId, locations, members, revaProtocols, orgProtocols, onDone, onClose,
 }: PatientWizardProps) {
   const [step, setStep] = useState(0);
   const [input, setInput] = useState<PortalPatientInput>(emptyInput);
   const [stepError, setStepError] = useState("");
 
-  const [showNewProtocol, setShowNewProtocol] = useState(false);
-  const [newProtocolName, setNewProtocolName] = useState("");
-  const [creatingProtocol, setCreatingProtocol] = useState(false);
+  const [selectedProtocolId, setSelectedProtocolId] = useState<string | null>(null);
 
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
 
   const activeMembers = members.filter((m) => m.membershipStatus === "active");
+  const availableRevaProtocols = revaProtocols.filter((p) => !p.archived);
+  const availableOrgProtocols = orgProtocols.filter((p) => !p.archived);
+  const allProtocols = [...availableOrgProtocols, ...availableRevaProtocols];
 
   function update<K extends keyof PortalPatientInput>(key: K, value: PortalPatientInput[K]) {
     setInput((prev) => ({ ...prev, [key]: value }));
@@ -61,6 +65,10 @@ export function PatientWizard({
     if (step === 0) {
       if (!input.firstName.trim() || !input.lastName.trim() || !input.email.trim()) {
         setStepError("Vul voornaam, achternaam en e-mailadres in");
+        return;
+      }
+      if (!isValidEmail(input.email)) {
+        setStepError("Vul een geldig e-mailadres in (bijv. naam@voorbeeld.nl)");
         return;
       }
     }
@@ -73,22 +81,12 @@ export function PatientWizard({
     setStep((s) => Math.max(s - 1, 0));
   }
 
-  async function handleCreateProtocol() {
-    if (!newProtocolName.trim()) return;
-    setCreatingProtocol(true);
-    const { id, error } = await createPortalProtocol(organizationId, newProtocolName);
-    setCreatingProtocol(false);
-    if (error || !id) return;
-    const protocol = { id, name: newProtocolName.trim() };
-    onProtocolCreated(protocol);
-    update("protocolId", id);
-    setNewProtocolName("");
-    setShowNewProtocol(false);
-  }
-
   async function handleInvite() {
     setSending(true);
     const res = await createAndInvitePortalPatient(organizationId, input);
+    if (res.outcome !== "failed" && selectedProtocolId) {
+      await assignProtocolToPatient(res.patientId, selectedProtocolId);
+    }
     setSending(false);
     if (res.outcome === "linked") {
       setResult({ ok: true, text: "Dossier aangemaakt en direct gekoppeld aan een bestaand account." });
@@ -167,10 +165,10 @@ export function PatientWizard({
               </select>
             </div>
             <div>
-              <FieldLabel>Vestiging (optioneel)</FieldLabel>
+              <FieldLabel>Locatie (optioneel)</FieldLabel>
               <select value={input.locationId ?? ""} onChange={(e) => update("locationId", e.target.value || null)}
                 className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
-                <option value="">Geen specifieke vestiging</option>
+                <option value="">Geen specifieke locatie</option>
                 {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
             </div>
@@ -190,28 +188,38 @@ export function PatientWizard({
       {step === 1 && (
         <div className="space-y-3">
           <div>
-            <FieldLabel>Protocol (optioneel)</FieldLabel>
-            {!showNewProtocol ? (
-              <div className="flex gap-2">
-                <select value={input.protocolId ?? ""} onChange={(e) => update("protocolId", e.target.value || null)}
-                  className="flex-1 text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
-                  <option value="">Geen protocol</option>
-                  {protocols.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-                <Button type="button" size="sm" variant="secondary" onClick={() => setShowNewProtocol(true)}>Nieuw</Button>
-              </div>
-            ) : (
-              <div className="flex gap-2">
-                <input type="text" value={newProtocolName} onChange={(e) => setNewProtocolName(e.target.value)}
-                  placeholder="Bijv. Totale Knieprothese" className="flex-1 text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
-                <Button type="button" size="sm" disabled={creatingProtocol} onClick={handleCreateProtocol}>
-                  {creatingProtocol ? <Loader2 size={13} className="animate-spin" /> : "Toevoegen"}
-                </Button>
-                <Button type="button" size="sm" variant="secondary" onClick={() => setShowNewProtocol(false)}>Annuleren</Button>
-              </div>
-            )}
+            <FieldLabel>Blessuretype (optioneel)</FieldLabel>
+            <select value={input.injuryType} onChange={(e) => update("injuryType", e.target.value)}
+              className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+              <option value="">Nog niet bekend</option>
+              {BLESSURE_TYPEN.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
+            </select>
+            <p className="text-xs text-gray-400 mt-1.5">Komt automatisch terug in de instellingen van de patiënt zelf.</p>
+          </div>
+          <div>
+            <FieldLabel>Herstelplan (optioneel)</FieldLabel>
+            <select value={selectedProtocolId ?? ""} onChange={(e) => setSelectedProtocolId(e.target.value || null)}
+              className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+              <option value="">Geen herstelplan</option>
+              {availableOrgProtocols.length > 0 && (
+                <optgroup label="Eigen herstelplannen">
+                  {availableOrgProtocols.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </optgroup>
+              )}
+              {availableRevaProtocols.length > 0 && (
+                <optgroup label="REVA-herstelplannen">
+                  {availableRevaProtocols.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </optgroup>
+              )}
+            </select>
+            <p className="text-xs text-gray-400 mt-1.5">Nog geen eigen herstelplan? Maak er een aan via de Herstelplannen-pagina.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <FieldLabel>Datum blessure (optioneel)</FieldLabel>
+              <DatePicker value={input.injuryDate} onChange={(v) => update("injuryDate", v)} placeholder="Kies een datum" />
+              <p className="text-xs text-gray-400 mt-1.5">Komt automatisch terug in de instellingen van de patiënt zelf, en kan daar dan niet meer gewijzigd worden.</p>
+            </div>
             <div>
               <FieldLabel>Startdatum behandeling (optioneel)</FieldLabel>
               <DatePicker value={input.treatmentStartDate} onChange={(v) => update("treatmentStartDate", v)} placeholder="Kies een datum" />
@@ -231,9 +239,10 @@ export function PatientWizard({
               <div className="rounded-xl p-4 text-sm space-y-1.5" style={{ background: "#f8f7f4" }}>
                 <p><span className="text-gray-500">Naam:</span> <span className="font-medium">{input.firstName} {input.lastName}</span></p>
                 <p><span className="text-gray-500">E-mail:</span> {input.email}</p>
-                <p><span className="text-gray-500">Vestiging:</span> {locations.find((l) => l.id === input.locationId)?.name ?? "Geen"}</p>
+                <p><span className="text-gray-500">Locatie:</span> {locations.find((l) => l.id === input.locationId)?.name ?? "Geen"}</p>
                 <p><span className="text-gray-500">Behandelaar:</span> {activeMembers.find((m) => m.userId === input.therapistId)?.fullName ?? "Nog niet toegewezen"}</p>
-                <p><span className="text-gray-500">Protocol:</span> {protocols.find((p) => p.id === input.protocolId)?.name ?? "Geen"}</p>
+                <p><span className="text-gray-500">Blessuretype:</span> {BLESSURE_TYPEN.find((b) => b.value === input.injuryType)?.label ?? "Nog niet bekend"}</p>
+                <p><span className="text-gray-500">Herstelplan:</span> {allProtocols.find((p) => p.id === selectedProtocolId)?.name ?? "Geen"}</p>
               </div>
               <p className="text-xs text-gray-500">
                 Bij het versturen wordt het dossier aangemaakt en ontvangt de patiënt direct een uitnodiging op {input.email || "het opgegeven e-mailadres"}.

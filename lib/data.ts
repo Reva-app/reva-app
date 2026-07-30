@@ -194,9 +194,7 @@ export interface NotificationSettings {
   checkin: boolean;
   afspraken: boolean;
   medicatie: boolean;
-  training: boolean;
   foto: boolean;
-  mijlpalen: boolean;
   checkinTijd: string;
 }
 
@@ -226,6 +224,29 @@ export interface Profile {
   subscriptionSource: string;    // "stripe" | "google_play" | "apple" | ""
   subscriptionExpiresAt: string; // ISO timestamp or ""
 }
+
+/**
+ * Gedeelde blessuretype-lijst — dezelfde 14 waarden als de `injury_type`-kolom
+ * op `patients` (migratie 054), zodat wat een praktijk bij het aanmaken van
+ * een patiënt invult en wat de patiënt zelf bij Instellingen ziet, altijd
+ * hetzelfde zijn.
+ */
+export const BLESSURE_TYPEN = [
+  { value: "acl", label: "Voorste kruisband (ACL) blessure" },
+  { value: "meniscus", label: "Meniscus blessure" },
+  { value: "enkel", label: "Enkelverstuiking" },
+  { value: "spier", label: "Spierverrekking" },
+  { value: "hamstring", label: "Hamstring blessure" },
+  { value: "schouder", label: "Schouderblessure" },
+  { value: "knieband", label: "Knieband blessure" },
+  { value: "pees", label: "Peesontsteking" },
+  { value: "rug", label: "Rugblessure" },
+  { value: "achilles", label: "Achillespees blessure" },
+  { value: "patella", label: "Gescheurde kniepees" },
+  { value: "knieprothese", label: "Knieprothese" },
+  { value: "heupprothese", label: "Heupprothese" },
+  { value: "anders", label: "Anders" },
+];
 
 export const mockProfile: Profile = {
   naam: "Thomas de Vries",
@@ -955,6 +976,11 @@ export function formatDateShort(dateStr: string): string {
     day: "numeric",
     month: "short",
   });
+}
+
+/** Simpele, praktische check: @ aanwezig, iets ervoor/erna, en een domeinextensie (bv. .nl, .com). Geen volledige RFC 5322-validatie. */
+export function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
 }
 
 export function appointmentTypeLabel(type: AppointmentType): string {

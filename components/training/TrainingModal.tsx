@@ -12,62 +12,32 @@ export function todayStr(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// ─── Form body (shared between desktop modal and mobile sheet) ────────────────
+const SAVED_DISMISS_MS = 900;
 
-function TrainingFormBody({
-  trainingSchemas,
-  onSave,
-  onCancel,
-  title,
+interface TrainingFormValues {
+  schemaId: string;
+  vrij: string;
+  date: string;
+  completed: boolean;
+}
+
+// ─── Form fields (shared between desktop modal and mobile sheet) ──────────────
+
+function TrainingFields({
+  trainingSchemas, values, onChange,
 }: {
   trainingSchemas: { id: string; title: string }[];
-  onSave: (w: DagboekWorkout) => void;
-  onCancel: () => void;
-  title: string;
+  values: TrainingFormValues;
+  onChange: (patch: Partial<TrainingFormValues>) => void;
 }) {
-  const [schemaId, setSchemaId] = useState(trainingSchemas[0]?.id ?? "");
-  const [vrij, setVrij] = useState("");
-  const [date, setDate] = useState(todayStr());
-  const [completed, setCompleted] = useState(true);
-  const [saved, setSaved] = useState(false);
-
-  function save() {
-    const workoutTitle = schemaId
-      ? (trainingSchemas.find((s) => s.id === schemaId)?.title ?? "Training")
-      : vrij.trim() || "Training";
-    const now = new Date();
-    onSave({
-      id: crypto.randomUUID(),
-      date,
-      title: workoutTitle,
-      schemaId: schemaId || undefined,
-      completed,
-      completedAt: completed ? now.toISOString() : undefined,
-      createdAt: now.toISOString(),
-    });
-    setSaved(true);
-    setTimeout(onCancel, 900);
-  }
-
-  if (saved) {
-    return (
-      <div className="flex flex-col items-center justify-center py-14 gap-3">
-        <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "#f0fdf4" }}>
-          <Check size={22} style={{ color: "#22c55e" }} />
-        </div>
-        <p className="text-sm font-semibold text-gray-800">Training opgeslagen</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
       {trainingSchemas.length > 0 && (
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1.5">Trainingsschema</label>
           <select
-            value={schemaId}
-            onChange={(e) => setSchemaId(e.target.value)}
+            value={values.schemaId}
+            onChange={(e) => onChange({ schemaId: e.target.value })}
             className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none appearance-none"
             style={{
               borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a",
@@ -83,13 +53,13 @@ function TrainingFormBody({
         </div>
       )}
 
-      {!schemaId && (
+      {!values.schemaId && (
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1.5">Naam training</label>
           <input
             type="text"
-            value={vrij}
-            onChange={(e) => setVrij(e.target.value)}
+            value={values.vrij}
+            onChange={(e) => onChange({ vrij: e.target.value })}
             placeholder="Bijv. looptraining, fietsen..."
             className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none"
             style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
@@ -99,28 +69,39 @@ function TrainingFormBody({
 
       <div>
         <label className="block text-xs font-medium text-gray-500 mb-1.5">Datum</label>
-        <DatePicker value={date} onChange={setDate} />
+        <DatePicker value={values.date} onChange={(v) => onChange({ date: v })} />
       </div>
 
       <button
         type="button"
-        onClick={() => setCompleted((v) => !v)}
+        onClick={() => onChange({ completed: !values.completed })}
         className="flex items-center gap-3 w-full px-4 py-3.5 rounded-2xl transition-all touch-press"
         style={{
-          background: completed ? "#f0fdf4" : "#f3f0eb",
-          border: `2px solid ${completed ? "#86efac" : "#e8e5df"}`,
+          background: values.completed ? "#f0fdf4" : "#f3f0eb",
+          border: `2px solid ${values.completed ? "#86efac" : "#e8e5df"}`,
         }}
       >
         <div
           className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-all"
-          style={{ background: completed ? "#16a34a" : "#d1d5db" }}
+          style={{ background: values.completed ? "#16a34a" : "#d1d5db" }}
         >
-          {completed && <Check size={12} color="#ffffff" strokeWidth={3} />}
+          {values.completed && <Check size={12} color="#ffffff" strokeWidth={3} />}
         </div>
-        <span className="text-sm font-medium" style={{ color: completed ? "#15803d" : "#6b7280" }}>
-          {completed ? "Training afgerond ✓" : "Training gepland (nog niet afgerond)"}
+        <span className="text-sm font-medium" style={{ color: values.completed ? "#15803d" : "#6b7280" }}>
+          {values.completed ? "Training afgerond ✓" : "Training gepland (nog niet afgerond)"}
         </span>
       </button>
+    </div>
+  );
+}
+
+function SavedScreen() {
+  return (
+    <div className="flex flex-col items-center justify-center py-14 gap-3">
+      <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "#f0fdf4" }}>
+        <Check size={22} style={{ color: "#22c55e" }} />
+      </div>
+      <p className="text-sm font-semibold text-gray-800">Training opgeslagen</p>
     </div>
   );
 }
@@ -136,6 +117,36 @@ export function TrainingModal({
   onSave: (w: DagboekWorkout) => void;
   onClose: () => void;
 }) {
+  const [values, setValues] = useState<TrainingFormValues>({
+    schemaId: trainingSchemas[0]?.id ?? "",
+    vrij: "",
+    date: todayStr(),
+    completed: true,
+  });
+  const [saved, setSaved] = useState(false);
+
+  function update(patch: Partial<TrainingFormValues>) {
+    setValues((prev) => ({ ...prev, ...patch }));
+  }
+
+  function handleSave() {
+    const workoutTitle = values.schemaId
+      ? (trainingSchemas.find((s) => s.id === values.schemaId)?.title ?? "Training")
+      : values.vrij.trim() || "Training";
+    const now = new Date();
+    onSave({
+      id: crypto.randomUUID(),
+      date: values.date,
+      title: workoutTitle,
+      schemaId: values.schemaId || undefined,
+      completed: values.completed,
+      completedAt: values.completed ? now.toISOString() : undefined,
+      createdAt: now.toISOString(),
+    });
+    setSaved(true);
+    setTimeout(onClose, SAVED_DISMISS_MS);
+  }
+
   return (
     <div
       className="fixed inset-0 z-50"
@@ -162,24 +173,23 @@ export function TrainingModal({
             </button>
           </div>
           <div className="p-6">
-            <TrainingFormBody trainingSchemas={trainingSchemas} onSave={onSave} onCancel={onClose} title="Training toevoegen" />
+            {saved ? <SavedScreen /> : <TrainingFields trainingSchemas={trainingSchemas} values={values} onChange={update} />}
           </div>
-          <div className="flex gap-2 justify-end px-6 py-4 border-t" style={{ borderColor: "#f0ede8" }}>
-            <button onClick={onClose} className="text-sm px-4 py-2 rounded-xl border font-medium text-gray-600 hover:bg-gray-50"
-              style={{ borderColor: "#e8e5df" }}>
-              Annuleren
-            </button>
-            <button
-              form="training-form"
-              className="text-sm px-4 py-2 rounded-xl font-semibold text-white"
-              style={{ background: "#e8632a" }}
-              onClick={() => {
-                // inner save is handled by TrainingFormBody via onSave callback
-              }}
-            >
-              Opslaan
-            </button>
-          </div>
+          {!saved && (
+            <div className="flex gap-2 justify-end px-6 py-4 border-t" style={{ borderColor: "#f0ede8" }}>
+              <button onClick={onClose} className="text-sm px-4 py-2 rounded-xl border font-medium text-gray-600 hover:bg-gray-50"
+                style={{ borderColor: "#e8e5df" }}>
+                Annuleren
+              </button>
+              <button
+                onClick={handleSave}
+                className="text-sm px-4 py-2 rounded-xl font-semibold text-white"
+                style={{ background: "#e8632a" }}
+              >
+                Opslaan
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -205,7 +215,18 @@ export function TrainingModal({
           </button>
         </div>
         <div className="overflow-y-auto overflow-x-hidden flex-1 px-5 py-5">
-          <TrainingFormBodyMobile trainingSchemas={trainingSchemas} onSave={onSave} onCancel={onClose} />
+          {saved ? <SavedScreen /> : (
+            <div className="space-y-4">
+              <TrainingFields trainingSchemas={trainingSchemas} values={values} onChange={update} />
+              <button
+                onClick={handleSave}
+                className="w-full py-4 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 transition-all touch-press"
+                style={{ background: "#e8632a", color: "#ffffff" }}
+              >
+                Training opslaan
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -215,125 +236,6 @@ export function TrainingModal({
           to   { opacity: 1; transform: scale(1) translateY(0); }
         }
       `}</style>
-    </div>
-  );
-}
-
-// ─── Mobile-specific form body (with save button inline) ─────────────────────
-
-function TrainingFormBodyMobile({
-  trainingSchemas,
-  onSave,
-  onCancel,
-}: {
-  trainingSchemas: { id: string; title: string }[];
-  onSave: (w: DagboekWorkout) => void;
-  onCancel: () => void;
-}) {
-  const [schemaId, setSchemaId] = useState(trainingSchemas[0]?.id ?? "");
-  const [vrij, setVrij] = useState("");
-  const [date, setDate] = useState(todayStr());
-  const [completed, setCompleted] = useState(true);
-  const [saved, setSaved] = useState(false);
-
-  function save() {
-    const workoutTitle = schemaId
-      ? (trainingSchemas.find((s) => s.id === schemaId)?.title ?? "Training")
-      : vrij.trim() || "Training";
-    const now = new Date();
-    onSave({
-      id: crypto.randomUUID(),
-      date,
-      title: workoutTitle,
-      schemaId: schemaId || undefined,
-      completed,
-      completedAt: completed ? now.toISOString() : undefined,
-      createdAt: now.toISOString(),
-    });
-    setSaved(true);
-    setTimeout(onCancel, 900);
-  }
-
-  if (saved) {
-    return (
-      <div className="flex flex-col items-center justify-center py-14 gap-3">
-        <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "#f0fdf4" }}>
-          <Check size={22} style={{ color: "#22c55e" }} />
-        </div>
-        <p className="text-sm font-semibold text-gray-800">Training opgeslagen</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {trainingSchemas.length > 0 && (
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">Trainingsschema</label>
-          <select
-            value={schemaId}
-            onChange={(e) => setSchemaId(e.target.value)}
-            className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none appearance-none"
-            style={{
-              borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a",
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
-              backgroundRepeat: "no-repeat", backgroundPosition: "right 14px center", paddingRight: "40px",
-            }}
-          >
-            <option value="">Vrije training (geen schema)</option>
-            {trainingSchemas.map((s) => (
-              <option key={s.id} value={s.id}>{s.title}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {!schemaId && (
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">Naam training</label>
-          <input
-            type="text"
-            value={vrij}
-            onChange={(e) => setVrij(e.target.value)}
-            placeholder="Bijv. looptraining, fietsen..."
-            className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none"
-            style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
-          />
-        </div>
-      )}
-
-      <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1.5">Datum</label>
-        <DatePicker value={date} onChange={setDate} />
-      </div>
-
-      <button
-        type="button"
-        onClick={() => setCompleted((v) => !v)}
-        className="flex items-center gap-3 w-full px-4 py-3.5 rounded-2xl transition-all touch-press"
-        style={{
-          background: completed ? "#f0fdf4" : "#f3f0eb",
-          border: `2px solid ${completed ? "#86efac" : "#e8e5df"}`,
-        }}
-      >
-        <div
-          className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-all"
-          style={{ background: completed ? "#16a34a" : "#d1d5db" }}
-        >
-          {completed && <Check size={12} color="#ffffff" strokeWidth={3} />}
-        </div>
-        <span className="text-sm font-medium" style={{ color: completed ? "#15803d" : "#6b7280" }}>
-          {completed ? "Training afgerond ✓" : "Training gepland (nog niet afgerond)"}
-        </span>
-      </button>
-
-      <button
-        onClick={save}
-        className="w-full py-4 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 transition-all touch-press"
-        style={{ background: "#e8632a", color: "#ffffff" }}
-      >
-        Training opslaan
-      </button>
     </div>
   );
 }

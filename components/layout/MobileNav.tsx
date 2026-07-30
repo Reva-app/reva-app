@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  BookOpen,
+  Calendar,
   ClipboardCheck,
   Dumbbell,
   MoreHorizontal,
@@ -23,17 +23,17 @@ import { useAuth } from "@/components/auth/AuthProvider";
 
 const FIXED_NAV = [
   { href: "/",         label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dagboek",  label: "Dagboek",   icon: BookOpen },
+  { href: "/dagboek",  label: "Afspraken",  icon: Calendar },
   { href: "/training", label: "Training",  icon: Dumbbell },
 ];
 
 const ALL_NAV = [
   { href: "/",               label: "Dashboard",    icon: LayoutDashboard },
-  { href: "/dagboek",        label: "Dagboek",      icon: BookOpen },
-  { href: "/training",       label: "Trainingen",   icon: Dumbbell },
+  { href: "/doelstellingen", label: "Doelstellingen", icon: Target },
+  { href: "/training",       label: "Training",     icon: Dumbbell },
   { href: "/medicatie",      label: "Medicatie",    icon: Pill },
+  { href: "/dagboek",        label: "Afspraken",     icon: Calendar },
   { href: "/dossier",        label: "Dossier",      icon: FolderOpen },
-  { href: "/doelstellingen", label: "Doelen",       icon: Target },
   { href: "/analyse",        label: "Analyse",      icon: BarChart2 },
   { href: "/instellingen",   label: "Instellingen", icon: Settings },
 ];
@@ -71,8 +71,8 @@ export function MobileNav() {
           {/* Dashboard */}
           <NavItem href="/" label="Dashboard" icon={LayoutDashboard} active={pathname === "/"} />
 
-          {/* Dagboek */}
-          <NavItem href="/dagboek" label="Dagboek" icon={BookOpen} active={pathname === "/dagboek"} />
+          {/* Afspraken */}
+          <NavItem href="/dagboek" label="Afspraken" icon={Calendar} active={pathname === "/dagboek"} />
 
           {/* Center — raised Check-in button */}
           <div className="flex-1 flex flex-col items-center" style={{ paddingBottom: "6px" }}>

@@ -8,17 +8,20 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 import { ActionMenu } from "@/components/ui/ActionMenu";
 import { formatDate } from "@/lib/data";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { PatientWizard } from "@/components/portal/PatientWizard";
 import { PatientEditForm } from "@/components/portal/PatientEditForm";
 import {
-  loadPortalPatients, loadPortalLocations, loadPortalMembers, loadPortalProtocols,
-  invitePortalPatient, updatePortalPatientStatus, deletePortalPatient,
-  MANAGE_PATIENTS_ROLES,
-  type PortalPatient, type PortalLocationOption, type PortalMember, type PortalProtocolOption,
+  loadPortalPatients, loadPortalLocations, loadPortalMembers,
+  invitePortalPatient, updatePortalPatientStatus, deletePortalPatient, logPatientsExport,
+  MANAGE_PATIENTS_ROLES, isPatientInactive,
+  type PortalPatient, type PortalLocationOption, type PortalMember,
 } from "@/lib/services/portalService";
+import { loadRevaProtocols, loadOrgProtocols, type PortalProtocolCard } from "@/lib/services/protocolService";
 
 const inputStyle = {
   borderColor: "#e8e5df",
@@ -105,8 +108,8 @@ function escapeCsvField(field: string): string {
 
 function exportPatientsCsv(patients: PortalPatient[]) {
   const headers = [
-    "Naam", "E-mail", "Telefoon", "Geboortedatum", "Geslacht", "Behandelaar", "Protocol",
-    "Vestiging", "Laatste check-in", "Dossierstatus", "Account", "Aangemaakt op",
+    "Naam", "E-mail", "Telefoon", "Geboortedatum", "Geslacht", "Behandelaar", "Herstelplan",
+    "Locatie", "Laatste check-in", "Dossierstatus", "Account", "Aangemaakt op",
   ];
   const rows = patients.map((p) => [
     p.fullName ?? "",
@@ -168,13 +171,15 @@ export default function PortalPatientsPage() {
   const [patients, setPatients] = useState<PortalPatient[]>([]);
   const [locations, setLocations] = useState<PortalLocationOption[]>([]);
   const [members, setMembers] = useState<PortalMember[]>([]);
-  const [protocols, setProtocols] = useState<PortalProtocolOption[]>([]);
+  const [revaProtocols, setRevaProtocols] = useState<PortalProtocolCard[]>([]);
+  const [orgProtocols, setOrgProtocols] = useState<PortalProtocolCard[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [showWizard, setShowWizard] = useState(false);
   const [editingPatient, setEditingPatient] = useState<PortalPatient | null>(null);
-  const [rowMessages, setRowMessages] = useState<Record<string, { ok: boolean; text: string }>>({});
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const { showToast, toastNode } = useToast();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -187,19 +192,31 @@ export default function PortalPatientsPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
 
+  // Vooraf filteren via een URL-parameter, zodat het dashboard hierheen kan
+  // doorlinken (bv. "mijn patiënten" of "patiënten zonder recente activiteit").
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const therapist = params.get("therapist");
+    const checkin = params.get("checkin");
+    if (therapist) setTherapistFilter(therapist);
+    if (checkin) setCheckinFilter(checkin);
+  }, []);
+
   const canManagePatients = !!membership && MANAGE_PATIENTS_ROLES.includes(membership.roleKey);
 
   async function refresh(organizationId: string) {
-    const [patientsData, locationsData, membersData, protocolsData] = await Promise.all([
+    const [patientsData, locationsData, membersData, revaProtocolsData, orgProtocolsData] = await Promise.all([
       loadPortalPatients(organizationId),
       loadPortalLocations(organizationId),
       loadPortalMembers(organizationId),
-      loadPortalProtocols(organizationId),
+      loadRevaProtocols(),
+      loadOrgProtocols(organizationId),
     ]);
     setPatients(patientsData);
     setLocations(locationsData);
     setMembers(membersData);
-    setProtocols(protocolsData);
+    setRevaProtocols(revaProtocolsData);
+    setOrgProtocols(orgProtocolsData);
     setLoading(false);
   }
 
@@ -211,13 +228,15 @@ export default function PortalPatientsPage() {
       loadPortalPatients(organizationId),
       loadPortalLocations(organizationId),
       loadPortalMembers(organizationId),
-      loadPortalProtocols(organizationId),
-    ]).then(([patientsData, locationsData, membersData, protocolsData]) => {
+      loadRevaProtocols(),
+      loadOrgProtocols(organizationId),
+    ]).then(([patientsData, locationsData, membersData, revaProtocolsData, orgProtocolsData]) => {
       if (cancelled) return;
       setPatients(patientsData);
       setLocations(locationsData);
       setMembers(membersData);
-      setProtocols(protocolsData);
+      setRevaProtocols(revaProtocolsData);
+      setOrgProtocols(orgProtocolsData);
       setLoading(false);
     });
     return () => {
@@ -232,7 +251,7 @@ export default function PortalPatientsPage() {
       if (statusFilter && p.status !== statusFilter) return false;
       if (locationFilter && p.locationId !== locationFilter) return false;
       if (therapistFilter && p.therapistId !== therapistFilter) return false;
-      if (protocolFilter && p.protocolId !== protocolFilter) return false;
+      if (protocolFilter && p.protocolName !== protocolFilter) return false;
       if (!matchesCheckinBucket(p.lastCheckinDate, checkinFilter)) return false;
       return true;
     });
@@ -270,36 +289,39 @@ export default function PortalPatientsPage() {
 
   const activeMembers = members.filter((m) => m.membershipStatus === "active");
 
-  function showMessage(patientId: string, ok: boolean, text: string) {
-    setRowMessages((prev) => ({ ...prev, [patientId]: { ok, text } }));
-    setTimeout(() => setRowMessages((prev) => {
-      const next = { ...prev };
-      delete next[patientId];
-      return next;
-    }), 4000);
-  }
-
   async function handleInviteAction(p: PortalPatient) {
-    if (!p.email) { showMessage(p.id, false, "Dit dossier heeft geen e-mailadres."); return; }
+    if (!p.email) { showToast("Dit dossier heeft geen e-mailadres.", "error"); return; }
     if (!membership) return;
-    const result = await invitePortalPatient(p.id, membership.organizationId, p.email);
+    const result = await invitePortalPatient(p.id, membership.organizationId, p.email, true);
     if (result.outcome === "failed") {
-      showMessage(p.id, false, result.error);
+      showToast(result.error, "error");
     } else {
-      showMessage(p.id, true, result.outcome === "linked" ? "Direct gekoppeld." : "Uitnodiging verstuurd.");
+      showToast(result.outcome === "linked" ? "Direct gekoppeld." : "Uitnodiging verstuurd.");
       if (membership) refresh(membership.organizationId);
     }
   }
 
   async function handleArchive(p: PortalPatient) {
     const nextStatus = p.status === "archived" ? "active" : "archived";
-    await updatePortalPatientStatus(p.id, nextStatus);
+    const { error } = await updatePortalPatientStatus(p.id, nextStatus);
+    if (error) {
+      showToast("Opslaan mislukt: " + error, "error");
+      return;
+    }
+    showToast(nextStatus === "archived" ? "Patiënt gearchiveerd" : "Patiënt gedearchiveerd");
     if (membership) refresh(membership.organizationId);
   }
 
   async function handleDelete(p: PortalPatient) {
-    await deletePortalPatient(p.id);
+    setDeleting(true);
+    const { error } = await deletePortalPatient(p.id);
+    setDeleting(false);
     setConfirmDeleteId(null);
+    if (error) {
+      showToast("Verwijderen mislukt: " + error, "error");
+      return;
+    }
+    showToast("Patiënt verwijderd");
     if (membership) refresh(membership.organizationId);
   }
 
@@ -311,7 +333,10 @@ export default function PortalPatientsPage() {
           subtitle={loading ? "Laden…" : `${filteredPatients.length} van ${patients.length} ${patients.length === 1 ? "patiënt" : "patiënten"}`}
         />
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="secondary" onClick={() => exportPatientsCsv(sortedPatients)} disabled={sortedPatients.length === 0}>
+          <Button size="sm" variant="secondary" onClick={() => {
+            exportPatientsCsv(sortedPatients);
+            if (membership) logPatientsExport(membership.organizationId, sortedPatients.length);
+          }} disabled={sortedPatients.length === 0}>
             <Download size={14} />
             Exporteren
           </Button>
@@ -325,27 +350,26 @@ export default function PortalPatientsPage() {
       </div>
 
       {showWizard && membership && (
-        <Modal onClose={() => setShowWizard(false)} maxWidth="max-w-2xl">
+        <Modal onClose={() => setShowWizard(false)} maxWidth="max-w-2xl" dismissOnBackdropClick={false}>
           <PatientWizard
             organizationId={membership.organizationId}
             locations={locations}
             members={members}
-            protocols={protocols}
-            onProtocolCreated={(protocol) => setProtocols((prev) => [...prev, protocol].sort((a, b) => a.name.localeCompare(b.name)))}
-            onDone={() => { setShowWizard(false); if (membership) refresh(membership.organizationId); }}
+            revaProtocols={revaProtocols}
+            orgProtocols={orgProtocols}
+            onDone={() => { setShowWizard(false); if (membership) refresh(membership.organizationId); showToast("Patiënt toegevoegd"); }}
             onClose={() => setShowWizard(false)}
           />
         </Modal>
       )}
 
       {editingPatient && membership && (
-        <Modal onClose={() => setEditingPatient(null)} maxWidth="max-w-2xl">
+        <Modal onClose={() => setEditingPatient(null)} maxWidth="max-w-2xl" dismissOnBackdropClick={false}>
           <PatientEditForm
             patient={editingPatient}
             locations={locations}
             members={members}
-            protocols={protocols}
-            onSaved={() => { setEditingPatient(null); refresh(membership.organizationId); }}
+            onSaved={() => { setEditingPatient(null); refresh(membership.organizationId); showToast("Patiënt opgeslagen"); }}
             onClose={() => setEditingPatient(null)}
           />
         </Modal>
@@ -373,7 +397,7 @@ export default function PortalPatientsPage() {
           </select>
         </div>
         <div className="w-[calc(50%-0.375rem)] sm:w-44">
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">Vestiging</label>
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">Locatie</label>
           <select value={locationFilter} onChange={(e) => { setLocationFilter(e.target.value); setPage(1); }} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
             <option value="">Alle</option>
             {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
@@ -387,10 +411,12 @@ export default function PortalPatientsPage() {
           </select>
         </div>
         <div className="w-[calc(50%-0.375rem)] sm:w-40">
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">Protocol</label>
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">Herstelplan</label>
           <select value={protocolFilter} onChange={(e) => { setProtocolFilter(e.target.value); setPage(1); }} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
             <option value="">Alle</option>
-            {protocols.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            {[...new Set([...orgProtocols, ...revaProtocols].map((p) => p.name))].sort().map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
           </select>
         </div>
         <div className="w-[calc(50%-0.375rem)] sm:w-44">
@@ -420,8 +446,8 @@ export default function PortalPatientsPage() {
                 <tr style={{ borderBottom: "1px solid #e8e5df" }}>
                   <SortableHeader label="Naam" sortKeyValue="name" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
                   <SortableHeader label="Behandelaar" sortKeyValue="therapist" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
-                  <SortableHeader label="Protocol" sortKeyValue="protocol" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
-                  <SortableHeader label="Vestiging" sortKeyValue="location" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
+                  <SortableHeader label="Herstelplan" sortKeyValue="protocol" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
+                  <SortableHeader label="Locatie" sortKeyValue="location" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
                   <SortableHeader label="Laatste check-in" sortKeyValue="lastCheckin" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
                   <SortableHeader label="Dossierstatus" sortKeyValue="status" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
                   <th className="text-right font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Actie</th>
@@ -429,7 +455,6 @@ export default function PortalPatientsPage() {
               </thead>
               <tbody>
                 {pagedPatients.map((p) => {
-                  const message = rowMessages[p.id];
                   return (
                     <tr
                       key={p.id}
@@ -442,10 +467,7 @@ export default function PortalPatientsPage() {
                           <Avatar patient={p} />
                           <div className="min-w-0">
                             <p className="font-medium text-gray-800 truncate">{p.fullName || "Nog niet ingevuld"}</p>
-                            {message && (
-                              <p className="text-xs" style={{ color: message.ok ? "#16a34a" : "#dc2626" }}>{message.text}</p>
-                            )}
-                            {!message && !p.hasAccount && (
+                            {!p.hasAccount && (
                               <div className="text-xs">{accountBadge(p)}</div>
                             )}
                           </div>
@@ -454,7 +476,14 @@ export default function PortalPatientsPage() {
                       <td className="px-5 py-3.5 text-gray-600">{p.therapistName || "—"}</td>
                       <td className="px-5 py-3.5 text-gray-600">{p.protocolName || "—"}</td>
                       <td className="px-5 py-3.5 text-gray-600">{p.locationName || "—"}</td>
-                      <td className="px-5 py-3.5 text-gray-400">{p.lastCheckinDate ? formatDate(p.lastCheckinDate) : "—"}</td>
+                      <td className="px-5 py-3.5 text-gray-400">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span>{p.lastCheckinDate ? formatDate(p.lastCheckinDate) : "—"}</span>
+                          {p.status === "active" && isPatientInactive(p.lastCheckinDate, p.createdAt) && (
+                            <Badge variant="warning">{p.lastCheckinDate ? "Weinig activiteit" : "Nog geen activiteit"}</Badge>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-5 py-3.5">{statusBadge(p.status)}</td>
                       <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                         {canManagePatients && (
@@ -489,27 +518,19 @@ export default function PortalPatientsPage() {
       </div>
 
       {confirmDeleteId && (
-        <Modal onClose={() => setConfirmDeleteId(null)} maxWidth="max-w-sm">
-          <div className="rounded-2xl p-6" style={{ background: "#ffffff" }}>
-            <h3 className="font-semibold text-gray-900 mb-2">Patiënt verwijderen?</h3>
-            <p className="text-sm text-gray-500 mb-5">
-              Dit verwijdert het volledige patiëntdossier permanent. Deze actie kan niet ongedaan worden gemaakt.
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button size="sm" variant="secondary" onClick={() => setConfirmDeleteId(null)}>Annuleren</Button>
-              <Button
-                size="sm" variant="danger"
-                onClick={() => {
-                  const p = patients.find((x) => x.id === confirmDeleteId);
-                  if (p) handleDelete(p);
-                }}
-              >
-                Verwijderen
-              </Button>
-            </div>
-          </div>
-        </Modal>
+        <ConfirmDialog
+          title="Patiënt verwijderen?"
+          message="Dit verwijdert het volledige patiëntdossier permanent. Deze actie kan niet ongedaan worden gemaakt."
+          confirmLabel="Verwijderen"
+          loading={deleting}
+          onCancel={() => setConfirmDeleteId(null)}
+          onConfirm={() => {
+            const p = patients.find((x) => x.id === confirmDeleteId);
+            if (p) handleDelete(p);
+          }}
+        />
       )}
+      {toastNode}
     </div>
   );
 }

@@ -292,7 +292,7 @@ export async function upsertProfile(
     if (error) {
       logErr("upsertProfile/profiles", error);
     } else if (!data || data.length === 0) {
-      console.error("[upsertProfile/profiles] 0 rows updated — uid:", uid, "payload:", dbPatch);
+      console.error("[upsertProfile/profiles] 0 rows updated — uid:", uid, "fields:", Object.keys(dbPatch));
     } else {
       console.info("[upsertProfile/profiles] saved OK, rows:", data.length);
     }

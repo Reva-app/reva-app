@@ -32,6 +32,28 @@ interface InviteEmailOptions {
   ctaUrl: string;
 }
 
+/**
+ * Platte-tekst-tegenhanger van inviteEmailHtml() — een e-mail zonder text/plain
+ * deel wordt door veel spamfilters extra wantrouwend behandeld (alleen-HTML is
+ * een bekend signaal voor massamail). bodyLines moet hier al platte tekst zijn
+ * (geen HTML-tags), dus roep dit aan met dezelfde inhoud vóór het HTML-escapen.
+ */
+export function inviteEmailText({ headerLabel, heading, bodyLines, ctaLabel, ctaUrl }: {
+  headerLabel: string; heading: string; bodyLines: string[]; ctaLabel: string; ctaUrl: string;
+}): string {
+  return [
+    headerLabel,
+    "",
+    heading,
+    "",
+    ...bodyLines,
+    "",
+    `${ctaLabel}: ${ctaUrl}`,
+    "",
+    "REVA — vragen? Mail info@reva-app.nl",
+  ].join("\n");
+}
+
 /** Gedeelde basislayout voor uitnodigingsmails — koptekstband, kaart, CTA-knop, voettekst. */
 export function inviteEmailHtml({ accentColor, headerLabel, heading, bodyHtmlLines, ctaLabel, ctaUrl }: InviteEmailOptions): string {
   return `

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { BLESSURE_TYPEN, formatDate } from "@/lib/data";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { SectionHeader } from "@/components/ui/SectionHeader";
@@ -20,6 +21,10 @@ import { useUserPlan } from "@/lib/hooks/useUserPlan";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 import { SUBSCRIPTIONS_ENABLED } from "@/lib/subscription";
 import { Zap, CheckCircle } from "lucide-react";
+import { usePatientCareContext } from "@/lib/hooks/usePatientCareContext";
+import { validatePassword } from "@/lib/passwordPolicy";
+import { useToast } from "@/components/ui/Toast";
+import { UnsavedBadge } from "@/components/ui/UnsavedBadge";
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -36,6 +41,15 @@ function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean
         style={{ left: enabled ? "22px" : "4px", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }}
       />
     </button>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-sm">
+      <span className="text-gray-500">{label}</span>
+      <span className="text-gray-800 font-medium text-right">{value}</span>
+    </div>
   );
 }
 
@@ -70,6 +84,24 @@ function TextInput({
   );
 }
 
+function blessureTypeLabel(value: string): string {
+  return BLESSURE_TYPEN.find((b) => b.value === value)?.label ?? value;
+}
+
+function LockedFieldDisplay({ value }: { value: string }) {
+  return (
+    <div
+      className="w-full text-sm rounded-xl border px-4 py-2.5 flex items-center flex-wrap justify-between gap-2"
+      style={{ borderColor: "#e8e5df", background: "#f3f0eb", color: "#1a1a1a" }}
+    >
+      <span className="whitespace-nowrap">{value}</span>
+      <span className="flex items-center gap-1 text-[11px] text-gray-400 shrink-0">
+        <Lock size={11} /> Ingesteld door je fysiopraktijk
+      </span>
+    </div>
+  );
+}
+
 function SelectInput({ value, onChange, children }: { value: string; onChange: (v: string) => void; children: React.ReactNode }) {
   return (
     <select
@@ -88,27 +120,6 @@ function SelectInput({ value, onChange, children }: { value: string; onChange: (
     >
       {children}
     </select>
-  );
-}
-
-function Toast({ message, type = "success", onDismiss }: { message: string; type?: "success" | "error"; onDismiss: () => void }) {
-  useEffect(() => {
-    const t = setTimeout(onDismiss, 3000);
-    return () => clearTimeout(t);
-  }, [onDismiss]);
-
-  return (
-    <div
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-lg text-sm font-medium"
-      style={{
-        background: type === "success" ? "#1c1c1e" : "#dc2626",
-        color: "#ffffff",
-        minWidth: "220px",
-      }}
-    >
-      <Check size={15} className="shrink-0" />
-      {message}
-    </div>
   );
 }
 
@@ -263,24 +274,168 @@ function AccountVerwijderenModal({ onClose, onConfirm, loading }: {
   );
 }
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+// ─── Verplichte herstelgegevens pop-up ────────────────────────────────────────
 
-const BLESSURE_TYPEN = [
-  { value: "acl", label: "Voorste kruisband (ACL) blessure" },
-  { value: "meniscus", label: "Meniscus blessure" },
-  { value: "enkel", label: "Enkelverstuiking" },
-  { value: "spier", label: "Spierverrekking" },
-  { value: "hamstring", label: "Hamstring blessure" },
-  { value: "schouder", label: "Schouderblessure" },
-  { value: "knieband", label: "Knieband blessure" },
-  { value: "pees", label: "Peesontsteking" },
-  { value: "rug", label: "Rugblessure" },
-  { value: "achilles", label: "Achillespees blessure" },
-  { value: "patella", label: "Gescheurde kniepees" },
-  { value: "knieprothese", label: "Knieprothese" },
-  { value: "heupprothese", label: "Heupprothese" },
-  { value: "anders", label: "Anders" },
-];
+interface RequiredHerstelErrors {
+  blessureDatum?: string;
+  blessureType?: string;
+  blessureTypeAnders?: string;
+  zorgverzekeraar?: string;
+  zorgverzekeraaarAnders?: string;
+}
+
+function validateHerstelRequired(f: {
+  blessureDatum: string;
+  blessureType: string;
+  blessureTypeAnders: string;
+  zorgverzekeraar: string;
+  zorgverzekeraaarAnders: string;
+}): RequiredHerstelErrors {
+  const errors: RequiredHerstelErrors = {};
+  if (!f.blessureDatum) errors.blessureDatum = "Kies de datum van je blessure";
+  if (!f.blessureType) errors.blessureType = "Kies je blessure type";
+  if (f.blessureType === "anders" && !f.blessureTypeAnders.trim()) errors.blessureTypeAnders = "Vul je blessure type in";
+  if (!f.zorgverzekeraar) errors.zorgverzekeraar = "Kies je zorgverzekeraar";
+  if (f.zorgverzekeraar === "anders" && !f.zorgverzekeraaarAnders.trim()) errors.zorgverzekeraaarAnders = "Vul je zorgverzekeraar in";
+  return errors;
+}
+
+interface RequiredHerstelValues {
+  blessureDatum: string;
+  blessureType: string;
+  blessureTypeAnders: string;
+  zorgverzekeraar: string;
+  zorgverzekeraaarAnders: string;
+}
+
+function RequiredHerstelModal({ onSaved }: { onSaved: (values: RequiredHerstelValues) => void }) {
+  const {
+    profile, updateProfile, markSetupDone,
+    mijlpalen, addMijlpaal, trainingOefeningen, addTrainingOefening,
+  } = useAppData();
+  const careContext = usePatientCareContext();
+  const blessureTypeLocked = !!careContext?.injuryType;
+  const blessureDatumLocked = !!careContext?.injuryDate;
+  const [blessureDatum, setBlessureDatum] = useState("");
+  const [blessureType, setBlessureType] = useState("");
+  const [blessureTypeAnders, setBlessureTypeAnders] = useState("");
+  const [zorgverzekeraar, setZorgverzekeraar] = useState("");
+  const [zorgverzekeraaarAnders, setZorgverzekeraaarAnders] = useState("");
+  const [errors, setErrors] = useState<RequiredHerstelErrors>({});
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+  // Heeft de fysiopraktijk al een blessuretype/-datum vastgelegd bij het
+  // aanmaken van het dossier? Dan vullen we die hier meteen in — de patiënt
+  // hoeft (en kan) die velden dan niet meer zelf in te vullen, zie
+  // blessureTypeLocked/blessureDatumLocked.
+  useEffect(() => {
+    if (careContext?.injuryType) setBlessureType(careContext.injuryType);
+    if (careContext?.injuryDate) setBlessureDatum(careContext.injuryDate);
+  }, [careContext]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const fieldErrors = validateHerstelRequired({ blessureDatum, blessureType, blessureTypeAnders, zorgverzekeraar, zorgverzekeraaarAnders });
+    if (Object.keys(fieldErrors).length > 0) {
+      setErrors(fieldErrors);
+      return;
+    }
+    setErrors({});
+    setSaving(true);
+    setSaveError("");
+
+    const isFirstBlessureType  = !profile.blessureType && blessureType;
+    const shouldSeedMijlpalen  = isFirstBlessureType && mijlpalen.length === 0;
+    const shouldSeedOefeningen = isFirstBlessureType && trainingOefeningen.length === 0;
+
+    const { error } = await updateProfile({ blessureDatum, blessureType, blessureTypeAnders, zorgverzekeraar, zorgverzekeraaarAnders });
+    setSaving(false);
+    if (error) {
+      setSaveError("Opslaan mislukt: " + error);
+      return;
+    }
+    markSetupDone();
+
+    if (shouldSeedMijlpalen) {
+      for (const m of getMijlpalenVoorBlessure(blessureType)) addMijlpaal(m);
+    }
+    if (shouldSeedOefeningen) {
+      for (const o of getOefeningenVoorBlessure(blessureType)) addTrainingOefening(o);
+    }
+
+    onSaved({ blessureDatum, blessureType, blessureTypeAnders, zorgverzekeraar, zorgverzekeraaarAnders });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)" }}>
+      <div className="relative w-full max-w-md rounded-2xl p-6 sm:p-8 shadow-2xl" style={{ background: "#ffffff" }}>
+        <h2 className="text-lg font-semibold mb-2" style={{ color: "#1a1a1a" }}>
+          Vul je herstelgegevens in
+        </h2>
+        <p className="text-sm leading-relaxed mb-5" style={{ color: "#6b6560" }}>
+          Voordat je verder kunt, hebben we een paar gegevens over je blessure en zorgverzekering nodig. Dit duurt ongeveer een minuut.
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <FieldLabel>Datum blessure</FieldLabel>
+            {blessureDatumLocked ? (
+              <LockedFieldDisplay value={formatDate(blessureDatum)} />
+            ) : (
+              <DatePicker value={blessureDatum} onChange={setBlessureDatum} placeholder="Kies een datum" />
+            )}
+            {errors.blessureDatum && <p className="text-[11px] mt-1" style={{ color: "#dc2626" }}>{errors.blessureDatum}</p>}
+          </div>
+
+          <div>
+            <FieldLabel>Blessure type</FieldLabel>
+            {blessureTypeLocked ? (
+              <LockedFieldDisplay value={blessureTypeLabel(blessureType)} />
+            ) : (
+              <SelectInput value={blessureType} onChange={setBlessureType}>
+                <option value="" disabled>Kies jouw blessure type</option>
+                {BLESSURE_TYPEN.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
+              </SelectInput>
+            )}
+            {errors.blessureType && <p className="text-[11px] mt-1" style={{ color: "#dc2626" }}>{errors.blessureType}</p>}
+          </div>
+          {!blessureTypeLocked && blessureType === "anders" && (
+            <div className="rounded-xl p-3 border" style={{ background: "#faf9f7", borderColor: "#ece9e3" }}>
+              <FieldLabel>Vul jouw blessure in</FieldLabel>
+              <TextInput value={blessureTypeAnders} onChange={setBlessureTypeAnders} placeholder="Bijvoorbeeld: heupblessure" />
+              {errors.blessureTypeAnders && <p className="text-[11px] mt-1" style={{ color: "#dc2626" }}>{errors.blessureTypeAnders}</p>}
+            </div>
+          )}
+
+          <div>
+            <FieldLabel>Zorgverzekeraar</FieldLabel>
+            <SelectInput value={zorgverzekeraar} onChange={setZorgverzekeraar}>
+              <option value="" disabled>Kies jouw zorgverzekeraar</option>
+              {ZORGVERZEKERAARS.map((z) => <option key={z.value} value={z.value}>{z.label}</option>)}
+            </SelectInput>
+            {errors.zorgverzekeraar && <p className="text-[11px] mt-1" style={{ color: "#dc2626" }}>{errors.zorgverzekeraar}</p>}
+          </div>
+          {zorgverzekeraar === "anders" && (
+            <div className="rounded-xl p-3 border" style={{ background: "#faf9f7", borderColor: "#ece9e3" }}>
+              <FieldLabel>Vul jouw zorgverzekeraar in</FieldLabel>
+              <TextInput value={zorgverzekeraaarAnders} onChange={setZorgverzekeraaarAnders} placeholder="Naam van jouw verzekeraar" />
+              {errors.zorgverzekeraaarAnders && <p className="text-[11px] mt-1" style={{ color: "#dc2626" }}>{errors.zorgverzekeraaarAnders}</p>}
+            </div>
+          )}
+
+          {saveError && <p className="text-xs" style={{ color: "#dc2626" }}>{saveError}</p>}
+
+          <Button type="submit" size="sm" disabled={saving} className="w-full">
+            {saving ? "Opslaan…" : "Opslaan en verdergaan"}
+          </Button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── Data ─────────────────────────────────────────────────────────────────────
 
 const ZORGVERZEKERAARS = [
   { value: "zilverenkruis", label: "Zilveren Kruis" },
@@ -305,12 +460,10 @@ export default function InstellingenPage() {
   const router = useRouter();
   const planInfo = useUserPlan();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const careContext = usePatientCareContext();
 
   // ── Toast ──────────────────────────────────────────────────────────────────
-  const [toast, setToast] = useState<{ msg: string; type?: "success" | "error" } | null>(null);
-  function showToast(msg: string, type: "success" | "error" = "success") {
-    setToast({ msg, type });
-  }
+  const { showToast, toastNode } = useToast();
 
   // ── Profiel form state ─────────────────────────────────────────────────────
   const [naam, setNaam] = useState(profile.naam);
@@ -401,12 +554,21 @@ export default function InstellingenPage() {
     if (!emailValid) { showToast("Voer een geldig e-mailadres in", "error"); return; }
     const { error } = await updateProfile({ naam, email, geboortedatum });
     if (error) { showToast("Opslaan mislukt: " + error, "error"); return; }
-    if (!setupCompleted) markSetupDone();
     showToast("Accountgegevens opgeslagen");
   }
 
   // ── Save herstelgegevens ───────────────────────────────────────────────────
+  const [herstelErrors, setHerstelErrors] = useState<RequiredHerstelErrors>({});
+
   async function handleSaveHerstel() {
+    const fieldErrors = validateHerstelRequired({ blessureDatum, blessureType, blessureTypeAnders, zorgverzekeraar, zorgverzekeraaarAnders });
+    if (Object.keys(fieldErrors).length > 0) {
+      setHerstelErrors(fieldErrors);
+      showToast("Vul de verplichte herstelgegevens in", "error");
+      return;
+    }
+    setHerstelErrors({});
+
     const isFirstBlessureType  = !profile.blessureType && blessureType;
     const shouldSeedMijlpalen  = isFirstBlessureType && mijlpalen.length === 0;
     const shouldSeedOefeningen = isFirstBlessureType && trainingOefeningen.length === 0;
@@ -502,7 +664,8 @@ export default function InstellingenPage() {
   async function handleWachtwoord() {
     if (!huidigWw || !nieuwWw || !herhalingWw) { showToast("Vul alle wachtwoordvelden in", "error"); return; }
     if (nieuwWw !== herhalingWw) { showToast("Nieuwe wachtwoorden komen niet overeen", "error"); return; }
-    if (nieuwWw.length < 8) { showToast("Wachtwoord moet minimaal 8 tekens zijn", "error"); return; }
+    const passwordError = validatePassword(nieuwWw);
+    if (passwordError) { showToast(passwordError, "error"); return; }
 
     // Re-authenticate with current password before updating
     const supabase = createClient();
@@ -580,7 +743,7 @@ export default function InstellingenPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-2xl mx-auto space-y-6">
-      {toast && <Toast message={toast.msg} type={toast.type} onDismiss={() => setToast(null)} />}
+      {toastNode}
       {showDeleteModal && (
         <AccountVerwijderenModal
           onClose={() => setShowDeleteModal(false)}
@@ -591,28 +754,29 @@ export default function InstellingenPage() {
 
       <SectionHeader title="Instellingen" subtitle="Beheer jouw profiel en voorkeuren" />
 
-      {/* ── Onboarding welkomstblok (alleen bij eerste setup) ─────────── */}
+      {/* ── Verplichte herstelgegevens (alleen bij eerste setup) ───────── */}
       {!setupCompleted && (
-        <div
-          className="rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row gap-4"
-          style={{ background: "#fff8f5", border: "1.5px solid #fcd9c8" }}
-        >
-          <div
-            className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ background: "#e8632a" }}
-          >
-            <span className="text-white font-bold text-base">R</span>
-          </div>
-          <div>
-            <p className="text-sm font-semibold" style={{ color: "#1a1a1a" }}>
-              Welkom bij REVA. Vul eerst je blessuregegevens in
-            </p>
-            <p className="text-sm mt-1 leading-relaxed" style={{ color: "#6b6560" }}>
-              Zodat jouw dashboard en voortgang persoonlijk worden ingericht, vragen we je om hieronder je herstelgegevens in te vullen. Dit duurt slechts een minuut en helpt REVA direct waardevolle inzichten te geven.
-            </p>
-          </div>
-        </div>
+        <RequiredHerstelModal
+          onSaved={(values) => {
+            setBlessureDatum(values.blessureDatum);
+            setBlessureType(values.blessureType);
+            setBlessureTypeAnders(values.blessureTypeAnders);
+            setZorgverzekeraar(values.zorgverzekeraar);
+            setZorgverzekeraaarAnders(values.zorgverzekeraaarAnders);
+            showToast("Herstelgegevens opgeslagen");
+          }}
+        />
       )}
+
+      {/* ── Jouw praktijk ─────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader title="Jouw praktijk" subtitle="Waar en door wie je behandeld wordt" />
+        <div className="space-y-3">
+          <InfoRow label="Organisatie" value={careContext?.organizationName ?? "n.v.t."} />
+          <InfoRow label="Locatie" value={careContext?.locationName ?? "n.v.t."} />
+          <InfoRow label="Behandelaar" value={careContext?.therapistName ?? "Nog niet toegewezen"} />
+        </div>
+      </Card>
 
       {/* ── 1. Herstelgegevens ────────────────────────────────────────── */}
       <Card>
@@ -623,21 +787,32 @@ export default function InstellingenPage() {
         <div className="space-y-4">
           {/* Datum blessure + operatie */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
+            <div className={careContext?.injuryDate ? "sm:col-span-2" : undefined}>
               <FieldLabel>Datum blessure</FieldLabel>
-              <DatePicker value={blessureDatum} onChange={setBlessureDatum} placeholder="Kies een datum" />
-            </div>
-            <div>
-              <FieldLabel optional>Datum operatie</FieldLabel>
-              <DatePicker value={operatieDatum} onChange={setOperatieDatum} placeholder="Niet van toepassing" />
-              {operatieDatum ? (
-                <button type="button" onClick={() => setOperatieDatum("")}
-                  className="mt-1.5 text-[11px] font-semibold hover:opacity-75 transition-opacity cursor-pointer"
-                  style={{ color: "#e8632a" }}>
-                  Datum wissen
-                </button>
+              {careContext?.injuryDate ? (
+                <LockedFieldDisplay value={formatDate(careContext.injuryDate)} />
               ) : (
-                <p className="text-[11px] text-gray-400 mt-1.5 ml-0.5">Alleen invullen als je geopereerd bent.</p>
+                <DatePicker value={blessureDatum} onChange={setBlessureDatum} placeholder="Kies een datum" />
+              )}
+              {herstelErrors.blessureDatum && <p className="text-[11px] mt-1" style={{ color: "#dc2626" }}>{herstelErrors.blessureDatum}</p>}
+            </div>
+            <div className={careContext?.surgeryDate ? "sm:col-span-2" : undefined}>
+              <FieldLabel optional>Datum operatie</FieldLabel>
+              {careContext?.surgeryDate ? (
+                <LockedFieldDisplay value={formatDate(careContext.surgeryDate)} />
+              ) : (
+                <>
+                  <DatePicker value={operatieDatum} onChange={setOperatieDatum} placeholder="Niet van toepassing" />
+                  {operatieDatum ? (
+                    <button type="button" onClick={() => setOperatieDatum("")}
+                      className="mt-1.5 text-[11px] font-semibold hover:opacity-75 transition-opacity cursor-pointer"
+                      style={{ color: "#e8632a" }}>
+                      Datum wissen
+                    </button>
+                  ) : (
+                    <p className="text-[11px] text-gray-400 mt-1.5 ml-0.5">Alleen invullen als je geopereerd bent.</p>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -645,15 +820,21 @@ export default function InstellingenPage() {
           {/* Blessure type */}
           <div>
             <FieldLabel>Blessure type</FieldLabel>
-            <SelectInput value={blessureType} onChange={setBlessureType}>
-              <option value="" disabled>Kies jouw blessure type</option>
-              {BLESSURE_TYPEN.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
-            </SelectInput>
+            {careContext?.injuryType ? (
+              <LockedFieldDisplay value={blessureTypeLabel(blessureType)} />
+            ) : (
+              <SelectInput value={blessureType} onChange={setBlessureType}>
+                <option value="" disabled>Kies jouw blessure type</option>
+                {BLESSURE_TYPEN.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
+              </SelectInput>
+            )}
+            {herstelErrors.blessureType && <p className="text-[11px] mt-1" style={{ color: "#dc2626" }}>{herstelErrors.blessureType}</p>}
           </div>
-          {blessureType === "anders" && (
+          {!careContext?.injuryType && blessureType === "anders" && (
             <div className="rounded-xl p-3 border" style={{ background: "#faf9f7", borderColor: "#ece9e3" }}>
               <FieldLabel>Vul jouw blessure in</FieldLabel>
               <TextInput value={blessureTypeAnders} onChange={setBlessureTypeAnders} placeholder="Bijvoorbeeld: heupblessure" />
+              {herstelErrors.blessureTypeAnders && <p className="text-[11px] mt-1" style={{ color: "#dc2626" }}>{herstelErrors.blessureTypeAnders}</p>}
             </div>
           )}
 
@@ -681,11 +862,13 @@ export default function InstellingenPage() {
               <option value="" disabled>Kies jouw zorgverzekeraar</option>
               {ZORGVERZEKERAARS.map((z) => <option key={z.value} value={z.value}>{z.label}</option>)}
             </SelectInput>
+            {herstelErrors.zorgverzekeraar && <p className="text-[11px] mt-1" style={{ color: "#dc2626" }}>{herstelErrors.zorgverzekeraar}</p>}
           </div>
           {zorgverzekeraar === "anders" && (
             <div className="rounded-xl p-3 border" style={{ background: "#faf9f7", borderColor: "#ece9e3" }}>
               <FieldLabel>Vul jouw zorgverzekeraar in</FieldLabel>
               <TextInput value={zorgverzekeraaarAnders} onChange={setZorgverzekeraaarAnders} placeholder="Naam van jouw verzekeraar" />
+              {herstelErrors.zorgverzekeraaarAnders && <p className="text-[11px] mt-1" style={{ color: "#dc2626" }}>{herstelErrors.zorgverzekeraaarAnders}</p>}
             </div>
           )}
 
@@ -733,12 +916,7 @@ export default function InstellingenPage() {
             >
               Opslaan
             </Button>
-            {isHerstelDirty && (
-              <span className="flex items-center gap-1.5 text-xs" style={{ color: "#9ca3af" }}>
-                <AlertCircle size={12} />
-                Niet-opgeslagen wijzigingen
-              </span>
-            )}
+            {isHerstelDirty && <UnsavedBadge />}
           </div>
         </div>
       </Card>
@@ -840,12 +1018,7 @@ export default function InstellingenPage() {
             >
               Opslaan
             </Button>
-            {isAccountDirty && (
-              <span className="flex items-center gap-1.5 text-xs" style={{ color: "#9ca3af" }}>
-                <AlertCircle size={12} />
-                Niet-opgeslagen wijzigingen
-              </span>
-            )}
+            {isAccountDirty && <UnsavedBadge />}
           </div>
 
           {/* Wachtwoord wijzigen — alleen voor niet-Gmail accounts */}
@@ -876,7 +1049,7 @@ export default function InstellingenPage() {
                 </div>
                 <div>
                   <FieldLabel>Nieuw wachtwoord</FieldLabel>
-                  <TextInput value={nieuwWw} onChange={setNieuwWw} type="password" placeholder="Minimaal 8 tekens" />
+                  <TextInput value={nieuwWw} onChange={setNieuwWw} type="password" placeholder="Minimaal 10 tekens, letters en cijfers" />
                 </div>
                 <div>
                   <FieldLabel>Herhaal nieuw wachtwoord</FieldLabel>
@@ -1019,12 +1192,10 @@ export default function InstellingenPage() {
         />
         <div className="space-y-5">
           {[
-            { key: "checkin" as const,   label: "Check-in herinnering",      desc: "Dagelijkse herinnering om jouw check-in in te vullen" },
-            { key: "afspraken" as const, label: "Afspraken",                 desc: "24 uur voor iedere geplande afspraak" },
-            { key: "medicatie" as const, label: "Medicatie",                 desc: "Op ingestelde tijden van jouw medicatieschema" },
-            { key: "training" as const,  label: "Training",                  desc: "Herinnering op geplande trainingsdagen" },
-            { key: "foto" as const,      label: "Foto updates",              desc: "Herinnering om wekelijks een voortgangsfoto te maken" },
-            { key: "mijlpalen" as const, label: "Mijlpalen & voortgang",     desc: "Meldingen bij behaalde mijlpalen en coach updates" },
+            { key: "checkin" as const,   label: "Check-in herinnering",      desc: "Dagelijkse e-mail om jouw check-in in te vullen" },
+            { key: "afspraken" as const, label: "Afspraken",                 desc: "E-mail 4 uur voor iedere geplande afspraak, met de details" },
+            { key: "medicatie" as const, label: "Medicatie",                 desc: "E-mail op ingestelde tijden van jouw medicatieschema" },
+            { key: "foto" as const,      label: "Foto updates",              desc: "E-mail elke zondagavond om 20:00 uur" },
           ].map(({ key, label, desc }) => (
             <div key={key} className="flex items-center justify-between gap-4">
               <div className="min-w-0">
@@ -1072,7 +1243,7 @@ export default function InstellingenPage() {
                 )}
               </div>
               <p className="text-[11px] text-gray-400">
-                Je ontvangt elke dag een push notificatie op dit tijdstip als je je check-in nog niet hebt ingevuld.
+                Je ontvangt elke dag een e-mail op dit tijdstip als je je check-in nog niet hebt ingevuld.
               </p>
             </div>
           )}

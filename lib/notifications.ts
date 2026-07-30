@@ -13,10 +13,7 @@ import type {
   MedicatieSchema,
   CheckIn,
   Appointment,
-  DagboekWorkout,
-  TrainingSchema,
   FotoUpdate,
-  Mijlpaal,
 } from "./data";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -25,9 +22,7 @@ export type NotificationType =
   | "medicatie"
   | "checkin"
   | "afspraak"
-  | "training"
-  | "foto"
-  | "mijlpaal";
+  | "foto";
 
 export type NotificationStatus = "due" | "upcoming" | "info" | "motivatie";
 
@@ -80,12 +75,6 @@ function timeToMinutes(hhmm: string): number {
 
 function displayNaam(naam: string, naamAnders: string): string {
   return naam === "Anders" && naamAnders.trim() ? naamAnders.trim() : naam;
-}
-
-function fmtDate(dateStr: string): string {
-  return new Date(dateStr + "T12:00:00").toLocaleDateString("nl-NL", {
-    weekday: "long", day: "numeric", month: "long",
-  });
 }
 
 // ─── Generator: Medicatie ─────────────────────────────────────────────────────
@@ -214,36 +203,6 @@ function generateAfspraakNotifications(
   return result;
 }
 
-// ─── Generator: Training ──────────────────────────────────────────────────────
-
-function generateTrainingNotifications(
-  workouts: DagboekWorkout[],
-  schemas: TrainingSchema[],
-  now: Date
-): AppNotification[] {
-  const hour  = now.getHours();
-  const today = localDateStr(now);
-  if (hour < 17) return []; // only after 17:00
-
-  const openToday = workouts.filter(w => w.date === today && !w.completed);
-  if (openToday.length === 0) return [];
-
-  const first  = openToday[0]!;
-  const schema = schemas.find(s => s.id === first.schemaId);
-  const naam   = schema ? schema.title : first.title;
-
-  return [{
-    id:           `training-${today}`,
-    type:         "training",
-    status:       "info",
-    priority:     3,
-    title:        `Training: ${naam}`,
-    description:  "Je training van vandaag staat nog open. Klaar om te bewegen?",
-    scheduledDate: today,
-    cta:          { label: "Training openen", action: "navigate:/dagboek" },
-  }];
-}
-
 // ─── Generator: Foto update ───────────────────────────────────────────────────
 
 const FOTO_REMINDER_DAYS = 7;
@@ -284,46 +243,13 @@ function generateFotoNotifications(
   }];
 }
 
-// ─── Generator: Mijlpaal ─────────────────────────────────────────────────────
-
-function generateMijlpaalNotifications(
-  mijlpalen: Mijlpaal[],
-  now: Date
-): AppNotification[] {
-  const today = localDateStr(now);
-
-  // Recent bereikt (vandaag)
-  const vandaagBehaald = mijlpalen.filter(
-    m => m.completed && m.completedAt?.slice(0, 10) === today
-  );
-
-  if (vandaagBehaald.length > 0) {
-    const m = vandaagBehaald[0]!;
-    return [{
-      id:           `mijlpaal-behaald-${m.id}`,
-      type:         "mijlpaal",
-      status:       "motivatie",
-      priority:     4,
-      title:        "Mijlpaal behaald!",
-      description:  `Sterk bezig. Je hebt "${m.title}" bereikt.`,
-      scheduledDate: today,
-      cta:          { label: "Bekijk doelstellingen", action: "navigate:/doelstellingen" },
-    }];
-  }
-
-  return [];
-}
-
 // ─── Master generator ─────────────────────────────────────────────────────────
 
 export interface AllNotificationsInput {
   medicatieSchemas: MedicatieSchema[];
   checkIns: CheckIn[];
   appointments: Appointment[];
-  dagboekWorkouts: DagboekWorkout[];
-  trainingSchemas: TrainingSchema[];
   fotoUpdates: FotoUpdate[];
-  mijlpalen: Mijlpaal[];
 }
 
 export function generateAllNotifications(
@@ -333,9 +259,7 @@ export function generateAllNotifications(
   const all: AppNotification[] = [
     ...generateAfspraakNotifications(input.appointments, now),
     ...generateMedicatieNotificationsInternal(input.medicatieSchemas, now),
-    ...generateTrainingNotifications(input.dagboekWorkouts, input.trainingSchemas, now),
     ...generateCheckinNotifications(input.checkIns, now),
-    ...generateMijlpaalNotifications(input.mijlpalen, now),
     ...generateFotoNotifications(input.fotoUpdates, now),
   ];
 

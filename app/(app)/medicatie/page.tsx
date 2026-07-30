@@ -19,6 +19,7 @@ import {
   todayStr,
   nowTimeStr,
 } from "@/components/medicatie/InnameModal";
+import { useToast } from "@/components/ui/Toast";
 import {
   Pill,
   Plus,
@@ -426,6 +427,7 @@ export default function MedicatiePage() {
   } = useAppData();
   const planInfo = useUserPlan();
   const schemaAllowed = canUseMedicatieSchema(planInfo);
+  const { showToast, toastNode } = useToast();
 
   // Modal: null = closed, "new" = nieuwe inname, MedicatieLog = bewerken
   type ModalState = null | "new" | MedicatieLog;
@@ -567,6 +569,17 @@ export default function MedicatiePage() {
       });
     }
     setSchemaMode("list");
+    showToast("Medicatieschema opgeslagen");
+  }
+
+  function handleToggleSchema(schema: MedicatieSchema) {
+    updateMedicatieSchema(schema.id, { actief: !schema.actief });
+    showToast(schema.actief ? "Schema gepauzeerd" : "Schema geactiveerd");
+  }
+
+  function handleDeleteSchema(id: string) {
+    deleteMedicatieSchema(id);
+    showToast("Medicatieschema verwijderd");
   }
 
   return (
@@ -728,7 +741,7 @@ export default function MedicatiePage() {
                         key={med.id}
                         med={med}
                         onEdit={() => setModalItem(med)}
-                        onDelete={() => deleteMedicatie(med.id)}
+                        onDelete={() => { deleteMedicatie(med.id); showToast("Inname verwijderd"); }}
                       />
                     ))}
                   </div>
@@ -794,9 +807,9 @@ export default function MedicatiePage() {
                         <SchemaCard
                           key={schema.id}
                           schema={schema}
-                          onToggle={() => updateMedicatieSchema(schema.id, { actief: !schema.actief })}
+                          onToggle={() => handleToggleSchema(schema)}
                           onEdit={() => setSchemaMode({ edit: schema })}
-                          onDelete={() => deleteMedicatieSchema(schema.id)}
+                          onDelete={() => handleDeleteSchema(schema.id)}
                         />
                       ))}
                       <Button fullWidth size="sm" onClick={() => setSchemaMode("add")}>
@@ -839,6 +852,7 @@ export default function MedicatiePage() {
           saveLabel={modalItem !== "new" ? "Bijwerken" : "Opslaan"}
         />
       )}
+      {toastNode}
     </div>
   );
 }

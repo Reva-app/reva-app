@@ -7,7 +7,7 @@ import {
   useState,
   useCallback,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import type { User, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabaseClient";
 
@@ -34,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
   const supabase = createClient();
 
   // ── Supabase auth state ──────────────────────────────────────────────────
@@ -125,8 +126,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { cleanupPushNotifications } = await import("@/lib/services/pushService");
     cleanupPushNotifications();
     await supabase.auth.signOut();
-    router.push("/login");
-  }, [supabase, router, user]);
+    // Praktijkmedewerkers moeten na uitloggen op hun eigen inlogpagina
+    // landen, niet op de patiënten-inlogpagina.
+    router.push(pathname?.startsWith("/portal") ? "/portal/login" : "/login");
+  }, [supabase, router, pathname, user]);
 
   return (
     <AuthContext.Provider value={{ user, session, loading, signOut }}>
