@@ -9,7 +9,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { TimePicker } from "@/components/ui/TimePicker";
 import {
   User, Bell, Check, Plus, X, AlertCircle,
-  MessageSquare, Camera, Lock, Eye, EyeOff, Trash2,
+  MessageSquare, Camera, Lock, Eye, EyeOff, Trash2, Download,
 } from "lucide-react";
 import { useAppData } from "@/lib/store";
 import { createClient } from "@/lib/supabaseClient";
@@ -23,6 +23,7 @@ import { SUBSCRIPTIONS_ENABLED } from "@/lib/subscription";
 import { Zap, CheckCircle } from "lucide-react";
 import { usePatientCareContext } from "@/lib/hooks/usePatientCareContext";
 import { validatePassword } from "@/lib/passwordPolicy";
+import { downloadDataExport } from "@/lib/dataExport";
 import { useToast } from "@/components/ui/Toast";
 import { UnsavedBadge } from "@/components/ui/UnsavedBadge";
 
@@ -456,7 +457,13 @@ const ZORGVERZEKERAARS = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function InstellingenPage() {
-  const { profile, updateProfile, hydrated, notificationSettings, updateNotificationSettings, setupCompleted, markSetupDone, mijlpalen, addMijlpaal, trainingOefeningen, addTrainingOefening } = useAppData();
+  const {
+    profile, updateProfile, hydrated, notificationSettings, updateNotificationSettings, setupCompleted, markSetupDone,
+    mijlpalen, addMijlpaal, trainingOefeningen, addTrainingOefening,
+    checkIns, appointments, medicatie, medicatieSchemas, doelen,
+    trainingSchemas, trainingLogs, dagboekWorkouts,
+    dossierDocumenten, fotoUpdates, contactpersonen,
+  } = useAppData();
   const router = useRouter();
   const planInfo = useUserPlan();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -699,6 +706,16 @@ export default function InstellingenPage() {
     setWwSaved(true);
     setTimeout(() => setWwSaved(false), 2500);
     showToast("Wachtwoord gewijzigd");
+  }
+
+  // ── Gegevens exporteren (recht op dataportabiliteit, Art. 20 AVG) ──────────
+  function handleExportData() {
+    downloadDataExport({
+      profile, notificationSettings, checkIns, appointments, medicatie, medicatieSchemas, doelen,
+      mijlpalen, trainingOefeningen, trainingSchemas, trainingLogs, dagboekWorkouts,
+      dossierDocumenten, fotoUpdates, contactpersonen,
+    });
+    showToast("Je gegevens worden gedownload");
   }
 
   // ── Account verwijderen ────────────────────────────────────────────────────
@@ -1296,9 +1313,12 @@ export default function InstellingenPage() {
       <Card>
         <CardHeader
           title="Jouw data"
-          subtitle="Verwijder jouw hersteldata en account"
+          subtitle="Download of verwijder jouw hersteldata en account"
         />
         <div className="flex gap-3 flex-wrap">
+          <Button variant="secondary" size="sm" onClick={handleExportData}>
+            <Download size={14} /> Exporteer mijn gegevens
+          </Button>
           <Button variant="danger" size="sm" onClick={() => setShowDeleteModal(true)}>
             <Trash2 size={14} /> Account verwijderen
           </Button>
