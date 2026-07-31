@@ -1,7 +1,7 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { NextResponse } from "next/server";
-import { escapeHtml, stripNewlines } from "@/lib/emailHtml";
+import { stripNewlines, feedbackEmailHtml } from "@/lib/emailHtml";
 import { checkRateLimit, getClientIp, rateLimitedResponse } from "@/lib/rateLimit";
 
 // Onauthenticated route (iedereen kan feedback sturen, ook uitgelogd) — dus
@@ -41,19 +41,7 @@ export async function POST(request: Request) {
       to: "info@reva-app.nl",
       replyTo: email || undefined,
       subject: `[Feedback] ${categorie ? `${categorie}: ` : ""}${onderwerp}`,
-      html: `
-        <div style="font-family: sans-serif; max-width: 560px; color: #1a1a1a;">
-          <h2 style="margin: 0 0 16px; font-size: 20px;">Nieuw feedbackbericht via REVA</h2>
-          ${categorie ? `<p style="margin: 0 0 8px;"><strong>Categorie:</strong> ${escapeHtml(categorie)}</p>` : ""}
-          <p style="margin: 0 0 8px;"><strong>Onderwerp:</strong> ${escapeHtml(onderwerp)}</p>
-          ${naam ? `<p style="margin: 0 0 8px;"><strong>Van:</strong> ${escapeHtml(naam)}</p>` : ""}
-          ${email ? `<p style="margin: 0 0 8px;"><strong>E-mail:</strong> ${escapeHtml(email)}</p>` : ""}
-          <hr style="border: none; border-top: 1px solid #e8e5df; margin: 16px 0;" />
-          <p style="white-space: pre-wrap; margin: 0;">${escapeHtml(bericht)}</p>
-          <hr style="border: none; border-top: 1px solid #e8e5df; margin: 24px 0 16px;" />
-          <p style="font-size: 12px; color: #9ca3af;">Verstuurd via REVA Herstel Dashboard</p>
-        </div>
-      `,
+      html: feedbackEmailHtml({ categorie, onderwerp, naam, email, bericht }),
     });
 
     if (error) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Camera, Pill, CalendarClock, Dumbbell, Award, Droplets, Pencil, Star, Flag, ClipboardList, Check, ChevronRight, RotateCcw, MessageSquare, Trash2, Loader2 } from "lucide-react";
+import { ArrowLeft, Camera, Pill, CalendarClock, Dumbbell, Award, Droplets, Pencil, Star, Flag, ClipboardList, Check, ChevronRight, RotateCcw, MessageSquare, Trash2, Loader2, X } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { PatientEditForm } from "@/components/portal/PatientEditForm";
 import { ExerciseMultiSelectModal } from "@/components/portal/ExerciseMultiSelectModal";
 import { ExerciseThumb } from "@/components/portal/ExerciseThumb";
+import { SortableExerciseList } from "@/components/portal/SortableExerciseList";
 import { Avatar } from "@/components/ui/Avatar";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { formatDate, formatDateShort } from "@/lib/data";
@@ -38,7 +39,7 @@ import {
   loadRevaProtocols, loadOrgProtocols, assignProtocolToPatient,
   loadPatientProtocolAssignment, toggleCriterionMet, updateMilestoneCompletion, advanceToNextPhase, revertToPreviousPhase,
   loadPatientSessionNotes, loadExerciseLibrary,
-  addExercisesToPatientSchedule, updatePatientScheduleExercise, removeExerciseFromPatientSchedule,
+  addExercisesToPatientSchedule, updatePatientScheduleExercise, removeExerciseFromPatientSchedule, reorderPatientScheduleExercises,
   loadPatientStaffNotes, addPatientStaffNote, updatePatientStaffNote, deletePatientStaffNote,
   MANAGE_PROTOCOLS_ROLES,
   type PortalProtocolCard, type PortalPatientProtocolAssignment, type PortalPatientProtocolPhase, type PortalPatientSessionNote,
@@ -217,7 +218,7 @@ function phaseStatusBadge(status: string) {
 
 function ProtocolTab({
   assignment, canAssign, canManageContent, onAssignClick, onToggleCriterion, onToggleMilestone, onAdvancePhase, onRevertPhase, sessionNotes,
-  onAddExerciseClick, onEditExerciseClick, onRemoveExerciseClick,
+  onAddExerciseClick, onEditExerciseClick, onRemoveExerciseClick, onReorderExercises,
 }: {
   assignment: PortalPatientProtocolAssignment | null;
   canAssign: boolean;
@@ -231,6 +232,7 @@ function ProtocolTab({
   onAddExerciseClick: (scheduleId: string) => void;
   onEditExerciseClick: (exercise: PortalPatientProtocolScheduleExercise) => void;
   onRemoveExerciseClick: (exercise: PortalPatientProtocolScheduleExercise) => void;
+  onReorderExercises: (scheduleId: string, orderedIds: string[]) => void;
 }) {
   if (!assignment) {
     return (
@@ -369,42 +371,58 @@ function ProtocolTab({
                               {s.completedThisWeek}/{s.frequencyPerWeek} deze week
                             </Badge>
                           </div>
-                          <div className="space-y-1 mt-2">
-                            {s.exercises.map((ex) => (
-                              <div
-                                key={ex.id}
-                                className="flex items-center justify-between gap-2 text-xs rounded-lg px-2 py-1.5"
-                                style={{ background: "#f8f7f4" }}
-                              >
-                                <span className="flex items-center gap-1.5 min-w-0 text-gray-600">
-                                  <ExerciseThumb mediaPath={ex.mediaPath} size={20} />
-                                  <span className="truncate">{ex.title}</span>
-                                  {(ex.prescribedSets || ex.prescribedReps) && (
-                                    <span className="text-gray-400 shrink-0">— {ex.prescribedSets ?? "?"}×{ex.prescribedReps ?? "?"}{ex.prescribedLoadText ? ` · ${ex.prescribedLoadText}` : ""}</span>
+                          <div className="space-y-1.5 mt-2">
+                            <SortableExerciseList
+                              items={s.exercises}
+                              getId={(ex) => ex.id}
+                              onReorder={(orderedIds) => onReorderExercises(s.id, orderedIds)}
+                              disabled={!canManageContent}
+                              renderItem={(ex, index, dragHandle) => (
+                                <div
+                                  className="flex items-start gap-2.5 rounded-xl border px-2.5 py-2"
+                                  style={{ borderColor: "#e8e5df", background: "#ffffff" }}
+                                >
+                                  {dragHandle}
+                                  <div className="flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-semibold shrink-0 mt-0.5" style={{ background: "#f3f0eb", color: "#8a847d" }}>
+                                    {index + 1}
+                                  </div>
+                                  <ExerciseThumb mediaPath={ex.mediaPath} size={28} />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-medium text-gray-800 truncate">{ex.title}</p>
+                                    {(ex.prescribedSets || ex.prescribedReps || ex.prescribedDurationSeconds || ex.prescribedLoadText) && (
+                                      <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 mt-0.5 text-[11px] text-gray-500">
+                                        {(ex.prescribedSets || ex.prescribedReps) && <span>{ex.prescribedSets ?? "?"}×{ex.prescribedReps ?? "?"}</span>}
+                                        {ex.prescribedDurationSeconds != null && <span>{ex.prescribedDurationSeconds} sec</span>}
+                                        {ex.prescribedLoadText && <span>{ex.prescribedLoadText}</span>}
+                                      </div>
+                                    )}
+                                    {ex.prescriptionNote && (
+                                      <p className="text-[11px] text-gray-400 italic mt-0.5 truncate">{ex.prescriptionNote}</p>
+                                    )}
+                                  </div>
+                                  {canManageContent && (
+                                    <span className="flex items-center gap-1 shrink-0">
+                                      <button
+                                        type="button"
+                                        onClick={() => onEditExerciseClick(ex)}
+                                        title="Oefening bewerken"
+                                        className="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+                                      >
+                                        <Pencil size={12} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => onRemoveExerciseClick(ex)}
+                                        title="Oefening verwijderen"
+                                        className="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-gray-50 transition-colors"
+                                      >
+                                        <Trash2 size={12} />
+                                      </button>
+                                    </span>
                                   )}
-                                </span>
-                                {canManageContent && (
-                                  <span className="flex items-center gap-1 shrink-0">
-                                    <button
-                                      type="button"
-                                      onClick={() => onEditExerciseClick(ex)}
-                                      title="Oefening bewerken"
-                                      className="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-white transition-colors"
-                                    >
-                                      <Pencil size={12} />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => onRemoveExerciseClick(ex)}
-                                      title="Oefening verwijderen"
-                                      className="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-white transition-colors"
-                                    >
-                                      <Trash2 size={12} />
-                                    </button>
-                                  </span>
-                                )}
-                              </div>
-                            ))}
+                                </div>
+                              )}
+                            />
                           </div>
                           {canManageContent && (
                             <button
@@ -770,6 +788,24 @@ export default function PortalPatientDetailPage() {
     refreshProtocol();
   }
 
+  async function handleReorderScheduleExercises(scheduleId: string, orderedIds: string[]) {
+    if (!assignment) return;
+    setAssignment({
+      ...assignment,
+      phases: assignment.phases.map((phase) => ({
+        ...phase,
+        schedules: phase.schedules.map((s) => {
+          if (s.id !== scheduleId) return s;
+          const exerciseById = new Map(s.exercises.map((ex) => [ex.id, ex]));
+          const reordered = orderedIds.map((id) => exerciseById.get(id)).filter((ex): ex is PortalPatientProtocolScheduleExercise => !!ex);
+          return { ...s, exercises: reordered };
+        }),
+      })),
+    });
+    const { error } = await reorderPatientScheduleExercises(orderedIds);
+    if (error) { showToast(error, "error"); refreshProtocol(); }
+  }
+
   async function handleRemoveScheduleExercise() {
     if (!confirmRemoveExercise) return;
     setRemovingExercise(true);
@@ -999,6 +1035,7 @@ export default function PortalPatientDetailPage() {
               onAddExerciseClick={(scheduleId) => setAddExerciseModal({ scheduleId })}
               onEditExerciseClick={(ex) => { setScheduleExerciseError(""); setEditingScheduleExercise(ex); }}
               onRemoveExerciseClick={setConfirmRemoveExercise}
+              onReorderExercises={handleReorderScheduleExercises}
             />
           )}
 
@@ -1160,7 +1197,16 @@ export default function PortalPatientDetailPage() {
 
           {showPhotoLightbox && photoUrl && extras?.latestPhoto && (
             <Modal onClose={() => setShowPhotoLightbox(false)} maxWidth="max-w-2xl">
-              <div className="rounded-2xl overflow-hidden" style={{ background: "#ffffff" }}>
+              <div className="relative rounded-2xl overflow-hidden" style={{ background: "#ffffff" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowPhotoLightbox(false)}
+                  aria-label="Sluiten"
+                  className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-black/60"
+                  style={{ background: "rgba(0,0,0,0.45)" }}
+                >
+                  <X size={18} color="#ffffff" />
+                </button>
                 <div className="flex items-center justify-center" style={{ background: "#18181a" }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={photoUrl} alt="Voortgangsfoto" className="max-w-full max-h-[70vh] object-contain" />

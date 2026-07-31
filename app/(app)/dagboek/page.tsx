@@ -116,10 +116,6 @@ function DetailItem({ appointment, onDelete, onEdit }: {
           <div className="ml-auto flex items-center gap-1 shrink-0">
             {!confirmDel ? (
               <>
-                <button onClick={() => downloadAppointmentIcs(appointment)}
-                  className="w-5 h-5 rounded flex items-center justify-center hover:bg-white/60 transition-colors" title="Toevoegen aan agenda">
-                  <CalendarPlus size={10} style={{ color: cfg.text, opacity: 0.6 }} />
-                </button>
                 <button onClick={() => onEdit(appointment)}
                   className="w-5 h-5 rounded flex items-center justify-center hover:bg-white/60 transition-colors" title="Bewerken">
                   <Pencil size={10} style={{ color: cfg.text, opacity: 0.6 }} />
@@ -144,6 +140,13 @@ function DetailItem({ appointment, onDelete, onEdit }: {
           {appointment.location && <p className="flex items-center gap-1 text-xs text-gray-500"><MapPin size={10} /> {appointment.location}</p>}
           {appointment.behandelaar && <p className="text-xs text-gray-400">{appointment.behandelaar}</p>}
         </div>
+        <button
+          onClick={() => downloadAppointmentIcs(appointment)}
+          className="flex items-center gap-1.5 text-xs font-medium mt-2 px-2.5 py-1.5 rounded-lg border transition-colors hover:bg-white"
+          style={{ borderColor: cfg.border, color: cfg.text, background: "rgba(255,255,255,0.5)" }}
+        >
+          <CalendarPlus size={12} /> Toevoegen aan agenda
+        </button>
       </div>
     </div>
   );

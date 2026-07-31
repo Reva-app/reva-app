@@ -11,10 +11,12 @@ import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { ExerciseMultiSelectModal } from "@/components/portal/ExerciseMultiSelectModal";
+import { SortableExerciseList } from "@/components/portal/SortableExerciseList";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import {
   loadScheduleLibraryDetail, updateScheduleLibraryItem, updateScheduleLibraryArchived,
   loadExerciseLibrary, updateScheduleLibraryExercise, removeExerciseFromScheduleLibrary, addExercisesToScheduleLibrary,
+  reorderScheduleLibraryExercises,
   MANAGE_PROTOCOLS_ROLES,
   type PortalScheduleLibraryDetail, type PortalScheduleLibraryExercise, type PortalExerciseLibraryItem,
   type PortalScheduleExerciseInput,
@@ -113,6 +115,15 @@ export default function PortalScheduleDetailPage() {
     refresh();
   }
 
+  async function handleReorderExercises(orderedIds: string[]) {
+    if (!schedule) return;
+    const exerciseById = new Map(schedule.exercises.map((ex) => [ex.id.toString(), ex]));
+    const reordered = orderedIds.map((id) => exerciseById.get(id)).filter((ex): ex is PortalScheduleLibraryExercise => !!ex);
+    setSchedule({ ...schedule, exercises: reordered });
+    const { error } = await reorderScheduleLibraryExercises(orderedIds.map(Number));
+    if (error) { showToast(error, "error"); refresh(); }
+  }
+
   async function handleSaveEdit(input: PortalScheduleExerciseInput) {
     if (!editingExercise) return;
     setEditSaving(true);
@@ -154,25 +165,32 @@ export default function PortalScheduleDetailPage() {
               <p className="text-sm text-gray-400">Nog geen oefeningen toegevoegd.</p>
             ) : (
               <div className="space-y-1.5">
-                {schedule.exercises.map((ex) => (
-                  <div key={ex.id} className="flex items-center justify-between gap-2 text-sm rounded-lg px-3 py-2.5" style={{ background: "#f8f7f4" }}>
-                    <span className="flex items-center gap-2 text-gray-700">
-                      <Dumbbell size={13} className="text-gray-400" />
-                      {ex.exerciseTitle}
-                      {(ex.prescribedSets || ex.prescribedReps) && (
-                        <span className="text-xs text-gray-400">— {ex.prescribedSets ?? "?"}×{ex.prescribedReps ?? "?"}{ex.prescribedLoadText ? ` · ${ex.prescribedLoadText}` : ""}</span>
+                <SortableExerciseList
+                  items={schedule.exercises}
+                  getId={(ex) => ex.id.toString()}
+                  onReorder={handleReorderExercises}
+                  disabled={!canEdit}
+                  renderItem={(ex, _index, dragHandle) => (
+                    <div className="flex items-center gap-2 text-sm rounded-lg px-3 py-2.5" style={{ background: "#f8f7f4" }}>
+                      {dragHandle}
+                      <span className="flex items-center gap-2 text-gray-700 flex-1 min-w-0">
+                        <Dumbbell size={13} className="text-gray-400 shrink-0" />
+                        <span className="truncate">{ex.exerciseTitle}</span>
+                        {(ex.prescribedSets || ex.prescribedReps) && (
+                          <span className="text-xs text-gray-400 shrink-0">— {ex.prescribedSets ?? "?"}×{ex.prescribedReps ?? "?"}{ex.prescribedLoadText ? ` · ${ex.prescribedLoadText}` : ""}</span>
+                        )}
+                      </span>
+                      {canEdit && (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button type="button" onClick={() => { setEditError(""); setEditingExercise(ex); }} className="text-xs text-gray-400 hover:text-gray-600">Bewerken</button>
+                          <button type="button" onClick={() => setConfirmRemove(ex)} className="text-gray-300 hover:text-red-500">
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       )}
-                    </span>
-                    {canEdit && (
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button type="button" onClick={() => { setEditError(""); setEditingExercise(ex); }} className="text-xs text-gray-400 hover:text-gray-600">Bewerken</button>
-                        <button type="button" onClick={() => setConfirmRemove(ex)} className="text-gray-300 hover:text-red-500">
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                    </div>
+                  )}
+                />
               </div>
             )}
           </Card>

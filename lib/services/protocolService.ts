@@ -895,6 +895,17 @@ export async function removeExerciseFromScheduleLibrary(id: number): Promise<{ e
   return { error: null };
 }
 
+/** Zet sort_order opnieuw op basis van de gegeven volgorde — voor slepen in de schema-bouwer. */
+export async function reorderScheduleLibraryExercises(orderedIds: number[]): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const results = await Promise.all(
+    orderedIds.map((id, index) => supabase.from("schedule_library_exercises").update({ sort_order: index }).eq("id", id))
+  );
+  const failed = results.find((r) => r.error);
+  if (failed?.error) { logErr("reorderScheduleLibraryExercises", failed.error); return { error: "Herschikken van de oefeningen is niet gelukt." }; }
+  return { error: null };
+}
+
 // ─── Fase ↔ schema-koppeling ────────────────────────────────────────────────
 
 export async function linkScheduleToPhase(
@@ -1458,6 +1469,17 @@ export async function removeExerciseFromPatientSchedule(id: string): Promise<{ e
   const supabase = createClient();
   const { error } = await supabase.from("patient_protocol_schedule_exercises").delete().eq("id", id);
   if (error) { logErr("removeExerciseFromPatientSchedule", error); return { error: "Verwijderen van de oefening is niet gelukt." }; }
+  return { error: null };
+}
+
+/** Zet sort_order opnieuw op basis van de gegeven volgorde — voor slepen in het herstelplan van een specifieke patiënt. */
+export async function reorderPatientScheduleExercises(orderedIds: string[]): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const results = await Promise.all(
+    orderedIds.map((id, index) => supabase.from("patient_protocol_schedule_exercises").update({ sort_order: index }).eq("id", id))
+  );
+  const failed = results.find((r) => r.error);
+  if (failed?.error) { logErr("reorderPatientScheduleExercises", failed.error); return { error: "Herschikken van de oefeningen is niet gelukt." }; }
   return { error: null };
 }
 

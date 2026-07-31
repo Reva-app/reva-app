@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
   Plus, X, ClipboardCheck, Dumbbell, Pill, Calendar, Check,
@@ -9,6 +10,7 @@ import { useAppData } from "@/lib/store";
 import type { MedicatieLog, CheckIn, DagboekWorkout, Appointment } from "@/lib/data";
 import type { InnameFormFields } from "@/components/medicatie/InnameModal";
 import { todayStr } from "@/lib/dateUtils";
+import { usePatientProtocol } from "@/lib/hooks/usePatientProtocol";
 
 // ─── Lazy-loaded modals (worden pas geladen als ze geopend worden) ─────────────
 
@@ -184,6 +186,7 @@ const ACTIONS = [
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export function QuickActionFAB() {
+  const router = useRouter();
   const [fabOpen, setFabOpen] = useState(false);
   const [activeSheet, setActiveSheet] = useState<Sheet | null>(null);
 
@@ -198,6 +201,12 @@ export function QuickActionFAB() {
     trainingSchemas,
     contactpersonen,
   } = useAppData();
+  // Zodra een fysio een herstelplan heeft toegewezen, vervangt de Protocol
+  // Engine-training (/training) de vrije-invoer trainingsschema's volledig
+  // (zie usePatientProtocol) — deze FAB moet dan naar die pagina navigeren
+  // i.p.v. het oude TrainingModal-sheet te openen, anders logt de patiënt in
+  // een dataset die de fysio niet meer ziet.
+  const { hasActiveProtocol } = usePatientProtocol();
 
   if (!hydrated) return null;
 
@@ -205,6 +214,11 @@ export function QuickActionFAB() {
   const todayCheckIn = checkIns.find((c) => c.date === today);
 
   function openSheet(sheet: Sheet) {
+    if (sheet === "training" && hasActiveProtocol) {
+      setFabOpen(false);
+      router.push("/training");
+      return;
+    }
     setFabOpen(false);
     setTimeout(() => setActiveSheet(sheet), 150);
   }

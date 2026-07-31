@@ -7,6 +7,8 @@ import { useAppData } from "@/lib/store";
 import { createClient } from "@/lib/supabaseClient";
 import { usePatientStatus } from "@/lib/hooks/usePatientStatus";
 import { AccountInactiveScreen } from "@/components/auth/AccountInactiveScreen";
+import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
+import { StaffAccountScreen } from "@/components/auth/StaffAccountScreen";
 
 /**
  * Client-side auth + onboarding guard.
@@ -28,6 +30,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading, signOut } = useAuth();
   const { hydrated, setupCompleted } = useAppData();
   const { checked: statusChecked, status: patientStatus } = usePatientStatus();
+  const { checked: membershipChecked, membership: staffMembership } = usePortalMembership();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -98,13 +101,23 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!inviteChecked) return;
+    // Een medewerker-/eigenaaraccount heeft hier altijd ook een eigen
+    // persoonlijke patiëntdossier (ensure_personal_organization, migratie
+    // 020) — zonder deze guard zou zo'n account hier stilzwijgend naar de
+    // patiënt-onboarding (/instellingen) worden gestuurd i.p.v. het
+    // StaffAccountScreen hieronder te zien te krijgen.
+    if (staffMembership) return;
     if (!setupCompleted && !onInstellingen) {
       router.replace("/instellingen");
     }
-  }, [inviteChecked, setupCompleted, onInstellingen, router]);
+  }, [inviteChecked, setupCompleted, onInstellingen, router, staffMembership]);
 
   if (authLoading || !hydrated) return null;
   if (!user) return null;
+  if (!membershipChecked) return null;
+  if (staffMembership) {
+    return <StaffAccountScreen organizationName={staffMembership.organizationName} onSignOut={signOut} />;
+  }
   if (!statusChecked) return null;
   if (patientStatus && patientStatus !== "active") {
     return <AccountInactiveScreen status={patientStatus} onSignOut={signOut} />;
