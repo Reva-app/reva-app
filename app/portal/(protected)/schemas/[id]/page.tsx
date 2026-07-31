@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Plus, Dumbbell, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2 } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -11,6 +11,7 @@ import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { ExerciseMultiSelectModal } from "@/components/portal/ExerciseMultiSelectModal";
+import { ExerciseThumb } from "@/components/portal/ExerciseThumb";
 import { SortableExerciseList } from "@/components/portal/SortableExerciseList";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import {
@@ -51,6 +52,7 @@ export default function PortalScheduleDetailPage() {
   const { showToast, toastNode } = useToast();
 
   const canEdit = !!membership && MANAGE_PROTOCOLS_ROLES.includes(membership.roleKey) && schedule?.scope === "organization";
+  const exerciseLibraryById = new Map(exercises.map((e) => [e.id, e]));
 
   function refresh() {
     loadScheduleLibraryDetail(scheduleId).then((data) => {
@@ -170,21 +172,43 @@ export default function PortalScheduleDetailPage() {
                   getId={(ex) => ex.id.toString()}
                   onReorder={handleReorderExercises}
                   disabled={!canEdit}
-                  renderItem={(ex, _index, dragHandle) => (
-                    <div className="flex items-center gap-2 text-sm rounded-lg px-3 py-2.5" style={{ background: "#f8f7f4" }}>
+                  renderItem={(ex, index, dragHandle) => (
+                    <div className="flex items-start gap-2.5 rounded-xl border px-2.5 py-2" style={{ borderColor: "#e8e5df", background: "#ffffff" }}>
                       {dragHandle}
-                      <span className="flex items-center gap-2 text-gray-700 flex-1 min-w-0">
-                        <Dumbbell size={13} className="text-gray-400 shrink-0" />
-                        <span className="truncate">{ex.exerciseTitle}</span>
-                        {(ex.prescribedSets || ex.prescribedReps) && (
-                          <span className="text-xs text-gray-400 shrink-0">— {ex.prescribedSets ?? "?"}×{ex.prescribedReps ?? "?"}{ex.prescribedLoadText ? ` · ${ex.prescribedLoadText}` : ""}</span>
+                      <div className="flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-semibold shrink-0 mt-0.5" style={{ background: "#f3f0eb", color: "#8a847d" }}>
+                        {index + 1}
+                      </div>
+                      <ExerciseThumb mediaPath={exerciseLibraryById.get(ex.exerciseId)?.mediaPath ?? null} size={28} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800 truncate">{ex.exerciseTitle}</p>
+                        {(ex.prescribedSets || ex.prescribedReps || ex.prescribedDurationSeconds || ex.prescribedLoadText) && (
+                          <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 mt-0.5 text-xs text-gray-500">
+                            {(ex.prescribedSets || ex.prescribedReps) && <span>{ex.prescribedSets ?? "?"}×{ex.prescribedReps ?? "?"}</span>}
+                            {ex.prescribedDurationSeconds != null && <span>{ex.prescribedDurationSeconds} sec</span>}
+                            {ex.prescribedLoadText && <span>{ex.prescribedLoadText}</span>}
+                          </div>
                         )}
-                      </span>
+                        {ex.prescriptionNote && (
+                          <p className="text-xs text-gray-400 italic mt-0.5 truncate">{ex.prescriptionNote}</p>
+                        )}
+                      </div>
                       {canEdit && (
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button type="button" onClick={() => { setEditError(""); setEditingExercise(ex); }} className="text-xs text-gray-400 hover:text-gray-600">Bewerken</button>
-                          <button type="button" onClick={() => setConfirmRemove(ex)} className="text-gray-300 hover:text-red-500">
-                            <Trash2 size={13} />
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => { setEditError(""); setEditingExercise(ex); }}
+                            title="Oefening bewerken"
+                            className="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            <Pencil size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmRemove(ex)}
+                            title="Oefening verwijderen"
+                            className="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-gray-50 transition-colors"
+                          >
+                            <Trash2 size={12} />
                           </button>
                         </div>
                       )}
