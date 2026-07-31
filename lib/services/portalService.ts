@@ -309,11 +309,25 @@ export function isPatientInactive(
   return isDateStale(lastCheckinDate ?? createdAt, thresholdDays);
 }
 
+/** Drempels voor de klinische signalering hieronder — bewust apart van elkaar instelbaar. */
+export const HIGH_PAIN_SCORE_THRESHOLD = 7;
+export const LOW_DAY_SCORE_THRESHOLD = 2;
+
+export type PatientAttentionReason = "inactief" | "hoge_pijnscore" | "zwelling" | "lage_dagscore";
+
+export const ATTENTION_REASON_LABELS: Record<PatientAttentionReason, string> = {
+  inactief: "Weinig activiteit",
+  hoge_pijnscore: "Hoge pijnscore",
+  zwelling: "Zwelling gemeld",
+  lage_dagscore: "Lage dagscore",
+};
+
 export interface PortalMyPatientRow {
   id: string;
   fullName: string | null;
   lastCheckinDate: string | null;
   inactive: boolean;
+  attentionReasons: PatientAttentionReason[];
 }
 
 export interface PortalMyPatientsSummary {
@@ -323,7 +337,14 @@ export interface PortalMyPatientsSummary {
   checkinsThisWeekCount: number;
 }
 
-/** "Mijn patiënten"-sectie op het dashboard — alleen de actieve patiënten van deze medewerker, niet de hele organisatie (zie loadPortalPatients daarvoor). */
+/**
+ * "Mijn patiënten"-sectie op het dashboard — alleen de actieve patiënten van
+ * deze medewerker, niet de hele organisatie (zie loadPortalPatients
+ * daarvoor). Signaleert niet alleen inactiviteit maar ook klinische
+ * signalen uit de laatste check-in (hoge pijnscore, zwelling, lage
+ * dagscore) — zodat een fysio in één oogopslag ziet wie aandacht nodig
+ * heeft, zonder elk dossier apart te hoeven openen.
+ */
 export async function loadMyPortalPatientsSummary(organizationId: string, userId: string): Promise<PortalMyPatientsSummary> {
   const supabase = createClient();
   const { data, error } = await supabase
@@ -344,8 +365,8 @@ export async function loadMyPortalPatientsSummary(organizationId: string, userId
       ? supabase.from("profiles").select("id, full_name").in("id", userIds)
       : Promise.resolve({ data: [] as { id: string; full_name: string | null }[], error: null }),
     patientIds.length > 0
-      ? supabase.from("checkins").select("patient_id, date").in("patient_id", patientIds).order("date", { ascending: false })
-      : Promise.resolve({ data: [] as { patient_id: string; date: string }[], error: null }),
+      ? supabase.from("checkins").select("patient_id, date, pain_score, swelling, day_score").in("patient_id", patientIds).order("date", { ascending: false })
+      : Promise.resolve({ data: [] as { patient_id: string; date: string; pain_score: number | null; swelling: boolean | null; day_score: number | null }[], error: null }),
     patientIds.length > 0
       ? supabase.from("checkins").select("id", { count: "exact", head: true }).in("patient_id", patientIds).gte("date", daysAgoStr(6))
       : Promise.resolve({ count: 0, error: null }),
@@ -355,31 +376,46 @@ export async function loadMyPortalPatientsSummary(organizationId: string, userId
   if (weekCheckinsRes.error) logErr("loadMyPortalPatientsSummary(week)", weekCheckinsRes.error);
 
   const profileMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p.full_name]));
-  const lastCheckinMap = new Map<string, string>();
+  const lastCheckinMap = new Map<string, { date: string; painScore: number | null; swelling: boolean | null; dayScore: number | null }>();
   for (const c of checkinsRes.data ?? []) {
-    if (!lastCheckinMap.has(c.patient_id)) lastCheckinMap.set(c.patient_id, c.date);
+    if (!lastCheckinMap.has(c.patient_id)) {
+      lastCheckinMap.set(c.patient_id, { date: c.date, painScore: c.pain_score, swelling: c.swelling, dayScore: c.day_score });
+    }
   }
 
   const patients: PortalMyPatientRow[] = rows
     .map((r) => {
       const dossierName = [r.first_name, r.last_name].filter(Boolean).join(" ") || null;
-      const lastCheckinDate = lastCheckinMap.get(r.id as string) ?? null;
+      const lastCheckin = lastCheckinMap.get(r.id as string) ?? null;
+      const inactive = isPatientInactive(lastCheckin?.date ?? null, r.created_at as string);
+
+      const attentionReasons: PatientAttentionReason[] = [];
+      if (inactive) attentionReasons.push("inactief");
+      if (lastCheckin?.painScore !== null && lastCheckin?.painScore !== undefined && lastCheckin.painScore >= HIGH_PAIN_SCORE_THRESHOLD) {
+        attentionReasons.push("hoge_pijnscore");
+      }
+      if (lastCheckin?.swelling) attentionReasons.push("zwelling");
+      if (lastCheckin?.dayScore !== null && lastCheckin?.dayScore !== undefined && lastCheckin.dayScore <= LOW_DAY_SCORE_THRESHOLD) {
+        attentionReasons.push("lage_dagscore");
+      }
+
       return {
         id: r.id as string,
         fullName: (r.user_id ? profileMap.get(r.user_id) : null) ?? dossierName,
-        lastCheckinDate,
-        inactive: isPatientInactive(lastCheckinDate, r.created_at as string),
+        lastCheckinDate: lastCheckin?.date ?? null,
+        inactive,
+        attentionReasons,
       };
     })
     .sort((a, b) => {
-      if (a.inactive !== b.inactive) return a.inactive ? -1 : 1;
+      if (a.attentionReasons.length !== b.attentionReasons.length) return b.attentionReasons.length - a.attentionReasons.length;
       return (a.fullName ?? "").localeCompare(b.fullName ?? "", "nl");
     });
 
   return {
     patients,
     totalCount: patients.length,
-    needsAttentionCount: patients.filter((p) => p.inactive).length,
+    needsAttentionCount: patients.filter((p) => p.attentionReasons.length > 0).length,
     checkinsThisWeekCount: (weekCheckinsRes as { count: number | null }).count ?? 0,
   };
 }

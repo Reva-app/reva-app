@@ -13,10 +13,17 @@ import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
   loadPortalDashboardStats, loadMyPortalPatientsSummary, loadTherapistWorkload, loadOrgActivitySummary,
-  PATIENT_INACTIVITY_THRESHOLD_DAYS,
+  ATTENTION_REASON_LABELS,
   type PortalDashboardStats, type PortalMyPatientsSummary, type PortalTherapistWorkload,
-  type PortalOrgActivitySummary,
+  type PortalOrgActivitySummary, type PatientAttentionReason,
 } from "@/lib/services/portalService";
+
+const ATTENTION_BADGE_VARIANT: Record<PatientAttentionReason, "danger" | "warning" | "purple" | "muted"> = {
+  hoge_pijnscore: "danger",
+  zwelling: "warning",
+  lage_dagscore: "purple",
+  inactief: "muted",
+};
 
 export default function PortalDashboardPage() {
   const { checked, membership } = usePortalMembership();
@@ -98,7 +105,7 @@ export default function PortalDashboardPage() {
                 <StatCard
                   label="Aandacht nodig"
                   value={myPatients.needsAttentionCount}
-                  subtitle={`Geen activiteit in ${PATIENT_INACTIVITY_THRESHOLD_DAYS}+ dagen`}
+                  subtitle="Hoge pijnscore, zwelling of weinig activiteit"
                   icon={AlertTriangle}
                   iconColor="#f59e0b"
                 />
@@ -112,7 +119,15 @@ export default function PortalDashboardPage() {
                     className="flex items-center justify-between gap-3 py-2 px-2 -mx-2 rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     <span className="text-sm text-gray-700 truncate">{p.fullName || "Nog niet ingevuld"}</span>
-                    {p.inactive && <Badge variant="warning">{p.lastCheckinDate ? "Weinig activiteit" : "Nog geen activiteit"}</Badge>}
+                    {p.attentionReasons.length > 0 && (
+                      <div className="flex items-center gap-1.5 flex-wrap justify-end shrink-0">
+                        {p.attentionReasons.map((reason) => (
+                          <Badge key={reason} variant={ATTENTION_BADGE_VARIANT[reason]}>
+                            {reason === "inactief" && !p.lastCheckinDate ? "Nog geen activiteit" : ATTENTION_REASON_LABELS[reason]}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </Link>
                 ))}
               </div>
