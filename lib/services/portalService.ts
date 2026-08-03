@@ -1953,6 +1953,60 @@ export async function loadPortalPatientExtras(patientId: string): Promise<Portal
   };
 }
 
+export interface PortalPhotoHistoryItem {
+  date: string;
+  imagePath: string | null;
+  note: string | null;
+}
+
+/**
+ * Alle foto-updates van een patiënt (niet alleen de laatste), voor de
+ * fotogalerij op de patiëntpagina. Bewust een aparte, losse functie i.p.v.
+ * onderdeel van loadPortalPatientExtras — wordt pas aangeroepen zodra de
+ * gebruiker de galerij daadwerkelijk opent.
+ */
+export async function loadPatientPhotoHistory(patientId: string): Promise<PortalPhotoHistoryItem[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("dossier_photo_updates")
+    .select("date, image_url, note")
+    .eq("patient_id", patientId)
+    .order("date", { ascending: false });
+  if (error) { logErr("loadPatientPhotoHistory", error); return []; }
+  return (data ?? []).map((p) => ({
+    date: p.date as string,
+    imagePath: p.image_url as string | null,
+    note: p.note as string | null,
+  }));
+}
+
+/**
+ * Volledige check-in-geschiedenis van een patiënt (geen limiet, i.t.t. de
+ * checkinTrend in loadPortalPatientExtras die op 30 rijen gecapt is voor de
+ * trendgrafiek). Voor de "Bekijk geschiedenis"-tabel op de patiëntpagina,
+ * pas geladen zodra de gebruiker die daadwerkelijk opent.
+ */
+export async function loadPatientCheckinHistory(patientId: string): Promise<PortalCheckinTrendPoint[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("checkins")
+    .select("date, day_score, pain_score, mobility_score, energy_score, mood_score, sleep_score, swelling, note")
+    .eq("patient_id", patientId)
+    .order("date", { ascending: false });
+  if (error) { logErr("loadPatientCheckinHistory", error); return []; }
+  return (data ?? []).map((c) => ({
+    date: c.date as string,
+    dayScore: c.day_score as number,
+    painScore: c.pain_score as number | null,
+    mobilityScore: c.mobility_score as number | null,
+    energyScore: c.energy_score as number | null,
+    moodScore: c.mood_score as number | null,
+    sleepScore: c.sleep_score as number | null,
+    swelling: c.swelling as boolean | null,
+    note: c.note as string | null,
+  }));
+}
+
 // ─── Huisstijl (branding) ───────────────────────────────────────────────────
 
 const LOGO_BUCKET = "organization-logos";

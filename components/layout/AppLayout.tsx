@@ -10,6 +10,7 @@ import { AppLoadingGate } from "@/components/auth/AppLoadingGate";
 import { TrialBanner } from "@/components/subscription/TrialBanner";
 import { SUBSCRIPTIONS_ENABLED } from "@/lib/subscription";
 import { useAppBranding } from "@/lib/hooks/useAppBranding";
+import { NavigationBlockerProvider } from "@/lib/hooks/useNavigationBlocker";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const branding = useAppBranding();
@@ -17,21 +18,23 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <AppDataProvider>
       <AppLoadingGate>
         <AuthGate>
-          <div className="flex h-full" style={{ ["--brand-accent" as string]: branding?.primaryColor || "#e8632a" }}>
-            <Sidebar />
-            <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-              {SUBSCRIPTIONS_ENABLED && <TrialBanner />}
-              <TopBar />
-              <main
-                className="flex-1 overflow-y-auto pb-nav lg:pb-0"
-                style={{ background: "#f8f7f4" }}
-              >
-                {children}
-              </main>
+          <NavigationBlockerProvider>
+            <div className="flex h-full" style={{ ["--brand-accent" as string]: branding?.primaryColor || "#e8632a" }}>
+              <Sidebar />
+              <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+                {SUBSCRIPTIONS_ENABLED && <TrialBanner />}
+                <TopBar />
+                <main
+                  className="flex-1 overflow-y-auto pb-nav lg:pb-0"
+                  style={{ background: "#f8f7f4" }}
+                >
+                  {children}
+                </main>
+              </div>
+              <MobileNav />
+              <QuickActionFAB />
             </div>
-            <MobileNav />
-            <QuickActionFAB />
-          </div>
+          </NavigationBlockerProvider>
         </AuthGate>
       </AppLoadingGate>
     </AppDataProvider>

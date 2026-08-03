@@ -52,6 +52,7 @@ export interface PortalProtocolCard {
   /** Alleen relevant voor scope 'reva' — zie migratie 053. */
   clinicallyReviewed: boolean;
   phaseCount: number;
+  createdAt: string;
   createdBy: string | null;
   createdByName: string | null;
 }
@@ -132,6 +133,7 @@ export interface PortalProtocolDetail {
   injuryCategory: string;
   archived: boolean;
   clinicallyReviewed: boolean;
+  createdAt: string;
   createdBy: string | null;
   createdByName: string | null;
   phases: PortalProtocolPhase[];
@@ -153,6 +155,14 @@ export interface PortalExerciseLibraryItem {
   mediaPath: string | null;
   mediaType: string | null;
   createdAt: string;
+  createdBy: string | null;
+  createdByName: string | null;
+}
+
+export interface PortalExerciseUsage {
+  scheduleId: string;
+  scheduleTitle: string;
+  scheduleScope: ProtocolScope;
 }
 
 export interface PortalExerciseLibraryInput {
@@ -186,20 +196,20 @@ export async function loadRevaProtocols(): Promise<PortalProtocolCard[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("protocols")
-    .select("id, scope, name, description, injury_category, archived, clinically_reviewed, created_by, protocol_phases(count)")
+    .select("id, scope, name, description, injury_category, archived, clinically_reviewed, created_at, created_by, protocol_phases(count)")
     .eq("scope", "reva")
     .order("name");
   if (error) { logErr("loadRevaProtocols", error); return []; }
   const rows = (data ?? []) as unknown as {
     id: string; scope: ProtocolScope; name: string; description: string | null;
-    injury_category: string; archived: boolean; clinically_reviewed: boolean; created_by: string | null;
+    injury_category: string; archived: boolean; clinically_reviewed: boolean; created_at: string; created_by: string | null;
     protocol_phases: { count: number }[] | null;
   }[];
   const nameMap = await resolveCreatorNames(supabase, rows.map((r) => r.created_by));
   return rows.map((r) => ({
     id: r.id, scope: r.scope, name: r.name, description: r.description,
     injuryCategory: r.injury_category, archived: r.archived, clinicallyReviewed: r.clinically_reviewed,
-    phaseCount: r.protocol_phases?.[0]?.count ?? 0,
+    phaseCount: r.protocol_phases?.[0]?.count ?? 0, createdAt: r.created_at,
     createdBy: r.created_by, createdByName: r.created_by ? nameMap.get(r.created_by) ?? null : null,
   }));
 }
@@ -208,21 +218,21 @@ export async function loadOrgProtocols(organizationId: string): Promise<PortalPr
   const supabase = createClient();
   const { data, error } = await supabase
     .from("protocols")
-    .select("id, scope, name, description, injury_category, archived, clinically_reviewed, created_by, protocol_phases(count)")
+    .select("id, scope, name, description, injury_category, archived, clinically_reviewed, created_at, created_by, protocol_phases(count)")
     .eq("scope", "organization")
     .eq("organization_id", organizationId)
     .order("name");
   if (error) { logErr("loadOrgProtocols", error); return []; }
   const rows = (data ?? []) as unknown as {
     id: string; scope: ProtocolScope; name: string; description: string | null;
-    injury_category: string; archived: boolean; clinically_reviewed: boolean; created_by: string | null;
+    injury_category: string; archived: boolean; clinically_reviewed: boolean; created_at: string; created_by: string | null;
     protocol_phases: { count: number }[] | null;
   }[];
   const nameMap = await resolveCreatorNames(supabase, rows.map((r) => r.created_by));
   return rows.map((r) => ({
     id: r.id, scope: r.scope, name: r.name, description: r.description,
     injuryCategory: r.injury_category, archived: r.archived, clinicallyReviewed: r.clinically_reviewed,
-    phaseCount: r.protocol_phases?.[0]?.count ?? 0,
+    phaseCount: r.protocol_phases?.[0]?.count ?? 0, createdAt: r.created_at,
     createdBy: r.created_by, createdByName: r.created_by ? nameMap.get(r.created_by) ?? null : null,
   }));
 }
@@ -395,7 +405,7 @@ export async function loadProtocolDetail(protocolId: string): Promise<PortalProt
 
   const { data: protocol, error: protocolError } = await supabase
     .from("protocols")
-    .select("id, scope, organization_id, name, description, injury_category, archived, clinically_reviewed, created_by")
+    .select("id, scope, organization_id, name, description, injury_category, archived, clinically_reviewed, created_at, created_by")
     .eq("id", protocolId)
     .maybeSingle();
   if (protocolError) logErr("loadProtocolDetail(protocol)", protocolError);
@@ -504,8 +514,17 @@ export async function loadProtocolDetail(protocolId: string): Promise<PortalProt
     id: protocol.id, scope: protocol.scope, organizationId: protocol.organization_id,
     name: protocol.name, description: protocol.description, injuryCategory: protocol.injury_category,
     archived: protocol.archived, clinicallyReviewed: protocol.clinically_reviewed,
+    createdAt: protocol.created_at,
     createdBy: protocol.created_by, createdByName, phases,
   };
+}
+
+/** Losse titel-update voor de autosave-titel op de herstelplan-detailpagina — zelfde reden als updateExerciseTitle/updateScheduleTitle. */
+export async function updateProtocolName(protocolId: string, name: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("protocols").update({ name: name.trim() }).eq("id", protocolId);
+  if (error) { logErr("updateProtocolName", error); return { error: "Bijwerken van de titel is niet gelukt." }; }
+  return { error: null };
 }
 
 // ─── Fases ──────────────────────────────────────────────────────────────────
@@ -549,6 +568,14 @@ export async function updateProtocolPhase(phaseId: string, input: PortalProtocol
     })
     .eq("id", phaseId);
   if (error) { logErr("updateProtocolPhase", error); return { error: "Bijwerken van de fase is niet gelukt." }; }
+  return { error: null };
+}
+
+/** Losse naam-update voor de autosave-titel op de fase-detailpagina — zelfde reden als updateProtocolName/updateScheduleTitle/updateExerciseTitle. */
+export async function updateProtocolPhaseName(phaseId: string, name: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("protocol_phases").update({ name: name.trim() }).eq("id", phaseId);
+  if (error) { logErr("updateProtocolPhaseName", error); return { error: "Bijwerken van de titel is niet gelukt." }; }
   return { error: null };
 }
 
@@ -674,6 +701,8 @@ export interface PortalScheduleLibraryCard {
   archived: boolean;
   exerciseCount: number;
   createdAt: string;
+  createdBy: string | null;
+  createdByName: string | null;
 }
 
 export interface PortalScheduleLibraryInput {
@@ -700,6 +729,9 @@ export interface PortalScheduleLibraryDetail {
   title: string;
   description: string | null;
   archived: boolean;
+  createdAt: string;
+  createdBy: string | null;
+  createdByName: string | null;
   exercises: PortalScheduleLibraryExercise[];
 }
 
@@ -707,16 +739,19 @@ export async function loadRevaSchedules(): Promise<PortalScheduleLibraryCard[]> 
   const supabase = createClient();
   const { data, error } = await supabase
     .from("schedule_library")
-    .select("id, scope, title, description, archived, created_at, schedule_library_exercises(count)")
+    .select("id, scope, title, description, archived, created_at, created_by, schedule_library_exercises(count)")
     .eq("scope", "reva")
     .order("title");
   if (error) { logErr("loadRevaSchedules", error); return []; }
-  return ((data ?? []) as unknown as {
-    id: string; scope: ProtocolScope; title: string; description: string | null; archived: boolean; created_at: string;
+  const rows = (data ?? []) as unknown as {
+    id: string; scope: ProtocolScope; title: string; description: string | null; archived: boolean; created_at: string; created_by: string | null;
     schedule_library_exercises: { count: number }[] | null;
-  }[]).map((r) => ({
+  }[];
+  const nameMap = await resolveCreatorNames(supabase, rows.map((r) => r.created_by));
+  return rows.map((r) => ({
     id: r.id, scope: r.scope, title: r.title, description: r.description, archived: r.archived,
     exerciseCount: r.schedule_library_exercises?.[0]?.count ?? 0, createdAt: r.created_at,
+    createdBy: r.created_by, createdByName: r.created_by ? nameMap.get(r.created_by) ?? null : null,
   }));
 }
 
@@ -724,17 +759,20 @@ export async function loadOrgSchedules(organizationId: string): Promise<PortalSc
   const supabase = createClient();
   const { data, error } = await supabase
     .from("schedule_library")
-    .select("id, scope, title, description, archived, created_at, schedule_library_exercises(count)")
+    .select("id, scope, title, description, archived, created_at, created_by, schedule_library_exercises(count)")
     .eq("scope", "organization")
     .eq("organization_id", organizationId)
     .order("title");
   if (error) { logErr("loadOrgSchedules", error); return []; }
-  return ((data ?? []) as unknown as {
-    id: string; scope: ProtocolScope; title: string; description: string | null; archived: boolean; created_at: string;
+  const rows = (data ?? []) as unknown as {
+    id: string; scope: ProtocolScope; title: string; description: string | null; archived: boolean; created_at: string; created_by: string | null;
     schedule_library_exercises: { count: number }[] | null;
-  }[]).map((r) => ({
+  }[];
+  const nameMap = await resolveCreatorNames(supabase, rows.map((r) => r.created_by));
+  return rows.map((r) => ({
     id: r.id, scope: r.scope, title: r.title, description: r.description, archived: r.archived,
     exerciseCount: r.schedule_library_exercises?.[0]?.count ?? 0, createdAt: r.created_at,
+    createdBy: r.created_by, createdByName: r.created_by ? nameMap.get(r.created_by) ?? null : null,
   }));
 }
 
@@ -742,9 +780,13 @@ export async function createScheduleLibraryItem(
   organizationId: string, input: PortalScheduleLibraryInput
 ): Promise<{ id: string | null; error: string | null }> {
   const supabase = createClient();
+  const { data: userData } = await supabase.auth.getUser();
   const { data, error } = await supabase
     .from("schedule_library")
-    .insert({ scope: "organization", organization_id: organizationId, title: input.title.trim(), description: input.description.trim() || null })
+    .insert({
+      scope: "organization", organization_id: organizationId, title: input.title.trim(), description: input.description.trim() || null,
+      created_by: userData.user?.id ?? null,
+    })
     .select("id")
     .single();
   if (error) { logErr("createScheduleLibraryItem", error); return { id: null, error: "Aanmaken van het schema is niet gelukt." }; }
@@ -768,11 +810,28 @@ export async function updateScheduleLibraryArchived(scheduleId: string, archived
   return { error: null };
 }
 
+/**
+ * Alleen bedoeld om een net aangemaakt, nog leeg conceptschema op te ruimen
+ * als de gebruiker wegnavigeert zonder iets in te vullen (zie schemas/[id]/
+ * page.tsx). schedule_library.id wordt vanuit protocol_phase_schedule_links
+ * met ON DELETE RESTRICT gerefereerd (migratie 054) — een schema dat al in
+ * een herstelplan wordt gebruikt kan hierdoor sowieso niet stilzwijgend
+ * verdwijnen, maar dat scenario doet zich voor een net aangemaakt concept
+ * per definitie nooit voor.
+ */
+export async function deleteScheduleLibraryItem(scheduleId: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("schedule_library").delete().eq("id", scheduleId);
+  if (error) { logErr("deleteScheduleLibraryItem", error); return { error: "Verwijderen van het schema is niet gelukt." }; }
+  return { error: null };
+}
+
 /** Dupliceert een schema (REVA → eigen organisatie) inclusief zijn oefeningen. Oefeningen zelf worden niet gedupliceerd, alleen de koppeling. */
 export async function duplicateScheduleLibraryItem(
   scheduleId: string, organizationId: string
 ): Promise<{ id: string | null; error: string | null }> {
   const supabase = createClient();
+  const { data: userData } = await supabase.auth.getUser();
 
   const { data: source, error: sourceError } = await supabase
     .from("schedule_library").select("title, description").eq("id", scheduleId).maybeSingle();
@@ -780,7 +839,10 @@ export async function duplicateScheduleLibraryItem(
 
   const { data: newSchedule, error: insertError } = await supabase
     .from("schedule_library")
-    .insert({ scope: "organization", organization_id: organizationId, source_schedule_id: scheduleId, title: `${source.title} (kopie)`, description: source.description })
+    .insert({
+      scope: "organization", organization_id: organizationId, source_schedule_id: scheduleId, title: `${source.title} (kopie)`, description: source.description,
+      created_by: userData.user?.id ?? null,
+    })
     .select("id")
     .single();
   if (insertError || !newSchedule) { logErr("duplicateScheduleLibraryItem(insert)", insertError); return { id: null, error: "Dupliceren van het schema is niet gelukt." }; }
@@ -801,9 +863,10 @@ export async function duplicateScheduleLibraryItem(
 export async function loadScheduleLibraryDetail(scheduleId: string): Promise<PortalScheduleLibraryDetail | null> {
   const supabase = createClient();
   const { data: schedule, error: scheduleError } = await supabase
-    .from("schedule_library").select("id, scope, organization_id, title, description, archived").eq("id", scheduleId).maybeSingle();
+    .from("schedule_library").select("id, scope, organization_id, title, description, archived, created_at, created_by").eq("id", scheduleId).maybeSingle();
   if (scheduleError) logErr("loadScheduleLibraryDetail(schedule)", scheduleError);
   if (!schedule) return null;
+  const nameMap = await resolveCreatorNames(supabase, [schedule.created_by]);
 
   const { data: exerciseRows, error: exercisesError } = await supabase
     .from("schedule_library_exercises")
@@ -825,8 +888,19 @@ export async function loadScheduleLibraryDetail(scheduleId: string): Promise<Por
 
   return {
     id: schedule.id, scope: schedule.scope, organizationId: schedule.organization_id,
-    title: schedule.title, description: schedule.description, archived: schedule.archived, exercises,
+    title: schedule.title, description: schedule.description, archived: schedule.archived,
+    createdAt: schedule.created_at, createdBy: schedule.created_by,
+    createdByName: schedule.created_by ? nameMap.get(schedule.created_by) ?? null : null,
+    exercises,
   };
+}
+
+/** Losse titel-update voor de autosave-titel op de schema-detailpagina — zelfde reden als updateExerciseTitle. */
+export async function updateScheduleTitle(scheduleId: string, title: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("schedule_library").update({ title: title.trim() }).eq("id", scheduleId);
+  if (error) { logErr("updateScheduleTitle", error); return { error: "Bijwerken van de titel is niet gelukt." }; }
+  return { error: null };
 }
 
 export interface PortalScheduleExerciseInput {
@@ -935,29 +1009,125 @@ export async function unlinkScheduleFromPhase(linkId: string): Promise<{ error: 
   return { error: null };
 }
 
+export interface PortalScheduleUsage {
+  protocolId: string;
+  protocolName: string;
+  protocolScope: ProtocolScope;
+}
+
+/** Welke herstelplannen (protocols) dit schema gebruiken — via een of meer fases — voor de "Gebruikt in herstelplannen"-kaart op de schema-detailpagina. */
+export async function loadScheduleUsage(scheduleId: string): Promise<PortalScheduleUsage[]> {
+  const supabase = createClient();
+  const { data: links, error: linksError } = await supabase
+    .from("protocol_phase_schedule_links")
+    .select("phase_id")
+    .eq("schedule_id", scheduleId);
+  if (linksError) { logErr("loadScheduleUsage(links)", linksError); return []; }
+  const phaseIds = [...new Set((links ?? []).map((l) => l.phase_id as string))];
+  if (phaseIds.length === 0) return [];
+
+  const { data: phases, error: phasesError } = await supabase
+    .from("protocol_phases")
+    .select("protocol_id")
+    .in("id", phaseIds);
+  if (phasesError) { logErr("loadScheduleUsage(phases)", phasesError); return []; }
+  const protocolIds = [...new Set((phases ?? []).map((p) => p.protocol_id as string))];
+  if (protocolIds.length === 0) return [];
+
+  const { data: protocols, error: protocolsError } = await supabase
+    .from("protocols")
+    .select("id, name, scope")
+    .in("id", protocolIds)
+    .order("name");
+  if (protocolsError) { logErr("loadScheduleUsage(protocols)", protocolsError); return []; }
+  return (protocols ?? []).map((p) => ({ protocolId: p.id, protocolName: p.name, protocolScope: p.scope as ProtocolScope }));
+}
+
 // ─── Oefeningenbibliotheek ──────────────────────────────────────────────────
 
 export async function loadExerciseLibrary(organizationId: string): Promise<PortalExerciseLibraryItem[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("exercise_library")
-    .select("id, scope, title, exercise_type, description, instructions, default_sets, default_reps, default_duration_seconds, default_load_text, tags, archived, media_path, media_type, created_at")
+    .select("id, scope, title, exercise_type, description, instructions, default_sets, default_reps, default_duration_seconds, default_load_text, tags, archived, media_path, media_type, created_at, created_by")
     .or(`scope.eq.reva,organization_id.eq.${organizationId}`)
     .order("title");
   if (error) { logErr("loadExerciseLibrary", error); return []; }
-  return (data ?? []).map((r) => ({
+  const rows = data ?? [];
+  const nameMap = await resolveCreatorNames(supabase, rows.map((r) => r.created_by));
+  return rows.map((r) => ({
     id: r.id, scope: r.scope, title: r.title, exerciseType: r.exercise_type,
     description: r.description, instructions: r.instructions,
     defaultSets: r.default_sets, defaultReps: r.default_reps, defaultDurationSeconds: r.default_duration_seconds,
     defaultLoadText: r.default_load_text, tags: r.tags ?? [], archived: r.archived,
     mediaPath: r.media_path, mediaType: r.media_type, createdAt: r.created_at,
+    createdBy: r.created_by, createdByName: r.created_by ? nameMap.get(r.created_by) ?? null : null,
   }));
+}
+
+/** Eén oefening met volledige detail, voor de detailpagina — los van loadExerciseLibrary zodat niet de hele bibliotheek opgehaald hoeft te worden. RLS regelt zichtbaarheid al (REVA of eigen organisatie). */
+export async function loadExerciseLibraryDetail(exerciseId: string): Promise<PortalExerciseLibraryItem | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("exercise_library")
+    .select("id, scope, title, exercise_type, description, instructions, default_sets, default_reps, default_duration_seconds, default_load_text, tags, archived, media_path, media_type, created_at, created_by")
+    .eq("id", exerciseId)
+    .maybeSingle();
+  if (error) logErr("loadExerciseLibraryDetail", error);
+  if (!data) return null;
+  const nameMap = await resolveCreatorNames(supabase, [data.created_by]);
+  return {
+    id: data.id, scope: data.scope, title: data.title, exerciseType: data.exercise_type,
+    description: data.description, instructions: data.instructions,
+    defaultSets: data.default_sets, defaultReps: data.default_reps, defaultDurationSeconds: data.default_duration_seconds,
+    defaultLoadText: data.default_load_text, tags: data.tags ?? [], archived: data.archived,
+    mediaPath: data.media_path, mediaType: data.media_type, createdAt: data.created_at,
+    createdBy: data.created_by, createdByName: data.created_by ? nameMap.get(data.created_by) ?? null : null,
+  };
+}
+
+/** Welke schema's (schedule_library) deze oefening gebruiken — voor de "Gebruikt in schema's"-kaart op de detailpagina. */
+export async function loadExerciseUsage(exerciseId: string): Promise<PortalExerciseUsage[]> {
+  const supabase = createClient();
+  const { data: links, error: linksError } = await supabase
+    .from("schedule_library_exercises")
+    .select("schedule_id")
+    .eq("exercise_id", exerciseId);
+  if (linksError) { logErr("loadExerciseUsage(links)", linksError); return []; }
+  const scheduleIds = [...new Set((links ?? []).map((l) => l.schedule_id as string))];
+  if (scheduleIds.length === 0) return [];
+  const { data: schedules, error: schedulesError } = await supabase
+    .from("schedule_library")
+    .select("id, title, scope")
+    .in("id", scheduleIds)
+    .order("title");
+  if (schedulesError) { logErr("loadExerciseUsage(schedules)", schedulesError); return []; }
+  return (schedules ?? []).map((s) => ({ scheduleId: s.id, scheduleTitle: s.title, scheduleScope: s.scope as ProtocolScope }));
+}
+
+/** Losse titel-update voor de autosave-titel op de detailpagina (onBlur) — los van updateOrgExercise zodat een titelwijziging nooit per ongeluk nog niet-opgeslagen wijzigingen in andere velden meestuurt. */
+export async function updateExerciseTitle(exerciseId: string, title: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("exercise_library").update({ title: title.trim() }).eq("id", exerciseId);
+  if (error) { logErr("updateExerciseTitle", error); return { error: "Bijwerken van de titel is niet gelukt." }; }
+  return { error: null };
+}
+
+/** Losse media-update, direct aangeroepen bij upload/verwijderen op de detailpagina (zelfde reden als updateExerciseTitle). */
+export async function updateExerciseMedia(
+  exerciseId: string, mediaPath: string | null, mediaType: string | null
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("exercise_library").update({ media_path: mediaPath, media_type: mediaType }).eq("id", exerciseId);
+  if (error) { logErr("updateExerciseMedia", error); return { error: "Bijwerken van de media is niet gelukt." }; }
+  return { error: null };
 }
 
 export async function createOrgExercise(
   organizationId: string, input: PortalExerciseLibraryInput, explicitId?: string
 ): Promise<{ id: string | null; error: string | null }> {
   const supabase = createClient();
+  const { data: userData } = await supabase.auth.getUser();
   const { data, error } = await supabase
     .from("exercise_library")
     .insert({
@@ -968,6 +1138,7 @@ export async function createOrgExercise(
       default_sets: input.defaultSets, default_reps: input.defaultReps, default_duration_seconds: input.defaultDurationSeconds,
       default_load_text: input.defaultLoadText.trim() || null, tags: input.tags,
       media_path: input.mediaPath, media_type: input.mediaType,
+      created_by: userData.user?.id ?? null,
     })
     .select("id")
     .single();
@@ -990,6 +1161,7 @@ export async function createOrgExerciseFromSource(
   organizationId: string, sourceExerciseId: string, input: PortalExerciseLibraryInput, explicitId?: string
 ): Promise<{ id: string | null; error: string | null }> {
   const supabase = createClient();
+  const { data: userData } = await supabase.auth.getUser();
   const { data, error } = await supabase
     .from("exercise_library")
     .insert({
@@ -1000,6 +1172,7 @@ export async function createOrgExerciseFromSource(
       default_sets: input.defaultSets, default_reps: input.defaultReps, default_duration_seconds: input.defaultDurationSeconds,
       default_load_text: input.defaultLoadText.trim() || null, tags: input.tags,
       media_path: input.mediaPath, media_type: input.mediaType,
+      created_by: userData.user?.id ?? null,
     })
     .select("id")
     .single();
@@ -1024,12 +1197,11 @@ export async function updateOrgExercise(exerciseId: string, input: PortalExercis
 }
 
 /**
- * Upload een afbeelding voor een oefening naar de private `protocol-media`-
- * bucket, org-scope pad (`${organizationId}/${exerciseId}/...`) — zelfde
- * bucket/padconventie als de REVA-scope illustraties (migratie 051), maar
- * dan schrijfbaar voor organisatieleden i.p.v. alleen platform-admins.
- * `exerciseId` moet vooraf al bekend zijn (zie ExerciseFormModal's
- * `pendingId`, ook voor een nog niet opgeslagen nieuwe oefening).
+ * Upload media (afbeelding of video) voor een oefening naar de private
+ * `protocol-media`-bucket, org-scope pad (`${organizationId}/${exerciseId}/...`)
+ * — zelfde bucket/padconventie als de REVA-scope illustraties (migratie 051),
+ * maar dan schrijfbaar voor organisatieleden i.p.v. alleen platform-admins.
+ * `exerciseId` moet vooraf al bekend zijn (bv. een net aangemaakte conceptrij).
  */
 export async function uploadExerciseMedia(
   organizationId: string, exerciseId: string, file: File
@@ -1042,9 +1214,9 @@ export async function uploadExerciseMedia(
     .upload(path, file, { upsert: true, contentType: file.type });
   if (error) {
     logErr("uploadExerciseMedia", error);
-    return { mediaPath: null, mediaType: null, error: "Uploaden van de afbeelding is niet gelukt." };
+    return { mediaPath: null, mediaType: null, error: "Uploaden van de media is niet gelukt." };
   }
-  return { mediaPath: path, mediaType: "image", error: null };
+  return { mediaPath: path, mediaType: file.type.startsWith("video/") ? "video" : "image", error: null };
 }
 
 /** Dupliceert een oefening (REVA → eigen organisatie), zodat de kopie los bewerkt kan worden zonder de REVA-bron aan te passen. */
@@ -1052,6 +1224,7 @@ export async function duplicateExerciseLibraryItem(
   exerciseId: string, organizationId: string
 ): Promise<{ id: string | null; error: string | null }> {
   const supabase = createClient();
+  const { data: userData } = await supabase.auth.getUser();
 
   const { data: source, error: sourceError } = await supabase
     .from("exercise_library")
@@ -1069,6 +1242,7 @@ export async function duplicateExerciseLibraryItem(
       default_sets: source.default_sets, default_reps: source.default_reps, default_duration_seconds: source.default_duration_seconds,
       default_load_text: source.default_load_text, tags: source.tags ?? [],
       media_path: source.media_path, media_type: source.media_type,
+      created_by: userData.user?.id ?? null,
     })
     .select("id")
     .single();

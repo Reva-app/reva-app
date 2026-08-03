@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Camera, Pill, CalendarClock, Dumbbell, Award, Droplets, Pencil, Star, Flag, ClipboardList, Check, ChevronRight, RotateCcw, MessageSquare, Trash2, Loader2, X } from "lucide-react";
+import { ArrowLeft, Camera, Pill, CalendarClock, Dumbbell, Award, Droplets, Pencil, Star, Flag, ClipboardList, Check, ChevronRight, ChevronLeft, RotateCcw, MessageSquare, Trash2, Loader2, X, History, Images } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -19,13 +19,18 @@ import { ExerciseThumb } from "@/components/portal/ExerciseThumb";
 import { SortableExerciseList } from "@/components/portal/SortableExerciseList";
 import { Avatar } from "@/components/ui/Avatar";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { formatDate, formatDateShort } from "@/lib/data";
+import { formatDate, formatDateShort, BLESSURE_TYPEN } from "@/lib/data";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import {
   loadPortalPatients,
   loadPortalPatientExtras,
   loadPortalLocations,
   loadPortalMembers,
+  loadPatientPhotoHistory,
+  loadPatientCheckinHistory,
+  invitePortalPatient,
+  updatePortalPatientStatus,
+  deletePortalPatient,
   MANAGE_PATIENTS_ROLES,
   type PortalPatient,
   type PortalPatientExtras,
@@ -33,8 +38,9 @@ import {
   type PortalMainGoal,
   type PortalLocationOption,
   type PortalMember,
+  type PortalPhotoHistoryItem,
 } from "@/lib/services/portalService";
-import { resolveSignedUrl } from "@/lib/services/storageService";
+import { resolveSignedUrl, resolveSignedUrls } from "@/lib/services/storageService";
 import {
   loadRevaProtocols, loadOrgProtocols, assignProtocolToPatient,
   loadPatientProtocolAssignment, toggleCriterionMet, updateMilestoneCompletion, advanceToNextPhase, revertToPreviousPhase,
@@ -59,6 +65,17 @@ function genderLabel(gender: string | null) {
   if (gender === "vrouw") return "Vrouw";
   if (gender === "anders") return "Anders";
   return "—";
+}
+
+function injuryTypeLabel(injuryType: string | null) {
+  if (!injuryType) return "—";
+  return BLESSURE_TYPEN.find((b) => b.value === injuryType)?.label ?? injuryType;
+}
+
+function accountBadge(p: PortalPatient) {
+  if (p.hasAccount) return <Badge variant="success">Actief</Badge>;
+  if (p.invitedAt) return <Badge variant="warning">Uitgenodigd op {formatDate(p.invitedAt)}</Badge>;
+  return <Badge variant="muted">Nog geen account</Badge>;
 }
 
 const APPOINTMENT_TYPE_LABELS: Record<string, string> = {
@@ -596,12 +613,31 @@ export default function PortalPatientDetailPage() {
   const [locations, setLocations] = useState<PortalLocationOption[]>([]);
   const [members, setMembers] = useState<PortalMember[]>([]);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [showPhotoLightbox, setShowPhotoLightbox] = useState(false);
   const [trendRange, setTrendRange] = useState(14);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [editing, setEditing] = useState(false);
   const [tab, setTab] = useState<TabKey>("overzicht");
+
+  // Fotogalerij: laadt de volledige fotogeschiedenis pas zodra de gebruiker
+  // hem daadwerkelijk opent (niet vooraf bij elk paginabezoek).
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryLoading, setGalleryLoading] = useState(false);
+  const [photoHistory, setPhotoHistory] = useState<PortalPhotoHistoryItem[]>([]);
+  const [photoHistoryUrls, setPhotoHistoryUrls] = useState<Map<string, string>>(new Map());
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  // Check-in-geschiedenis: idem, pas geladen bij openen.
+  const [checkinHistoryOpen, setCheckinHistoryOpen] = useState(false);
+  const [checkinHistoryLoading, setCheckinHistoryLoading] = useState(false);
+  const [checkinHistory, setCheckinHistory] = useState<PortalCheckinTrendPoint[]>([]);
+
+  // Snelle acties in de zijbalk (uitnodigen/archiveren/verwijderen) — zelfde
+  // handlers als op de lijstpagina, hier hergebruikt.
+  const [invitingPatient, setInvitingPatient] = useState(false);
+  const [archivingPatient, setArchivingPatient] = useState(false);
+  const [confirmDeletePatient, setConfirmDeletePatient] = useState(false);
+  const [deletingPatient, setDeletingPatient] = useState(false);
 
   const [assignment, setAssignment] = useState<PortalPatientProtocolAssignment | null>(null);
   const [sessionNotes, setSessionNotes] = useState<PortalPatientSessionNote[]>([]);
@@ -699,6 +735,68 @@ export default function PortalPatientDetailPage() {
       setExtras(extrasData);
       setLoading(false);
     });
+  }
+
+  async function openCheckinHistory() {
+    setCheckinHistoryOpen(true);
+    setCheckinHistoryLoading(true);
+    const data = await loadPatientCheckinHistory(patientId);
+    setCheckinHistory(data);
+    setCheckinHistoryLoading(false);
+  }
+
+  async function openGallery(startAtIndex: number | null) {
+    setGalleryOpen(true);
+    setLightboxIndex(startAtIndex);
+    setGalleryLoading(true);
+    const history = await loadPatientPhotoHistory(patientId);
+    setPhotoHistory(history);
+    const paths = history.map((h) => h.imagePath).filter((p): p is string => !!p);
+    const urls = await resolveSignedUrls("dossier-photos", paths);
+    setPhotoHistoryUrls(urls);
+    setGalleryLoading(false);
+  }
+
+  function closeGallery() {
+    setGalleryOpen(false);
+    setLightboxIndex(null);
+    setPhotoHistory([]);
+    setPhotoHistoryUrls(new Map());
+  }
+
+  async function handleInvitePatient() {
+    if (!patient?.email || !membership) { showToast("Dit dossier heeft geen e-mailadres.", "error"); return; }
+    setInvitingPatient(true);
+    const result = await invitePortalPatient(patient.id, membership.organizationId, patient.email, true);
+    setInvitingPatient(false);
+    if (result.outcome === "failed") {
+      showToast(result.error, "error");
+    } else {
+      showToast(result.outcome === "linked" ? "Direct gekoppeld." : "Uitnodiging verstuurd.");
+      refresh(membership.organizationId);
+    }
+  }
+
+  async function handleArchivePatient() {
+    if (!patient) return;
+    const nextStatus = patient.status === "archived" ? "active" : "archived";
+    setArchivingPatient(true);
+    const { error } = await updatePortalPatientStatus(patient.id, nextStatus);
+    setArchivingPatient(false);
+    if (error) { showToast("Opslaan mislukt: " + error, "error"); return; }
+    showToast(nextStatus === "archived" ? "Patiënt gearchiveerd" : "Patiënt gedearchiveerd");
+    if (membership) refresh(membership.organizationId);
+  }
+
+  async function handleDeletePatient() {
+    if (!patient) return;
+    setDeletingPatient(true);
+    const { error } = await deletePortalPatient(patient.id);
+    setDeletingPatient(false);
+    setConfirmDeletePatient(false);
+    if (error) { showToast("Verwijderen mislukt: " + error, "error"); return; }
+    showToast("Patiënt verwijderd");
+    router.push("/portal/patienten");
   }
 
   useEffect(() => {
@@ -860,7 +958,7 @@ export default function PortalPatientDetailPage() {
   const showMilestone = extras?.recentMilestone && daysSince(extras.recentMilestone.completedAt) <= 30;
 
   return (
-    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
       <button
         type="button"
         onClick={() => router.push("/portal/patienten")}
@@ -875,186 +973,230 @@ export default function PortalPatientDetailPage() {
         <p className="text-sm text-gray-400">Dit patiëntdossier is niet gevonden.</p>
       ) : (
         <>
-          <div className="flex items-center gap-3 flex-wrap">
-            <SectionHeader title={patient.fullName || "Naam nog niet ingevuld"} subtitle={patient.email ?? undefined} />
-            {statusBadge(patient.status)}
-            {showMilestone && (
-              <Badge variant="accent" className="flex items-center gap-1">
-                <Award size={12} /> Mijlpaal: {extras!.recentMilestone!.title}
-              </Badge>
-            )}
+          <div className="flex items-center gap-4 flex-wrap">
+            <Avatar fullName={patient.fullName} email={patient.email} avatarUrl={null} size={48} />
+            <div className="flex items-center gap-3 flex-wrap">
+              <SectionHeader title={patient.fullName || "Naam nog niet ingevuld"} subtitle={patient.email ?? undefined} />
+              {statusBadge(patient.status)}
+              {showMilestone && (
+                <Badge variant="accent" className="flex items-center gap-1">
+                  <Award size={12} /> Mijlpaal: {extras!.recentMilestone!.title}
+                </Badge>
+              )}
+            </div>
           </div>
 
           <Tabs options={TAB_OPTIONS} value={tab} onChange={setTab} />
 
-          {tab === "overzicht" && (
-          <>
-          {extras?.mainGoal && <MainGoalCard goal={extras.mainGoal} />}
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
+            <div className="space-y-6 min-w-0">
+              {tab === "overzicht" && (
+              <>
+              {extras?.mainGoal && <MainGoalCard goal={extras.mainGoal} />}
 
-          {/* Check-in status — hoe voelt de patiënt zich */}
-          <Card>
-            <CardHeader
-              title="Check-in status"
-              subtitle={lastCheckin ? `Laatste check-in op ${formatDate(lastCheckin.date)}` : undefined}
-              action={
-                <div className="flex items-center gap-2 flex-wrap justify-end">
-                  {lastCheckin?.swelling && <Badge variant="warning" className="flex items-center gap-1"><Droplets size={12} /> Zwelling gemeld</Badge>}
-                  {lastCheckin && <TrendRangeFilter value={trendRange} onChange={setTrendRange} />}
-                </div>
-              }
-            />
-            {!lastCheckin ? (
-              <p className="text-sm text-gray-400">Nog geen check-ins ingevuld.</p>
-            ) : (
-              <div className="space-y-5">
-                <CheckinTrendChart points={extras!.checkinTrend.slice(-trendRange)} />
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
-                  <ScoreBar label="Dagscore" value={lastCheckin.dayScore} max={5} />
-                  {lastCheckin.painScore !== null && <ScoreBar label="Pijn" value={lastCheckin.painScore} max={10} />}
-                  {lastCheckin.mobilityScore !== null && <ScoreBar label="Mobiliteit" value={lastCheckin.mobilityScore} max={5} />}
-                  {lastCheckin.energyScore !== null && <ScoreBar label="Energie" value={lastCheckin.energyScore} max={5} />}
-                  {lastCheckin.moodScore !== null && <ScoreBar label="Stemming" value={lastCheckin.moodScore} max={5} />}
-                  {lastCheckin.sleepScore !== null && <ScoreBar label="Slaap" value={lastCheckin.sleepScore} max={5} />}
-                </div>
-                {lastCheckin.note && <p className="text-sm text-gray-600 italic">&ldquo;{lastCheckin.note}&rdquo;</p>}
-              </div>
-            )}
-          </Card>
+              {/* Check-in status — hoe voelt de patiënt zich */}
+              <Card>
+                <CardHeader
+                  title="Check-in status"
+                  subtitle={lastCheckin ? `Laatste check-in op ${formatDate(lastCheckin.date)}` : undefined}
+                  action={
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                      {lastCheckin?.swelling && <Badge variant="warning" className="flex items-center gap-1"><Droplets size={12} /> Zwelling gemeld</Badge>}
+                      <Button size="sm" variant="secondary" onClick={openCheckinHistory}>
+                        <History size={13} /> Geschiedenis
+                      </Button>
+                      {lastCheckin && <TrendRangeFilter value={trendRange} onChange={setTrendRange} />}
+                    </div>
+                  }
+                />
+                {!lastCheckin ? (
+                  <p className="text-sm text-gray-400">Nog geen check-ins ingevuld.</p>
+                ) : (
+                  <div className="space-y-5">
+                    <CheckinTrendChart points={extras!.checkinTrend.slice(-trendRange)} />
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+                      <ScoreBar label="Dagscore" value={lastCheckin.dayScore} max={5} />
+                      {lastCheckin.painScore !== null && <ScoreBar label="Pijn" value={lastCheckin.painScore} max={10} />}
+                      {lastCheckin.mobilityScore !== null && <ScoreBar label="Mobiliteit" value={lastCheckin.mobilityScore} max={5} />}
+                      {lastCheckin.energyScore !== null && <ScoreBar label="Energie" value={lastCheckin.energyScore} max={5} />}
+                      {lastCheckin.moodScore !== null && <ScoreBar label="Stemming" value={lastCheckin.moodScore} max={5} />}
+                      {lastCheckin.sleepScore !== null && <ScoreBar label="Slaap" value={lastCheckin.sleepScore} max={5} />}
+                    </div>
+                    {lastCheckin.note && <p className="text-sm text-gray-600 italic">&ldquo;{lastCheckin.note}&rdquo;</p>}
+                  </div>
+                )}
+              </Card>
 
-          {/* Vier kaarten: foto, medicatie, afspraak, training */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader title="Laatste foto-update" />
-              {!extras?.latestPhoto ? (
-                <p className="text-sm text-gray-400">Nog geen foto-update.</p>
-              ) : (
-                <div className="space-y-2">
-                  {photoUrl ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowPhotoLightbox(true)}
-                      className="block w-full h-32 rounded-xl overflow-hidden cursor-zoom-in"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={photoUrl} alt="Laatste voortgangsfoto" className="w-full h-full object-cover" />
-                    </button>
+              {/* Vier kaarten: foto, medicatie, afspraak, training */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader
+                    title="Laatste foto-update"
+                    action={extras?.latestPhoto ? (
+                      <Button size="sm" variant="secondary" onClick={() => openGallery(null)}>
+                        <Images size={13} /> Alle foto&apos;s
+                      </Button>
+                    ) : undefined}
+                  />
+                  {!extras?.latestPhoto ? (
+                    <p className="text-sm text-gray-400">Nog geen foto-update.</p>
                   ) : (
-                    <div className="w-full h-32 rounded-xl flex items-center justify-center" style={{ background: "#f3f0eb" }}>
-                      <Camera size={20} style={{ color: "#c4bfb9" }} />
+                    <div className="space-y-2">
+                      {photoUrl ? (
+                        <button
+                          type="button"
+                          onClick={() => openGallery(0)}
+                          className="block w-full h-32 rounded-xl overflow-hidden cursor-zoom-in"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={photoUrl} alt="Laatste voortgangsfoto" className="w-full h-full object-cover" />
+                        </button>
+                      ) : (
+                        <div className="w-full h-32 rounded-xl flex items-center justify-center" style={{ background: "#f3f0eb" }}>
+                          <Camera size={20} style={{ color: "#c4bfb9" }} />
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-500">{formatDate(extras.latestPhoto.date)}</p>
+                      {extras.latestPhoto.note && (
+                        <p className="text-xs text-gray-500 italic line-clamp-2">&ldquo;{extras.latestPhoto.note}&rdquo;</p>
+                      )}
                     </div>
                   )}
-                  <p className="text-xs text-gray-500">{formatDate(extras.latestPhoto.date)}</p>
-                  {extras.latestPhoto.note && (
-                    <p className="text-xs text-gray-500 italic line-clamp-2">&ldquo;{extras.latestPhoto.note}&rdquo;</p>
+                </Card>
+
+                <Card>
+                  <CardHeader title="Laatste medicatie" />
+                  {!extras?.latestMedication ? (
+                    <p className="text-sm text-gray-400">Nog geen medicatie gelogd.</p>
+                  ) : (
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5"><Pill size={14} style={{ color: "var(--brand-accent, #e8632a)" }} /> {extras.latestMedication.medicationName}</p>
+                      {extras.latestMedication.dosage && <p className="text-xs text-gray-500">{extras.latestMedication.dosage}{extras.latestMedication.quantity ? ` · ${extras.latestMedication.quantity}` : ""}</p>}
+                      <p className="text-xs text-gray-400">{formatDate(extras.latestMedication.date)}{extras.latestMedication.time ? ` om ${extras.latestMedication.time}` : ""}</p>
+                      {extras.latestMedication.reason && <p className="text-xs text-gray-500">Reden: {extras.latestMedication.reason}</p>}
+                    </div>
                   )}
-                </div>
-              )}
-            </Card>
+                </Card>
 
-            <Card>
-              <CardHeader title="Laatste medicatie" />
-              {!extras?.latestMedication ? (
-                <p className="text-sm text-gray-400">Nog geen medicatie gelogd.</p>
-              ) : (
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5"><Pill size={14} style={{ color: "var(--brand-accent, #e8632a)" }} /> {extras.latestMedication.medicationName}</p>
-                  {extras.latestMedication.dosage && <p className="text-xs text-gray-500">{extras.latestMedication.dosage}{extras.latestMedication.quantity ? ` · ${extras.latestMedication.quantity}` : ""}</p>}
-                  <p className="text-xs text-gray-400">{formatDate(extras.latestMedication.date)}{extras.latestMedication.time ? ` om ${extras.latestMedication.time}` : ""}</p>
-                  {extras.latestMedication.reason && <p className="text-xs text-gray-500">Reden: {extras.latestMedication.reason}</p>}
-                </div>
-              )}
-            </Card>
-
-            <Card>
-              <CardHeader title="Eerstvolgende afspraak" />
-              {!extras?.upcomingAppointment ? (
-                <p className="text-sm text-gray-400">Geen geplande afspraak.</p>
-              ) : (
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5"><CalendarClock size={14} style={{ color: "var(--brand-accent, #e8632a)" }} /> {extras.upcomingAppointment.title}</p>
-                  {appointmentTypeLabel(extras.upcomingAppointment.appointmentType) && (
-                    <p className="text-xs text-gray-500">{appointmentTypeLabel(extras.upcomingAppointment.appointmentType)}</p>
+                <Card>
+                  <CardHeader title="Eerstvolgende afspraak" />
+                  {!extras?.upcomingAppointment ? (
+                    <p className="text-sm text-gray-400">Geen geplande afspraak.</p>
+                  ) : (
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5"><CalendarClock size={14} style={{ color: "var(--brand-accent, #e8632a)" }} /> {extras.upcomingAppointment.title}</p>
+                      {appointmentTypeLabel(extras.upcomingAppointment.appointmentType) && (
+                        <p className="text-xs text-gray-500">{appointmentTypeLabel(extras.upcomingAppointment.appointmentType)}</p>
+                      )}
+                      <p className="text-xs text-gray-400">{formatDate(extras.upcomingAppointment.date)}{extras.upcomingAppointment.time ? ` om ${extras.upcomingAppointment.time}` : ""}</p>
+                      {extras.upcomingAppointment.location && <p className="text-xs text-gray-500">{extras.upcomingAppointment.location}</p>}
+                    </div>
                   )}
-                  <p className="text-xs text-gray-400">{formatDate(extras.upcomingAppointment.date)}{extras.upcomingAppointment.time ? ` om ${extras.upcomingAppointment.time}` : ""}</p>
-                  {extras.upcomingAppointment.location && <p className="text-xs text-gray-500">{extras.upcomingAppointment.location}</p>}
-                </div>
-              )}
-            </Card>
+                </Card>
 
-            <Card>
-              <CardHeader title="Training deze week" />
-              {!extras || extras.trainingWeek.total === 0 ? (
-                <p className="text-sm text-gray-400">Nog geen trainingen gelogd.</p>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-1.5 text-sm text-gray-700">
-                    <Dumbbell size={14} style={{ color: "var(--brand-accent, #e8632a)" }} />
-                    {extras.trainingWeek.completed} van {extras.trainingWeek.total} voltooid
-                  </div>
-                  <ScoreBar label="Voortgang" value={extras.trainingWeek.completed} max={extras.trainingWeek.total} />
-                </div>
+                <Card>
+                  <CardHeader title="Training deze week" />
+                  {!extras || extras.trainingWeek.total === 0 ? (
+                    <p className="text-sm text-gray-400">Nog geen trainingen gelogd.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-1.5 text-sm text-gray-700">
+                        <Dumbbell size={14} style={{ color: "var(--brand-accent, #e8632a)" }} />
+                        {extras.trainingWeek.completed} van {extras.trainingWeek.total} voltooid
+                      </div>
+                      <ScoreBar label="Voortgang" value={extras.trainingWeek.completed} max={extras.trainingWeek.total} />
+                    </div>
+                  )}
+                </Card>
+              </div>
+              </>
               )}
-            </Card>
-          </div>
 
-          <Card>
-            <CardHeader
-              title="Behandelgegevens"
-              subtitle="Basisgegevens en behandeltraject"
-              action={canManagePatients ? (
-                <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
-                  <Pencil size={13} /> Wijzigen
-                </Button>
-              ) : undefined}
-            />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
-              <div><span className="text-gray-500">Telefoonnummer:</span> <span className="text-gray-800">{patient.phone || "—"}</span></div>
-              <div><span className="text-gray-500">Geboortedatum:</span> <span className="text-gray-800">{patient.dateOfBirth ? formatDate(patient.dateOfBirth) : "—"}</span></div>
-              <div><span className="text-gray-500">Geslacht:</span> <span className="text-gray-800">{genderLabel(patient.gender)}</span></div>
-              <div><span className="text-gray-500">Locatie:</span> <span className="text-gray-800">{patient.locationName || "—"}</span></div>
-              <div><span className="text-gray-500">Behandelend therapeut:</span> <span className="text-gray-800">{patient.therapistName || "—"}</span></div>
-              <div><span className="text-gray-500">Herstelplan:</span> <span className="text-gray-800">{patient.protocolName || "—"}</span></div>
-              <div><span className="text-gray-500">Startdatum behandeling:</span> <span className="text-gray-800">{patient.treatmentStartDate ? formatDate(patient.treatmentStartDate) : "—"}</span></div>
-              <div><span className="text-gray-500">Operatiedatum:</span> <span className="text-gray-800">{patient.surgeryDate ? formatDate(patient.surgeryDate) : "—"}</span></div>
+              {tab === "herstelplan" && (
+                <ProtocolTab
+                  assignment={assignment}
+                  canAssign={canAssignProtocol}
+                  canManageContent={canManageProtocolContent}
+                  onAssignClick={() => { setAssignError(""); setShowAssignModal(true); }}
+                  onToggleCriterion={handleToggleCriterion}
+                  onToggleMilestone={handleToggleMilestone}
+                  onAdvancePhase={setConfirmAdvance}
+                  onRevertPhase={setConfirmRevert}
+                  sessionNotes={sessionNotes}
+                  onAddExerciseClick={(scheduleId) => setAddExerciseModal({ scheduleId })}
+                  onEditExerciseClick={(ex) => { setScheduleExerciseError(""); setEditingScheduleExercise(ex); }}
+                  onRemoveExerciseClick={setConfirmRemoveExercise}
+                  onReorderExercises={handleReorderScheduleExercises}
+                />
+              )}
+
+              {tab === "logboek" && (
+                <LogboekTab
+                  notes={staffNotes}
+                  currentUserId={user?.id ?? null}
+                  saving={addingNote}
+                  onAdd={handleAddStaffNote}
+                  editingNoteId={editingNoteId}
+                  editDraft={editNoteDraft}
+                  onEditDraftChange={setEditNoteDraft}
+                  editSaving={editNoteSaving}
+                  onStartEdit={handleStartEditNote}
+                  onCancelEdit={() => { setEditingNoteId(null); setEditNoteDraft(""); }}
+                  onSaveEdit={handleSaveEditNote}
+                  onDeleteClick={setConfirmDeleteNote}
+                />
+              )}
             </div>
-          </Card>
-          </>
-          )}
 
-          {tab === "herstelplan" && (
-            <ProtocolTab
-              assignment={assignment}
-              canAssign={canAssignProtocol}
-              canManageContent={canManageProtocolContent}
-              onAssignClick={() => { setAssignError(""); setShowAssignModal(true); }}
-              onToggleCriterion={handleToggleCriterion}
-              onToggleMilestone={handleToggleMilestone}
-              onAdvancePhase={setConfirmAdvance}
-              onRevertPhase={setConfirmRevert}
-              sessionNotes={sessionNotes}
-              onAddExerciseClick={(scheduleId) => setAddExerciseModal({ scheduleId })}
-              onEditExerciseClick={(ex) => { setScheduleExerciseError(""); setEditingScheduleExercise(ex); }}
-              onRemoveExerciseClick={setConfirmRemoveExercise}
-              onReorderExercises={handleReorderScheduleExercises}
-            />
-          )}
+            <div className="space-y-6 min-w-0">
+              <Card>
+                <CardHeader title="Status" />
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {statusBadge(patient.status)}
+                    {accountBadge(patient)}
+                  </div>
+                  {canManagePatients && (
+                    <div className="flex flex-wrap gap-2">
+                      {!patient.hasAccount && patient.email && (
+                        <Button size="sm" variant="secondary" disabled={invitingPatient} onClick={handleInvitePatient}>
+                          {invitingPatient ? "Versturen…" : "Uitnodiging versturen"}
+                        </Button>
+                      )}
+                      <Button size="sm" variant="secondary" disabled={archivingPatient} onClick={handleArchivePatient}>
+                        {archivingPatient ? "Opslaan…" : patient.status === "archived" ? "Dearchiveren" : "Archiveren"}
+                      </Button>
+                      <Button size="sm" variant="secondary" onClick={() => setConfirmDeletePatient(true)}>Verwijderen</Button>
+                    </div>
+                  )}
+                </div>
+              </Card>
 
-          {tab === "logboek" && (
-            <LogboekTab
-              notes={staffNotes}
-              currentUserId={user?.id ?? null}
-              saving={addingNote}
-              onAdd={handleAddStaffNote}
-              editingNoteId={editingNoteId}
-              editDraft={editNoteDraft}
-              onEditDraftChange={setEditNoteDraft}
-              editSaving={editNoteSaving}
-              onStartEdit={handleStartEditNote}
-              onCancelEdit={() => { setEditingNoteId(null); setEditNoteDraft(""); }}
-              onSaveEdit={handleSaveEditNote}
-              onDeleteClick={setConfirmDeleteNote}
-            />
-          )}
+              <Card>
+                <CardHeader
+                  title="Behandelgegevens"
+                  subtitle="Basisgegevens en behandeltraject"
+                  action={canManagePatients ? (
+                    <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
+                      <Pencil size={13} /> Wijzigen
+                    </Button>
+                  ) : undefined}
+                />
+                <div className="space-y-3 text-sm">
+                  <div><p className="text-xs text-gray-400">Telefoonnummer</p><p className="text-gray-800">{patient.phone || "—"}</p></div>
+                  <div><p className="text-xs text-gray-400">Geboortedatum</p><p className="text-gray-800">{patient.dateOfBirth ? formatDate(patient.dateOfBirth) : "—"}</p></div>
+                  <div><p className="text-xs text-gray-400">Geslacht</p><p className="text-gray-800">{genderLabel(patient.gender)}</p></div>
+                  <div><p className="text-xs text-gray-400">Locatie</p><p className="text-gray-800">{patient.locationName || "—"}</p></div>
+                  <div><p className="text-xs text-gray-400">Behandelend therapeut</p><p className="text-gray-800">{patient.therapistName || "—"}</p></div>
+                  <div><p className="text-xs text-gray-400">Herstelplan</p><p className="text-gray-800">{patient.protocolName || "—"}</p></div>
+                  <div><p className="text-xs text-gray-400">Startdatum behandeling</p><p className="text-gray-800">{patient.treatmentStartDate ? formatDate(patient.treatmentStartDate) : "—"}</p></div>
+                  <div><p className="text-xs text-gray-400">Operatiedatum</p><p className="text-gray-800">{patient.surgeryDate ? formatDate(patient.surgeryDate) : "—"}</p></div>
+                  <div><p className="text-xs text-gray-400">Blessuredatum</p><p className="text-gray-800">{patient.injuryDate ? formatDate(patient.injuryDate) : "—"}</p></div>
+                  <div><p className="text-xs text-gray-400">Blessuretype</p><p className="text-gray-800">{injuryTypeLabel(patient.injuryType)}</p></div>
+                </div>
+              </Card>
+            </div>
+          </div>
 
           {confirmDeleteNote && (
             <ConfirmDialog
@@ -1195,32 +1337,167 @@ export default function PortalPatientDetailPage() {
             />
           )}
 
-          {showPhotoLightbox && photoUrl && extras?.latestPhoto && (
-            <Modal onClose={() => setShowPhotoLightbox(false)} maxWidth="max-w-2xl">
-              <div className="relative rounded-2xl overflow-hidden" style={{ background: "#ffffff" }}>
-                <button
-                  type="button"
-                  onClick={() => setShowPhotoLightbox(false)}
-                  aria-label="Sluiten"
-                  className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-black/60"
-                  style={{ background: "rgba(0,0,0,0.45)" }}
-                >
-                  <X size={18} color="#ffffff" />
-                </button>
-                <div className="flex items-center justify-center" style={{ background: "#18181a" }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photoUrl} alt="Voortgangsfoto" className="max-w-full max-h-[70vh] object-contain" />
-                </div>
-                <div className="p-4">
-                  <p className="text-sm font-semibold text-gray-800">{formatDate(extras.latestPhoto.date)}</p>
-                  {extras.latestPhoto.note ? (
-                    <p className="text-sm text-gray-600 mt-1.5">&ldquo;{extras.latestPhoto.note}&rdquo;</p>
-                  ) : (
-                    <p className="text-sm italic text-gray-400 mt-1.5">Geen opmerking</p>
-                  )}
+          {checkinHistoryOpen && (
+            <Modal onClose={() => setCheckinHistoryOpen(false)} maxWidth="max-w-3xl">
+              <div className="rounded-2xl p-6" style={{ background: "#ffffff" }}>
+                <h3 className="font-semibold text-gray-900 mb-4">Check-in geschiedenis</h3>
+                {checkinHistoryLoading ? (
+                  <p className="text-sm text-gray-400">Laden…</p>
+                ) : checkinHistory.length === 0 ? (
+                  <p className="text-sm text-gray-400">Nog geen check-ins ingevuld.</p>
+                ) : (
+                  <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr style={{ borderBottom: "1px solid #e8e5df" }}>
+                          <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-3 py-2">Datum</th>
+                          <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-3 py-2">Dagscore</th>
+                          <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-3 py-2">Pijn</th>
+                          <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-3 py-2">Mobiliteit</th>
+                          <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-3 py-2">Energie</th>
+                          <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-3 py-2">Stemming</th>
+                          <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-3 py-2">Slaap</th>
+                          <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-3 py-2">Notitie</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {checkinHistory.map((c) => (
+                          <tr key={c.date} style={{ borderBottom: "1px solid #f8f7f4" }}>
+                            <td className="px-3 py-2.5 text-gray-800 whitespace-nowrap">
+                              {formatDate(c.date)}
+                              {c.swelling && <Droplets size={12} className="inline ml-1.5 -mt-0.5" style={{ color: "#b45309" }} />}
+                            </td>
+                            <td className="px-3 py-2.5 text-gray-600">{c.dayScore}/5</td>
+                            <td className="px-3 py-2.5 text-gray-600">{c.painScore !== null ? `${c.painScore}/10` : "—"}</td>
+                            <td className="px-3 py-2.5 text-gray-600">{c.mobilityScore !== null ? `${c.mobilityScore}/5` : "—"}</td>
+                            <td className="px-3 py-2.5 text-gray-600">{c.energyScore !== null ? `${c.energyScore}/5` : "—"}</td>
+                            <td className="px-3 py-2.5 text-gray-600">{c.moodScore !== null ? `${c.moodScore}/5` : "—"}</td>
+                            <td className="px-3 py-2.5 text-gray-600">{c.sleepScore !== null ? `${c.sleepScore}/5` : "—"}</td>
+                            <td className="px-3 py-2.5 text-gray-500 italic max-w-[200px] truncate">{c.note || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <div className="flex justify-end mt-4">
+                  <Button size="sm" variant="secondary" onClick={() => setCheckinHistoryOpen(false)}>Sluiten</Button>
                 </div>
               </div>
             </Modal>
+          )}
+
+          {galleryOpen && (
+            <Modal onClose={closeGallery} maxWidth={lightboxIndex !== null ? "max-w-2xl" : "max-w-3xl"}>
+              {lightboxIndex !== null ? (
+                (() => {
+                  const item = photoHistory[lightboxIndex];
+                  const url = item?.imagePath ? photoHistoryUrls.get(item.imagePath) ?? null : null;
+                  return (
+                    <div className="relative rounded-2xl overflow-hidden" style={{ background: "#ffffff" }}>
+                      <button
+                        type="button"
+                        onClick={closeGallery}
+                        aria-label="Sluiten"
+                        className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-black/60"
+                        style={{ background: "rgba(0,0,0,0.45)" }}
+                      >
+                        <X size={18} color="#ffffff" />
+                      </button>
+                      {lightboxIndex > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setLightboxIndex((i) => (i !== null ? i - 1 : i))}
+                          aria-label="Vorige foto"
+                          className="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-black/60"
+                          style={{ background: "rgba(0,0,0,0.45)" }}
+                        >
+                          <ChevronLeft size={18} color="#ffffff" />
+                        </button>
+                      )}
+                      {lightboxIndex < photoHistory.length - 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setLightboxIndex((i) => (i !== null ? i + 1 : i))}
+                          aria-label="Volgende foto"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-black/60"
+                          style={{ background: "rgba(0,0,0,0.45)" }}
+                        >
+                          <ChevronRight size={18} color="#ffffff" />
+                        </button>
+                      )}
+                      <div className="flex items-center justify-center" style={{ background: "#18181a" }}>
+                        {url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={url} alt="Voortgangsfoto" className="max-w-full max-h-[70vh] object-contain" />
+                        ) : (
+                          <div className="w-full h-64 flex items-center justify-center">
+                            <Camera size={24} style={{ color: "#52525e" }} />
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-4">
+                        <p className="text-sm font-semibold text-gray-800">
+                          {item ? formatDate(item.date) : ""} <span className="text-xs font-normal text-gray-400">({lightboxIndex + 1}/{photoHistory.length})</span>
+                        </p>
+                        {item?.note ? (
+                          <p className="text-sm text-gray-600 mt-1.5">&ldquo;{item.note}&rdquo;</p>
+                        ) : (
+                          <p className="text-sm italic text-gray-400 mt-1.5">Geen opmerking</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : (
+                <div className="rounded-2xl p-6" style={{ background: "#ffffff" }}>
+                  <h3 className="font-semibold text-gray-900 mb-4">Foto&apos;s</h3>
+                  {galleryLoading ? (
+                    <p className="text-sm text-gray-400">Laden…</p>
+                  ) : photoHistory.length === 0 ? (
+                    <p className="text-sm text-gray-400">Nog geen foto-updates.</p>
+                  ) : (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                      {photoHistory.map((item, index) => {
+                        const url = item.imagePath ? photoHistoryUrls.get(item.imagePath) ?? null : null;
+                        return (
+                          <button
+                            key={`${item.date}-${index}`}
+                            type="button"
+                            onClick={() => setLightboxIndex(index)}
+                            className="space-y-1 text-left"
+                          >
+                            <div className="w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center" style={{ background: "#f3f0eb" }}>
+                              {url ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <Camera size={18} style={{ color: "#c4bfb9" }} />
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500">{formatDateShort(item.date)}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div className="flex justify-end mt-4">
+                    <Button size="sm" variant="secondary" onClick={closeGallery}>Sluiten</Button>
+                  </div>
+                </div>
+              )}
+            </Modal>
+          )}
+
+          {confirmDeletePatient && (
+            <ConfirmDialog
+              title="Patiënt verwijderen?"
+              message="Dit verwijdert het volledige patiëntdossier permanent. Deze actie kan niet ongedaan worden gemaakt."
+              confirmLabel="Verwijderen"
+              loading={deletingPatient}
+              onCancel={() => setConfirmDeletePatient(false)}
+              onConfirm={handleDeletePatient}
+            />
           )}
         </>
       )}

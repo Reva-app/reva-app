@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { X, Check, MapPin, Palette, Users, HeartPulse } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { OnboardingItemGrid } from "@/components/ui/OnboardingItemGrid";
+import { OnboardingProgressPill } from "@/components/ui/OnboardingProgressPill";
 import { loadPortalBranding, markMembershipWelcomed, BRANDING_SETTINGS_ENABLED, type PortalDashboardStats } from "@/lib/services/portalService";
 
 const USPS = [
@@ -19,11 +20,14 @@ interface WelcomePanelProps {
   organizationId: string;
   organizationName: string;
   stats: PortalDashboardStats;
-  onDismiss: () => void;
+  /** true zodra memberships.welcomed_at al eerder gezet is — start dan ingeklapt i.p.v. de volledige kaart te forceren. */
+  initiallyWelcomed: boolean;
 }
 
-export function WelcomePanel({ membershipId, organizationId, organizationName, stats, onDismiss }: WelcomePanelProps) {
+export function WelcomePanel({ membershipId, organizationId, organizationName, stats, initiallyWelcomed }: WelcomePanelProps) {
   const [brandingSet, setBrandingSet] = useState<boolean | null>(null);
+  const [collapsed, setCollapsed] = useState(initiallyWelcomed);
+  const [sessionExpanded, setSessionExpanded] = useState(false);
   const [dismissing, setDismissing] = useState(false);
 
   useEffect(() => {
@@ -37,10 +41,12 @@ export function WelcomePanel({ membershipId, organizationId, organizationName, s
     };
   }, [organizationId]);
 
-  async function handleDismiss() {
+  async function handleCollapse() {
     setDismissing(true);
-    onDismiss();
+    setCollapsed(true);
+    setSessionExpanded(false);
     await markMembershipWelcomed(membershipId);
+    setDismissing(false);
   }
 
   const checklist = [
@@ -52,14 +58,30 @@ export function WelcomePanel({ membershipId, organizationId, organizationName, s
     { label: "Voeg je eerste patiënt toe", done: stats.patientCount > 0, href: "/portal/patienten", icon: HeartPulse },
   ];
 
+  // Nog niet bekend (huisstijl-check nog bezig) → nog niet als "compleet" beoordelen.
+  const allDone = brandingSet !== null && checklist.every((item) => item.done);
+
+  if (allDone) return null;
+
+  if (collapsed && !sessionExpanded) {
+    return (
+      <OnboardingProgressPill
+        label={`Welkom bij REVA, ${organizationName}!`}
+        doneCount={checklist.filter((item) => item.done).length}
+        totalCount={checklist.length}
+        onClick={() => setSessionExpanded(true)}
+      />
+    );
+  }
+
   return (
     <Card className="relative">
       <button
         type="button"
-        onClick={handleDismiss}
+        onClick={handleCollapse}
         disabled={dismissing}
         className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-        aria-label="Sluiten"
+        aria-label="Inklappen"
       >
         <X size={16} />
       </button>
@@ -79,28 +101,11 @@ export function WelcomePanel({ membershipId, organizationId, organizationName, s
         </ul>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
-        {checklist.map((item) => (
-          <Link
-            key={item.label}
-            href={item.href}
-            className="flex items-center gap-3 rounded-xl border p-3 transition-colors hover:bg-gray-50"
-            style={{ borderColor: "#e8e5df" }}
-          >
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: item.done ? "#f0fdf4" : "#f8f7f4" }}
-            >
-              {item.done ? <Check size={15} style={{ color: "#16a34a" }} /> : <item.icon size={15} className="text-gray-400" />}
-            </div>
-            <span className={item.done ? "text-sm text-gray-400 line-through" : "text-sm text-gray-700 font-medium"}>
-              {item.label}
-            </span>
-          </Link>
-        ))}
+      <div className="mb-5">
+        <OnboardingItemGrid items={checklist} columns={2} />
       </div>
 
-      <Button size="sm" variant="secondary" onClick={handleDismiss} disabled={dismissing}>
+      <Button size="sm" variant="secondary" onClick={handleCollapse} disabled={dismissing}>
         Aan de slag
       </Button>
     </Card>

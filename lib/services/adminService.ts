@@ -46,6 +46,12 @@ export interface AdminUser {
   email: string | null;
   createdAt: string;
   isPlatformAdmin: boolean;
+  /** Organisatie van de (eerste) actieve membership — null als deze gebruiker nergens staflid van is (bv. een patiënt). */
+  organizationName: string | null;
+  organizationId: string | null;
+  roleName: string | null;
+  /** Aantal actieve memberships in totaal — voor "+N andere organisaties" als iemand bij meerdere praktijken hoort. */
+  membershipCount: number;
 }
 
 export interface AdminDashboardStats {
@@ -123,22 +129,56 @@ export async function loadAdminOrganizations(): Promise<AdminOrganization[]> {
 
 export async function loadAdminUsers(): Promise<AdminUser[]> {
   const supabase = createClient();
-  const [profilesRes, adminsRes] = await Promise.all([
+  const [profilesRes, adminsRes, membershipsRes] = await Promise.all([
     supabase.from("profiles").select("id, full_name, email, created_at").order("created_at", { ascending: false }),
     supabase.from("platform_admins").select("user_id"),
+    supabase.from("memberships").select("user_id, organization_id, role_id").eq("status", "active"),
   ]);
   if (profilesRes.error) { logErr("loadAdminUsers", profilesRes.error); return []; }
   if (adminsRes.error) logErr("loadAdminUsers(platform_admins)", adminsRes.error);
+  if (membershipsRes.error) logErr("loadAdminUsers(memberships)", membershipsRes.error);
 
   const adminIds = new Set((adminsRes.data ?? []).map((a) => a.user_id as string));
+  const membershipRows = membershipsRes.data ?? [];
 
-  return (profilesRes.data ?? []).map((row) => ({
-    id: row.id as string,
-    fullName: row.full_name as string | null,
-    email: row.email as string | null,
-    createdAt: row.created_at as string,
-    isPlatformAdmin: adminIds.has(row.id as string),
-  }));
+  const orgIds = [...new Set(membershipRows.map((m) => m.organization_id as string))];
+  const roleIds = [...new Set(membershipRows.map((m) => m.role_id as string))];
+  const [orgsRes, rolesRes] = await Promise.all([
+    orgIds.length > 0
+      ? supabase.from("organizations").select("id, name").in("id", orgIds)
+      : Promise.resolve({ data: [] as { id: string; name: string }[], error: null }),
+    roleIds.length > 0
+      ? supabase.from("roles").select("id, name").in("id", roleIds)
+      : Promise.resolve({ data: [] as { id: string; name: string }[], error: null }),
+  ]);
+  const orgMap = new Map((orgsRes.data ?? []).map((o) => [o.id, o.name]));
+  const roleMap = new Map((rolesRes.data ?? []).map((r) => [r.id, r.name]));
+
+  // Eén gebruiker kan (zelden) bij meerdere organisaties staflid zijn — we
+  // tonen de eerste, plus het totaalaantal zodat de UI "+N" kan tonen.
+  const membershipsByUser = new Map<string, typeof membershipRows>();
+  for (const m of membershipRows) {
+    const list = membershipsByUser.get(m.user_id as string) ?? [];
+    list.push(m);
+    membershipsByUser.set(m.user_id as string, list);
+  }
+
+  return (profilesRes.data ?? []).map((row) => {
+    const userId = row.id as string;
+    const userMemberships = membershipsByUser.get(userId) ?? [];
+    const primary = userMemberships[0];
+    return {
+      id: userId,
+      fullName: row.full_name as string | null,
+      email: row.email as string | null,
+      createdAt: row.created_at as string,
+      isPlatformAdmin: adminIds.has(userId),
+      organizationName: primary ? orgMap.get(primary.organization_id as string) ?? null : null,
+      organizationId: primary ? (primary.organization_id as string) : null,
+      roleName: primary ? roleMap.get(primary.role_id as string) ?? null : null,
+      membershipCount: userMemberships.length,
+    };
+  });
 }
 
 // ─── Organisatiedetail ──────────────────────────────────────────────────────

@@ -11,6 +11,7 @@ import type { MedicatieLog, CheckIn, DagboekWorkout, Appointment } from "@/lib/d
 import type { InnameFormFields } from "@/components/medicatie/InnameModal";
 import { todayStr } from "@/lib/dateUtils";
 import { usePatientProtocol } from "@/lib/hooks/usePatientProtocol";
+import { useNavigationBlocker } from "@/lib/hooks/useNavigationBlocker";
 
 // ─── Lazy-loaded modals (worden pas geladen als ze geopend worden) ─────────────
 
@@ -207,6 +208,7 @@ export function QuickActionFAB() {
   // i.p.v. het oude TrainingModal-sheet te openen, anders logt de patiënt in
   // een dataset die de fysio niet meer ziet.
   const { hasActiveProtocol } = usePatientProtocol();
+  const { isBlocked } = useNavigationBlocker();
 
   if (!hydrated) return null;
 
@@ -215,6 +217,7 @@ export function QuickActionFAB() {
 
   function openSheet(sheet: Sheet) {
     if (sheet === "training" && hasActiveProtocol) {
+      if (isBlocked && !window.confirm("Je hebt niet-opgeslagen wijzigingen. Weet je zeker dat je wilt vertrekken zonder op te slaan?")) return;
       setFabOpen(false);
       router.push("/training");
       return;

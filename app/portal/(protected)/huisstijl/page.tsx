@@ -48,10 +48,6 @@ export default function PortalHuisstijlPage() {
     if (uploadError) { showToast(uploadError, "error"); return; }
     refresh();
     showToast("Logo opgeslagen");
-    // usePortalBranding houdt geen gedeelde cache bij — de zijbalk/mobiele balk
-    // laden hun eigen huisstijl onafhankelijk in, dus een volledige herlaad is
-    // hier nog steeds nodig om het nieuwe logo daar ook te tonen.
-    setTimeout(() => window.location.reload(), 800);
   }
 
   async function handleSave() {
@@ -67,9 +63,7 @@ export default function PortalHuisstijlPage() {
     setSaving(false);
     if (saveError) { showToast(saveError, "error"); return; }
     showToast("Huisstijl opgeslagen");
-    // Zie handleLogoSelect: geen gedeelde branding-cache, dus reload nodig voor
-    // de zijbalk/mobiele balk.
-    setTimeout(() => window.location.reload(), 800);
+    refresh();
   }
 
   if (checked && membership && !canManage) {

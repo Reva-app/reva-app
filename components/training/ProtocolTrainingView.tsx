@@ -5,10 +5,10 @@ import { Check, Loader2, Info } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
 import { ScoreBar } from "@/components/ui/ScoreBar";
 import { useToast } from "@/components/ui/Toast";
 import { ExerciseThumb } from "@/components/portal/ExerciseThumb";
+import { useBlocksNavigation } from "@/lib/hooks/useNavigationBlocker";
 import {
   logProtocolSession,
   type PatientActiveProtocol, type PatientProtocolScheduleView, type PatientExerciseLogInput,
@@ -28,7 +28,6 @@ export function ProtocolTrainingView({
   patientId: string;
   onLogged: () => void;
 }) {
-  const [logSchedule, setLogSchedule] = useState<PatientProtocolScheduleView | null>(null);
   const { showToast, toastNode } = useToast();
 
   const phase = protocol.currentPhase;
@@ -54,38 +53,12 @@ export function ProtocolTrainingView({
           )}
 
           {phase.schedules.map((schedule) => (
-            <Card key={schedule.id}>
-              <CardHeader
-                title={schedule.title}
-                subtitle={`${schedule.frequencyPerWeek}× per week`}
-                action={
-                  <Button size="sm" onClick={() => setLogSchedule(schedule)}>
-                    <Check size={13} /> Sessie loggen
-                  </Button>
-                }
-              />
-              <div className="space-y-3">
-                <ScoreBar label="Deze week" value={Math.min(schedule.completedThisWeek, schedule.frequencyPerWeek)} max={schedule.frequencyPerWeek} />
-                <div className="space-y-2">
-                  {schedule.exercises.map((ex) => (
-                    <div key={ex.id} className="flex items-start gap-2.5 rounded-xl p-3" style={{ background: "#f8f7f4" }}>
-                      <ExerciseThumb mediaPath={ex.mediaPath} size={36} />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 text-sm font-medium text-gray-800 flex-wrap">
-                          {ex.title}
-                          {(ex.prescribedSets || ex.prescribedReps) && (
-                            <span className="text-xs font-normal text-gray-400">
-                              — {ex.prescribedSets ?? "?"}×{ex.prescribedReps ?? "?"}{ex.prescribedLoadText ? ` · ${ex.prescribedLoadText}` : ""}
-                            </span>
-                          )}
-                        </div>
-                        {ex.instructions && <p className="text-xs text-gray-500 mt-1.5">{ex.instructions}</p>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Card>
+            <ScheduleLogCard
+              key={schedule.id}
+              schedule={schedule}
+              patientId={patientId}
+              onSaved={() => { onLogged(); showToast("Sessie opgeslagen"); }}
+            />
           ))}
 
           {phase.milestones.length > 0 && (
@@ -125,44 +98,49 @@ export function ProtocolTrainingView({
           )}
         </>
       )}
-
-      {logSchedule && (
-        <LogSessionModal
-          schedule={logSchedule}
-          patientId={patientId}
-          onClose={() => setLogSchedule(null)}
-          onSaved={() => { setLogSchedule(null); onLogged(); showToast("Sessie opgeslagen"); }}
-        />
-      )}
       {toastNode}
     </div>
   );
 }
 
-function LogSessionModal({
-  schedule, patientId, onClose, onSaved,
+type ExerciseLogValues = { sets: string; reps: string; weightKg: string; painScore: string };
+
+function emptyValues(schedule: PatientProtocolScheduleView): Record<string, ExerciseLogValues> {
+  return Object.fromEntries(schedule.exercises.map((ex) => [
+    ex.id,
+    { sets: ex.prescribedSets?.toString() ?? "", reps: ex.prescribedReps?.toString() ?? "", weightKg: "", painScore: "" },
+  ]));
+}
+
+/**
+ * Sessie loggen gebeurt rechtstreeks op de pagina, bij elke oefening zelf —
+ * geen apart modal-scherm meer (net als bekende fitness-apps: invullen
+ * terwijl je de sessie doorloopt, onderaan in één keer opslaan).
+ */
+function ScheduleLogCard({
+  schedule, patientId, onSaved,
 }: {
   schedule: PatientProtocolScheduleView;
   patientId: string;
-  onClose: () => void;
   onSaved: () => void;
 }) {
-  const [values, setValues] = useState<Record<string, { sets: string; reps: string; weightKg: string; painScore: string }>>(
-    () => Object.fromEntries(schedule.exercises.map((ex) => [
-      ex.id,
-      { sets: ex.prescribedSets?.toString() ?? "", reps: ex.prescribedReps?.toString() ?? "", weightKg: "", painScore: "" },
-    ]))
-  );
+  const [initialValues] = useState(() => emptyValues(schedule));
+  const [values, setValues] = useState<Record<string, ExerciseLogValues>>(initialValues);
+  const [reflection, setReflection] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [reflection, setReflection] = useState("");
 
-  function update(exerciseId: string, field: "sets" | "reps" | "weightKg" | "painScore", value: string) {
+  // Zodra iemand iets invult wijken values/reflection af van de startwaarden
+  // — dan waarschuwen we bij het wegnavigeren, net als andere formulieren
+  // met niet-opgeslagen wijzigingen in de app (zie useNavigationBlocker).
+  const isDirty = reflection.trim() !== "" || JSON.stringify(values) !== JSON.stringify(initialValues);
+  useBlocksNavigation(schedule.id, isDirty);
+
+  function update(exerciseId: string, field: keyof ExerciseLogValues, value: string) {
     setValues((prev) => ({ ...prev, [exerciseId]: { ...prev[exerciseId], [field]: value } }));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSave() {
     setSaving(true);
     setError("");
     const exerciseLogs: PatientExerciseLogInput[] = schedule.exercises.map((ex) => {
@@ -182,19 +160,36 @@ function LogSessionModal({
       setError("Opslaan mislukt: " + saveError);
       return;
     }
+    setValues(emptyValues(schedule));
+    setReflection("");
     onSaved();
   }
 
   return (
-    <Modal onClose={onClose} maxWidth="max-w-md" dismissOnBackdropClick={false}>
-      <div className="rounded-2xl p-6" style={{ background: "#ffffff" }}>
-        <h3 className="font-semibold text-gray-900 mb-1">{schedule.title} loggen</h3>
-        <p className="text-xs text-gray-500 mb-4">Vul in wat je daadwerkelijk hebt gedaan — dit helpt je fysiotherapeut je voortgang te volgen.</p>
-        <form onSubmit={handleSubmit} className="space-y-4 max-h-[60vh] overflow-y-auto">
+    <Card>
+      <CardHeader title={schedule.title} subtitle={`${schedule.frequencyPerWeek}× per week`} />
+      <div className="space-y-3">
+        <ScoreBar label="Deze week" value={Math.min(schedule.completedThisWeek, schedule.frequencyPerWeek)} max={schedule.frequencyPerWeek} />
+
+        <div className="space-y-2">
           {schedule.exercises.map((ex) => (
-            <div key={ex.id} className="rounded-xl border p-3" style={{ borderColor: "#e8e5df" }}>
-              <p className="text-sm font-medium text-gray-800 mb-2">{ex.title}</p>
-              <div className="grid grid-cols-3 gap-2">
+            <div key={ex.id} className="rounded-xl p-3" style={{ background: "#f8f7f4" }}>
+              <div className="flex items-start gap-2.5">
+                <ExerciseThumb mediaPath={ex.mediaPath} size={36} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 text-sm font-medium text-gray-800 flex-wrap">
+                    {ex.title}
+                    {(ex.prescribedSets || ex.prescribedReps) && (
+                      <span className="text-xs font-normal text-gray-400">
+                        — doel: {ex.prescribedSets ?? "?"}×{ex.prescribedReps ?? "?"}{ex.prescribedLoadText ? ` · ${ex.prescribedLoadText}` : ""}
+                      </span>
+                    )}
+                  </div>
+                  {ex.instructions && <p className="text-xs text-gray-500 mt-1">{ex.instructions}</p>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2.5">
                 <div>
                   <label className="block text-[11px] text-gray-400 mb-1">Sets</label>
                   <input type="number" min={0} value={values[ex.id].sets} onChange={(e) => update(ex.id, "sets", e.target.value)}
@@ -210,34 +205,36 @@ function LogSessionModal({
                   <input type="number" min={0} step="0.5" value={values[ex.id].weightKg} onChange={(e) => update(ex.id, "weightKg", e.target.value)}
                     className="w-full text-sm rounded-lg border px-2 py-1.5 focus:outline-none" style={inputStyle} />
                 </div>
-              </div>
-              <div className="mt-2">
-                <label className="block text-[11px] text-gray-400 mb-1">Pijnscore (1-10, optioneel)</label>
-                <input type="number" min={1} max={10} value={values[ex.id].painScore} onChange={(e) => update(ex.id, "painScore", e.target.value)}
-                  className="w-full text-sm rounded-lg border px-2 py-1.5 focus:outline-none" style={inputStyle} />
+                <div>
+                  <label className="block text-[11px] text-gray-400 mb-1">Pijn (1-10)</label>
+                  <input type="number" min={1} max={10} value={values[ex.id].painScore} onChange={(e) => update(ex.id, "painScore", e.target.value)}
+                    className="w-full text-sm rounded-lg border px-2 py-1.5 focus:outline-none" style={inputStyle} />
+                </div>
               </div>
             </div>
           ))}
-          <div>
-            <label className="block text-[11px] text-gray-400 mb-1">Notitie (optioneel) — ook zichtbaar voor je fysiotherapeut</label>
-            <textarea
-              value={reflection}
-              onChange={(e) => setReflection(e.target.value)}
-              placeholder="Bijv. hoe de sessie voelde, pijn of vermoeidheid, vragen voor je fysio..."
-              rows={2}
-              className="w-full text-sm rounded-lg border px-2.5 py-2 resize-none focus:outline-none"
-              style={inputStyle}
-            />
-          </div>
-          {error && <p className="text-xs" style={{ color: "#dc2626" }}>{error}</p>}
-          <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" size="sm" variant="secondary" onClick={onClose}>Annuleren</Button>
-            <Button type="submit" size="sm" disabled={saving}>
-              {saving ? <Loader2 size={13} className="animate-spin" /> : "Sessie opslaan"}
-            </Button>
-          </div>
-        </form>
+        </div>
+
+        <div>
+          <label className="block text-[11px] text-gray-400 mb-1">Notitie (optioneel) — ook zichtbaar voor je fysiotherapeut</label>
+          <textarea
+            value={reflection}
+            onChange={(e) => setReflection(e.target.value)}
+            placeholder="Bijv. hoe de sessie voelde, pijn of vermoeidheid, vragen voor je fysio..."
+            rows={2}
+            className="w-full text-sm rounded-lg border px-2.5 py-2 resize-none focus:outline-none"
+            style={inputStyle}
+          />
+        </div>
+
+        {error && <p className="text-xs" style={{ color: "#dc2626" }}>{error}</p>}
+
+        <div className="flex justify-end">
+          <Button size="sm" onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 size={13} className="animate-spin" /> : <><Check size={13} /> Sessie opslaan</>}
+          </Button>
+        </div>
       </div>
-    </Modal>
+    </Card>
   );
 }

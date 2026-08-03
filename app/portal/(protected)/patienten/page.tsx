@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { HeartPulse, UserPlus, Search, ChevronUp, ChevronDown, Download } from "lucide-react";
+import { HeartPulse, UserPlus, Search, ChevronUp, ChevronDown, Download, Users, AlertTriangle, UserX } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { StatCard } from "@/components/ui/StatCard";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
@@ -325,8 +326,12 @@ export default function PortalPatientsPage() {
     if (membership) refresh(membership.organizationId);
   }
 
+  const activePatientsCount = patients.filter((p) => p.status === "active").length;
+  const lowActivityCount = patients.filter((p) => p.status === "active" && isPatientInactive(p.lastCheckinDate, p.createdAt)).length;
+  const noAccountCount = patients.filter((p) => !p.hasAccount).length;
+
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-[1600px] mx-auto space-y-6">
       <div className="flex items-start justify-between flex-wrap gap-3">
         <SectionHeader
           title="Patiënten"
@@ -347,6 +352,13 @@ export default function PortalPatientsPage() {
             </Button>
           )}
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <StatCard label="Totaal" value={patients.length} icon={Users} />
+        <StatCard label="Actief" value={activePatientsCount} icon={HeartPulse} />
+        <StatCard label="Weinig activiteit" value={lowActivityCount} icon={AlertTriangle} />
+        <StatCard label="Nog geen account" value={noAccountCount} icon={UserX} />
       </div>
 
       {showWizard && membership && (

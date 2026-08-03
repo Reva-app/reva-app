@@ -21,6 +21,9 @@ import { canAddDossierDocument } from "@/lib/featureGates";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 import { useToast } from "@/components/ui/Toast";
 import { useMergedContactpersonen, THERAPIST_CONTACT_ID } from "@/lib/hooks/useMergedContactpersonen";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 import {
   FileText, Users, Plus, Phone, Mail, Building,
   Download, Eye, Trash2, X, Pencil, Check, Camera, Upload, Image as ImageIcon, Lock,
@@ -471,27 +474,6 @@ function ContactModal({ initial, onClose, onSave }: {
   );
 }
 
-// ─── Empty state ──────────────────────────────────────────────────────────────
-
-function EmptyState({ icon: Icon, title, sub, onAdd, label }: {
-  icon: React.ElementType; title: string; sub: string; onAdd: () => void; label: string;
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4" style={{ background: "#f3f0eb" }}>
-        <Icon size={20} className="text-gray-300" />
-      </div>
-      <p className="text-sm font-medium text-gray-500 mb-1">{title}</p>
-      <p className="text-xs text-gray-300 mb-5">{sub}</p>
-      <button onClick={onAdd}
-        className="flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-xl transition-colors"
-        style={{ background: "#1c1c1e", color: "#ffffff" }}>
-        <Plus size={13} /> {label}
-      </button>
-    </div>
-  );
-}
-
 // ─── Foto timeline ────────────────────────────────────────────────────────────
 
 function FotoTimeline({ fotos, blessureDatum, onDelete }: {
@@ -653,7 +635,7 @@ export default function DossierPage() {
     return "Contactpersoon toevoegen";
   }
 
-  if (!hydrated) return null;
+  if (!hydrated) return <PageSkeleton />;
 
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
@@ -731,8 +713,14 @@ export default function DossierPage() {
       {/* ── Documenten ───────────────────────────────────────────────────── */}
       {tab === "documenten" && (
         sortedDocs.length === 0 ? (
-          <EmptyState icon={FileText} title="Nog geen documenten" sub="Voeg je eerste medisch document toe"
-            onAdd={() => setDocModal({ open: true })} label="Document toevoegen" />
+          <EmptyState icon={FileText} title="Nog geen documenten" description="Voeg je eerste medisch document toe"
+            action={
+              <button onClick={() => setDocModal({ open: true })}
+                className="flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-xl transition-colors"
+                style={{ background: "#1c1c1e", color: "#ffffff" }}>
+                <Plus size={13} /> Document toevoegen
+              </button>
+            } />
         ) : (
           <div className="space-y-3">
             {sortedDocs.map((doc) => (
@@ -791,8 +779,14 @@ export default function DossierPage() {
       {/* ── Foto updates ─────────────────────────────────────────────────── */}
       {tab === "foto-updates" && (
         sortedFotos.length === 0 ? (
-          <EmptyState icon={Camera} title="Nog geen foto updates" sub="Documenteer je visuele voortgang per week"
-            onAdd={() => setFotoModal(true)} label="Foto toevoegen" />
+          <EmptyState icon={Camera} title="Nog geen foto updates" description="Documenteer je visuele voortgang per week"
+            action={
+              <button onClick={() => setFotoModal(true)}
+                className="flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-xl transition-colors"
+                style={{ background: "#1c1c1e", color: "#ffffff" }}>
+                <Plus size={13} /> Foto toevoegen
+              </button>
+            } />
         ) : (
           <FotoTimeline
             fotos={sortedFotos}
@@ -805,8 +799,14 @@ export default function DossierPage() {
       {/* ── Contactpersonen ──────────────────────────────────────────────── */}
       {tab === "contactpersonen" && (
         mergedContactpersonen.length === 0 ? (
-          <EmptyState icon={Users} title="Nog geen contactpersonen" sub="Voeg je zorgverleners toe voor snel overzicht"
-            onAdd={() => setContactModal({ open: true })} label="Contactpersoon toevoegen" />
+          <EmptyState icon={Users} title="Nog geen contactpersonen" description="Voeg je zorgverleners toe voor snel overzicht"
+            action={
+              <button onClick={() => setContactModal({ open: true })}
+                className="flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-xl transition-colors"
+                style={{ background: "#1c1c1e", color: "#ffffff" }}>
+                <Plus size={13} /> Contactpersoon toevoegen
+              </button>
+            } />
         ) : (
           <div className="space-y-3">
             {mergedContactpersonen.map((c) => {
@@ -898,27 +898,20 @@ export default function DossierPage() {
 
       {/* ── Confirm delete ────────────────────────────────────────────────── */}
       {confirmDel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.35)", backdropFilter: "blur(2px)" }}>
-          <div className="rounded-2xl bg-white p-6 w-full max-w-sm shadow-2xl">
-            <p className="text-sm font-semibold text-gray-900 mb-1">Verwijderen?</p>
-            <p className="text-xs text-gray-400 mb-5">Deze actie kan niet ongedaan worden gemaakt.</p>
-            <div className="flex gap-2 justify-end">
-              <Button variant="secondary" size="sm" onClick={() => setConfirmDel(null)}>Annuleren</Button>
-              <button onClick={() => {
-                const labels = { doc: "Document", foto: "Foto", contact: "Contactpersoon" } as const;
-                if (confirmDel.type === "doc")     deleteDossierDocument(confirmDel.id);
-                if (confirmDel.type === "foto")    deleteFotoUpdate(confirmDel.id);
-                if (confirmDel.type === "contact") deleteContactpersoon(confirmDel.id);
-                showToast(`${labels[confirmDel.type]} verwijderd`);
-                setConfirmDel(null);
-              }} className="text-sm font-semibold px-3 py-1.5 rounded-xl transition-colors"
-                style={{ background: "#fef2f2", color: "#ef4444" }}>
-                Verwijderen
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          title={`${{ doc: "Document", foto: "Foto", contact: "Contactpersoon" }[confirmDel.type]} verwijderen?`}
+          message="Deze actie kan niet ongedaan worden gemaakt."
+          confirmLabel="Verwijderen"
+          onCancel={() => setConfirmDel(null)}
+          onConfirm={() => {
+            const labels = { doc: "Document", foto: "Foto", contact: "Contactpersoon" } as const;
+            if (confirmDel.type === "doc")     deleteDossierDocument(confirmDel.id);
+            if (confirmDel.type === "foto")    deleteFotoUpdate(confirmDel.id);
+            if (confirmDel.type === "contact") deleteContactpersoon(confirmDel.id);
+            showToast(`${labels[confirmDel.type]} verwijderd`);
+            setConfirmDel(null);
+          }}
+        />
       )}
 
       {showUpgradeModal && (

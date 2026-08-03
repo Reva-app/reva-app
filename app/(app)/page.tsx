@@ -25,6 +25,7 @@ import { usePatientCareContext } from "@/lib/hooks/usePatientCareContext";
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
 import { CoachPanel } from "@/components/dashboard/CoachPanel";
 import { WeekSummaryCard } from "@/components/dashboard/WeekSummaryCard";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 
 // ─── Lazy-loaded modals ────────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -549,7 +550,7 @@ export default function Dashboard() {
     }
   }, []);
 
-  if (!hydrated || !protocolChecked) return null;
+  if (!hydrated || !protocolChecked) return <PageSkeleton />;
 
   const today      = todayStr();
   const weekDates  = getWeekDates();

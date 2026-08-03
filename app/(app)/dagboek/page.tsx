@@ -9,6 +9,8 @@ import { DayActivityDots } from "@/components/ui/Charts";
 import { usePatientProtocol } from "@/lib/hooks/usePatientProtocol";
 import { loadSessionLogsInRange, type ProtocolSessionLogSummary } from "@/lib/services/patientProtocolService";
 import { useMergedContactpersonen } from "@/lib/hooks/useMergedContactpersonen";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 import dynamic from "next/dynamic";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -114,25 +116,14 @@ function DetailItem({ appointment, onDelete, onEdit }: {
           <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: cfg.text }}>{cfg.label}</span>
           {appointment.time && <span className="flex items-center gap-1 text-[10px] text-gray-400"><Clock size={9} /> {appointment.time}</span>}
           <div className="ml-auto flex items-center gap-1 shrink-0">
-            {!confirmDel ? (
-              <>
-                <button onClick={() => onEdit(appointment)}
-                  className="w-5 h-5 rounded flex items-center justify-center hover:bg-white/60 transition-colors" title="Bewerken">
-                  <Pencil size={10} style={{ color: cfg.text, opacity: 0.6 }} />
-                </button>
-                <button onClick={() => setConfirmDel(true)}
-                  className="w-5 h-5 rounded flex items-center justify-center hover:bg-white/60 transition-colors" title="Verwijderen">
-                  <Trash2 size={10} style={{ color: cfg.text, opacity: 0.6 }} />
-                </button>
-              </>
-            ) : (
-              <div className="flex items-center gap-1">
-                <button onClick={() => { onDelete(appointment.id); setConfirmDel(false); }}
-                  className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: "#fef2f2", color: "#ef4444" }}>Ja</button>
-                <button onClick={() => setConfirmDel(false)}
-                  className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: "#f3f4f6", color: "#6b7280" }}>Nee</button>
-              </div>
-            )}
+            <button onClick={() => onEdit(appointment)}
+              className="w-5 h-5 rounded flex items-center justify-center hover:bg-white/60 transition-colors" title="Bewerken">
+              <Pencil size={10} style={{ color: cfg.text, opacity: 0.6 }} />
+            </button>
+            <button onClick={() => setConfirmDel(true)}
+              className="w-5 h-5 rounded flex items-center justify-center hover:bg-white/60 transition-colors" title="Verwijderen">
+              <Trash2 size={10} style={{ color: cfg.text, opacity: 0.6 }} />
+            </button>
           </div>
         </div>
         <p className="text-sm font-medium text-gray-800 leading-snug">{appointment.title}</p>
@@ -148,6 +139,15 @@ function DetailItem({ appointment, onDelete, onEdit }: {
           <CalendarPlus size={12} /> Toevoegen aan agenda
         </button>
       </div>
+      {confirmDel && (
+        <ConfirmDialog
+          title="Afspraak verwijderen?"
+          message={`"${appointment.title}" wordt verwijderd.`}
+          confirmLabel="Verwijderen"
+          onCancel={() => setConfirmDel(false)}
+          onConfirm={() => { onDelete(appointment.id); setConfirmDel(false); }}
+        />
+      )}
     </div>
   );
 }
@@ -216,7 +216,7 @@ export default function DagboekPage() {
     setSelectedDate(apt.date);
   }
 
-  if (!hydrated) return null;
+  if (!hydrated) return <PageSkeleton />;
 
   return (
     <div className="flex flex-col lg:flex-row h-full min-h-0">

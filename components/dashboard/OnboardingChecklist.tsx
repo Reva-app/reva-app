@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { ClipboardCheck, Target, Dumbbell, Pill, Calendar, Camera, Check, X } from "lucide-react";
+import { ClipboardCheck, Target, Dumbbell, Pill, Calendar, Camera, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { OnboardingItemGrid } from "@/components/ui/OnboardingItemGrid";
+import { OnboardingProgressPill } from "@/components/ui/OnboardingProgressPill";
 import { useAuth } from "@/components/auth/AuthProvider";
 import type {
   CheckIn, Doel, DagboekWorkout, Appointment, MedicatieLog, FotoUpdate,
@@ -21,7 +22,7 @@ interface OnboardingChecklistProps {
   fotoUpdates: FotoUpdate[];
 }
 
-function dismissKey(userId: string) {
+function collapseKey(userId: string) {
   return `reva_checklist_dismissed_${userId}`;
 }
 
@@ -29,14 +30,21 @@ export function OnboardingChecklist({
   hasActiveProtocol, protocol, checkIns, doelen, dagboekWorkouts, appointments, medicatie, fotoUpdates,
 }: OnboardingChecklistProps) {
   const { user } = useAuth();
-  const [dismissed, setDismissed] = useState(() =>
-    typeof window !== "undefined" && user ? localStorage.getItem(dismissKey(user.id)) === "1" : false
+  // Heeft de gebruiker de kaart ooit al ingeklapt? Zo ja, start ingeklapt
+  // (als pill) i.p.v. de volledige kaart opnieuw te forceren bij elk bezoek.
+  const [hasCollapsedBefore, setHasCollapsedBefore] = useState(() =>
+    typeof window !== "undefined" && user ? localStorage.getItem(collapseKey(user.id)) === "1" : false
   );
+  // Sessie-only: klik op de pill klapt 'm deze sessie weer open, zonder de
+  // "al eens ingeklapt"-vlag te wissen — bij een volgend bezoek start hij
+  // weer ingeklapt, bewust laag-nagging.
+  const [sessionExpanded, setSessionExpanded] = useState(false);
 
-  function handleDismiss() {
+  function handleCollapse() {
     if (!user) return;
-    localStorage.setItem(dismissKey(user.id), "1");
-    setDismissed(true);
+    localStorage.setItem(collapseKey(user.id), "1");
+    setHasCollapsedBefore(true);
+    setSessionExpanded(false);
   }
 
   const trainingDone = hasActiveProtocol
@@ -56,14 +64,25 @@ export function OnboardingChecklist({
   const requiredDone = required.filter((i) => i.done).length;
   const allRequiredDone = requiredDone === required.length;
 
-  if (dismissed || allRequiredDone) return null;
+  if (allRequiredDone) return null;
+
+  if (hasCollapsedBefore && !sessionExpanded) {
+    return (
+      <OnboardingProgressPill
+        label="Aan de slag met REVA"
+        doneCount={requiredDone}
+        totalCount={required.length}
+        onClick={() => setSessionExpanded(true)}
+      />
+    );
+  }
 
   return (
     <Card className="relative">
       <button
         type="button"
-        onClick={handleDismiss}
-        aria-label="Verbergen"
+        onClick={handleCollapse}
+        aria-label="Inklappen"
         className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
       >
         <X size={16} />
@@ -79,26 +98,7 @@ export function OnboardingChecklist({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {items.map((item) => (
-          <Link
-            key={item.label}
-            href={item.href}
-            className="flex items-center gap-3 rounded-xl border p-3 transition-colors hover:bg-gray-50"
-            style={{ borderColor: "#e8e5df" }}
-          >
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: item.done ? "#f0fdf4" : "#f8f7f4" }}
-            >
-              {item.done ? <Check size={15} style={{ color: "#16a34a" }} /> : <item.icon size={15} className="text-gray-400" />}
-            </div>
-            <span className={item.done ? "text-sm text-gray-400 line-through" : "text-sm text-gray-700 font-medium"}>
-              {item.label}
-            </span>
-          </Link>
-        ))}
-      </div>
+      <OnboardingItemGrid items={items} columns={2} />
     </Card>
   );
 }

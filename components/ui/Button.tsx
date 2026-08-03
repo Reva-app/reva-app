@@ -30,8 +30,10 @@ export function Button({
         "inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed",
         sizes[size],
         fullWidth && "w-full",
+        variant === "primary" &&
+          "hover:brightness-90 active:brightness-95",
         variant === "secondary" &&
-          "border text-gray-700 hover:bg-gray-50",
+          "border border-[#e8e5df] bg-white text-gray-700 hover:bg-gray-50",
         variant === "ghost" &&
           "text-gray-600 hover:bg-gray-100",
         variant === "danger" &&
@@ -43,11 +45,6 @@ export function Button({
           ? {
               background: "var(--brand-accent, #e8632a)",
               color: "#ffffff",
-            }
-          : variant === "secondary"
-          ? {
-              borderColor: "#e8e5df",
-              background: "#ffffff",
             }
           : undefined
       }

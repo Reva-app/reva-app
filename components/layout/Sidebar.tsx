@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { BlockableLink as Link } from "./BlockableLink";
 import {
   LayoutDashboard,
   ClipboardCheck,

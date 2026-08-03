@@ -20,6 +20,9 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 import { useUserPlan } from "@/lib/hooks/useUserPlan";
 import { canAddTrainingOefening } from "@/lib/featureGates";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
@@ -420,7 +423,7 @@ function SchemaFormModal({
             <div className="rounded-xl border px-4 py-6 text-center"
               style={{ borderColor: "#e8e5df", background: "#f8f7f4" }}>
               <p className="text-xs text-gray-400">Nog geen oefeningen in je database.</p>
-              <p className="text-xs text-gray-400 mt-1">Voeg eerst een oefening toe via "Oefening toevoegen".</p>
+              <p className="text-xs text-gray-400 mt-1">Voeg eerst een oefening toe via &quot;Oefening toevoegen&quot;.</p>
             </div>
           ) : (
             <>
@@ -557,23 +560,22 @@ function SchemaCard({
             className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors">
             <Pencil size={13} className="text-gray-400" />
           </button>
-          {confirmDel ? (
-            <div className="flex items-center gap-1 ml-1">
-              <button onClick={() => { onDelete(); setConfirmDel(false); }}
-                className="text-[11px] font-semibold px-2 py-1 rounded-lg"
-                style={{ background: "#fef2f2", color: "#ef4444" }}>Ja</button>
-              <button onClick={() => setConfirmDel(false)}
-                className="text-[11px] font-semibold px-2 py-1 rounded-lg"
-                style={{ background: "#f3f4f6", color: "#6b7280" }}>Nee</button>
-            </div>
-          ) : (
-            <button onClick={() => setConfirmDel(true)}
-              className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50 transition-colors">
-              <Trash2 size={13} className="text-gray-300 hover:text-red-400" />
-            </button>
-          )}
+          <button onClick={() => setConfirmDel(true)}
+            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50 transition-colors">
+            <Trash2 size={13} className="text-gray-300 hover:text-red-400" />
+          </button>
         </div>
       </div>
+
+      {confirmDel && (
+        <ConfirmDialog
+          title="Schema verwijderen?"
+          message={`"${schema.title}" wordt verwijderd.`}
+          confirmLabel="Verwijderen"
+          onCancel={() => setConfirmDel(false)}
+          onConfirm={() => { onDelete(); setConfirmDel(false); }}
+        />
+      )}
 
       {/* Exercises toggle */}
       {linked.length > 0 && (
@@ -673,21 +675,10 @@ function OefeningCard({
                 className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors">
                 <Pencil size={12} className="text-gray-400" />
               </button>
-              {confirmDel ? (
-                <div className="flex items-center gap-1">
-                  <button onClick={() => { onDelete(); setConfirmDel(false); }}
-                    className="text-[11px] font-semibold px-2 py-1 rounded-lg"
-                    style={{ background: "#fef2f2", color: "#ef4444" }}>Ja</button>
-                  <button onClick={() => setConfirmDel(false)}
-                    className="text-[11px] font-semibold px-2 py-1 rounded-lg"
-                    style={{ background: "#f3f4f6", color: "#6b7280" }}>Nee</button>
-                </div>
-              ) : (
-                <button onClick={() => setConfirmDel(true)}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50 transition-colors">
-                  <Trash2 size={12} className="text-gray-300 hover:text-red-400" />
-                </button>
-              )}
+              <button onClick={() => setConfirmDel(true)}
+                className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50 transition-colors">
+                <Trash2 size={12} className="text-gray-300 hover:text-red-400" />
+              </button>
             </div>
           </div>
 
@@ -715,24 +706,15 @@ function OefeningCard({
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-// ─── Empty state ──────────────────────────────────────────────────────────────
-
-function EmptyState({ icon: Icon, title, sub }: {
-  icon: React.ElementType; title: string; sub?: string;
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center py-12 text-center rounded-2xl border border-dashed"
-      style={{ borderColor: "#e8e5df" }}>
-      <div className="w-10 h-10 rounded-2xl flex items-center justify-center mb-3"
-        style={{ background: "#f8f7f4" }}>
-        <Icon size={18} className="text-gray-300" />
-      </div>
-      <p className="text-sm font-medium text-gray-400">{title}</p>
-      {sub && <p className="text-xs text-gray-300 mt-1 max-w-xs">{sub}</p>}
+      {confirmDel && (
+        <ConfirmDialog
+          title="Oefening verwijderen?"
+          message={`"${oefening.title}" wordt verwijderd.`}
+          confirmLabel="Verwijderen"
+          onCancel={() => setConfirmDel(false)}
+          onConfirm={() => { onDelete(); setConfirmDel(false); }}
+        />
+      )}
     </div>
   );
 }
@@ -805,6 +787,7 @@ export default function TrainingPage() {
     trainingOefeningen, addTrainingOefening, updateTrainingOefening, deleteTrainingOefening,
     trainingSchemas, addTrainingSchema, updateTrainingSchema, deleteTrainingSchema,
     dagboekWorkouts, addDagboekWorkout,
+    hydrated,
   } = useAppData();
 
   const planInfo = useUserPlan();
@@ -883,7 +866,7 @@ export default function TrainingPage() {
     showToast("Schema verwijderd");
   }
 
-  if (!protocolChecked) return null;
+  if (!hydrated || !protocolChecked) return <PageSkeleton />;
 
   if (hasActiveProtocol && protocol && patientId) {
     const scheduleTitleById = new Map(protocol.currentPhase?.schedules.map((s) => [s.id, s.title]) ?? []);
@@ -947,12 +930,12 @@ export default function TrainingPage() {
       <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: "#18181a", border: "1px solid rgba(255,255,255,0.06)" }}>
         <div>
           <p className="text-xl font-bold" style={{ color: "#f5f4f2" }}>{actieveSchemas.length}</p>
-          <p className="text-xs" style={{ color: "#7c7c8a" }}>Actieve schema's</p>
+          <p className="text-xs" style={{ color: "#7c7c8a" }}>Actieve schema&apos;s</p>
         </div>
         <div className="h-8 w-px" style={{ background: "rgba(255,255,255,0.07)" }} />
         <div>
           <p className="text-xl font-bold" style={{ color: "#f5f4f2" }}>{trainingSchemas.length}</p>
-          <p className="text-xs" style={{ color: "#7c7c8a" }}>Schema's totaal</p>
+          <p className="text-xs" style={{ color: "#7c7c8a" }}>Schema&apos;s totaal</p>
         </div>
         <div className="h-8 w-px" style={{ background: "rgba(255,255,255,0.07)" }} />
         <div>
@@ -1025,7 +1008,7 @@ export default function TrainingPage() {
           <div>
             {trainingSchemas.length === 0 ? (
               <EmptyState icon={LayoutList} title="Nog geen schema's"
-                sub="Maak een trainingsschema op basis van het plan van je fysio." />
+                description="Maak een trainingsschema op basis van het plan van je fysio." />
             ) : (
               <>
                 {/* Mobile: status filter chips */}
@@ -1116,7 +1099,7 @@ export default function TrainingPage() {
           <div>
             {trainingOefeningen.length === 0 ? (
               <EmptyState icon={BookOpen} title="Nog geen oefeningen"
-                sub="Voeg oefeningen toe aan je database. Je kunt ze daarna aan schema's koppelen." />
+                description="Voeg oefeningen toe aan je database. Je kunt ze daarna aan schema's koppelen." />
             ) : (
               <>
                 {/* Mobile: type filter chips */}

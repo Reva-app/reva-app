@@ -20,6 +20,9 @@ import {
   nowTimeStr,
 } from "@/components/medicatie/InnameModal";
 import { useToast } from "@/components/ui/Toast";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 import {
   Pill,
   Plus,
@@ -274,6 +277,7 @@ function SchemaCard({
 }) {
   const naam = displayNaam(schema.naam, schema.naamAnders);
   const color = getMedColor(schema.naam);
+  const [confirmDel, setConfirmDel] = useState(false);
 
   return (
     <div
@@ -321,12 +325,21 @@ function SchemaCard({
           <Pencil size={11} /> Bewerken
         </button>
         <button
-          onClick={onDelete}
+          onClick={() => setConfirmDel(true)}
           className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors text-gray-400 hover:text-red-400"
         >
           <Trash2 size={11} /> Verwijderen
         </button>
       </div>
+      {confirmDel && (
+        <ConfirmDialog
+          title="Medicatieschema verwijderen?"
+          message={`"${naam}" wordt verwijderd uit je medicatieschema.`}
+          confirmLabel="Verwijderen"
+          onCancel={() => setConfirmDel(false)}
+          onConfirm={() => { onDelete(); setConfirmDel(false); }}
+        />
+      )}
     </div>
   );
 }
@@ -342,8 +355,8 @@ function LogItem({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const color = getMedColor(med.naam);
+  const [confirmDel, setConfirmDel] = useState(false);
 
   return (
     <div
@@ -372,42 +385,30 @@ function LogItem({
           {med.notitie && <p className="text-xs text-gray-400 mt-1 italic">{med.notitie}</p>}
 
           <div className="flex items-center gap-1 mt-2.5">
-            {confirmDelete ? (
-              <>
-                <span className="text-xs text-gray-500 mr-1">Verwijderen?</span>
-                <button
-                  onClick={onDelete}
-                  className="text-xs font-medium px-2.5 py-1 rounded-lg text-white"
-                  style={{ background: "#ef4444" }}
-                >
-                  Ja
-                </button>
-                <button
-                  onClick={() => setConfirmDelete(false)}
-                  className="text-xs font-medium px-2.5 py-1 rounded-lg hover:bg-gray-100 transition-colors text-gray-500"
-                >
-                  Annuleren
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={onEdit}
-                  className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg hover:bg-gray-50 transition-colors text-gray-400 hover:text-gray-700"
-                >
-                  <Pencil size={10} /> Bewerken
-                </button>
-                <button
-                  onClick={() => setConfirmDelete(true)}
-                  className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg hover:bg-red-50 transition-colors text-gray-400 hover:text-red-400"
-                >
-                  <Trash2 size={10} /> Verwijderen
-                </button>
-              </>
-            )}
+            <button
+              onClick={onEdit}
+              className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg hover:bg-gray-50 transition-colors text-gray-400 hover:text-gray-700"
+            >
+              <Pencil size={10} /> Bewerken
+            </button>
+            <button
+              onClick={() => setConfirmDel(true)}
+              className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg hover:bg-red-50 transition-colors text-gray-400 hover:text-red-400"
+            >
+              <Trash2 size={10} /> Verwijderen
+            </button>
           </div>
         </div>
       </div>
+      {confirmDel && (
+        <ConfirmDialog
+          title="Inname verwijderen?"
+          message={`De registratie van "${med.naam}" wordt verwijderd.`}
+          confirmLabel="Verwijderen"
+          onCancel={() => setConfirmDel(false)}
+          onConfirm={() => { onDelete(); setConfirmDel(false); }}
+        />
+      )}
     </div>
   );
 }
@@ -424,6 +425,7 @@ export default function MedicatiePage() {
     addMedicatieSchema,
     updateMedicatieSchema,
     deleteMedicatieSchema,
+    hydrated,
   } = useAppData();
   const planInfo = useUserPlan();
   const schemaAllowed = canUseMedicatieSchema(planInfo);
@@ -582,6 +584,8 @@ export default function MedicatiePage() {
     showToast("Medicatieschema verwijderd");
   }
 
+  if (!hydrated) return <PageSkeleton />;
+
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto">
       {/* Desktop: button in SectionHeader */}
@@ -709,17 +713,16 @@ export default function MedicatiePage() {
         {/* Left: Inname tracker */}
         <div className={`min-w-0 ${mobileTab !== "overzicht" ? "hidden sm:block" : ""}`}>
           {Object.keys(grouped).length === 0 ? (
-            <div
-              className="rounded-2xl border py-16 flex flex-col items-center gap-3"
-              style={{ background: "#ffffff", borderColor: "#e8e5df" }}
-            >
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "#f3f0eb" }}>
-                <Pill size={20} style={{ color: "#c4bfb7" }} />
-              </div>
-              <p className="text-sm font-medium text-gray-400">Nog geen medicatie geregistreerd</p>
-              <Button size="sm" onClick={() => setModalItem("new")}>
-                <Plus size={14} /> Eerste inname toevoegen
-              </Button>
+            <div className="rounded-2xl border" style={{ background: "#ffffff", borderColor: "#e8e5df" }}>
+              <EmptyState
+                icon={Pill}
+                title="Nog geen medicatie geregistreerd"
+                action={
+                  <Button size="sm" onClick={() => setModalItem("new")}>
+                    <Plus size={14} /> Eerste inname toevoegen
+                  </Button>
+                }
+              />
             </div>
           ) : (
             <div className="space-y-6">

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { clsx } from "clsx";
 import { LayoutDashboard, HeartPulse, MapPin, Users, ClipboardList, ListChecks, Dumbbell, Palette, LogOut, BarChart3, History } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
@@ -56,10 +57,13 @@ export function PortalSidebar() {
     return (
       <Link
         href={href}
-        className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium"
+        className={clsx(
+          "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium",
+          !isActive && "hover:bg-white/5"
+        )}
         style={{
           color: isActive ? "#ffffff" : "#7c7c8a",
-          background: isActive ? "rgba(255,255,255,0.07)" : "transparent",
+          background: isActive ? "rgba(255,255,255,0.07)" : undefined,
         }}
       >
         <Icon size={16} style={{ color: isActive ? "var(--brand-accent, #e8632a)" : "#52525e" }} />

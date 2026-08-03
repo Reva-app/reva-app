@@ -12,6 +12,9 @@ import { usePatientProtocol } from "@/lib/hooks/usePatientProtocol";
 import { ProtocolGoalsView } from "@/components/training/ProtocolGoalsView";
 import { useToast } from "@/components/ui/Toast";
 import { Tabs } from "@/components/ui/Tabs";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 import {
   Target, Plus, Check, Pencil, Trash2, X,
   Star, Flag, Zap,
@@ -238,37 +241,6 @@ function GoalFormModal({
   );
 }
 
-// ─── Confirm delete modal ─────────────────────────────────────────────────────
-
-function ConfirmDeleteModal({ label, title: dlgTitle, onConfirm, onClose }: {
-  label: string; title: string; onConfirm: () => void; onClose: () => void;
-}) {
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.35)", backdropFilter: "blur(2px)" }}
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="w-full max-w-sm rounded-2xl p-6" style={{ background: "#ffffff", boxShadow: "0 24px 64px rgba(0,0,0,0.18)" }}>
-        <p className="text-sm font-semibold text-gray-900 mb-1">{dlgTitle}</p>
-        <p className="text-sm text-gray-500 mb-5">
-          Weet je zeker dat je <span className="font-medium text-gray-700">{label}</span> wilt verwijderen?
-        </p>
-        <div className="flex gap-2 justify-end">
-          <Button variant="secondary" size="sm" onClick={onClose}>Annuleren</Button>
-          <Button variant="danger" size="sm" onClick={onConfirm}>Verwijderen</Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Main goal card ───────────────────────────────────────────────────────────
 
 function MainGoalCard({ doel, onToggle, onEdit }: { doel: Doel; onToggle: () => void; onEdit: () => void }) {
@@ -472,7 +444,7 @@ export default function DoelstellingenPage() {
     else updateDoel(doel.id, { completed: false, completedAt: undefined });
   }
 
-  if (!hydrated || !protocolChecked) return null;
+  if (!hydrated || !protocolChecked) return <PageSkeleton />;
 
   const showProtocolSection = hasActiveProtocol && !!protocol;
 
@@ -511,11 +483,12 @@ export default function DoelstellingenPage() {
               onEdit={() => setGoalModal({ mode: "edit", doel: mainGoal })}
             />
           ) : (
-            <div className="rounded-2xl border border-dashed flex flex-col items-center justify-center py-10 gap-2"
-              style={{ borderColor: "#e8e5df" }}>
-              <Target size={24} style={{ color: "#d4cfc9" }} />
-              <p className="text-sm text-gray-400">Nog geen hoofddoel ingesteld</p>
-              <p className="text-xs text-gray-400">Voeg een doelstelling toe en maak het je hoofddoel</p>
+            <div className="rounded-2xl border" style={{ borderColor: "#e8e5df" }}>
+              <EmptyState
+                icon={Target}
+                title="Nog geen hoofddoel ingesteld"
+                description="Voeg een doelstelling toe en maak het je hoofddoel"
+              />
             </div>
           )}
         </section>
@@ -542,10 +515,8 @@ export default function DoelstellingenPage() {
           </div>
 
           {regularGoals.length === 0 ? (
-            <div className="rounded-2xl border border-dashed flex flex-col items-center justify-center py-8 gap-2"
-              style={{ borderColor: "#e8e5df" }}>
-              <Zap size={20} style={{ color: "#d4cfc9" }} />
-              <p className="text-sm text-gray-400">Voeg een eerste doelstelling toe</p>
+            <div className="rounded-2xl border" style={{ borderColor: "#e8e5df" }}>
+              <EmptyState icon={Zap} title="Voeg een eerste doelstelling toe" />
             </div>
           ) : (
             <div className="space-y-2.5">
@@ -582,11 +553,12 @@ export default function DoelstellingenPage() {
       )}
 
       {deleteGoalTarget && (
-        <ConfirmDeleteModal
-          title="Doelstelling verwijderen"
-          label={deleteGoalTarget.title}
+        <ConfirmDialog
+          title="Doelstelling verwijderen?"
+          message={`"${deleteGoalTarget.title}" wordt verwijderd.`}
+          confirmLabel="Verwijderen"
+          onCancel={() => setDeleteGoalTarget(null)}
           onConfirm={() => { deleteDoel(deleteGoalTarget.id); setDeleteGoalTarget(null); showToast("Doel verwijderd"); }}
-          onClose={() => setDeleteGoalTarget(null)}
         />
       )}
 

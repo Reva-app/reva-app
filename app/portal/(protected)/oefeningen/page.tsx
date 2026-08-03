@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Dumbbell, Plus, Search, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Dumbbell, Plus, Search } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { ActionMenu } from "@/components/ui/ActionMenu";
@@ -17,10 +17,9 @@ import { useTableState } from "@/components/ui/table/useTableState";
 import { ExerciseThumb } from "@/components/portal/ExerciseThumb";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import {
-  loadExerciseLibrary, createOrgExercise, createOrgExerciseFromSource, updateOrgExercise, updateExerciseArchived, deleteOrgExercise, duplicateExerciseLibraryItem,
-  uploadExerciseMedia,
+  loadExerciseLibrary, createOrgExercise, updateExerciseArchived, deleteOrgExercise, duplicateExerciseLibraryItem,
   MANAGE_PROTOCOLS_ROLES, EXERCISE_TYPE_LABELS,
-  type PortalExerciseLibraryItem, type PortalExerciseLibraryInput,
+  type PortalExerciseLibraryItem,
 } from "@/lib/services/protocolService";
 
 const inputStyle = { borderColor: "#e8e5df", background: "#ffffff", color: "#1a1a1a" };
@@ -38,13 +37,8 @@ function compareNullableStrings(a: string | null, b: string | null): number {
 
 type SortKey = "title" | "exerciseType" | "createdAt";
 
-const emptyExerciseInput: PortalExerciseLibraryInput = {
-  title: "", exerciseType: "kracht", description: "", instructions: "",
-  defaultSets: null, defaultReps: null, defaultDurationSeconds: null, defaultLoadText: "", tags: [],
-  mediaPath: null, mediaType: null,
-};
-
 export default function PortalOefeningenPage() {
+  const router = useRouter();
   const { checked, membership } = usePortalMembership();
   const [exercises, setExercises] = useState<PortalExerciseLibraryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,13 +49,7 @@ export default function PortalOefeningenPage() {
   const [sourceFilter, setSourceFilter] = useState("");
   const [tagFilter, setTagFilter] = useState("");
 
-  const [modal, setModal] = useState<{ exercise?: PortalExerciseLibraryItem } | null>(null);
-  // Stabiel id voor een nieuwe oefening (of een REVA-kopie-in-wording) zodat
-  // een eventuele afbeelding-upload vóór het opslaan al hetzelfde pad kan
-  // gebruiken als waarmee de rij straks wordt aangemaakt.
-  const [pendingNewId, setPendingNewId] = useState<string>("");
-  const [saving, setSaving] = useState(false);
-  const [modalError, setModalError] = useState("");
+  const [creatingDraft, setCreatingDraft] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<PortalExerciseLibraryItem | null>(null);
   const [deleting, setDeleting] = useState(false);
   const { showToast, toastNode } = useToast();
@@ -116,25 +104,17 @@ export default function PortalOefeningenPage() {
   const revaCount = exercises.filter((e) => e.scope === "reva").length;
   const archivedCount = exercises.filter((e) => e.archived).length;
 
-  async function handleSaveExercise(input: PortalExerciseLibraryInput) {
+  async function handleCreateDraft() {
     if (!membership) return;
-    setSaving(true);
-    setModalError("");
-    // Een REVA-oefening bewerken raakt nooit de gedeelde bibliotheek zelf
-    // (dat zou alle praktijken raken) — pas bij het opslaan ontstaat een
-    // eigen kopie, met de (eventueel aangepaste) formulierwaarden. Vóór het
-    // opslaan (bv. bij Annuleren) is er dus nog helemaal niets aangemaakt.
-    const { error } = !modal?.exercise
-      ? await createOrgExercise(membership.organizationId, input, pendingNewId)
-      : modal.exercise.scope === "organization"
-        ? await updateOrgExercise(modal.exercise.id, input)
-        : await createOrgExerciseFromSource(membership.organizationId, modal.exercise.id, input, pendingNewId);
-    setSaving(false);
-    if (error) { setModalError(error); return; }
-    const wasRevaEdit = modal?.exercise?.scope === "reva";
-    setModal(null);
-    refresh(membership.organizationId);
-    showToast(wasRevaEdit ? "Eigen kopie aangemaakt — wijzigingen raken niet de REVA-bibliotheek" : "Oefening opgeslagen");
+    setCreatingDraft(true);
+    const { id, error } = await createOrgExercise(membership.organizationId, {
+      title: "Nieuwe oefening", exerciseType: "kracht", description: "", instructions: "",
+      defaultSets: null, defaultReps: null, defaultDurationSeconds: null, defaultLoadText: "",
+      tags: [], mediaPath: null, mediaType: null,
+    });
+    setCreatingDraft(false);
+    if (error || !id) { showToast(error ?? "Aanmaken is niet gelukt.", "error"); return; }
+    router.push(`/portal/oefeningen/${id}?draft=1`);
   }
 
   async function handleToggleArchived(ex: PortalExerciseLibraryItem) {
@@ -167,12 +147,12 @@ export default function PortalOefeningenPage() {
 
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-[1600px] mx-auto space-y-6">
       <div className="flex items-start justify-between flex-wrap gap-3">
         <SectionHeader title="Oefeningen" subtitle={loading ? "Laden…" : `${filtered.length} van ${exercises.length} ${exercises.length === 1 ? "oefening" : "oefeningen"}`} />
         {canManage && (
-          <Button size="sm" onClick={() => { setModalError(""); setPendingNewId(crypto.randomUUID()); setModal({}); }}>
-            <Plus size={14} /> Nieuwe oefening
+          <Button size="sm" disabled={creatingDraft} onClick={handleCreateDraft}>
+            <Plus size={14} /> {creatingDraft ? "Aanmaken…" : "Nieuwe oefening"}
           </Button>
         )}
       </div>
@@ -264,6 +244,7 @@ export default function PortalOefeningenPage() {
                   <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Tags</th>
                   <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Bron</th>
                   <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Status</th>
+                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Aangemaakt door</th>
                   <th className="text-right font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Actie</th>
                 </tr>
               </thead>
@@ -273,18 +254,13 @@ export default function PortalOefeningenPage() {
                   return (
                     <tr
                       key={ex.id}
-                      onClick={() => {
-                        if (!editable) return;
-                        setModalError("");
-                        if (ex.scope === "reva") setPendingNewId(crypto.randomUUID());
-                        setModal({ exercise: ex });
-                      }}
+                      onClick={() => { if (editable) router.push(`/portal/oefeningen/${ex.id}`); }}
                       className={`transition-colors ${editable ? "cursor-pointer hover:bg-gray-50" : ""}`}
                       style={{ borderBottom: "1px solid #f8f7f4" }}
                     >
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
-                          <ExerciseThumb mediaPath={ex.mediaPath} size={36} />
+                          <ExerciseThumb mediaPath={ex.mediaPath} mediaType={ex.mediaType} size={36} />
                           <p className="font-medium text-gray-800 truncate">{ex.title}</p>
                         </div>
                       </td>
@@ -297,6 +273,7 @@ export default function PortalOefeningenPage() {
                       </td>
                       <td className="px-5 py-3.5">{ex.scope === "reva" ? <Badge variant="blue">REVA</Badge> : <Badge variant="default">Eigen</Badge>}</td>
                       <td className="px-5 py-3.5">{ex.archived ? <Badge variant="muted">Gearchiveerd</Badge> : <Badge variant="success">Actief</Badge>}</td>
+                      <td className="px-5 py-3.5 text-gray-600">{ex.createdByName ?? "—"}</td>
                       <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                         {canManage && (
                           <ActionMenu
@@ -321,24 +298,6 @@ export default function PortalOefeningenPage() {
         <Pagination page={page} totalPages={totalPages} totalCount={filtered.length} itemLabel="resultaat" itemLabelPlural="resultaten" onPageChange={setPage} />
       </div>
 
-      {modal && membership && (
-        <ExerciseFormModal
-          input={modal.exercise ? {
-            title: modal.exercise.title, exerciseType: modal.exercise.exerciseType,
-            description: modal.exercise.description ?? "", instructions: modal.exercise.instructions ?? "",
-            defaultSets: modal.exercise.defaultSets, defaultReps: modal.exercise.defaultReps,
-            defaultDurationSeconds: modal.exercise.defaultDurationSeconds, defaultLoadText: modal.exercise.defaultLoadText ?? "",
-            tags: modal.exercise.tags, mediaPath: modal.exercise.mediaPath, mediaType: modal.exercise.mediaType,
-          } : emptyExerciseInput}
-          pendingId={modal.exercise?.scope === "organization" ? modal.exercise.id : pendingNewId}
-          organizationId={membership.organizationId}
-          isRevaSource={modal.exercise?.scope === "reva"}
-          saving={saving}
-          error={modalError}
-          onClose={() => setModal(null)}
-          onSave={handleSaveExercise}
-        />
-      )}
       {confirmDelete && (
         <ConfirmDialog
           title="Oefening verwijderen?"
@@ -351,145 +310,5 @@ export default function PortalOefeningenPage() {
       )}
       {toastNode}
     </div>
-  );
-}
-
-function ExerciseFormModal({
-  input, pendingId, organizationId, isRevaSource, saving, error, onClose, onSave,
-}: {
-  input: PortalExerciseLibraryInput; pendingId: string; organizationId: string; isRevaSource?: boolean; saving: boolean; error: string;
-  onClose: () => void; onSave: (input: PortalExerciseLibraryInput) => void;
-}) {
-  const [title, setTitle] = useState(input.title);
-  const [exerciseType, setExerciseType] = useState(input.exerciseType);
-  const [description, setDescription] = useState(input.description);
-  const [instructions, setInstructions] = useState(input.instructions);
-  const [defaultSets, setDefaultSets] = useState(input.defaultSets?.toString() ?? "");
-  const [defaultReps, setDefaultReps] = useState(input.defaultReps?.toString() ?? "");
-  const [defaultDurationSeconds, setDefaultDurationSeconds] = useState(input.defaultDurationSeconds?.toString() ?? "");
-  const [defaultLoadText, setDefaultLoadText] = useState(input.defaultLoadText);
-  const [tags, setTags] = useState<string[]>(input.tags);
-  const [newTag, setNewTag] = useState("");
-  const [mediaPath, setMediaPath] = useState(input.mediaPath);
-  const [mediaType, setMediaType] = useState(input.mediaType);
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState("");
-
-  function addTag() {
-    const t = newTag.trim();
-    if (t && !tags.includes(t)) setTags((prev) => [...prev, t]);
-    setNewTag("");
-  }
-
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    setUploading(true);
-    setUploadError("");
-    const { mediaPath: newPath, mediaType: newType, error: uploadErr } = await uploadExerciseMedia(organizationId, pendingId, file);
-    setUploading(false);
-    if (uploadErr) { setUploadError(uploadErr); return; }
-    setMediaPath(newPath);
-    setMediaType(newType);
-  }
-
-  return (
-    <Modal onClose={onClose} maxWidth="max-w-lg" dismissOnBackdropClick={false}>
-      <div className="rounded-2xl p-6" style={{ background: "#ffffff" }}>
-        <div className="flex items-center gap-3 mb-4">
-          <ExerciseThumb mediaPath={mediaPath} size={56} />
-          <div>
-            <h3 className="font-semibold text-gray-900">Oefening</h3>
-            <label className="text-xs font-medium cursor-pointer" style={{ color: "var(--brand-accent, #e8632a)" }}>
-              {uploading ? "Uploaden…" : mediaPath ? "Afbeelding wijzigen" : "Afbeelding uploaden"}
-              <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={handleFileChange} />
-            </label>
-          </div>
-        </div>
-        {uploadError && <p className="text-xs mb-3" style={{ color: "#dc2626" }}>{uploadError}</p>}
-        {isRevaSource && (
-          <p className="text-xs rounded-lg p-2.5 mb-4" style={{ background: "#fff7ed", color: "#9a6b3a" }}>
-            Dit is een REVA-standaardoefening. Opslaan maakt een eigen kopie aan met jouw wijzigingen — de gedeelde REVA-bibliotheek blijft ongewijzigd.
-          </p>
-        )}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            onSave({
-              title, exerciseType, description, instructions,
-              defaultSets: defaultSets ? Number(defaultSets) : null,
-              defaultReps: defaultReps ? Number(defaultReps) : null,
-              defaultDurationSeconds: defaultDurationSeconds ? Number(defaultDurationSeconds) : null,
-              defaultLoadText, tags, mediaPath, mediaType,
-            });
-          }}
-          className="space-y-4"
-        >
-          <div>
-            <FieldLabel>Titel</FieldLabel>
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
-          </div>
-          <div>
-            <FieldLabel>Categorie</FieldLabel>
-            <select value={exerciseType} onChange={(e) => setExerciseType(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
-              {Object.entries(EXERCISE_TYPE_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-            </select>
-          </div>
-          <div>
-            <FieldLabel>Omschrijving (optioneel)</FieldLabel>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none resize-none" style={inputStyle} />
-          </div>
-          <div>
-            <FieldLabel>Instructies (optioneel)</FieldLabel>
-            <textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={2} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none resize-none" style={inputStyle} />
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div>
-              <FieldLabel>Sets</FieldLabel>
-              <input type="number" min={0} value={defaultSets} onChange={(e) => setDefaultSets(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
-            </div>
-            <div>
-              <FieldLabel>Herhalingen</FieldLabel>
-              <input type="number" min={0} value={defaultReps} onChange={(e) => setDefaultReps(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
-            </div>
-            <div>
-              <FieldLabel>Duur (sec)</FieldLabel>
-              <input type="number" min={0} value={defaultDurationSeconds} onChange={(e) => setDefaultDurationSeconds(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
-            </div>
-          </div>
-          <div>
-            <FieldLabel>Belasting (optioneel)</FieldLabel>
-            <input type="text" value={defaultLoadText} onChange={(e) => setDefaultLoadText(e.target.value)} placeholder="Bijv. 20 kg of lichaamsgewicht" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
-          </div>
-          <div>
-            <FieldLabel>Tags (voor filteren, bijv. lichaamsdeel of uitrusting)</FieldLabel>
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {tags.map((t, i) => (
-                <Badge key={t} variant="muted" className="flex items-center gap-1">
-                  {t}
-                  <button type="button" onClick={() => setTags((prev) => prev.filter((_, idx) => idx !== i))}><X size={11} /></button>
-                </Badge>
-              ))}
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="text" value={newTag} onChange={(e) => setNewTag(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
-                placeholder="Bijv. knie" className="flex-1 text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
-              />
-              <Button type="button" size="sm" variant="secondary" onClick={addTag}>Toevoegen</Button>
-            </div>
-          </div>
-          {error && <p className="text-xs" style={{ color: "#dc2626" }}>{error}</p>}
-          <div className="flex justify-end gap-2">
-            <Button type="button" size="sm" variant="secondary" onClick={onClose}>Annuleren</Button>
-            <Button type="submit" size="sm" disabled={saving || !title.trim()}>
-              {saving ? "Opslaan…" : isRevaSource ? "Kopie opslaan" : "Opslaan"}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </Modal>
   );
 }

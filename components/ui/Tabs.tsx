@@ -21,9 +21,9 @@ export function Tabs<T extends string>({ options, value, onChange, className }: 
           key={opt.value}
           type="button"
           onClick={() => onChange(opt.value)}
-          className="px-4 py-2 text-sm font-medium transition-all whitespace-nowrap"
+          className={`px-4 py-2 text-sm font-medium transition-all whitespace-nowrap ${value === opt.value ? "" : "hover:bg-black/5"}`}
           style={{
-            background: value === opt.value ? "#ffffff" : "transparent",
+            background: value === opt.value ? "#ffffff" : undefined,
             color: value === opt.value ? "#1a1a1a" : "#9ca3af",
             borderRadius: "10px",
             margin: "3px",

@@ -11,9 +11,10 @@ import { resolveSignedUrl } from "@/lib/services/storageService";
  * geen media_path is, of terwijl de URL nog wordt opgehaald.
  */
 export function ExerciseThumb({
-  mediaPath, size = 36,
+  mediaPath, mediaType, size = 36,
 }: {
   mediaPath: string | null;
+  mediaType?: string | null;
   size?: number;
 }) {
   const [url, setUrl] = useState<string | null>(null);
@@ -37,8 +38,12 @@ export function ExerciseThumb({
       style={{ width: size, height: size, background: "#f8f7f4" }}
     >
       {url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt="" className="w-full h-full object-contain" />
+        mediaType === "video" ? (
+          <video src={url} muted playsInline className="w-full h-full object-contain" />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={url} alt="" className="w-full h-full object-contain" />
+        )
       ) : (
         <Dumbbell size={Math.round(size * 0.4)} className="text-gray-400" />
       )}

@@ -7,6 +7,7 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Modal } from "@/components/ui/Modal";
 import { formatDate } from "@/lib/data";
 import {
   loadAdminOrganizations, createAdminOrganization, loadAdminRoles, inviteAdminOrgMember,
@@ -117,17 +118,19 @@ export default function AdminOrganizationsPage() {
           title="Bedrijven"
           subtitle={loading ? "Laden…" : `${orgs.length} ${orgs.length === 1 ? "bedrijf" : "bedrijven"} op het platform`}
         />
-        <Button size="sm" onClick={() => setShowCreate((v) => !v)}>
+        <Button size="sm" onClick={() => setShowCreate(true)}>
           <Plus size={14} />
           Nieuw bedrijf
         </Button>
       </div>
 
       {showCreate && (
+        <Modal onClose={() => setShowCreate(false)} maxWidth="max-w-lg" dismissOnBackdropClick={false}>
         <div
-          className="rounded-2xl border p-5"
-          style={{ background: "#ffffff", borderColor: "#e8e5df", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
+          className="rounded-2xl p-6"
+          style={{ background: "#ffffff" }}
         >
+          <h3 className="font-semibold text-gray-900 mb-4">Nieuw bedrijf</h3>
           <form onSubmit={handleCreate} className="space-y-4">
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1.5">Bedrijfsnaam</label>
@@ -163,11 +166,15 @@ export default function AdminOrganizationsPage() {
             </div>
 
             {createError && <p className="text-xs" style={{ color: "#dc2626" }}>{createError}</p>}
-            <Button type="submit" size="sm" disabled={creating}>
-              {creating ? <Loader2 size={14} className="animate-spin" /> : "Aanmaken"}
-            </Button>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button type="button" size="sm" variant="secondary" onClick={() => setShowCreate(false)}>Annuleren</Button>
+              <Button type="submit" size="sm" disabled={creating}>
+                {creating ? <Loader2 size={14} className="animate-spin" /> : "Aanmaken"}
+              </Button>
+            </div>
           </form>
         </div>
+        </Modal>
       )}
 
       <div className="relative max-w-sm">

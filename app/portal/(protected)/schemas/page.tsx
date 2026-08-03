@@ -7,7 +7,6 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { ActionMenu } from "@/components/ui/ActionMenu";
 import { SortableHeader } from "@/components/ui/table/SortableHeader";
@@ -17,7 +16,7 @@ import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import {
   loadRevaSchedules, loadOrgSchedules, createScheduleLibraryItem, updateScheduleLibraryArchived, duplicateScheduleLibraryItem,
   MANAGE_PROTOCOLS_ROLES,
-  type PortalScheduleLibraryCard, type PortalScheduleLibraryInput,
+  type PortalScheduleLibraryCard,
 } from "@/lib/services/protocolService";
 
 const inputStyle = { borderColor: "#e8e5df", background: "#ffffff", color: "#1a1a1a" };
@@ -50,10 +49,7 @@ export default function PortalSchemasPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
 
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createInput, setCreateInput] = useState<PortalScheduleLibraryInput>({ title: "", description: "" });
-  const [saving, setSaving] = useState(false);
-  const [createError, setCreateError] = useState("");
+  const [creatingDraft, setCreatingDraft] = useState(false);
   const { showToast, toastNode } = useToast();
 
   const canManage = !!membership && MANAGE_PROTOCOLS_ROLES.includes(membership.roleKey);
@@ -102,17 +98,13 @@ export default function PortalSchemasPage() {
     (key) => (key === "createdAt" ? "desc" : "asc")
   );
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    if (!membership || !createInput.title.trim()) return;
-    setSaving(true);
-    setCreateError("");
-    const { id, error } = await createScheduleLibraryItem(membership.organizationId, createInput);
-    setSaving(false);
-    if (error || !id) { setCreateError(error ?? "Aanmaken is niet gelukt."); return; }
-    setShowCreateModal(false);
-    setCreateInput({ title: "", description: "" });
-    router.push(`/portal/schemas/${id}`);
+  async function handleCreateDraft() {
+    if (!membership) return;
+    setCreatingDraft(true);
+    const { id, error } = await createScheduleLibraryItem(membership.organizationId, { title: "Nieuw schema", description: "" });
+    setCreatingDraft(false);
+    if (error || !id) { showToast(error ?? "Aanmaken is niet gelukt.", "error"); return; }
+    router.push(`/portal/schemas/${id}?draft=1`);
   }
 
   async function handleToggleArchived(s: PortalScheduleLibraryCard) {
@@ -133,12 +125,12 @@ export default function PortalSchemasPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-[1600px] mx-auto space-y-6">
       <div className="flex items-start justify-between flex-wrap gap-3">
         <SectionHeader title="Schema's" subtitle={loading ? "Laden…" : `${filtered.length} van ${allSchedules.length} ${allSchedules.length === 1 ? "schema" : "schema's"}`} />
         {canManage && (
-          <Button size="sm" onClick={() => { setCreateError(""); setShowCreateModal(true); }}>
-            <Plus size={14} /> Schema toevoegen
+          <Button size="sm" disabled={creatingDraft} onClick={handleCreateDraft}>
+            <Plus size={14} /> {creatingDraft ? "Aanmaken…" : "Schema toevoegen"}
           </Button>
         )}
       </div>
@@ -204,6 +196,7 @@ export default function PortalSchemasPage() {
                   <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Omschrijving</th>
                   <SortableHeader label="Oefeningen" sortKeyValue="exerciseCount" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
                   <SortableHeader label="Aangemaakt" sortKeyValue="createdAt" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
+                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Aangemaakt door</th>
                   <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Bron</th>
                   <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Status</th>
                   <th className="text-right font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Actie</th>
@@ -228,6 +221,7 @@ export default function PortalSchemasPage() {
                     <td className="px-5 py-3.5 text-gray-500 max-w-xs truncate">{s.description || "—"}</td>
                     <td className="px-5 py-3.5 text-gray-600">{s.exerciseCount}</td>
                     <td className="px-5 py-3.5 text-gray-500">{fmtDate(s.createdAt)}</td>
+                    <td className="px-5 py-3.5 text-gray-600">{s.createdByName ?? "—"}</td>
                     <td className="px-5 py-3.5">{s.scope === "reva" ? <Badge variant="blue">REVA</Badge> : <Badge variant="default">Eigen</Badge>}</td>
                     <td className="px-5 py-3.5">{s.archived ? <Badge variant="muted">Gearchiveerd</Badge> : <Badge variant="success">Actief</Badge>}</td>
                     <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
@@ -253,30 +247,6 @@ export default function PortalSchemasPage() {
         <Pagination page={page} totalPages={totalPages} totalCount={filtered.length} itemLabel="resultaat" itemLabelPlural="resultaten" onPageChange={setPage} />
       </div>
 
-      {showCreateModal && (
-        <Modal onClose={() => setShowCreateModal(false)} maxWidth="max-w-md" dismissOnBackdropClick={false}>
-          <div className="rounded-2xl p-6" style={{ background: "#ffffff" }}>
-            <h3 className="font-semibold text-gray-900 mb-4">Nieuw schema</h3>
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div>
-                <FieldLabel>Naam</FieldLabel>
-                <input type="text" value={createInput.title} onChange={(e) => setCreateInput((p) => ({ ...p, title: e.target.value }))}
-                  placeholder="Bijv. Krachtopbouw week 6-12" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
-              </div>
-              <div>
-                <FieldLabel>Omschrijving (optioneel)</FieldLabel>
-                <textarea value={createInput.description} onChange={(e) => setCreateInput((p) => ({ ...p, description: e.target.value }))} rows={2}
-                  className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none resize-none" style={inputStyle} />
-              </div>
-              {createError && <p className="text-xs" style={{ color: "#dc2626" }}>{createError}</p>}
-              <div className="flex justify-end gap-2">
-                <Button type="button" size="sm" variant="secondary" onClick={() => setShowCreateModal(false)}>Annuleren</Button>
-                <Button type="submit" size="sm" disabled={saving || !createInput.title.trim()}>{saving ? "Aanmaken…" : "Schema aanmaken"}</Button>
-              </div>
-            </form>
-          </div>
-        </Modal>
-      )}
       {toastNode}
     </div>
   );

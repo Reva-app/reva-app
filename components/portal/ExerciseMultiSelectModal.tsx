@@ -104,6 +104,7 @@ export function ExerciseMultiSelectModal({
       defaultSets: newExercise.defaultSets, defaultReps: newExercise.defaultReps, defaultDurationSeconds: newExercise.defaultDurationSeconds,
       defaultLoadText: newExercise.defaultLoadText.trim() || null, tags: newExercise.tags, archived: false,
       mediaPath: null, mediaType: null, createdAt: new Date().toISOString(),
+      createdBy: null, createdByName: null,
     };
     onExerciseCreated(created);
     setSelectedIds((prev) => new Set(prev).add(id));
@@ -155,7 +156,7 @@ export function ExerciseMultiSelectModal({
                       {orgPickable.map((ex) => (
                         <label key={ex.id} className="flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50">
                           <input type="checkbox" checked={selectedIds.has(ex.id)} onChange={() => toggle(ex.id)} />
-                          <ExerciseThumb mediaPath={ex.mediaPath} size={28} />
+                          <ExerciseThumb mediaPath={ex.mediaPath} mediaType={ex.mediaType} size={28} />
                           <span className="flex-1 text-gray-700">{ex.title}</span>
                           <Badge variant="muted">{EXERCISE_TYPE_LABELS[ex.exerciseType] ?? ex.exerciseType}</Badge>
                         </label>
@@ -168,7 +169,7 @@ export function ExerciseMultiSelectModal({
                       {revaPickable.map((ex) => (
                         <label key={ex.id} className="flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50">
                           <input type="checkbox" checked={selectedIds.has(ex.id)} onChange={() => toggle(ex.id)} />
-                          <ExerciseThumb mediaPath={ex.mediaPath} size={28} />
+                          <ExerciseThumb mediaPath={ex.mediaPath} mediaType={ex.mediaType} size={28} />
                           <span className="flex-1 text-gray-700">{ex.title}</span>
                           <Badge variant="muted">{EXERCISE_TYPE_LABELS[ex.exerciseType] ?? ex.exerciseType}</Badge>
                         </label>

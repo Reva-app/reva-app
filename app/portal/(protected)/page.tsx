@@ -33,7 +33,6 @@ export default function PortalDashboardPage() {
   const [workload, setWorkload] = useState<{ rows: PortalTherapistWorkload[]; unassignedCount: number } | null>(null);
   const [activity, setActivity] = useState<PortalOrgActivitySummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
 
   const isOwner = membership?.roleKey === "organization_owner";
 
@@ -61,8 +60,6 @@ export default function PortalDashboardPage() {
     };
   }, [checked, membership, user]);
 
-  const showWelcome = !!membership && !welcomeDismissed && !membership.welcomedAt;
-
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-8">
       <SectionHeader
@@ -70,14 +67,14 @@ export default function PortalDashboardPage() {
         subtitle={membership ? `Welkom terug, ${membership.roleName}` : undefined}
       />
 
-      {showWelcome && stats && (
+      {membership && stats && (
         isOwner ? (
           <WelcomePanel
             membershipId={membership.membershipId}
             organizationId={membership.organizationId}
             organizationName={membership.organizationName}
             stats={stats}
-            onDismiss={() => setWelcomeDismissed(true)}
+            initiallyWelcomed={!!membership.welcomedAt}
           />
         ) : user && (
           <EmployeeWelcomePanel
@@ -86,7 +83,7 @@ export default function PortalDashboardPage() {
             organizationName={membership.organizationName}
             roleName={membership.roleName}
             stats={stats}
-            onDismiss={() => setWelcomeDismissed(true)}
+            initiallyWelcomed={!!membership.welcomedAt}
           />
         )
       )}
