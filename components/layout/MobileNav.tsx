@@ -35,7 +35,7 @@ const ALL_NAV = [
   { href: "/dagboek",        label: "Afspraken",     icon: Calendar },
   { href: "/dossier",        label: "Dossier",      icon: FolderOpen },
   { href: "/analyse",        label: "Analyse",      icon: BarChart2 },
-  { href: "/instellingen",   label: "Instellingen", icon: Settings },
+  { href: "/instellingen",   label: "Mijn Gegevens", icon: Settings },
 ];
 
 // ─── Component ─────────────────────────────────────────────────────────────────

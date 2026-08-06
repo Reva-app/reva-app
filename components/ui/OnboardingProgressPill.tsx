@@ -16,8 +16,8 @@ export function OnboardingProgressPill({ label, doneCount, totalCount, onClick }
     <button
       type="button"
       onClick={onClick}
-      className="w-full flex items-center gap-2 text-left px-4 py-3 rounded-xl border transition-colors hover:bg-gray-50"
-      style={{ borderColor: "#e8e5df", background: "#ffffff" }}
+      className="w-full flex items-center gap-2 text-left px-4 py-3 rounded-xl border bg-white transition-colors hover:bg-gray-50"
+      style={{ borderColor: "#e8e5df" }}
     >
       <span className="text-sm font-medium text-gray-700">{label}</span>
       <span className="text-xs" style={{ color: "#c4bfb7" }}>{doneCount}/{totalCount} voltooid</span>

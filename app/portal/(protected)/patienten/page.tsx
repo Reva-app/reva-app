@@ -362,7 +362,7 @@ export default function PortalPatientsPage() {
       </div>
 
       {showWizard && membership && (
-        <Modal onClose={() => setShowWizard(false)} maxWidth="max-w-2xl" dismissOnBackdropClick={false}>
+        <Modal onClose={() => setShowWizard(false)} maxWidth="max-w-3xl" dismissOnBackdropClick={false}>
           <PatientWizard
             organizationId={membership.organizationId}
             locations={locations}

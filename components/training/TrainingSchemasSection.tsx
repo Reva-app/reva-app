@@ -1,0 +1,1210 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useAppData } from "@/lib/store";
+import dynamic from "next/dynamic";
+import type { DagboekWorkout } from "@/lib/data";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const TrainingModal = dynamic<any>(
+  () => import("@/components/training/TrainingModal").then((m) => ({ default: m.TrainingModal })),
+  { ssr: false }
+);
+import {
+  type TrainingOefening,
+  type TrainingSchema,
+  type TrainingOefeningType,
+  type TrainingLocatie,
+  type TrainingSchemaStatus,
+} from "@/lib/data";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { SectionHeader } from "@/components/ui/SectionHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useUserPlan } from "@/lib/hooks/useUserPlan";
+import { canAddTrainingOefening } from "@/lib/featureGates";
+import { UpgradeModal } from "@/components/subscription/UpgradeModal";
+import { TrainingWeekOverview } from "@/components/training/TrainingWeekOverview";
+import { useToast } from "@/components/ui/Toast";
+import {
+  Plus, Pencil, Trash2, X, Check, ChevronDown, ChevronUp,
+  Dumbbell, Activity, Zap, Move, Minus, HelpCircle, Clock,
+  LayoutList, BookOpen,
+} from "lucide-react";
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const OEFENING_TYPES: TrainingOefeningType[] = ["Kracht", "Conditie", "Mobiliteit", "Stabiliteit", "Rekken", "Anders"];
+const LOCATIES: TrainingLocatie[] = ["Thuis", "Gym", "Fysio", "Buiten", "Anders"];
+const DUUR_OPTIONS = ["10 minuten", "15 minuten", "20 minuten", "30 minuten", "45 minuten", "1 uur", "1,5 uur"];
+
+// Internal values map to display labels — ensures capitalized display everywhere
+const STATUS_OPTIONS: { value: TrainingSchemaStatus; label: string }[] = [
+  { value: "actief",   label: "Actief" },
+  { value: "gepland",  label: "Gepland" },
+  { value: "afgerond", label: "Afgerond" },
+];
+
+const TYPE_ICONS: Record<TrainingOefeningType, React.ElementType> = {
+  Kracht: Dumbbell,
+  Conditie: Activity,
+  Mobiliteit: Zap,
+  Stabiliteit: Move,
+  Rekken: Minus,
+  Anders: HelpCircle,
+};
+
+const STATUS_CONFIG: Record<TrainingSchemaStatus, { label: string; badge: "success" | "warning" | "muted"; color: string }> = {
+  actief:   { label: "Actief",   badge: "success", color: "#16a34a" },
+  gepland:  { label: "Gepland",  badge: "warning", color: "#d97706" },
+  afgerond: { label: "Afgerond", badge: "muted",   color: "#9ca3af" },
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function uid() {
+  // Must be a valid UUID — PostgreSQL uuid columns reject non-UUID strings.
+  return crypto.randomUUID();
+}
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// Get the Monday of the current week
+function getWeekDays(): { date: string; label: string }[] {
+  const now = new Date();
+  const dow = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1));
+  const labels = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
+  return labels.map((label, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return { date: dateStr, label };
+  });
+}
+
+// ─── Field helpers ────────────────────────────────────────────────────────────
+
+function FieldLabel({ children, optional }: { children: React.ReactNode; optional?: boolean }) {
+  return (
+    <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500 mb-1.5">
+      {children}
+      {optional && (
+        <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-full"
+          style={{ background: "#f3f0eb", color: "#a8a29e" }}>Optioneel</span>
+      )}
+    </label>
+  );
+}
+
+function TextInput({ value, onChange, placeholder }: {
+  value: string; onChange: (v: string) => void; placeholder?: string;
+}) {
+  return (
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors"
+      style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
+    />
+  );
+}
+
+function SelectInput({ value, onChange, options }: {
+  value: string; onChange: (v: string) => void; options: string[];
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none appearance-none"
+      style={{
+        borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a",
+        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+        backgroundRepeat: "no-repeat", backgroundPosition: "right 14px center", paddingRight: "36px",
+      }}
+    >
+      {options.map((o) => <option key={o} value={o}>{o}</option>)}
+    </select>
+  );
+}
+
+function TextareaInput({ value, onChange, placeholder, rows = 2 }: {
+  value: string; onChange: (v: string) => void; placeholder?: string; rows?: number;
+}) {
+  return (
+    <textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      rows={rows}
+      className="w-full text-sm rounded-xl border px-4 py-2.5 resize-none focus:outline-none transition-colors"
+      style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
+    />
+  );
+}
+
+// ─── Modal shell ──────────────────────────────────────────────────────────────
+
+function ModalShell({ title, onClose, children }: {
+  title: string; onClose: () => void; children: React.ReactNode;
+}) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50"
+      style={{ background: "rgba(0,0,0,0.35)", backdropFilter: "blur(2px)" }}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      {/* Desktop: centered modal */}
+      <div
+        className="hidden sm:flex items-center justify-center h-full p-4"
+        onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      >
+        <div
+          className="w-full max-w-lg rounded-2xl overflow-hidden flex flex-col"
+          style={{
+            background: "#ffffff",
+            boxShadow: "0 24px 64px rgba(0,0,0,0.18)",
+            animation: "modalIn 0.18s ease",
+            maxHeight: "calc(100vh - 2rem)",
+          }}
+        >
+          <div className="flex items-center justify-between px-6 py-4 border-b shrink-0"
+            style={{ borderColor: "#f0ede8" }}>
+            <p className="text-sm font-semibold text-gray-900">{title}</p>
+            <button onClick={onClose}
+              className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-gray-100">
+              <X size={15} className="text-gray-400" />
+            </button>
+          </div>
+          <div className="overflow-y-auto overscroll-contain flex-1">
+            {children}
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile: bottom sheet */}
+      <div
+        className="sm:hidden fixed left-0 right-0 bottom-0 rounded-t-2xl flex flex-col overflow-hidden"
+        style={{
+          background: "#ffffff",
+          boxShadow: "0 -12px 48px rgba(0,0,0,0.18)",
+          animation: "sheetUp 0.3s cubic-bezier(0.32,0.72,0,1)",
+          maxHeight: "92vh",
+          paddingBottom: "calc(var(--nav-height) + env(safe-area-inset-bottom, 0px))",
+        }}
+      >
+        <div className="flex justify-center pt-3 shrink-0">
+          <div className="w-9 h-1 rounded-full" style={{ background: "#e0ddd8" }} />
+        </div>
+        <div className="flex items-center justify-between px-5 py-3.5 shrink-0"
+          style={{ borderBottom: "1px solid #f0ede8" }}>
+          <p className="text-base font-semibold text-gray-900">{title}</p>
+          <button onClick={onClose}
+            className="w-8 h-8 rounded-full flex items-center justify-center touch-press"
+            style={{ background: "#f3f0eb" }}>
+            <X size={15} className="text-gray-500" />
+          </button>
+        </div>
+        <div className="overflow-y-auto overflow-x-hidden overscroll-contain flex-1">
+          {children}
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes modalIn { from { opacity:0; transform:scale(0.97) translateY(6px); } to { opacity:1; transform:scale(1) translateY(0); } }
+      `}</style>
+    </div>
+  );
+}
+
+// ─── Oefening form modal ──────────────────────────────────────────────────────
+
+type OefeningFormState = Omit<TrainingOefening, "id" | "createdAt" | "updatedAt">;
+
+const EMPTY_OEFENING: OefeningFormState = {
+  title: "", type: "Kracht", description: "",
+  repetitions: "", loadOrTime: "", location: "Thuis", note: "",
+};
+
+function OefeningFormModal({
+  initial, onSave, onClose,
+}: {
+  initial?: TrainingOefening;
+  onSave: (data: OefeningFormState) => void;
+  onClose: () => void;
+}) {
+  const [form, setForm] = useState<OefeningFormState>(
+    initial ? {
+      title: initial.title, type: initial.type, description: initial.description,
+      repetitions: initial.repetitions, loadOrTime: initial.loadOrTime,
+      location: initial.location, note: initial.note,
+    } : EMPTY_OEFENING
+  );
+  const [submitted, setSubmitted] = useState(false);
+
+  function set<K extends keyof OefeningFormState>(k: K, v: OefeningFormState[K]) {
+    setForm((p) => ({ ...p, [k]: v }));
+  }
+
+  function handleSave() {
+    setSubmitted(true);
+    if (!form.title.trim()) return;
+    onSave(form);
+  }
+
+  return (
+    <ModalShell title={initial ? "Oefening bewerken" : "Oefening toevoegen"} onClose={onClose}>
+      <div className="p-4 sm:p-6 space-y-4">
+        <div>
+          <FieldLabel>Titel *</FieldLabel>
+          <TextInput value={form.title} onChange={(v) => set("title", v)} placeholder="Bijv. Mini squat" />
+          {submitted && !form.title.trim() && <p className="text-xs text-red-400 mt-1">Vul een titel in</p>}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <FieldLabel>Type</FieldLabel>
+            <SelectInput value={form.type} onChange={(v) => set("type", v as TrainingOefeningType)} options={OEFENING_TYPES} />
+          </div>
+          <div>
+            <FieldLabel>Locatie</FieldLabel>
+            <SelectInput value={form.location} onChange={(v) => set("location", v as TrainingLocatie)} options={LOCATIES} />
+          </div>
+        </div>
+
+        <div>
+          <FieldLabel optional>Omschrijving</FieldLabel>
+          <TextareaInput value={form.description} onChange={(v) => set("description", v)}
+            placeholder="Beschrijf de uitvoering van de oefening" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <FieldLabel optional>Herhalingen</FieldLabel>
+            <TextInput value={form.repetitions} onChange={(v) => set("repetitions", v)} placeholder="Bijv. 3×15 herh." />
+          </div>
+          <div>
+            <FieldLabel optional>Gewicht / tijd</FieldLabel>
+            <TextInput value={form.loadOrTime} onChange={(v) => set("loadOrTime", v)} placeholder="Bijv. 10 kg" />
+          </div>
+        </div>
+
+        <div>
+          <FieldLabel optional>Opmerking</FieldLabel>
+          <TextareaInput value={form.note} onChange={(v) => set("note", v)}
+            placeholder="Extra aandachtspunten van de fysio" />
+        </div>
+      </div>
+      {/* Desktop footer */}
+      <div className="hidden sm:flex gap-2 justify-end px-6 py-4 border-t shrink-0" style={{ borderColor: "#f0ede8" }}>
+        <Button variant="secondary" size="sm" onClick={onClose}>Annuleren</Button>
+        <Button size="sm" onClick={handleSave}>Opslaan</Button>
+      </div>
+      {/* Mobile footer — wide orange button */}
+      <div className="sm:hidden px-5 pb-5 pt-3 shrink-0" style={{ borderTop: "1px solid #f0ede8" }}>
+        <button
+          onClick={handleSave}
+          className="w-full py-4 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 touch-press"
+          style={{ background: "#e8632a", color: "#ffffff" }}
+        >
+          Opslaan
+        </button>
+      </div>
+    </ModalShell>
+  );
+}
+
+// ─── Schema form modal ────────────────────────────────────────────────────────
+
+type SchemaFormState = {
+  title: string;
+  status: TrainingSchemaStatus;
+  duration: string;
+  exerciseIds: string[];
+};
+
+function SchemaFormModal({
+  initial, oefeningen, onSave, onClose,
+}: {
+  initial?: TrainingSchema;
+  oefeningen: TrainingOefening[];
+  onSave: (data: SchemaFormState) => void;
+  onClose: () => void;
+}) {
+  const [form, setForm] = useState<SchemaFormState>({
+    title: initial?.title ?? "",
+    status: initial?.status ?? "actief",
+    duration: initial?.duration ?? "30 minuten",
+    exerciseIds: initial?.exerciseIds ?? [],
+  });
+  const [submitted, setSubmitted] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<TrainingOefeningType | "Alles">("Alles");
+
+  const TYPE_FILTER_OPTIONS: (TrainingOefeningType | "Alles")[] = ["Alles", ...OEFENING_TYPES];
+
+  const filteredOefeningen = typeFilter === "Alles"
+    ? oefeningen
+    : oefeningen.filter((o) => o.type === typeFilter);
+
+  function set<K extends keyof SchemaFormState>(k: K, v: SchemaFormState[K]) {
+    setForm((p) => ({ ...p, [k]: v }));
+  }
+
+  function toggleExercise(id: string) {
+    setForm((p) => ({
+      ...p,
+      exerciseIds: p.exerciseIds.includes(id)
+        ? p.exerciseIds.filter((x) => x !== id)
+        : [...p.exerciseIds, id],
+    }));
+  }
+
+  function handleSave() {
+    setSubmitted(true);
+    if (!form.title.trim()) return;
+    onSave(form);
+  }
+
+  return (
+    <ModalShell title={initial ? "Schema bewerken" : "Schema toevoegen"} onClose={onClose}>
+      <div className="p-4 sm:p-6 space-y-4">
+        <div>
+          <FieldLabel>Naam *</FieldLabel>
+          <TextInput value={form.title} onChange={(v) => set("title", v)} placeholder="Bijv. Dagelijks schema: Fase 2" />
+          {submitted && !form.title.trim() && <p className="text-xs text-red-400 mt-1">Vul een naam in</p>}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <FieldLabel>Status</FieldLabel>
+            {/* Custom select to show capitalized labels while storing lowercase values */}
+            <select
+              value={form.status}
+              onChange={(e) => set("status", e.target.value as TrainingSchemaStatus)}
+              className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none appearance-none"
+              style={{
+                borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a",
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2020/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+                backgroundRepeat: "no-repeat", backgroundPosition: "right 14px center", paddingRight: "36px",
+              }}
+            >
+              {STATUS_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <FieldLabel>Duur</FieldLabel>
+            <SelectInput value={form.duration} onChange={(v) => set("duration", v)} options={DUUR_OPTIONS} />
+          </div>
+        </div>
+
+        <div>
+          <FieldLabel optional>Oefeningen koppelen</FieldLabel>
+          {oefeningen.length === 0 ? (
+            <div className="rounded-xl border px-4 py-6 text-center"
+              style={{ borderColor: "#e8e5df", background: "#f8f7f4" }}>
+              <p className="text-xs text-gray-400">Nog geen oefeningen in je database.</p>
+              <p className="text-xs text-gray-400 mt-1">Voeg eerst een oefening toe via &quot;Oefening toevoegen&quot;.</p>
+            </div>
+          ) : (
+            <>
+              {/* Type filter chips */}
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {TYPE_FILTER_OPTIONS.map((t) => {
+                  const isActive = typeFilter === t;
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setTypeFilter(t)}
+                      className="text-[11px] font-medium px-2.5 py-1 rounded-full transition-all"
+                      style={{
+                        background: isActive ? "#e8632a" : "#f3f0eb",
+                        color: isActive ? "#ffffff" : "#6b7280",
+                      }}
+                    >
+                      {t}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#e8e5df" }}>
+                {filteredOefeningen.length === 0 ? (
+                  <div className="px-4 py-5 text-center">
+                    <p className="text-xs text-gray-400">Geen oefeningen van dit type.</p>
+                  </div>
+                ) : (
+                  filteredOefeningen.map((oe, i) => {
+                    const Icon = TYPE_ICONS[oe.type];
+                    const checked = form.exerciseIds.includes(oe.id);
+                    return (
+                      <button
+                        key={oe.id}
+                        type="button"
+                        onClick={() => toggleExercise(oe.id)}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
+                        style={{
+                          borderTop: i > 0 ? "1px solid #f0ede8" : undefined,
+                          background: checked ? "#fff8f5" : "#ffffff",
+                        }}
+                      >
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ background: checked ? "#fff3ee" : "#f8f7f4" }}>
+                          <Icon size={13} style={{ color: checked ? "#e8632a" : "#9ca3af" }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800 truncate">{oe.title}</p>
+                          <p className="text-xs text-gray-400">{oe.type}{oe.repetitions ? ` · ${oe.repetitions}` : ""}</p>
+                        </div>
+                        <div
+                          className="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all"
+                          style={{
+                            borderColor: checked ? "#e8632a" : "#d1d5db",
+                            background: checked ? "#e8632a" : "transparent",
+                          }}
+                        >
+                          {checked && <Check size={11} className="text-white" strokeWidth={3} />}
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </>
+          )}
+          {form.exerciseIds.length > 0 && (
+            <p className="text-xs text-gray-400 mt-1.5">
+              {form.exerciseIds.length} oefening{form.exerciseIds.length !== 1 ? "en" : ""} geselecteerd
+            </p>
+          )}
+        </div>
+      </div>
+      {/* Desktop footer */}
+      <div className="hidden sm:flex gap-2 justify-end px-6 py-4 border-t shrink-0" style={{ borderColor: "#f0ede8" }}>
+        <Button variant="secondary" size="sm" onClick={onClose}>Annuleren</Button>
+        <Button size="sm" onClick={handleSave}>Opslaan</Button>
+      </div>
+      {/* Mobile footer — wide orange button */}
+      <div className="sm:hidden px-5 pb-5 pt-3 shrink-0" style={{ borderTop: "1px solid #f0ede8" }}>
+        <button
+          onClick={handleSave}
+          className="w-full py-4 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 touch-press"
+          style={{ background: "#e8632a", color: "#ffffff" }}
+        >
+          Opslaan
+        </button>
+      </div>
+    </ModalShell>
+  );
+}
+
+// ─── Schema card ──────────────────────────────────────────────────────────────
+
+function SchemaCard({
+  schema, oefeningen, onEdit, onDelete, onStatusChange,
+}: {
+  schema: TrainingSchema;
+  oefeningen: TrainingOefening[];
+  onEdit: () => void;
+  onDelete: () => void;
+  onStatusChange: (s: TrainingSchemaStatus) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const linked = oefeningen.filter((o) => schema.exerciseIds.includes(o.id));
+  const cfg = STATUS_CONFIG[schema.status];
+
+  return (
+    <div
+      className="rounded-2xl border transition-all"
+      style={{ background: "#ffffff", borderColor: "#e8e5df", boxShadow: "0 2px 10px rgba(0,0,0,0.04)" }}
+    >
+      {/* Header */}
+      <div className="flex items-start gap-3 p-4">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <Badge variant={cfg.badge}>{cfg.label}</Badge>
+          </div>
+          <h3 className="text-sm font-semibold text-gray-900 leading-snug">{schema.title}</h3>
+          <div className="flex items-center gap-3 mt-1.5">
+            <span className="flex items-center gap-1 text-xs text-gray-400">
+              <Clock size={10} /> {schema.duration}
+            </span>
+            <span className="text-xs text-gray-400">
+              {linked.length} oefening{linked.length !== 1 ? "en" : ""}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button onClick={onEdit}
+            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors">
+            <Pencil size={13} className="text-gray-400" />
+          </button>
+          <button onClick={() => setConfirmDel(true)}
+            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50 transition-colors">
+            <Trash2 size={13} className="text-gray-300 hover:text-red-400" />
+          </button>
+        </div>
+      </div>
+
+      {confirmDel && (
+        <ConfirmDialog
+          title="Schema verwijderen?"
+          message={`"${schema.title}" wordt verwijderd.`}
+          confirmLabel="Verwijderen"
+          onCancel={() => setConfirmDel(false)}
+          onConfirm={() => { onDelete(); setConfirmDel(false); }}
+        />
+      )}
+
+      {/* Exercises toggle */}
+      {linked.length > 0 && (
+        <>
+          <button
+            onClick={() => setExpanded((p) => !p)}
+            className="w-full flex items-center justify-between px-4 py-2.5 text-left border-t transition-colors hover:bg-gray-50"
+            style={{ borderColor: "#f0ede8" }}
+          >
+            <span className="text-xs font-medium text-gray-500">
+              {expanded ? "Verbergen" : "Oefeningen tonen"}
+            </span>
+            {expanded ? <ChevronUp size={13} className="text-gray-400" /> : <ChevronDown size={13} className="text-gray-400" />}
+          </button>
+
+          {expanded && (
+            <div className="border-t" style={{ borderColor: "#f0ede8" }}>
+              {linked.map((oe, i) => {
+                const Icon = TYPE_ICONS[oe.type];
+                return (
+                  <div key={oe.id}
+                    className="flex items-center gap-3 px-4 py-2.5"
+                    style={{ borderTop: i > 0 ? "1px solid #f8f7f4" : undefined }}
+                  >
+                    <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ background: "#fff3ee" }}>
+                      <Icon size={11} style={{ color: "#e8632a" }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-gray-700 truncate">{oe.title}</p>
+                    </div>
+                    {oe.repetitions && (
+                      <span className="text-[11px] text-gray-400 shrink-0">{oe.repetitions}</span>
+                    )}
+                    {oe.loadOrTime && !oe.repetitions && (
+                      <span className="text-[11px] text-gray-400 shrink-0">{oe.loadOrTime}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Status wijzigen */}
+      <div className="flex gap-1.5 px-4 py-3 border-t" style={{ borderColor: "#f0ede8" }}>
+        {STATUS_OPTIONS.map((s) => (
+          <button
+            key={s.value}
+            onClick={() => onStatusChange(s.value)}
+            className="text-[11px] font-medium px-2.5 py-1 rounded-lg transition-all"
+            style={{
+              background: schema.status === s.value ? STATUS_CONFIG[s.value].color : "#f3f4f6",
+              color: schema.status === s.value ? "#ffffff" : "#6b7280",
+            }}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Oefening database card ───────────────────────────────────────────────────
+
+function OefeningCard({
+  oefening, usedInCount, onEdit, onDelete,
+}: {
+  oefening: TrainingOefening;
+  usedInCount: number;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const Icon = TYPE_ICONS[oefening.type];
+  const [confirmDel, setConfirmDel] = useState(false);
+
+  return (
+    <div
+      className="rounded-2xl border p-4 transition-all"
+      style={{ background: "#ffffff", borderColor: "#e8e5df", boxShadow: "0 1px 6px rgba(0,0,0,0.03)" }}
+    >
+      <div className="flex items-start gap-3">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: "#fff3ee" }}>
+          <Icon size={15} style={{ color: "#e8632a" }} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-900 leading-snug truncate">{oefening.title}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{oefening.type} · {oefening.location}</p>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <button onClick={onEdit}
+                className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors">
+                <Pencil size={12} className="text-gray-400" />
+              </button>
+              <button onClick={() => setConfirmDel(true)}
+                className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50 transition-colors">
+                <Trash2 size={12} className="text-gray-300 hover:text-red-400" />
+              </button>
+            </div>
+          </div>
+
+          {oefening.description && (
+            <p className="text-xs text-gray-500 mt-2 leading-relaxed line-clamp-2">{oefening.description}</p>
+          )}
+
+          <div className="flex flex-wrap gap-1.5 mt-2.5">
+            {oefening.repetitions && (
+              <span className="text-[11px] text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full">{oefening.repetitions}</span>
+            )}
+            {oefening.loadOrTime && (
+              <span className="text-[11px] text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full">{oefening.loadOrTime}</span>
+            )}
+            {usedInCount > 0 && (
+              <span className="text-[11px] px-2 py-0.5 rounded-full"
+                style={{ background: "#fff3ee", color: "#e8632a" }}>
+                {usedInCount} schema{usedInCount !== 1 ? "'s" : ""}
+              </span>
+            )}
+          </div>
+
+          {oefening.note && (
+            <p className="text-[11px] text-gray-400 mt-2 italic leading-relaxed">{oefening.note}</p>
+          )}
+        </div>
+      </div>
+      {confirmDel && (
+        <ConfirmDialog
+          title="Oefening verwijderen?"
+          message={`"${oefening.title}" wordt verwijderd.`}
+          confirmLabel="Verwijderen"
+          onCancel={() => setConfirmDel(false)}
+          onConfirm={() => { onDelete(); setConfirmDel(false); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Section label ─────────────────────────────────────────────────────────────
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#b5b0a8" }}>
+      {children}
+    </p>
+  );
+}
+
+// ─── Page tabs ────────────────────────────────────────────────────────────────
+
+type Tab = "schemas" | "oefeningen";
+
+function PageTabs({ active, onChange, schemaCount, oefeningCount }: {
+  active: Tab;
+  onChange: (t: Tab) => void;
+  schemaCount: number;
+  oefeningCount: number;
+}) {
+  return (
+    <div
+      className="inline-flex items-center p-1 rounded-xl gap-0.5"
+      style={{ background: "#f0ede8" }}
+    >
+      {([
+        { id: "schemas" as Tab, label: "Schema's", count: schemaCount, icon: LayoutList },
+        { id: "oefeningen" as Tab, label: "Oefeningen", count: oefeningCount, icon: BookOpen },
+      ] as const).map(({ id, label, count, icon: Icon }) => {
+        const isActive = active === id;
+        return (
+          <button
+            key={id}
+            onClick={() => onChange(id)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+            style={{
+              background: isActive ? "#ffffff" : "transparent",
+              color: isActive ? "#1a1a1a" : "#9ca3af",
+              boxShadow: isActive ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+            }}
+          >
+            <Icon size={14} />
+            {label}
+            {count > 0 && (
+              <span
+                className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full min-w-[20px] text-center"
+                style={{
+                  background: isActive ? "#f3f0eb" : "transparent",
+                  color: isActive ? "#6b7280" : "#c4bfb9",
+                }}
+              >
+                {count}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Main section ─────────────────────────────────────────────────────────────
+
+interface TrainingSchemasSectionProps {
+  /**
+   * "primary": dit IS de trainingspagina (patiënt zonder protocol) — volledige
+   * SectionHeader, zoals altijd.
+   * "supplementary": deze sectie zit in de "Thuis schema"-tab náást een
+   * fysio-protocol — kleinere, uitleggende intro i.p.v. een paginakop, zodat
+   * duidelijk blijft dat dit aanvullend is, niet het officiële behandelplan.
+   */
+  variant: "primary" | "supplementary";
+}
+
+export function TrainingSchemasSection({ variant }: TrainingSchemasSectionProps) {
+  const {
+    trainingOefeningen, addTrainingOefening, updateTrainingOefening, deleteTrainingOefening,
+    trainingSchemas, addTrainingSchema, updateTrainingSchema, deleteTrainingSchema,
+    dagboekWorkouts, addDagboekWorkout,
+  } = useAppData();
+
+  const planInfo = useUserPlan();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const { showToast, toastNode } = useToast();
+
+  function openOefeningModal(editing?: TrainingOefening) {
+    if (!editing && !canAddTrainingOefening(planInfo, trainingOefeningen.length)) {
+      setShowUpgradeModal(true);
+      return;
+    }
+    setOefeningModal({ open: true, editing });
+  }
+
+  const [activeTab, setActiveTab] = useState<Tab>("schemas");
+  const [oefeningModal, setOefeningModal] = useState<{ open: boolean; editing?: TrainingOefening }>({ open: false });
+  const [schemaModal, setSchemaModal] = useState<{ open: boolean; editing?: TrainingSchema }>({ open: false });
+  const [trainingModal, setTrainingModal] = useState(false);
+  const [oefeningTypeFilter, setOefeningTypeFilter] = useState<TrainingOefeningType | "Alles">("Alles");
+  const [schemaStatusFilter, setSchemaStatusFilter] = useState<TrainingSchemaStatus | "Alles">("Alles");
+
+  const weekDays = getWeekDays();
+  const today = todayStr();
+
+  // Stats
+  const actieveSchemas = trainingSchemas.filter((s) => s.status === "actief");
+  const geplande = trainingSchemas.filter((s) => s.status === "gepland");
+  const afgeronde = trainingSchemas.filter((s) => s.status === "afgerond");
+
+  function usedInCount(oeId: string) {
+    return trainingSchemas.filter((s) => s.exerciseIds.includes(oeId)).length;
+  }
+
+  function handleSaveOefening(data: OefeningFormState) {
+    if (oefeningModal.editing) {
+      updateTrainingOefening(oefeningModal.editing.id, data);
+    } else {
+      const now = new Date().toISOString();
+      addTrainingOefening({ id: uid(), ...data, createdAt: now, updatedAt: now });
+    }
+    setOefeningModal({ open: false });
+    showToast("Oefening opgeslagen");
+  }
+
+  function handleSaveSchema(data: SchemaFormState) {
+    if (schemaModal.editing) {
+      updateTrainingSchema(schemaModal.editing.id, data);
+    } else {
+      const now = new Date().toISOString();
+      addTrainingSchema({ id: uid(), ...data, createdAt: now, updatedAt: now });
+    }
+    setSchemaModal({ open: false });
+    showToast("Schema opgeslagen");
+  }
+
+  function handleDeleteOefening(id: string) {
+    deleteTrainingOefening(id);
+    showToast("Oefening verwijderd");
+  }
+
+  function handleDeleteSchema(id: string) {
+    deleteTrainingSchema(id);
+    showToast("Schema verwijderd");
+  }
+
+  const emptySchemaCopy = variant === "supplementary"
+    ? { title: "Nog geen eigen thuisoefeningen", description: "Bouw een schema met oefeningen die je zelf, of samen met je fysio, thuis wilt doen — naast je behandelplan." }
+    : { title: "Nog geen schema's", description: "Maak een trainingsschema op basis van het plan van je fysio." };
+
+  const emptyOefeningCopy = variant === "supplementary"
+    ? { title: "Nog geen oefeningen", description: "Voeg je eigen thuisoefeningen toe. Je kunt ze daarna aan een schema koppelen." }
+    : { title: "Nog geen oefeningen", description: "Voeg oefeningen toe aan je database. Je kunt ze daarna aan schema's koppelen." };
+
+  return (
+    <div className="space-y-6">
+      {variant === "primary" ? (
+        <>
+          {/* Desktop: buttons in SectionHeader action slot */}
+          <div className="hidden sm:block">
+            <SectionHeader
+              title="Training & Oefeningen"
+              subtitle="Jouw revalidatieschema's en oefeningen database"
+              action={
+                <div className="flex items-center gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => setSchemaModal({ open: true })}>
+                    <LayoutList size={14} /> Schema toevoegen
+                  </Button>
+                  <Button size="sm" onClick={() => openOefeningModal()}>
+                    <Plus size={14} /> Oefening toevoegen
+                  </Button>
+                </div>
+              }
+            />
+          </div>
+          {/* Mobile: title + subtitle + Training toevoegen button */}
+          <div className="sm:hidden">
+            <SectionHeader
+              title="Training & Oefeningen"
+              subtitle="Jouw revalidatieschema's en oefeningen database"
+            />
+            <div className="mt-3">
+              <Button size="sm" onClick={() => setTrainingModal(true)}>
+                <Plus size={15} /> Training toevoegen
+              </Button>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="rounded-2xl px-4 py-3.5 flex items-start justify-between gap-3" style={{ background: "#f8f7f4", border: "1px solid #e8e5df" }}>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-900">Jouw eigen thuisoefeningen</p>
+            <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+              Los van je behandelplan: oefeningen die je zelf, of samen met je fysio, wilt bijhouden.
+            </p>
+          </div>
+          <Button size="sm" onClick={() => setTrainingModal(true)} className="shrink-0">
+            <Plus size={14} /> Training
+          </Button>
+        </div>
+      )}
+
+      <TrainingWeekOverview
+        days={weekDays.map(({ date, label }) => ({
+          date, label,
+          items: dagboekWorkouts.filter((w) => w.date === date).map((w) => {
+            const schema = trainingSchemas.find((s) => s.id === w.schemaId);
+            return { id: w.id, label: schema ? schema.title : w.title, completed: w.completed };
+          }),
+        }))}
+        subtitle="Weekoverzicht van je revalidatieschema"
+        today={today}
+      />
+      <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: "#18181a", border: "1px solid rgba(255,255,255,0.06)" }}>
+        <div>
+          <p className="text-xl font-bold" style={{ color: "#f5f4f2" }}>{actieveSchemas.length}</p>
+          <p className="text-xs" style={{ color: "#7c7c8a" }}>Actieve schema&apos;s</p>
+        </div>
+        <div className="h-8 w-px" style={{ background: "rgba(255,255,255,0.07)" }} />
+        <div>
+          <p className="text-xl font-bold" style={{ color: "#f5f4f2" }}>{trainingSchemas.length}</p>
+          <p className="text-xs" style={{ color: "#7c7c8a" }}>Schema&apos;s totaal</p>
+        </div>
+        <div className="h-8 w-px" style={{ background: "rgba(255,255,255,0.07)" }} />
+        <div>
+          <p className="text-xl font-bold" style={{ color: "#f5f4f2" }}>{trainingOefeningen.length}</p>
+          <p className="text-xs" style={{ color: "#7c7c8a" }}>Oefeningen in database</p>
+        </div>
+      </div>
+
+      {/* ── Tabs ──────────────────────────────────────────────────────────────── */}
+      <div>
+        {/* Desktop: tabs + inline button on same row */}
+        <div className="hidden sm:flex items-center justify-between mb-5">
+          <PageTabs
+            active={activeTab}
+            onChange={setActiveTab}
+            schemaCount={trainingSchemas.length}
+            oefeningCount={trainingOefeningen.length}
+          />
+          <button
+            onClick={() => activeTab === "schemas"
+              ? setSchemaModal({ open: true })
+              : openOefeningModal()
+            }
+            className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors hover:bg-gray-100"
+            style={{ color: "#6b7280" }}
+          >
+            <Plus size={12} />
+            {activeTab === "schemas" ? "Nieuw schema" : "Oefening toevoegen"}
+          </button>
+        </div>
+        {/* Mobile: full-width pill tabs (Medicatie stijl) + CTA below */}
+        <div className="sm:hidden mb-4">
+          <div className="flex rounded-xl overflow-hidden" style={{ background: "#f3f0eb" }}>
+            {([
+              { id: "schemas" as Tab, label: `Schema's (${trainingSchemas.length})` },
+              { id: "oefeningen" as Tab, label: `Oefeningen (${trainingOefeningen.length})` },
+            ]).map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className="flex-1 py-2.5 text-sm font-medium transition-all"
+                style={{
+                  background: activeTab === id ? "#ffffff" : "transparent",
+                  color: activeTab === id ? "#1a1a1a" : "#9ca3af",
+                  boxShadow: activeTab === id ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+                  margin: activeTab === id ? "3px" : "0",
+                  borderRadius: activeTab === id ? "8px" : "0",
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="mt-3">
+            <Button
+              size="sm"
+              onClick={() => activeTab === "schemas"
+                ? setSchemaModal({ open: true })
+                : openOefeningModal()
+              }
+            >
+              <Plus size={15} />
+              {activeTab === "schemas" ? "Schema toevoegen" : "Oefening toevoegen"}
+            </Button>
+          </div>
+        </div>
+
+        {/* Tab: Schema's */}
+        {activeTab === "schemas" && (
+          <div>
+            {trainingSchemas.length === 0 ? (
+              <EmptyState icon={LayoutList} title={emptySchemaCopy.title} description={emptySchemaCopy.description} />
+            ) : (
+              <>
+                {/* Mobile: status filter chips */}
+                <div className="sm:hidden flex gap-1.5 overflow-x-auto pb-2 mb-4" style={{ scrollbarWidth: "none" }}>
+                  {(["Alles", "actief", "gepland", "afgerond"] as (TrainingSchemaStatus | "Alles")[]).map((f) => {
+                    const isActive = schemaStatusFilter === f;
+                    const label = f === "Alles" ? "Alles" : STATUS_OPTIONS.find((s) => s.value === f)?.label ?? f;
+                    return (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => setSchemaStatusFilter(f)}
+                        className="text-xs font-medium px-3 py-1.5 rounded-full transition-all shrink-0 touch-press"
+                        style={{
+                          background: isActive ? "#e8632a" : "#f3f0eb",
+                          color: isActive ? "#ffffff" : "#6b7280",
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+              <div className="space-y-6">
+                {/* Desktop: grouped by status */}
+                {actieveSchemas.length > 0 && (
+                  <div className={schemaStatusFilter !== "Alles" && schemaStatusFilter !== "actief" ? "hidden sm:block" : ""}>
+                    <SectionLabel>Actief</SectionLabel>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {actieveSchemas.map((s) => (
+                        <SchemaCard
+                          key={s.id}
+                          schema={s}
+                          oefeningen={trainingOefeningen}
+                          onEdit={() => setSchemaModal({ open: true, editing: s })}
+                          onDelete={() => handleDeleteSchema(s.id)}
+                          onStatusChange={(st) => updateTrainingSchema(s.id, { status: st })}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {geplande.length > 0 && (
+                  <div className={schemaStatusFilter !== "Alles" && schemaStatusFilter !== "gepland" ? "hidden sm:block" : ""}>
+                    <SectionLabel>Gepland</SectionLabel>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {geplande.map((s) => (
+                        <SchemaCard
+                          key={s.id}
+                          schema={s}
+                          oefeningen={trainingOefeningen}
+                          onEdit={() => setSchemaModal({ open: true, editing: s })}
+                          onDelete={() => handleDeleteSchema(s.id)}
+                          onStatusChange={(st) => updateTrainingSchema(s.id, { status: st })}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {afgeronde.length > 0 && (
+                  <div className={schemaStatusFilter !== "Alles" && schemaStatusFilter !== "afgerond" ? "hidden sm:block" : ""}>
+                    <SectionLabel>Afgerond</SectionLabel>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {afgeronde.map((s) => (
+                        <SchemaCard
+                          key={s.id}
+                          schema={s}
+                          oefeningen={trainingOefeningen}
+                          onEdit={() => setSchemaModal({ open: true, editing: s })}
+                          onDelete={() => handleDeleteSchema(s.id)}
+                          onStatusChange={(st) => updateTrainingSchema(s.id, { status: st })}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Tab: Oefeningen database — grouped by type */}
+        {activeTab === "oefeningen" && (
+          <div>
+            {trainingOefeningen.length === 0 ? (
+              <EmptyState icon={BookOpen} title={emptyOefeningCopy.title} description={emptyOefeningCopy.description} />
+            ) : (
+              <>
+                {/* Mobile: type filter chips */}
+                <div className="sm:hidden flex gap-1.5 overflow-x-auto pb-2 mb-4" style={{ scrollbarWidth: "none" }}>
+                  {(["Alles", ...OEFENING_TYPES] as (TrainingOefeningType | "Alles")[]).map((t) => {
+                    const isActive = oefeningTypeFilter === t;
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setOefeningTypeFilter(t)}
+                        className="text-xs font-medium px-3 py-1.5 rounded-full transition-all shrink-0 touch-press"
+                        style={{
+                          background: isActive ? "#e8632a" : "#f3f0eb",
+                          color: isActive ? "#ffffff" : "#6b7280",
+                        }}
+                      >
+                        {t}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Desktop: grouped by type */}
+                <div className="hidden sm:block space-y-6">
+                  {OEFENING_TYPES.map((type) => {
+                    const groep = trainingOefeningen.filter((o) => o.type === type);
+                    if (groep.length === 0) return null;
+                    return (
+                      <div key={type}>
+                        <SectionLabel>{type}</SectionLabel>
+                        <div className="grid grid-cols-2 gap-4">
+                          {groep.map((oe) => (
+                            <OefeningCard
+                              key={oe.id}
+                              oefening={oe}
+                              usedInCount={usedInCount(oe.id)}
+                              onEdit={() => setOefeningModal({ open: true, editing: oe })}
+                              onDelete={() => handleDeleteOefening(oe.id)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Mobile: filtered flat list */}
+                <div className="sm:hidden space-y-3">
+                  {(() => {
+                    const filtered = oefeningTypeFilter === "Alles"
+                      ? trainingOefeningen
+                      : trainingOefeningen.filter((o) => o.type === oefeningTypeFilter);
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="flex flex-col items-center justify-center py-10 text-center rounded-2xl border border-dashed"
+                          style={{ borderColor: "#e8e5df" }}>
+                          <p className="text-sm text-gray-400">Geen oefeningen van dit type.</p>
+                        </div>
+                      );
+                    }
+                    return filtered.map((oe) => (
+                      <OefeningCard
+                        key={oe.id}
+                        oefening={oe}
+                        usedInCount={usedInCount(oe.id)}
+                        onEdit={() => setOefeningModal({ open: true, editing: oe })}
+                        onDelete={() => handleDeleteOefening(oe.id)}
+                      />
+                    ));
+                  })()}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Modals ────────────────────────────────────────────────────────────── */}
+      {trainingModal && (
+        <TrainingModal
+          onClose={() => setTrainingModal(false)}
+          onSave={(w: DagboekWorkout) => { addDagboekWorkout(w); setTrainingModal(false); }}
+          trainingSchemas={trainingSchemas.filter((s) => s.status === "actief").map((s) => ({ id: s.id, title: s.title }))}
+        />
+      )}
+
+      {oefeningModal.open && (
+        <OefeningFormModal
+          initial={oefeningModal.editing}
+          onSave={handleSaveOefening}
+          onClose={() => setOefeningModal({ open: false })}
+        />
+      )}
+
+      {schemaModal.open && (
+        <SchemaFormModal
+          initial={schemaModal.editing}
+          oefeningen={trainingOefeningen}
+          onSave={handleSaveSchema}
+          onClose={() => setSchemaModal({ open: false })}
+        />
+      )}
+
+      {showUpgradeModal && (
+        <UpgradeModal feature="training" onClose={() => setShowUpgradeModal(false)} />
+      )}
+      {toastNode}
+    </div>
+  );
+}

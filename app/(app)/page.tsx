@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   ClipboardCheck, Calendar, Dumbbell, Pill, FileText, Image,
   ArrowRight, Clock, MapPin, Check, ChevronRight, Plus,
-  Target, Trophy, TrendingUp, X,
+  Trophy, X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { useAppData } from "@/lib/store";
@@ -21,10 +20,19 @@ import { getQuoteOfTheDay } from "@/lib/motivationalQuotes";
 import dynamic from "next/dynamic";
 import type { InnameFormFields } from "@/components/medicatie/InnameModal";
 import { usePatientProtocol } from "@/lib/hooks/usePatientProtocol";
+import { PhaseTimeline } from "@/components/training/PhaseTimeline";
+import { PhaseCriteriaCard } from "@/components/dashboard/PhaseCriteriaCard";
+import { RevaScoreCard, RevaScoreCircle } from "@/components/dashboard/RevaScoreCard";
+import { generateRevaScore } from "@/lib/revaScore";
+import { estimatePhaseTiming } from "@/lib/scheduleProgress";
+import { getBodyRegion } from "@/lib/intakeAnalysis";
+import { getWeeklyExpectation } from "@/lib/regionContent";
+import { ThisWeekExpectCard } from "@/components/dashboard/ThisWeekExpectCard";
 import { usePatientCareContext } from "@/lib/hooks/usePatientCareContext";
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
+import { WelcomeHero } from "@/components/dashboard/WelcomeHero";
+import { usePatientWelcome } from "@/lib/hooks/usePatientWelcome";
 import { CoachPanel } from "@/components/dashboard/CoachPanel";
-import { WeekSummaryCard } from "@/components/dashboard/WeekSummaryCard";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 
 // ─── Lazy-loaded modals ────────────────────────────────────────────────────────
@@ -77,18 +85,6 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function getWeekDates(): string[] {
-  const now    = new Date();
-  const dow    = now.getDay();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1));
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  });
-}
-
 function fmtShort(dateStr: string) {
   return new Date(dateStr + "T12:00:00").toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
 }
@@ -102,20 +98,6 @@ function scoreColor(s: number)  { return SCORE_COLORS[Math.min(5, Math.max(1, s)
 
 type QuickModal = "checkin" | "afspraak" | "training" | "medicatie" | "document" | null;
 
-type FocusKind = "afspraak" | "training" | "medicatie" | "checkin" | "doel";
-interface FocusCardData {
-  kind: FocusKind;
-  color: string;
-  bg: string;
-  icon: React.ElementType;
-  microcopy: string;
-  title: string;
-  details: { icon?: React.ElementType; value: string }[];
-  cta: string;
-  ctaHref?: string;
-  ctaModal?: NonNullable<QuickModal>;
-}
-
 function StatusPill({ label, color, bg }: { label: string; color: string; bg: string }) {
   return (
     <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full leading-none"
@@ -125,12 +107,12 @@ function StatusPill({ label, color, bg }: { label: string; color: string; bg: st
   );
 }
 
-function QuickActionTile({ label, icon: Icon, color, bg, onClick, href, hoverLift }: {
+function QuickActionTile({ label, icon: Icon, color, bg, onClick, href }: {
   label: string; icon: React.ElementType; color: string; bg: string;
-  onClick?: () => void; href?: string; hoverLift?: boolean;
+  onClick?: () => void; href?: string;
 }) {
-  const className = `rounded-2xl border p-4 flex flex-col items-center gap-2.5 text-center transition-all cursor-pointer w-full${hoverLift ? " hover:shadow-sm hover:-translate-y-px" : ""}`;
-  const style = { background: "#ffffff", borderColor: "#e8e5df", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" };
+  const className = "rounded-2xl border p-4 flex flex-col items-center gap-2.5 text-center transition-all cursor-pointer w-full shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md hover:-translate-y-0.5";
+  const style = { background: "#ffffff", borderColor: "#e8e5df" };
   const content = (
     <>
       <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: bg }}>
@@ -456,70 +438,9 @@ function DocumentQuickModal({ onClose, addDossierDocument, today }: {
   );
 }
 
-// ─── Inline SVG line chart ────────────────────────────────────────────────────
-
-function TrendChart({ checkIns }: { checkIns: { date: string; dagscore: number }[] }) {
-  const recent = [...checkIns].sort((a, b) => a.date.localeCompare(b.date)).slice(-14);
-  if (recent.length < 2) {
-    return (
-      <div className="flex flex-col items-center justify-center py-8 text-center">
-        <TrendingUp size={18} className="text-gray-200 mb-2" />
-        <p className="text-xs text-gray-400">Vul meer check-ins in om je trend te zien</p>
-      </div>
-    );
-  }
-  const VW = 560; const VH = 120;
-  const PL = 26; const PR = 12; const PT = 10; const PB = 24;
-  const cW = VW - PL - PR; const cH = VH - PT - PB;
-  const n  = recent.length;
-  const xP = (i: number) => PL + (n === 1 ? cW / 2 : (i / (n - 1)) * cW);
-  const yP = (s: number) => PT + cH - ((s - 1) / 4) * cH;
-  const pts = recent.map((ci, i) => ({ x: xP(i), y: yP(ci.dagscore), ci }));
-  const line = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
-  const area = `${line} L ${pts[n-1].x.toFixed(1)} ${(PT+cH).toFixed(1)} L ${pts[0].x.toFixed(1)} ${(PT+cH).toFixed(1)} Z`;
-
-  const lblSet = new Set([0, n - 1]);
-  if (n >= 7) lblSet.add(Math.floor(n / 2));
-
-  return (
-    <svg viewBox={`0 0 ${VW} ${VH}`} className="w-full" style={{ overflow: "visible" }}>
-      <defs>
-        <linearGradient id="dashGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor="#e8632a" stopOpacity="0.07" />
-          <stop offset="100%" stopColor="#e8632a" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      {[1,2,3,4,5].map(s => (
-        <line key={s} x1={PL} y1={yP(s)} x2={VW-PR} y2={yP(s)}
-          stroke={s===3 ? "#ece9e4" : "#f5f3f0"} strokeWidth="0.75" />
-      ))}
-      <path d={area} fill="url(#dashGrad)" />
-      <path d={line} fill="none" stroke="#e8632a" strokeWidth="1.5"
-        strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
-      {pts.map((p, i) => {
-        const isLast = i === n - 1;
-        return (
-          <g key={i}>
-            {isLast && <circle cx={p.x} cy={p.y} r={7} fill="#e8632a" opacity="0.08" />}
-            <circle cx={p.x} cy={p.y} r={isLast ? 3.5 : 2}
-              fill={isLast ? "#e8632a" : "#fff"} stroke="#e8632a"
-              strokeWidth={isLast ? 0 : 1.5} opacity={isLast ? 1 : 0.7} />
-          </g>
-        );
-      })}
-      {pts.map((p, i) => lblSet.has(i) && (
-        <text key={i} x={p.x} y={VH - 2} textAnchor="middle" fontSize="9" fill="#b5b0a8">
-          {fmtShort(p.ci.date)}
-        </text>
-      ))}
-    </svg>
-  );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
-  const router = useRouter();
   const {
     hydrated,
     profile,
@@ -532,8 +453,9 @@ export default function Dashboard() {
     dagsSindsBlessure, dagsSindsOperatie, fase,
   } = useAppData();
 
-  const { checked: protocolChecked, hasActiveProtocol, protocol } = usePatientProtocol();
+  const { checked: protocolChecked, hasActiveProtocol, protocol, patientId: protocolPatientId } = usePatientProtocol();
   const careContext = usePatientCareContext();
+  const { welcomedAt, loaded: welcomeLoaded, markWelcomed } = usePatientWelcome();
 
   const [quickModal, setQuickModal] = useState<QuickModal>(null);
 
@@ -553,41 +475,27 @@ export default function Dashboard() {
   if (!hydrated || !protocolChecked) return <PageSkeleton />;
 
   const today      = todayStr();
-  const weekDates  = getWeekDates();
 
   // ── Computed ──────────────────────────────────────────────────────────────
 
   const todayCheckIn  = checkIns.find(c => c.date === today);
-  const weekCheckIns  = checkIns.filter(c => weekDates.includes(c.date));
-  const avgScore      = weekCheckIns.length
-    ? weekCheckIns.reduce((s, c) => s + c.dagscore, 0) / weekCheckIns.length
-    : null;
-  const avgPijn       = weekCheckIns.length
-    ? weekCheckIns.reduce((s, c) => s + c.pijn, 0) / weekCheckIns.length
-    : null;
-
   const todayApts     = [...appointments].filter(a => a.date === today).sort((a, b) => a.time.localeCompare(b.time));
   const upcomingApts  = [...appointments].filter(a => a.date >= today).sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
 
   const todayWorkouts = dagboekWorkouts.filter(w => w.date === today);
-  const weekWorkouts  = dagboekWorkouts.filter(w => weekDates.includes(w.date));
-  const trainedDays   = new Set(weekWorkouts.filter(w => w.completed).map(w => w.date)).size;
 
   const medVandaag    = [...medicatie].filter(m => m.date === today).sort((a, b) => a.time.localeCompare(b.time));
 
   const recentDocs    = [...dossierDocumenten].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
   const latestFoto    = [...fotoUpdates].sort((a, b) => b.date.localeCompare(a.date))[0] ?? null;
 
-  const mainGoal      = doelen.find(d => d.type === "main") ?? null;
-  const regularGoals  = doelen.filter(d => d.type === "regular");
-  const nextMijlpaal  = [...mijlpalen].filter(m => !m.completed)
-    .sort((a, b) => (a.fase ?? "").localeCompare(b.fase ?? ""))[0] ?? null;
-
   const protocolPhase = hasActiveProtocol ? protocol?.currentPhase ?? null : null;
   const protocolSchedulesTotal = protocolPhase
     ? { completed: protocolPhase.schedules.reduce((s, sc) => s + sc.completedThisWeek, 0), prescribed: protocolPhase.schedules.reduce((s, sc) => s + sc.frequencyPerWeek, 0) }
     : null;
-  const nextProtocolMilestoneForWeek = protocolPhase?.milestones.find((m) => !m.completed) ?? null;
+
+  // Voortgangscriteria naast de hero — alleen bij een actief protocol met criteria.
+  const hasCurrentCriteria = hasActiveProtocol && !!protocolPhase && protocolPhase.criteria.length > 0;
 
   const tomorrow = (() => {
     const d = new Date(); d.setDate(d.getDate() + 1);
@@ -597,97 +505,6 @@ export default function Dashboard() {
     const d = new Date(); d.setDate(d.getDate() - 1);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   })();
-
-  // ── Focus card (slimme prioriteitskaart) ─────────────────────────────────
-
-  let focusCard: FocusCardData | null = null;
-
-  if (todayApts.length > 0) {
-    const a = todayApts[0];
-    focusCard = {
-      kind: "afspraak", color: "#3b82f6", bg: "#eff6ff", icon: Calendar,
-      microcopy: "Vandaag staat deze afspraak voor je klaar",
-      title: a.title,
-      details: [
-        { icon: Clock, value: a.time },
-        ...(a.location ? [{ icon: MapPin as React.ElementType, value: a.location }] : []),
-        ...(a.behandelaar ? [{ value: `Met ${a.behandelaar}` }] : []),
-      ],
-      cta: "Bekijk in kalender",
-      ctaHref: "/dagboek",
-    };
-  } else {
-    const openWorkout = todayWorkouts.find(w => !w.completed) ?? null;
-    if (openWorkout) {
-      const schema = trainingSchemas.find(s => s.id === openWorkout.schemaId);
-      focusCard = {
-        kind: "training", color: "#0ea5e9", bg: "#f0f9ff", icon: Dumbbell,
-        microcopy: "Deze training wacht nog op je",
-        title: schema ? schema.title : openWorkout.title,
-        details: [],
-        cta: "Training openen",
-        ctaHref: "/training",
-      };
-    } else if (medVandaag.length > 0) {
-      focusCard = {
-        kind: "medicatie", color: "#8b5cf6", bg: "#f5f3ff", icon: Pill,
-        microcopy: "Je medicatie van vandaag vraagt aandacht",
-        title: medVandaag[0].naam,
-        details: [{ value: `${medVandaag[0].dosering} · ${medVandaag[0].time}` }],
-        cta: "Medicatie loggen",
-        ctaModal: "medicatie",
-      };
-    } else if (!todayCheckIn) {
-      focusCard = {
-        kind: "checkin", color: "#e8632a", bg: "#fff3ee", icon: ClipboardCheck,
-        microcopy: "Je check-in van vandaag staat nog open",
-        title: "Dagelijkse check-in",
-        details: [],
-        cta: "Check-in invullen",
-        ctaModal: "checkin",
-      };
-    } else if (hasActiveProtocol && protocol?.currentPhase) {
-      const behindSchedule = protocol.currentPhase.schedules.find((s) => s.completedThisWeek < s.frequencyPerWeek);
-      const nextProtocolMilestone = protocol.currentPhase.milestones.find((m) => !m.completed);
-      if (behindSchedule) {
-        focusCard = {
-          kind: "training", color: "#0ea5e9", bg: "#f0f9ff", icon: Dumbbell,
-          microcopy: "Dit trainingsschema wacht nog op je deze week",
-          title: behindSchedule.title,
-          details: [{ value: `${behindSchedule.completedThisWeek}/${behindSchedule.frequencyPerWeek} keer deze week` }],
-          cta: "Training openen",
-          ctaHref: "/training",
-        };
-      } else if (nextProtocolMilestone) {
-        focusCard = {
-          kind: "doel", color: "#e8632a", bg: "#fff3ee", icon: Target,
-          microcopy: "Dit is je volgende mijlpaal in je herstelplan",
-          title: nextProtocolMilestone.title,
-          details: [],
-          cta: "Doelstellingen bekijken",
-          ctaHref: "/doelstellingen",
-        };
-      }
-    } else if (nextMijlpaal) {
-      focusCard = {
-        kind: "doel", color: "#e8632a", bg: "#fff3ee", icon: Target,
-        microcopy: "Dit is je volgende stap in herstel",
-        title: nextMijlpaal.title,
-        details: nextMijlpaal.fase ? [{ value: nextMijlpaal.fase }] : [],
-        cta: "Doelstellingen bekijken",
-        ctaHref: "/doelstellingen",
-      };
-    } else if (mainGoal && !mainGoal.completed) {
-      focusCard = {
-        kind: "doel", color: "#e8632a", bg: "#fff3ee", icon: Target,
-        microcopy: "Dit is je hoofddoel in dit traject",
-        title: mainGoal.title,
-        details: [],
-        cta: "Doelstellingen bekijken",
-        ctaHref: "/doelstellingen",
-      };
-    }
-  }
 
   // ── Recente activiteit ────────────────────────────────────────────────────
 
@@ -778,17 +595,50 @@ export default function Dashboard() {
     protocolPhase,
   });
 
-  function handleCoachAction(action: string) {
-    if (action === "modal:checkin") { setQuickModal("checkin"); return; }
-    if (action.startsWith("navigate:")) {
-      router.push(action.slice("navigate:".length));
-    }
-  }
+  const revaScore = generateRevaScore({
+    checkIns,
+    medicatie,
+    appointments,
+    doelen,
+    now,
+    hasActiveProtocol,
+    protocolPhase,
+  });
+
+  const bodyRegion = getBodyRegion(profile.blessureType);
+  const weeklyExpectation = getWeeklyExpectation(bodyRegion);
+
+  // Fase-timing: alleen bruikbaar bij een actief protocol met een geldige
+  // week_range_label. Bewust alleen de geruststellende/informatieve varianten
+  // ("voor" of "op schema") in de begroeting, niet de "aandacht"-tier van de
+  // REVA Score — die nuance hoort thuis in de RevaScoreCard zelf, met de
+  // volledige factorenlijst erbij, niet los in een korte begroetingszin.
+  const phaseTiming = hasActiveProtocol && protocolPhase
+    ? estimatePhaseTiming(protocolPhase.weekRangeLabel, protocolPhase.startedAt, now)
+    : { status: "onbekend" as const, weeksInPhase: null, message: null, weeksRemaining: null };
+  const introSentence =
+    phaseTiming.status === "ahead" || phaseTiming.status === "extra_tijd"
+      ? phaseTiming.message
+      : revaScore.tier === "op_schema"
+      ? "Je ligt mooi op schema."
+      : phaseTiming.status === "on_track"
+      ? phaseTiming.message
+      : null;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="px-4 py-4 sm:px-6 sm:py-6 max-w-5xl mx-auto space-y-6 sm:space-y-8">
+
+      {welcomeLoaded && welcomedAt === null && (
+        <WelcomeHero
+          firstName={voornaam}
+          blessureContext={blessureContext}
+          dagsSindsBlessure={dagsSindsBlessure}
+          faseNaam={hasActiveProtocol && protocol?.currentPhase ? protocol.currentPhase.name : fase}
+          onShown={markWelcomed}
+        />
+      )}
 
       <OnboardingChecklist
         hasActiveProtocol={hasActiveProtocol}
@@ -802,20 +652,34 @@ export default function Dashboard() {
       />
 
       {/* ════════════════════════════════════════════════════════════════════
-          RIJ 1 — HERO (twee losse kaarten)
+          RIJ 1 — JOUW HERSTELTRAJECT (fase-tijdlijn, zelfde component als /training)
       ════════════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {protocolPatientId && <PhaseTimeline patientId={protocolPatientId} />}
 
-        {/* Links: licht — begroeting + motivatie + context */}
-        <Panel className="lg:col-span-2">
+      {/* ════════════════════════════════════════════════════════════════════
+          RIJ 2 — HERO
+      ════════════════════════════════════════════════════════════════════ */}
+      <div className={`grid grid-cols-1 ${hasCurrentCriteria ? "lg:grid-cols-[6fr_4fr]" : ""} gap-4`}>
+        <Panel>
           <div className="p-6">
-            {/* Datum */}
-            <p className="text-[11px] font-medium uppercase tracking-widest mb-1 text-gray-400">
-              {now.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" })}
-            </p>
+            <div className="flex items-start justify-between gap-4 mb-1">
+              <div className="min-w-0">
+                {/* Datum */}
+                <p className="text-[11px] font-medium uppercase tracking-widest mb-1 text-gray-400">
+                  {now.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" })}
+                </p>
 
-            {/* Begroeting */}
-            <p className="text-xl font-bold text-gray-900 mb-1 leading-tight">{begroeting}</p>
+                {/* Begroeting */}
+                <p className="text-xl font-bold text-gray-900 leading-tight">{begroeting}</p>
+              </div>
+
+              <RevaScoreCircle result={revaScore} />
+            </div>
+
+            {/* Persoonlijke introzin: schema-status, alleen geruststellende/informatieve varianten */}
+            {introSentence && (
+              <p className="text-sm text-gray-600 mb-2 mt-1 leading-relaxed max-w-sm">{introSentence}</p>
+            )}
 
             {/* Context: blessure + fase */}
             <div className="mb-4">
@@ -837,13 +701,16 @@ export default function Dashboard() {
               {dailyQuote}
             </p>
 
-            {/* Fase + trend badge */}
+            {/* Fase + trend badge — fasepil alleen voor niet-protocolpatiënten:
+                bij een actief protocol toont de tijdlijn hieronder de fase al. */}
             <div className="flex flex-wrap gap-2 mb-5">
-              <span className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full"
-                style={{ background: "#fff3ee", color: "#e8632a", border: "1px solid rgba(232,99,42,0.2)" }}>
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#e8632a" }} />
-                {hasActiveProtocol && protocol?.currentPhase ? protocol.currentPhase.name : fase}
-              </span>
+              {!hasActiveProtocol && (
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full"
+                  style={{ background: "#fff3ee", color: "#e8632a", border: "1px solid rgba(232,99,42,0.2)" }}>
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#e8632a" }} />
+                  {fase}
+                </span>
+              )}
               {trend === "stijgend" && (
                 <span className="inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full"
                   style={{ background: "#f0fdf4", color: "#16a34a", border: "1px solid #bbf7d0" }}>
@@ -874,107 +741,28 @@ export default function Dashboard() {
           </div>
         </Panel>
 
-        {/* Rechts: Deze week — 3 KPI's */}
-        <WeekSummaryCard
-          phaseName={protocolPhase?.name}
-          avgScore={avgScore}
-          avgPijn={avgPijn}
-          trainingCompleted={protocolSchedulesTotal?.completed ?? trainedDays}
-          trainingTotal={protocolSchedulesTotal?.prescribed ?? 7}
-        />
-
+        {hasCurrentCriteria && <PhaseCriteriaCard criteria={protocolPhase!.criteria} />}
       </div>
 
       {/* ════════════════════════════════════════════════════════════════════
-          RIJ 2 — JOUW COACH (tweede blok van het dashboard)
+          RIJ 3 — REVA SCORE + DEZE WEEK VERWACHTEN
       ════════════════════════════════════════════════════════════════════ */}
       <div>
-        <RowLabel>Jouw coach</RowLabel>
-        <CoachPanel coachInsights={coachInsights} onAction={handleCoachAction} />
+        <RowLabel>Jouw REVA Score</RowLabel>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <RevaScoreCard result={revaScore} />
+          <ThisWeekExpectCard expectation={weeklyExpectation} />
+        </div>
       </div>
 
       {/* ════════════════════════════════════════════════════════════════════
-          RIJ 1.5 — FOCUS VAN VANDAAG
-      ════════════════════════════════════════════════════════════════════ */}
-      {focusCard && (
-        <div>
-          <RowLabel>Jouw focus van vandaag</RowLabel>
-          <div className="rounded-2xl flex flex-col sm:flex-row sm:items-center gap-4 p-5"
-            style={{
-              background: "#ffffff",
-              border: "1px solid #e8e5df",
-              boxShadow: `inset 4px 0 0 0 ${focusCard.color}, 0 1px 4px rgba(0,0,0,0.04)`,
-            }}>
-            {/* Icoon */}
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
-              style={{ background: focusCard.bg }}>
-              <focusCard.icon size={22} style={{ color: focusCard.color }} />
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-medium text-gray-400 mb-0.5 leading-none">{focusCard.microcopy}</p>
-              <p className="text-base font-semibold text-gray-900 leading-snug">{focusCard.title}</p>
-              {focusCard.details.length > 0 && (
-                <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
-                  {focusCard.details.map((d, i) => (
-                    <span key={i} className="flex items-center gap-1 text-xs text-gray-400">
-                      {d.icon && <d.icon size={10} />}
-                      {d.value}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* CTA */}
-            <div className="shrink-0">
-              {focusCard.ctaHref ? (
-                <Link href={focusCard.ctaHref}>
-                  <div className="px-4 py-2.5 rounded-xl text-xs font-semibold text-white transition-opacity hover:opacity-90"
-                    style={{ background: "#1c1c1e" }}>
-                    {focusCard.cta}
-                  </div>
-                </Link>
-              ) : (
-                <button onClick={() => setQuickModal(focusCard!.ctaModal!)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-white transition-opacity hover:opacity-90"
-                  style={{ background: "#1c1c1e" }}>
-                  {focusCard.cta}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Avond check-in reminder — alleen tonen als avond + check-in nog open */}
-      {toonAvondReminder && (
-        <div className="flex items-center justify-between gap-4 px-5 py-4 rounded-2xl"
-          style={{ background: "#fff3ee", border: "1px solid rgba(232,99,42,0.2)" }}>
-          <div className="flex items-center gap-3">
-            <ClipboardCheck size={16} style={{ color: "#e8632a" }} />
-            <div>
-              <p className="text-sm font-semibold" style={{ color: "#1a1a1a" }}>Je check-in van vandaag staat nog open</p>
-              <p className="text-xs text-gray-400 mt-0.5">Hoe kijk je terug op vandaag?</p>
-            </div>
-          </div>
-          <button onClick={() => setQuickModal("checkin")}
-            className="shrink-0 px-4 py-2 rounded-xl text-xs font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ background: "#e8632a" }}>
-            Nu invullen
-          </button>
-        </div>
-      )}
-
-      {/* ════════════════════════════════════════════════════════════════════
-          RIJ 2 — VANDAAG
+          RIJ 4 — VANDAAG
       ════════════════════════════════════════════════════════════════════ */}
       <div>
         <RowLabel>Vandaag</RowLabel>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
 
-          {/* 2.1 Check-in */}
+          {/* 5.1 Check-in */}
           <Panel>
             <div className="p-4 flex flex-col h-full">
               <div className="mb-2.5">
@@ -1012,7 +800,7 @@ export default function Dashboard() {
                 <>
                   <p className="text-xs text-gray-400 flex-1">Nog niet ingevuld vandaag</p>
                   <button onClick={() => setQuickModal("checkin")} className="mt-3 w-full">
-                    <div className="w-full text-center text-xs font-semibold py-2 rounded-xl"
+                    <div className="w-full text-center text-xs font-semibold py-2 rounded-xl transition-opacity hover:opacity-90"
                       style={{ background: "#1c1c1e", color: "#ffffff" }}>
                       Invullen
                     </div>
@@ -1022,7 +810,7 @@ export default function Dashboard() {
             </div>
           </Panel>
 
-          {/* 2.2 Afspraken */}
+          {/* 5.2 Afspraken */}
           <Panel>
             <div className="p-4 flex flex-col h-full">
               <div className="mb-2.5">
@@ -1067,7 +855,7 @@ export default function Dashboard() {
             </div>
           </Panel>
 
-          {/* 2.3 Training */}
+          {/* 5.3 Training */}
           <Panel>
             <div className="p-4 flex flex-col h-full">
               {hasActiveProtocol && protocolPhase ? (
@@ -1166,7 +954,7 @@ export default function Dashboard() {
             </div>
           </Panel>
 
-          {/* 2.4 Medicatie */}
+          {/* 5.4 Medicatie */}
           <Panel>
             <div className="p-4 flex flex-col h-full">
               <div className="mb-2.5">
@@ -1209,125 +997,34 @@ export default function Dashboard() {
       </div>
 
       {/* ════════════════════════════════════════════════════════════════════
-          RIJ 4 — VOORTGANG
+          RIJ 5 — JOUW COACH
       ════════════════════════════════════════════════════════════════════ */}
       <div>
-        <RowLabel>Voortgang</RowLabel>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-          {/* Hersteltrend — 2/3 */}
-          <Panel className="lg:col-span-2">
-            <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900">Hersteltrend</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Dagscore van de laatste 14 check-ins</p>
-              </div>
-              {avgScore !== null && (
-                <div className="text-right">
-                  <p className="text-xl font-bold leading-none" style={{ color: "#e8632a" }}>{avgScore.toFixed(1)}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">gemiddeld</p>
-                </div>
-              )}
-            </div>
-            <div className="px-5 pb-4">
-              <TrendChart checkIns={checkIns} />
-            </div>
-          </Panel>
-
-          {/* Doelstellingen — 1/3 */}
-          <Panel>
-            <div className="px-5 pt-5 pb-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-gray-900">Doelstellingen</h3>
-                <Link href="/doelstellingen" className="text-xs font-medium" style={{ color: "#e8632a" }}>
-                  Bekijken
-                </Link>
-              </div>
-
-              {mainGoal && (
-                <div className="rounded-xl p-3 mb-4"
-                  style={{ background: mainGoal.completed ? "#f0fdf4" : "#f8f7f4", border: `1px solid ${mainGoal.completed ? "#bbf7d0" : "#e8e5df"}` }}>
-                  <div className="flex items-start gap-2">
-                    <span className="text-base">{mainGoal.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-0.5">Hoofddoel</p>
-                      <p className="text-xs font-semibold text-gray-800 leading-snug">{mainGoal.title}</p>
-                    </div>
-                    {mainGoal.completed && (
-                      <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: "#22c55e" }}>
-                        <Check size={10} className="text-white" strokeWidth={3} />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {hasActiveProtocol && protocolPhase ? (
-                <>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Trophy size={12} style={{ color: "#e8632a" }} />
-                    <span className="text-xs text-gray-500">
-                      <span className="font-semibold text-gray-800">{protocolPhase.milestones.filter(m => m.completed).length}</span>
-                      {" / "}
-                      <span className="font-semibold text-gray-800">{protocolPhase.milestones.length}</span>
-                      {" mijlpalen"}
-                    </span>
-                  </div>
-
-                  {protocolPhase.milestones.length > 0 && (
-                    <div className="h-1.5 rounded-full overflow-hidden mb-4" style={{ background: "#f0ede8" }}>
-                      <div className="h-full rounded-full"
-                        style={{ width: `${(protocolPhase.milestones.filter(m => m.completed).length / protocolPhase.milestones.length) * 100}%`, background: "#e8632a" }} />
-                    </div>
-                  )}
-
-                  {nextProtocolMilestoneForWeek && (
-                    <div className="flex items-start gap-2">
-                      <Target size={11} className="mt-0.5 shrink-0" style={{ color: "#e8632a" }} />
-                      <div className="min-w-0">
-                        <p className="text-[10px] text-gray-400 mb-0.5">Volgende</p>
-                        <p className="text-xs font-medium text-gray-700 leading-snug">{nextProtocolMilestoneForWeek.title}</p>
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Target size={12} style={{ color: "#e8632a" }} />
-                    <span className="text-xs text-gray-500">
-                      <span className="font-semibold text-gray-800">{regularGoals.filter(d => d.completed).length}</span>
-                      {" / "}
-                      <span className="font-semibold text-gray-800">{regularGoals.length}</span>
-                      {" doelen"}
-                    </span>
-                  </div>
-
-                  {regularGoals.length > 0 && (
-                    <div className="h-1.5 rounded-full overflow-hidden mb-4" style={{ background: "#f0ede8" }}>
-                      <div className="h-full rounded-full"
-                        style={{ width: `${(regularGoals.filter(d => d.completed).length / regularGoals.length) * 100}%`, background: "#e8632a" }} />
-                    </div>
-                  )}
-
-                  {regularGoals.find(d => !d.completed) && (
-                    <div className="flex items-start gap-2">
-                      <Target size={11} className="mt-0.5 shrink-0" style={{ color: "#e8632a" }} />
-                      <div className="min-w-0">
-                        <p className="text-[10px] text-gray-400 mb-0.5">Volgende</p>
-                        <p className="text-xs font-medium text-gray-700 leading-snug">{regularGoals.find(d => !d.completed)!.title}</p>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </Panel>
-        </div>
+        <RowLabel>Jouw coach</RowLabel>
+        <CoachPanel coachInsights={coachInsights} />
       </div>
 
+      {/* Avond check-in reminder — alleen tonen als avond + check-in nog open */}
+      {toonAvondReminder && (
+        <div className="flex items-center justify-between gap-4 px-5 py-4 rounded-2xl"
+          style={{ background: "#fff3ee", border: "1px solid rgba(232,99,42,0.2)" }}>
+          <div className="flex items-center gap-3">
+            <ClipboardCheck size={16} style={{ color: "#e8632a" }} />
+            <div>
+              <p className="text-sm font-semibold" style={{ color: "#1a1a1a" }}>Je check-in van vandaag staat nog open</p>
+              <p className="text-xs text-gray-400 mt-0.5">Hoe kijk je terug op vandaag?</p>
+            </div>
+          </div>
+          <button onClick={() => setQuickModal("checkin")}
+            className="shrink-0 px-4 py-2 rounded-xl text-xs font-semibold text-white transition-opacity hover:opacity-90"
+            style={{ background: "#e8632a" }}>
+            Nu invullen
+          </button>
+        </div>
+      )}
+
       {/* ════════════════════════════════════════════════════════════════════
-          RIJ 4 — RECENT & PLANNING
+          RIJ 6 — RECENT & PLANNING
       ════════════════════════════════════════════════════════════════════ */}
       <div>
         <RowLabel>Recent &amp; planning</RowLabel>
@@ -1414,7 +1111,7 @@ export default function Dashboard() {
       </div>
 
       {/* ════════════════════════════════════════════════════════════════════
-          RIJ 5 — DOSSIER & FOTO
+          RIJ 7 — DOSSIER & FOTO
       ════════════════════════════════════════════════════════════════════ */}
       {(recentDocs.length > 0 || latestFoto) && (
         <div>
@@ -1508,7 +1205,7 @@ export default function Dashboard() {
       )}
 
       {/* ════════════════════════════════════════════════════════════════════
-          RIJ 6 — SNELLE ACTIES
+          RIJ 8 — SNELLE ACTIES
       ════════════════════════════════════════════════════════════════════ */}
       <div>
         <RowLabel>Snelle acties</RowLabel>
@@ -1544,7 +1241,6 @@ export default function Dashboard() {
               label={a.label} icon={a.icon} color={a.color} bg={a.bg}
               onClick={a.modal === "training" && hasActiveProtocol ? undefined : () => setQuickModal(a.modal)}
               href={a.modal === "training" && hasActiveProtocol ? "/training" : undefined}
-              hoverLift
             />
           ))}
         </div>

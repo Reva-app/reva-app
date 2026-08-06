@@ -20,6 +20,79 @@ export async function loadOwnPatientId(userId: string): Promise<string | null> {
   return data?.id ?? null;
 }
 
+export interface PatientWelcomeState {
+  patientId: string;
+  welcomedAt: string | null;
+  firstName: string | null;
+}
+
+/**
+ * Voor het eenmalige "Welkom [Naam]"-moment op het dashboard na afronding
+ * van de intake (zie components/dashboard/WelcomeHero.tsx, migratie 089).
+ */
+export async function loadOwnPatientWelcomeState(userId: string): Promise<PatientWelcomeState | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("patients")
+    .select("id, welcomed_at, first_name")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) { logErr("loadOwnPatientWelcomeState", error); return null; }
+  if (!data) return null;
+  return { patientId: data.id, welcomedAt: data.welcomed_at, firstName: data.first_name };
+}
+
+export async function markOwnPatientWelcomed(patientId: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("mark_own_patient_welcomed", { p_patient_id: patientId });
+  if (error) logErr("markOwnPatientWelcomed", error);
+}
+
+/**
+ * Operatiezijde uit de intake (migratie 106/109) — het enige veld uit
+ * patient_intakes dat rechtstreeks aan de patiënt getoond wordt, via een
+ * gerichte RPC. De rest van de intake (AI-samenvatting, aandachtspunten,
+ * therapeut-observaties) blijft bewust dossier-only, zie migratie 088/109.
+ */
+export async function loadOwnIntakeBodySide(): Promise<"left" | "right" | "both" | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("load_own_intake_body_side");
+  if (error) { logErr("loadOwnIntakeBodySide", error); return null; }
+  return (data as "left" | "right" | "both" | null) ?? null;
+}
+
+export interface PatientIntakeSummary {
+  mobilityAid: string | null;
+  weightBearingStatus: string | null;
+  romDegrees: number | null;
+  returnToSportGoal: boolean | null;
+  sportType: string | null;
+  returnToWorkGoal: boolean | null;
+  goalTimeframeMonths: number | null;
+}
+
+/**
+ * Veilige subset van patient_intakes voor het eigen dashboard (zie migratie
+ * 111) — expliciet zonder ai_summary/therapist_observations, die blijven
+ * dossier-only voor staff (migratie 088).
+ */
+export async function loadOwnIntakeSummary(): Promise<PatientIntakeSummary | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("load_own_intake_summary");
+  if (error) { logErr("loadOwnIntakeSummary", error); return null; }
+  const row = (data as Record<string, unknown>[] | null)?.[0];
+  if (!row) return null;
+  return {
+    mobilityAid: (row.mobility_aid as string | null) ?? null,
+    weightBearingStatus: (row.weight_bearing_status as string | null) ?? null,
+    romDegrees: (row.rom_degrees as number | null) ?? null,
+    returnToSportGoal: (row.return_to_sport_goal as boolean | null) ?? null,
+    sportType: (row.sport_type as string | null) ?? null,
+    returnToWorkGoal: (row.return_to_work_goal as boolean | null) ?? null,
+    goalTimeframeMonths: (row.goal_timeframe_months as number | null) ?? null,
+  };
+}
+
 export interface PatientProtocolCriterionView {
   id: string;
   description: string;
@@ -65,6 +138,8 @@ export interface PatientProtocolPhaseView {
   name: string;
   description: string | null;
   forbiddenActivities: string[];
+  weekRangeLabel: string | null;
+  startedAt: string | null;
   criteria: PatientProtocolCriterionView[];
   milestones: PatientProtocolMilestoneView[];
   educationItems: PatientProtocolEducationView[];
@@ -75,6 +150,121 @@ export interface PatientActiveProtocol {
   patientProtocolId: string;
   name: string;
   currentPhase: PatientProtocolPhaseView | null;
+}
+
+export interface PatientProtocolTimelinePhase {
+  id: string;
+  name: string;
+  status: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  weekRangeLabel: string | null;
+  milestonesTotal: number;
+  milestonesCompleted: number;
+}
+
+/**
+ * Alle fases van het actieve herstelplan (niet alleen de huidige), voor een
+ * fase-geankerde tijdlijn op de Training-pagina. RLS staat dit al toe zonder
+ * aanpassing — patient_protocol_phases is gescoped op de patiënt zelf, niet
+ * op fase-status (zie migratie 049). Bewust lichtgewicht: geen
+ * criteria/schema's/oefeningen per fase, alleen wat een tijdlijn nodig heeft
+ * (naam, status, mijlpaal-voortgang). Voor de details van de actieve fase
+ * blijft loadMyActiveProtocol() de bron.
+ */
+export async function loadMyProtocolTimeline(patientId: string): Promise<PatientProtocolTimelinePhase[]> {
+  const supabase = createClient();
+
+  const { data: assignment, error: assignmentError } = await supabase
+    .from("patient_protocols")
+    .select("id")
+    .eq("patient_id", patientId)
+    .in("status", ["active", "paused"])
+    .maybeSingle();
+  if (assignmentError) logErr("loadMyProtocolTimeline(assignment)", assignmentError);
+  if (!assignment) return [];
+
+  const { data: phases, error: phasesError } = await supabase
+    .from("patient_protocol_phases")
+    .select("id, name, status, started_at, completed_at, week_range_label")
+    .eq("patient_protocol_id", assignment.id)
+    .order("sort_order");
+  if (phasesError) { logErr("loadMyProtocolTimeline(phases)", phasesError); return []; }
+  if (!phases || phases.length === 0) return [];
+
+  const phaseIds = phases.map((p) => p.id as string);
+  const { data: milestones, error: milestonesError } = await supabase
+    .from("patient_protocol_phase_milestones")
+    .select("phase_id, completed")
+    .in("phase_id", phaseIds);
+  if (milestonesError) logErr("loadMyProtocolTimeline(milestones)", milestonesError);
+
+  const milestoneCountsByPhase = new Map<string, { total: number; completed: number }>();
+  for (const m of milestones ?? []) {
+    const key = m.phase_id as string;
+    const counts = milestoneCountsByPhase.get(key) ?? { total: 0, completed: 0 };
+    counts.total += 1;
+    if (m.completed) counts.completed += 1;
+    milestoneCountsByPhase.set(key, counts);
+  }
+
+  return phases.map((p) => ({
+    id: p.id, name: p.name, status: p.status, startedAt: p.started_at, completedAt: p.completed_at,
+    weekRangeLabel: p.week_range_label,
+    milestonesTotal: milestoneCountsByPhase.get(p.id)?.total ?? 0,
+    milestonesCompleted: milestoneCountsByPhase.get(p.id)?.completed ?? 0,
+  }));
+}
+
+export interface PatientRecentMilestone {
+  id: string;
+  title: string;
+  completedAt: string;
+  phaseName: string;
+}
+
+/**
+ * Recent behaalde mijlpalen over het HELE herstelplan (niet alleen de
+ * actieve fase, zoals de mijlpaal-voortgangsbalk op het dashboard al toont)
+ * — voor een "recent behaald"-overzicht. Bewust géén aparte nieuwe
+ * mijlpaal-tabel: hergebruikt patient_protocol_phase_milestones, dezelfde
+ * bron als de rest van de protocol-UI.
+ */
+export async function loadRecentMilestones(patientId: string, limit = 3): Promise<PatientRecentMilestone[]> {
+  const supabase = createClient();
+
+  const { data: assignment, error: assignmentError } = await supabase
+    .from("patient_protocols")
+    .select("id")
+    .eq("patient_id", patientId)
+    .in("status", ["active", "paused"])
+    .maybeSingle();
+  if (assignmentError) logErr("loadRecentMilestones(assignment)", assignmentError);
+  if (!assignment) return [];
+
+  const { data: phases, error: phasesError } = await supabase
+    .from("patient_protocol_phases")
+    .select("id, name")
+    .eq("patient_protocol_id", assignment.id);
+  if (phasesError) { logErr("loadRecentMilestones(phases)", phasesError); return []; }
+  if (!phases || phases.length === 0) return [];
+
+  const phaseNameById = new Map(phases.map((p) => [p.id as string, p.name as string]));
+  const { data: milestones, error: milestonesError } = await supabase
+    .from("patient_protocol_phase_milestones")
+    .select("id, title, completed_at, phase_id")
+    .in("phase_id", phases.map((p) => p.id))
+    .eq("completed", true)
+    .order("completed_at", { ascending: false })
+    .limit(limit);
+  if (milestonesError) { logErr("loadRecentMilestones(milestones)", milestonesError); return []; }
+
+  return (milestones ?? [])
+    .filter((m) => m.completed_at)
+    .map((m) => ({
+      id: m.id, title: m.title, completedAt: m.completed_at as string,
+      phaseName: phaseNameById.get(m.phase_id as string) ?? "",
+    }));
 }
 
 export async function loadMyActiveProtocol(patientId: string): Promise<PatientActiveProtocol | null> {
@@ -91,7 +281,7 @@ export async function loadMyActiveProtocol(patientId: string): Promise<PatientAc
 
   const { data: phase, error: phaseError } = await supabase
     .from("patient_protocol_phases")
-    .select("id, name, description, forbidden_activities")
+    .select("id, name, description, forbidden_activities, week_range_label, started_at")
     .eq("patient_protocol_id", assignment.id)
     .eq("status", "active")
     .maybeSingle();
@@ -153,6 +343,7 @@ export async function loadMyActiveProtocol(patientId: string): Promise<PatientAc
     name: assignment.name,
     currentPhase: {
       id: phase.id, name: phase.name, description: phase.description, forbiddenActivities: phase.forbidden_activities ?? [],
+      weekRangeLabel: phase.week_range_label, startedAt: phase.started_at,
       criteria: (criteriaRes.data ?? []).map((c) => ({ id: c.id, description: c.description, met: c.met })),
       milestones: (milestonesRes.data ?? []).map((m) => ({ id: m.id, title: m.title, completed: m.completed, completedAt: m.completed_at })),
       educationItems: (educationRes.data ?? []).map((e) => ({ id: e.id, title: e.title, body: e.body })),

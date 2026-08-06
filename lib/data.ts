@@ -226,10 +226,13 @@ export interface Profile {
 }
 
 /**
- * Gedeelde blessuretype-lijst — dezelfde 14 waarden als de `injury_type`-kolom
- * op `patients` (migratie 054), zodat wat een praktijk bij het aanmaken van
- * een patiënt invult en wat de patiënt zelf bij Instellingen ziet, altijd
- * hetzelfde zijn.
+ * Gedeelde blessuretype-lijst — dezelfde waarden als de `injury_type`-kolom
+ * op `patients` (migratie 054, uitgebreid in migratie 097), zodat wat een
+ * praktijk bij het aanmaken van een patiënt invult en wat de patiënt zelf
+ * bij Instellingen ziet, altijd hetzelfde zijn. De nieuwere waarden (vanaf
+ * "schouderluxatie") komen uit de aanleiding-specifieke keuzelijsten in
+ * AanleidingStep.tsx — hier ook opgenomen zodat ze correct als label
+ * getoond kunnen worden, o.a. bij Instellingen.
  */
 export const BLESSURE_TYPEN = [
   { value: "acl", label: "Voorste kruisband (ACL) blessure" },
@@ -237,6 +240,7 @@ export const BLESSURE_TYPEN = [
   { value: "enkel", label: "Enkelverstuiking" },
   { value: "spier", label: "Spierverrekking" },
   { value: "hamstring", label: "Hamstring blessure" },
+  { value: "lies", label: "Liesblessure" },
   { value: "schouder", label: "Schouderblessure" },
   { value: "knieband", label: "Knieband blessure" },
   { value: "pees", label: "Peesontsteking" },
@@ -245,6 +249,23 @@ export const BLESSURE_TYPEN = [
   { value: "patella", label: "Gescheurde kniepees" },
   { value: "knieprothese", label: "Knieprothese" },
   { value: "heupprothese", label: "Heupprothese" },
+  // Vrouwenblessures
+  { value: "bekkeninstabiliteit", label: "Bekkeninstabiliteit" },
+  { value: "bekkenbodemklachten", label: "Bekkenbodemklachten" },
+  { value: "diastase_recti", label: "Diastase recti (buikwandscheiding)" },
+  // Acute sportblessures zonder eigen waarde tot nu toe
+  { value: "schouderluxatie", label: "Schouderluxatie" },
+  { value: "kuitblessure", label: "Kuitblessure" },
+  // Overbelasting-specifiek
+  { value: "lopersknie", label: "Lopersknie (patellofemoraal)" },
+  { value: "scheenbeenvliesklachten", label: "Scheenbeenvliesklachten" },
+  { value: "hielspoor", label: "Hielspoor (fasciitis plantaris)" },
+  { value: "elleboogklachten", label: "Elleboogklachten (tennis-/golferselleboog)" },
+  // Chronisch-specifiek
+  { value: "nekklachten", label: "Chronische nekklachten" },
+  { value: "knieartrose", label: "Knieartrose" },
+  { value: "heupartrose", label: "Heupartrose" },
+  { value: "bevroren_schouder", label: "Bevroren schouder (frozen shoulder)" },
   { value: "anders", label: "Anders" },
 ];
 

@@ -20,14 +20,18 @@ export function stripNewlines(value: string): string {
 }
 
 interface InviteEmailOptions {
-  /** Hex kleur voor de koptekstband — organisatie's eigen huisstijlkleur, of het REVA-standaardoranje. */
+  /** Hex kleur voor de koptekstband, organisatie's eigen huisstijlkleur, of het REVA-standaardoranje. */
   accentColor: string;
   /** Naam boven in de koptekstband, bv. de organisatienaam of "REVA". */
   headerLabel: string;
   /** Hoofdkop, bv. "Sanne, Fysio Cura Plaza nodigt je uit". */
   heading: string;
-  /** Losse alinea's onder de kop — worden individueel HTML-geëscaped door de aanroeper. */
+  /** Losse alinea's onder de kop, worden individueel HTML-geëscaped door de aanroeper. */
   bodyHtmlLines: string[];
+  /** Optioneel uitgelicht tekstblok (bv. intakesamenvatting), moet al HTML-geëscaped zijn door de aanroeper. */
+  quoteHtml?: string;
+  /** Label boven het optionele tekstblok, bv. "Van je fysiotherapeut". */
+  quoteLabel?: string;
   ctaLabel: string;
   ctaUrl: string;
 }
@@ -38,8 +42,10 @@ interface InviteEmailOptions {
  * een bekend signaal voor massamail). bodyLines moet hier al platte tekst zijn
  * (geen HTML-tags), dus roep dit aan met dezelfde inhoud vóór het HTML-escapen.
  */
-export function inviteEmailText({ headerLabel, heading, bodyLines, ctaLabel, ctaUrl }: {
-  headerLabel: string; heading: string; bodyLines: string[]; ctaLabel: string; ctaUrl: string;
+export function inviteEmailText({ headerLabel, heading, bodyLines, quoteText, quoteLabel, ctaLabel, ctaUrl }: {
+  headerLabel: string; heading: string; bodyLines: string[];
+  quoteText?: string; quoteLabel?: string;
+  ctaLabel: string; ctaUrl: string;
 }): string {
   return [
     headerLabel,
@@ -47,10 +53,11 @@ export function inviteEmailText({ headerLabel, heading, bodyLines, ctaLabel, cta
     heading,
     "",
     ...bodyLines,
+    ...(quoteText ? ["", `${quoteLabel ?? "Toelichting"}:`, quoteText] : []),
     "",
     `${ctaLabel}: ${ctaUrl}`,
     "",
-    "REVA — vragen? Mail info@reva-app.nl",
+    "REVA, vragen? Mail info@reva-app.nl",
   ].join("\n");
 }
 
@@ -79,7 +86,7 @@ export function feedbackEmailHtml({ categorie, onderwerp, naam, email, bericht }
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f7f4; padding: 32px 16px;">
       <div style="max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e8e5df;">
         <div style="background: #e8632a; padding: 20px 32px; color: #ffffff; font-weight: 700; font-size: 15px; letter-spacing: 0.01em;">
-          REVA — Nieuw feedbackbericht
+          REVA: nieuw feedbackbericht
         </div>
         <div style="padding: 32px;">
           <h1 style="margin: 0 0 20px; font-size: 20px; color: #1a1a1a; line-height: 1.3;">${escapeHtml(onderwerp)}</h1>
@@ -102,8 +109,8 @@ export function feedbackEmailHtml({ categorie, onderwerp, naam, email, bericht }
   `;
 }
 
-/** Gedeelde basislayout voor uitnodigingsmails — koptekstband, kaart, CTA-knop, voettekst. */
-export function inviteEmailHtml({ accentColor, headerLabel, heading, bodyHtmlLines, ctaLabel, ctaUrl }: InviteEmailOptions): string {
+/** Gedeelde basislayout voor uitnodigingsmails: koptekstband, kaart, CTA-knop, voettekst. */
+export function inviteEmailHtml({ accentColor, headerLabel, heading, bodyHtmlLines, quoteHtml, quoteLabel, ctaLabel, ctaUrl }: InviteEmailOptions): string {
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f7f4; padding: 32px 16px;">
       <div style="max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e8e5df;">
@@ -113,6 +120,11 @@ export function inviteEmailHtml({ accentColor, headerLabel, heading, bodyHtmlLin
         <div style="padding: 32px;">
           <h1 style="margin: 0 0 16px; font-size: 22px; color: #1a1a1a; line-height: 1.3;">${heading}</h1>
           ${bodyHtmlLines.map((line) => `<p style="margin: 0 0 14px; font-size: 14px; color: #4b5563; line-height: 1.6;">${line}</p>`).join("")}
+          ${quoteHtml ? `
+          <div style="margin: 4px 0 14px; background: #f8f7f4; border-radius: 10px; padding: 14px 18px;">
+            ${quoteLabel ? `<p style="margin: 0 0 6px; font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.02em;">${escapeHtml(quoteLabel)}</p>` : ""}
+            <p style="margin: 0; font-size: 13px; color: #374151; line-height: 1.6; white-space: pre-wrap;">${quoteHtml}</p>
+          </div>` : ""}
           <div style="margin: 28px 0 8px;">
             <a href="${ctaUrl}" style="display: inline-block; background: ${accentColor}; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 14px; padding: 12px 24px; border-radius: 10px;">
               ${escapeHtml(ctaLabel)}
@@ -123,7 +135,7 @@ export function inviteEmailHtml({ accentColor, headerLabel, heading, bodyHtmlLin
           </p>
         </div>
         <div style="padding: 4px 32px 20px; font-size: 12px; color: #9ca3af;">
-          REVA — vragen? Mail <a href="mailto:info@reva-app.nl" style="color: #9ca3af;">info@reva-app.nl</a>
+          REVA, vragen? Mail <a href="mailto:info@reva-app.nl" style="color: #9ca3af;">info@reva-app.nl</a>
         </div>
       </div>
     </div>

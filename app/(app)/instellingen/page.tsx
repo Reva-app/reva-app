@@ -22,6 +22,10 @@ import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 import { SUBSCRIPTIONS_ENABLED } from "@/lib/subscription";
 import { Zap, CheckCircle } from "lucide-react";
 import { usePatientCareContext } from "@/lib/hooks/usePatientCareContext";
+import { usePatientProtocol } from "@/lib/hooks/usePatientProtocol";
+import { loadOwnIntakeBodySide } from "@/lib/services/patientProtocolService";
+import { INJURY_TYPE_TO_CATEGORY } from "@/lib/intakeAnalysis";
+import { INJURY_CATEGORY_LABELS } from "@/lib/services/protocolService";
 import { validatePassword } from "@/lib/passwordPolicy";
 import { downloadDataExport } from "@/lib/dataExport";
 import { useToast } from "@/components/ui/Toast";
@@ -468,6 +472,11 @@ export default function InstellingenPage() {
   const planInfo = useUserPlan();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const careContext = usePatientCareContext();
+  const { hasActiveProtocol, protocol } = usePatientProtocol();
+  const [bodySide, setBodySide] = useState<"left" | "right" | "both" | null>(null);
+  useEffect(() => {
+    loadOwnIntakeBodySide().then(setBodySide);
+  }, []);
 
   // ── Toast ──────────────────────────────────────────────────────────────────
   const { showToast, toastNode } = useToast();
@@ -769,7 +778,7 @@ export default function InstellingenPage() {
         />
       )}
 
-      <SectionHeader title="Instellingen" subtitle="Beheer jouw profiel en voorkeuren" />
+      <SectionHeader title="Mijn Gegevens" subtitle="Jouw profiel, hersteltraject en voorkeuren" />
 
       {/* ── Verplichte herstelgegevens (alleen bij eerste setup) ───────── */}
       {!setupCompleted && (
@@ -852,6 +861,36 @@ export default function InstellingenPage() {
               <FieldLabel>Vul jouw blessure in</FieldLabel>
               <TextInput value={blessureTypeAnders} onChange={setBlessureTypeAnders} placeholder="Bijvoorbeeld: heupblessure" />
               {herstelErrors.blessureTypeAnders && <p className="text-[11px] mt-1" style={{ color: "#dc2626" }}>{herstelErrors.blessureTypeAnders}</p>}
+            </div>
+          )}
+
+          {/* Categorie, operatiezijde, huidig herstelplan/fase — afgeleid uit intake, altijd alleen-lezen */}
+          {(INJURY_TYPE_TO_CATEGORY[blessureType] || bodySide || hasActiveProtocol) && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {INJURY_TYPE_TO_CATEGORY[blessureType] && (
+                <div>
+                  <FieldLabel>Categorie</FieldLabel>
+                  <LockedFieldDisplay value={INJURY_CATEGORY_LABELS[INJURY_TYPE_TO_CATEGORY[blessureType]] ?? "n.v.t."} />
+                </div>
+              )}
+              {bodySide && (
+                <div>
+                  <FieldLabel>Zijde</FieldLabel>
+                  <LockedFieldDisplay value={{ left: "Links", right: "Rechts", both: "Beide zijden" }[bodySide]} />
+                </div>
+              )}
+              {hasActiveProtocol && (
+                <div>
+                  <FieldLabel>Huidig herstelplan</FieldLabel>
+                  <LockedFieldDisplay value={protocol?.name ?? "n.v.t."} />
+                </div>
+              )}
+              {hasActiveProtocol && protocol?.currentPhase && (
+                <div>
+                  <FieldLabel>Huidige herstelfase</FieldLabel>
+                  <LockedFieldDisplay value={protocol.currentPhase.name} />
+                </div>
+              )}
             </div>
           )}
 

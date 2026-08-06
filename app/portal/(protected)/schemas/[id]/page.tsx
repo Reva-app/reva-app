@@ -77,6 +77,8 @@ export default function PortalScheduleDetailPage() {
   const [description, setDescription] = useState("");
   const [savingDescription, setSavingDescription] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
+  const [confirmDeleteSchedule, setConfirmDeleteSchedule] = useState(false);
+  const [deletingSchedule, setDeletingSchedule] = useState(false);
 
   // Ruimt een net aangemaakt, nog leeg conceptschema automatisch op zodra de
   // gebruiker wegnavigeert zonder iets in te vullen (titel nog op "Nieuw
@@ -181,6 +183,15 @@ export default function PortalScheduleDetailPage() {
     if (error || !id) { showToast(error ?? "Dupliceren is niet gelukt.", "error"); return; }
     showToast("Eigen kopie aangemaakt");
     router.push(`/portal/schemas/${id}`);
+  }
+
+  async function handleConfirmDeleteSchedule() {
+    setDeletingSchedule(true);
+    const { error } = await deleteScheduleLibraryItem(scheduleId);
+    setDeletingSchedule(false);
+    setConfirmDeleteSchedule(false);
+    if (error) { showToast(error, "error"); return; }
+    router.push("/portal/schemas");
   }
 
   async function handleAddExercises(exerciseIds: string[]) {
@@ -362,7 +373,15 @@ export default function PortalScheduleDetailPage() {
                 <div className="space-y-3">
                   {schedule.archived ? <Badge variant="muted">Gearchiveerd</Badge> : <Badge variant="success">Actief</Badge>}
                   {canEdit && (
-                    <Button size="sm" variant="secondary" onClick={handleToggleArchived}>{schedule.archived ? "Dearchiveren" : "Archiveren"}</Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="secondary" onClick={handleToggleArchived}>{schedule.archived ? "Dearchiveren" : "Archiveren"}</Button>
+                      {schedule.archived && usage.length === 0 && (
+                        <Button size="sm" variant="secondary" onClick={() => setConfirmDeleteSchedule(true)}>Verwijderen</Button>
+                      )}
+                    </div>
+                  )}
+                  {schedule.archived && usage.length > 0 && (
+                    <p className="text-xs text-gray-400">Wordt nog gebruikt in {usage.length} {usage.length === 1 ? "herstelplan" : "herstelplannen"} — daarom nog niet te verwijderen.</p>
                   )}
                 </div>
               </Card>
@@ -451,6 +470,16 @@ export default function PortalScheduleDetailPage() {
           loading={removing}
           onCancel={() => setConfirmRemove(null)}
           onConfirm={handleRemoveExercise}
+        />
+      )}
+      {confirmDeleteSchedule && (
+        <ConfirmDialog
+          title="Schema verwijderen?"
+          message="Dit schema wordt permanent verwijderd."
+          confirmLabel="Schema verwijderen"
+          loading={deletingSchedule}
+          onCancel={() => setConfirmDeleteSchedule(false)}
+          onConfirm={handleConfirmDeleteSchedule}
         />
       )}
       {toastNode}

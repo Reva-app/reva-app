@@ -1,28 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronRight, ChevronLeft, Loader2, X } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { useAuth } from "@/components/auth/AuthProvider";
 import {
   createAndInvitePortalPatient,
   type PortalPatientInput, type PortalLocationOption, type PortalMember,
 } from "@/lib/services/portalService";
 import { assignProtocolToPatient, type PortalProtocolCard } from "@/lib/services/protocolService";
+import { createPatientIntake } from "@/lib/services/intakeService";
+import { generateIntakeAnalysis, emptyIntakeInput, type IntakeInput, type SuggestedGoal, type VisitReason } from "@/lib/intakeAnalysis";
 import { isValidEmail, BLESSURE_TYPEN } from "@/lib/data";
+import { FieldLabel, inputStyle } from "./wizard/shared";
+import { AanleidingStep } from "./wizard/AanleidingStep";
+import { IntakeStep } from "./wizard/IntakeStep";
+import { RevaAnalyseStep } from "./wizard/RevaAnalyseStep";
 
-const inputStyle = {
-  borderColor: "#e8e5df",
-  background: "#ffffff",
-  color: "#1a1a1a",
-};
-
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="block text-xs font-medium text-gray-500 mb-1.5">{children}</label>;
-}
-
-const STEPS = ["Basisgegevens", "Behandeltraject", "Uitnodiging"];
+const STEPS = ["Basisgegevens", "Aanleiding", "Behandeltraject", "Intake", "REVA Analyse", "Uitnodiging"];
 
 const emptyInput: PortalPatientInput = {
   firstName: "", lastName: "", email: "", phone: "", dateOfBirth: "", gender: "",
@@ -43,22 +40,56 @@ interface PatientWizardProps {
 export function PatientWizard({
   organizationId, locations, members, revaProtocols, orgProtocols, onDone, onClose,
 }: PatientWizardProps) {
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
+  const [maxStepReached, setMaxStepReached] = useState(0);
   const [input, setInput] = useState<PortalPatientInput>(emptyInput);
+  const [intake, setIntake] = useState<IntakeInput>(emptyIntakeInput);
   const [stepError, setStepError] = useState("");
 
-  const [selectedProtocolId, setSelectedProtocolId] = useState<string | null>(null);
+  // undefined = nog niet aangeraakt door de therapeut → volgt de AI-aanbeveling;
+  // null = expliciet "geen herstelplan" gekozen.
+  const [selectedProtocolId, setSelectedProtocolId] = useState<string | null | undefined>(undefined);
+  const [summaryOverride, setSummaryOverride] = useState<string | null>(null);
+  const [goalsOverride, setGoalsOverride] = useState<SuggestedGoal[] | null>(null);
 
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
 
   const activeMembers = members.filter((m) => m.membershipStatus === "active");
-  const availableRevaProtocols = revaProtocols.filter((p) => !p.archived);
-  const availableOrgProtocols = orgProtocols.filter((p) => !p.archived);
-  const allProtocols = [...availableOrgProtocols, ...availableRevaProtocols];
+
+  // De therapeut die de patiënt aanmaakt is standaard ook de behandelaar —
+  // kan altijd handmatig aangepast worden, maar scheelt een klik in de
+  // meest voorkomende situatie.
+  useEffect(() => {
+    if (user?.id && activeMembers.some((m) => m.userId === user.id)) {
+      setInput((prev) => (prev.therapistId === null ? { ...prev, therapistId: user.id } : prev));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  const availableRevaProtocols = useMemo(() => revaProtocols.filter((p) => !p.archived), [revaProtocols]);
+  const availableOrgProtocols = useMemo(() => orgProtocols.filter((p) => !p.archived), [orgProtocols]);
+  const allProtocols = useMemo(() => [...availableOrgProtocols, ...availableRevaProtocols], [availableOrgProtocols, availableRevaProtocols]);
+
+  const analysis = useMemo(
+    () => generateIntakeAnalysis({
+      injuryType: input.injuryType, injuryDate: input.injuryDate, surgeryDate: input.surgeryDate,
+      treatmentStartDate: input.treatmentStartDate, intake, availableProtocols: allProtocols,
+    }),
+    [input.injuryType, input.injuryDate, input.surgeryDate, input.treatmentStartDate, intake, allProtocols]
+  );
+  const summary = summaryOverride ?? analysis.summary;
+  const goals = goalsOverride ?? analysis.suggestedGoals;
+  const effectiveProtocolId = selectedProtocolId !== undefined ? selectedProtocolId : analysis.recommendation?.protocol.id ?? null;
+  const protocolOptions = analysis.recommendation ? [analysis.recommendation, ...analysis.alternatives] : [];
 
   function update<K extends keyof PortalPatientInput>(key: K, value: PortalPatientInput[K]) {
     setInput((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function updateIntake<K extends keyof IntakeInput>(key: K, value: IntakeInput[K]) {
+    setIntake((prev) => ({ ...prev, [key]: value }));
   }
 
   function goNext() {
@@ -72,8 +103,42 @@ export function PatientWizard({
         return;
       }
     }
+    if (step === 1) {
+      if (!intake.visitReason) {
+        setStepError("Kies waarvoor de patiënt komt");
+        return;
+      }
+      if (intake.visitReason === "sports_injury" && !intake.sportType.trim()) {
+        setStepError("Kies of vul de sport in");
+        return;
+      }
+      if (!input.injuryType) {
+        setStepError(intake.visitReason === "surgery" ? "Kies welke operatie" : "Kies waar de klacht zit");
+        return;
+      }
+    }
+    if (step === 2) {
+      if (!input.injuryDate) {
+        setStepError("Vul de datum van de blessure in");
+        return;
+      }
+      if (intake.visitReason === "surgery" && !input.surgeryDate) {
+        setStepError("Vul de operatiedatum in");
+        return;
+      }
+    }
     setStepError("");
-    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+    setStep((s) => {
+      const next = Math.min(s + 1, STEPS.length - 1);
+      setMaxStepReached((m) => Math.max(m, next));
+      return next;
+    });
+  }
+
+  function goToStep(target: number) {
+    if (target > maxStepReached) return;
+    setStepError("");
+    setStep(target);
   }
 
   function goBack() {
@@ -84,8 +149,18 @@ export function PatientWizard({
   async function handleInvite() {
     setSending(true);
     const res = await createAndInvitePortalPatient(organizationId, input);
-    if (res.outcome !== "failed" && selectedProtocolId) {
-      await assignProtocolToPatient(res.patientId, selectedProtocolId);
+    if (res.outcome !== "failed") {
+      const reasoning = protocolOptions.find((r) => r.protocol.id === effectiveProtocolId)?.reasoning ?? null;
+      await createPatientIntake(organizationId, res.patientId, user?.id ?? null, intake, {
+        aiSummary: summary,
+        attentionPoints: analysis.attentionPoints,
+        recommendedProtocolId: effectiveProtocolId,
+        recommendationReasoning: reasoning,
+        stagedGoals: goals,
+      });
+      if (effectiveProtocolId) {
+        await assignProtocolToPatient(res.patientId, effectiveProtocolId);
+      }
     }
     setSending(false);
     if (res.outcome === "linked") {
@@ -108,23 +183,33 @@ export function PatientWizard({
 
       {/* Step indicator */}
       <div className="flex items-center gap-2 mb-6">
-        {STEPS.map((label, i) => (
-          <div key={label} className="flex items-center gap-2 flex-1">
-            <div
-              className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
-              style={{
-                background: i < step ? "#16a34a" : i === step ? "var(--brand-accent, #e8632a)" : "#e8e5df",
-                color: i <= step ? "#ffffff" : "#9ca3af",
-              }}
+        {STEPS.map((label, i) => {
+          const reachable = i <= maxStepReached && !result && !sending;
+          return (
+            <button
+              key={label}
+              type="button"
+              onClick={() => goToStep(i)}
+              disabled={!reachable}
+              className="flex items-center gap-2 flex-1"
+              style={{ cursor: reachable ? "pointer" : "default" }}
             >
-              {i < step ? <Check size={12} /> : i + 1}
-            </div>
-            <span className="text-xs font-medium hidden sm:inline" style={{ color: i === step ? "#1a1a1a" : "#9ca3af" }}>
-              {label}
-            </span>
-            {i < STEPS.length - 1 && <div className="flex-1 h-px" style={{ background: "#e8e5df" }} />}
-          </div>
-        ))}
+              <div
+                className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
+                style={{
+                  background: i < step ? "#16a34a" : i === step ? "var(--brand-accent, #e8632a)" : "#e8e5df",
+                  color: i <= step ? "#ffffff" : "#9ca3af",
+                }}
+              >
+                {i < step ? <Check size={12} /> : i + 1}
+              </div>
+              <span className="text-xs font-medium hidden sm:inline" style={{ color: i === step ? "#1a1a1a" : "#9ca3af" }}>
+                {label}
+              </span>
+              {i < STEPS.length - 1 && <div className="flex-1 h-px" style={{ background: "#e8e5df" }} />}
+            </button>
+          );
+        })}
       </div>
 
       {step === 0 && (
@@ -186,53 +271,55 @@ export function PatientWizard({
       )}
 
       {step === 1 && (
-        <div className="space-y-3">
-          <div>
-            <FieldLabel>Blessuretype (optioneel)</FieldLabel>
-            <select value={input.injuryType} onChange={(e) => update("injuryType", e.target.value)}
-              className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
-              <option value="">Nog niet bekend</option>
-              {BLESSURE_TYPEN.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
-            </select>
-            <p className="text-xs text-gray-400 mt-1.5">Komt automatisch terug in de instellingen van de patiënt zelf.</p>
-          </div>
-          <div>
-            <FieldLabel>Herstelplan (optioneel)</FieldLabel>
-            <select value={selectedProtocolId ?? ""} onChange={(e) => setSelectedProtocolId(e.target.value || null)}
-              className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
-              <option value="">Geen herstelplan</option>
-              {availableOrgProtocols.length > 0 && (
-                <optgroup label="Eigen herstelplannen">
-                  {availableOrgProtocols.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </optgroup>
-              )}
-              {availableRevaProtocols.length > 0 && (
-                <optgroup label="REVA-herstelplannen">
-                  {availableRevaProtocols.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </optgroup>
-              )}
-            </select>
-            <p className="text-xs text-gray-400 mt-1.5">Nog geen eigen herstelplan? Maak er een aan via de Herstelplannen-pagina.</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <FieldLabel>Datum blessure (optioneel)</FieldLabel>
-              <DatePicker value={input.injuryDate} onChange={(v) => update("injuryDate", v)} placeholder="Kies een datum" />
-              <p className="text-xs text-gray-400 mt-1.5">Komt automatisch terug in de instellingen van de patiënt zelf, en kan daar dan niet meer gewijzigd worden.</p>
-            </div>
-            <div>
-              <FieldLabel>Startdatum behandeling (optioneel)</FieldLabel>
-              <DatePicker value={input.treatmentStartDate} onChange={(v) => update("treatmentStartDate", v)} placeholder="Kies een datum" />
-            </div>
-            <div>
-              <FieldLabel>Operatiedatum (indien bekend)</FieldLabel>
-              <DatePicker value={input.surgeryDate} onChange={(v) => update("surgeryDate", v)} placeholder="Kies een datum" />
-            </div>
-          </div>
-        </div>
+        <AanleidingStep
+          visitReason={intake.visitReason}
+          onVisitReasonChange={(r: VisitReason) => updateIntake("visitReason", r)}
+          injuryType={input.injuryType}
+          onInjuryTypeChange={(v) => update("injuryType", v)}
+          sportType={intake.sportType}
+          onSportTypeChange={(v) => updateIntake("sportType", v)}
+          bodySide={intake.bodySide}
+          onBodySideChange={(v) => updateIntake("bodySide", v)}
+          error={stepError}
+        />
       )}
 
       {step === 2 && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <FieldLabel>Datum blessure</FieldLabel>
+              <DatePicker value={input.injuryDate} onChange={(v) => update("injuryDate", v)} placeholder="Kies een datum" />
+              <p className="text-xs text-gray-400 mt-1.5">Komt automatisch terug in de instellingen van de patiënt zelf, en kan daar dan niet meer gewijzigd worden.</p>
+            </div>
+            {intake.visitReason === "surgery" && (
+              <div>
+                <FieldLabel>Operatiedatum</FieldLabel>
+                <DatePicker value={input.surgeryDate} onChange={(v) => update("surgeryDate", v)} placeholder="Kies een datum" />
+              </div>
+            )}
+          </div>
+          {stepError && <p className="text-xs" style={{ color: "#dc2626" }}>{stepError}</p>}
+        </div>
+      )}
+
+      {step === 3 && (
+        <IntakeStep value={intake} onChange={updateIntake} injuryType={input.injuryType} />
+      )}
+
+      {step === 4 && (
+        <RevaAnalyseStep
+          analysis={analysis}
+          summary={summary}
+          onSummaryChange={setSummaryOverride}
+          goals={goals}
+          onGoalsChange={setGoalsOverride}
+          selectedProtocolId={effectiveProtocolId}
+          onSelectProtocol={setSelectedProtocolId}
+        />
+      )}
+
+      {step === 5 && (
         <div className="space-y-4">
           {!result ? (
             <>
@@ -242,7 +329,7 @@ export function PatientWizard({
                 <p><span className="text-gray-500">Locatie:</span> {locations.find((l) => l.id === input.locationId)?.name ?? "Geen"}</p>
                 <p><span className="text-gray-500">Behandelaar:</span> {activeMembers.find((m) => m.userId === input.therapistId)?.fullName ?? "Nog niet toegewezen"}</p>
                 <p><span className="text-gray-500">Blessuretype:</span> {BLESSURE_TYPEN.find((b) => b.value === input.injuryType)?.label ?? "Nog niet bekend"}</p>
-                <p><span className="text-gray-500">Herstelplan:</span> {allProtocols.find((p) => p.id === selectedProtocolId)?.name ?? "Geen"}</p>
+                <p><span className="text-gray-500">Herstelplan:</span> {allProtocols.find((p) => p.id === effectiveProtocolId)?.name ?? "Geen"}</p>
               </div>
               <p className="text-xs text-gray-500">
                 Bij het versturen wordt het dossier aangemaakt en ontvangt de patiënt direct een uitnodiging op {input.email || "het opgegeven e-mailadres"}.
@@ -263,11 +350,11 @@ export function PatientWizard({
       {!result && (
         <div className="flex justify-between mt-6">
           <Button type="button" size="sm" variant="secondary" onClick={goBack} disabled={step === 0}>
-            <ChevronLeft size={14} /> Vorige
+            <ChevronLeft size={14} /> {step === 4 ? "Intake aanpassen" : "Vorige"}
           </Button>
           {step < STEPS.length - 1 && (
             <Button type="button" size="sm" onClick={goNext}>
-              Volgende <ChevronRight size={14} />
+              {step === 4 ? "🚀 Start herstelplan" : "Volgende"} {step !== 4 && <ChevronRight size={14} />}
             </Button>
           )}
         </div>

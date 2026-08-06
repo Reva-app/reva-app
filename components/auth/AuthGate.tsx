@@ -28,7 +28,12 @@ import { StaffAccountScreen } from "@/components/auth/StaffAccountScreen";
  */
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading, signOut } = useAuth();
-  const { hydrated, setupCompleted } = useAppData();
+  const { hydrated, setupCompleted, profile, markSetupDone } = useAppData();
+  // Patiënten die via de therapeut-intake zijn aangemaakt (migratie 088+)
+  // hebben hun blessuregegevens al ingevuld gekregen en doorlopen dus nooit
+  // zelf het Instellingen-formulier dat setupCompleted normaal zet — zonder
+  // deze bypass belandden zij bij elk bezoek opnieuw op /instellingen.
+  const setupEffectivelyDone = setupCompleted || !!profile.blessureType;
   const { checked: statusChecked, status: patientStatus } = usePatientStatus();
   const { checked: membershipChecked, membership: staffMembership } = usePortalMembership();
   const router = useRouter();
@@ -107,10 +112,17 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     // patiënt-onboarding (/instellingen) worden gestuurd i.p.v. het
     // StaffAccountScreen hieronder te zien te krijgen.
     if (staffMembership) return;
-    if (!setupCompleted && !onInstellingen) {
+    if (!setupEffectivelyDone && !onInstellingen) {
       router.replace("/instellingen");
     }
-  }, [inviteChecked, setupCompleted, onInstellingen, router, staffMembership]);
+  }, [inviteChecked, setupEffectivelyDone, onInstellingen, router, staffMembership]);
+
+  // Zet de DB-vlag alsnog op waar (zelfhelend), zodat ook Instellingen'
+  // eigen "setup nog niet afgerond"-banner klopt en dit maar één keer
+  // per account hoeft te gebeuren i.p.v. elke render opnieuw af te leiden.
+  useEffect(() => {
+    if (hydrated && !setupCompleted && profile.blessureType) markSetupDone();
+  }, [hydrated, setupCompleted, profile.blessureType, markSetupDone]);
 
   if (authLoading || !hydrated) return null;
   if (!user) return null;
@@ -123,7 +135,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     return <AccountInactiveScreen status={patientStatus} onSignOut={signOut} />;
   }
   if (checkingInvite) return null;
-  if (!setupCompleted && !onInstellingen) return null;
+  if (!setupEffectivelyDone && !onInstellingen) return null;
 
   return <>{children}</>;
 }

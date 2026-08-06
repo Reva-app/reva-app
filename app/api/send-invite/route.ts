@@ -68,6 +68,7 @@ export async function POST(request: Request) {
     let firstName: string;
     let roleKey: string | null = null;
     let roleName: string | null = null;
+    let intakeSummary: string | null = null;
 
     if (body.context === "admin" || body.context === "portal-staff") {
       const { data: invite, error: inviteError } = await supabase
@@ -166,6 +167,14 @@ export async function POST(request: Request) {
       organizationId = patient.organization_id;
       email = patient.email;
       firstName = patient.first_name || "";
+
+      const { data: intake } = await supabase
+        .from("patient_intakes")
+        .select("ai_summary")
+        .eq("patient_id", body.patientId)
+        .not("completed_at", "is", null)
+        .maybeSingle();
+      intakeSummary = intake?.ai_summary?.trim() || null;
     } else {
       return NextResponse.json({ error: "Ongeldig verzoek" }, { status: 400 });
     }
@@ -237,14 +246,17 @@ export async function POST(request: Request) {
     if (body.context === "portal-patient") {
       subject = `${orgName} heeft je herstel-dashboard klaargezet`;
       const heading = `${safeFirstName ? `${safeFirstName}, w` : "W"}elkom bij je herstel-dashboard`;
+      const safeIntakeSummary = intakeSummary ? escapeHtml(intakeSummary) : null;
       html = inviteEmailHtml({
         accentColor,
         headerLabel: orgName,
         heading,
         bodyHtmlLines: [
           `<strong>${safeOrgName}</strong> heeft een persoonlijk herstel-dashboard voor je klaargezet op REVA.`,
-          `Hier houd je je afspraken, oefeningen en voortgang overzichtelijk bij — en blijft je behandelaar altijd op de hoogte.`,
+          `Hier houd je je afspraken, oefeningen en voortgang overzichtelijk bij, en blijft je behandelaar altijd op de hoogte.`,
         ],
+        quoteHtml: safeIntakeSummary ?? undefined,
+        quoteLabel: safeIntakeSummary ? "Van je intake" : undefined,
         ctaLabel: "Naar mijn dashboard",
         ctaUrl: actionLink,
       });
@@ -255,19 +267,21 @@ export async function POST(request: Request) {
           `${orgName} heeft een persoonlijk herstel-dashboard voor je klaargezet op REVA.`,
           `Hier houd je je afspraken, oefeningen en voortgang overzichtelijk bij, en blijft je behandelaar altijd op de hoogte.`,
         ],
+        quoteText: intakeSummary ?? undefined,
+        quoteLabel: intakeSummary ? "Van je intake" : undefined,
         ctaLabel: "Naar mijn dashboard",
         ctaUrl: actionLink,
       });
     } else if (roleKey === "organization_owner") {
-      subject = `Welkom bij REVA — start met ${orgName}`;
+      subject = `Welkom bij REVA, start met ${orgName}`;
       const heading = `${safeFirstName ? `${safeFirstName}, w` : "W"}elkom bij REVA!`;
       html = inviteEmailHtml({
         accentColor: DEFAULT_ACCENT,
         headerLabel: "REVA",
         heading,
         bodyHtmlLines: [
-          `Je bent uitgenodigd om <strong>${safeOrgName}</strong> te beheren op REVA — het platform waarmee jouw praktijk grip houdt op iedere fase van het hersteltraject van je patiënten.`,
-          `Klik op de knop hieronder, kies een wachtwoord, en je hebt direct toegang — er komt geen aparte bevestigingsmail. Daarna kun je meteen je team uitnodigen, locaties inrichten en het platform naar jullie eigen huisstijl aanpassen.`,
+          `Je bent uitgenodigd om <strong>${safeOrgName}</strong> te beheren op REVA: het platform waarmee jouw praktijk grip houdt op iedere fase van het hersteltraject van je patiënten.`,
+          `Klik op de knop hieronder, kies een wachtwoord, en je hebt direct toegang, er komt geen aparte bevestigingsmail. Daarna kun je meteen je team uitnodigen, locaties inrichten en het platform naar jullie eigen huisstijl aanpassen.`,
         ],
         ctaLabel: "Start met REVA",
         ctaUrl: actionLink,
@@ -291,7 +305,7 @@ export async function POST(request: Request) {
         heading,
         bodyHtmlLines: [
           `Je bent uitgenodigd om als <strong>${escapeHtml(roleName ?? "medewerker")}</strong> mee te werken binnen ${safeOrgName} op REVA.`,
-          `Klik op de knop hieronder en kies een wachtwoord — je hebt dan direct toegang, zonder aparte bevestigingsmail.`,
+          `Klik op de knop hieronder en kies een wachtwoord, je hebt dan direct toegang, zonder aparte bevestigingsmail.`,
         ],
         ctaLabel: "Account activeren",
         ctaUrl: actionLink,

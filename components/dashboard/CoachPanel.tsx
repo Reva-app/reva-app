@@ -1,6 +1,5 @@
 "use client";
 
-import { Target } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import type { CoachInsights, CoachMoodTag } from "@/lib/coach";
 
@@ -12,7 +11,6 @@ const MOOD_CONFIG: Record<CoachMoodTag, { label: string; color: string; bg: stri
 
 interface CoachPanelProps {
   coachInsights: CoachInsights;
-  onAction: (action: string) => void;
 }
 
 /**
@@ -20,9 +18,10 @@ interface CoachPanelProps {
  * (compacte) en desktop (uitgebreide) versie, die exact dezelfde data
  * toonden in twee losse JSX-blokken. Tailwind-responsive classes regelen
  * het compactere uiterlijk op klein scherm, zelfde aanpak als
- * OnboardingChecklist.
+ * OnboardingChecklist. Toont bewust geen losse "volgende stap"-actie meer:
+ * die overlapte met zowel de Vandaag-sectie als de vroegere Focus-kaart.
  */
-export function CoachPanel({ coachInsights, onAction }: CoachPanelProps) {
+export function CoachPanel({ coachInsights }: CoachPanelProps) {
   const moodCfg = MOOD_CONFIG[coachInsights.moodTag];
 
   return (
@@ -56,35 +55,12 @@ export function CoachPanel({ coachInsights, onAction }: CoachPanelProps) {
           </div>
         )}
 
-        {/* Next step */}
-        <div className="flex items-center justify-between gap-3 sm:gap-4 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 mb-4 sm:mb-5"
-          style={{ background: "#f8f7f4", border: "1px solid #e8e5df" }}>
-          <div className="flex items-center gap-2.5 min-w-0">
-            <Target size={14} style={{ color: "#e8632a" }} className="shrink-0" />
-            <p className="text-xs font-medium text-gray-700 leading-snug truncate">
-              {coachInsights.nextStep}
-            </p>
-          </div>
-          <button
-            onClick={() => onAction(coachInsights.nextStepAction)}
-            className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-90 touch-press"
-            style={{ background: "#1c1c1e" }}>
-            Doen
-          </button>
-        </div>
-
         {/* Weekly summary */}
         <div className="rounded-xl px-4 py-3 mb-4" style={{ background: moodCfg.bg, border: `1px solid ${moodCfg.color}22` }}>
           <p className="text-[10px] font-semibold uppercase tracking-widest mb-2.5" style={{ color: moodCfg.color }}>
             Samenvatting deze week
           </p>
-          <div className="grid grid-cols-4 gap-3 mb-3">
-            <div>
-              <p className="text-base font-bold leading-none text-gray-900">
-                {coachInsights.weekly.avgScore !== null ? coachInsights.weekly.avgScore.toFixed(1) : "n.v.t."}
-              </p>
-              <p className="text-[10px] text-gray-400 mt-0.5">gem. score</p>
-            </div>
+          <div className="grid grid-cols-3 gap-3 mb-3">
             <div>
               <p className="text-base font-bold leading-none text-gray-900">{coachInsights.weekly.trainingCount}</p>
               <p className="text-[10px] text-gray-400 mt-0.5">trainingen</p>

@@ -28,6 +28,22 @@ export const INJURY_CATEGORY_LABELS: Record<string, string> = {
   groin_strain: "Liesblessure (adductoren)",
   mcl_sprain: "Kniebandletsel (MCL)",
   concussion: "Hersenschudding",
+  pelvic_instability: "Bekkeninstabiliteit",
+  pelvic_floor_dysfunction: "Bekkenbodemklachten",
+  rectus_diastasis: "Diastase recti (buikwandscheiding)",
+  shoulder_dislocation: "Schouderluxatie",
+  calf_strain: "Kuitblessure",
+  patellofemoral_pain: "Lopersknie (patellofemoraal)",
+  shin_splints: "Scheenbeenvliesklachten",
+  plantar_fasciitis: "Hielspoor (fasciitis plantaris)",
+  achilles_tendinopathy: "Achillespees-tendinopathie",
+  elbow_tendinopathy: "Elleboogklachten (tennis-/golferselleboog)",
+  neck_pain_chronic: "Chronische nekklachten",
+  knee_osteoarthritis: "Knieartrose",
+  hip_osteoarthritis: "Heupartrose",
+  shoulder_chronic_pain: "Bevroren schouder (frozen shoulder)",
+  muscle_strain_general: "Spierverrekking, algemeen",
+  tendinopathy_general: "Peesklachten, algemeen",
   custom: "Overig / op maat",
 };
 
@@ -811,18 +827,24 @@ export async function updateScheduleLibraryArchived(scheduleId: string, archived
 }
 
 /**
- * Alleen bedoeld om een net aangemaakt, nog leeg conceptschema op te ruimen
- * als de gebruiker wegnavigeert zonder iets in te vullen (zie schemas/[id]/
- * page.tsx). schedule_library.id wordt vanuit protocol_phase_schedule_links
- * met ON DELETE RESTRICT gerefereerd (migratie 054) — een schema dat al in
- * een herstelplan wordt gebruikt kan hierdoor sowieso niet stilzwijgend
- * verdwijnen, maar dat scenario doet zich voor een net aangemaakt concept
- * per definitie nooit voor.
+ * Verwijdert een schema. Ook gebruikt om een net aangemaakt, nog leeg
+ * conceptschema op te ruimen als de gebruiker wegnavigeert zonder iets in
+ * te vullen (zie schemas/[id]/page.tsx). schedule_library.id wordt vanuit
+ * protocol_phase_schedule_links met ON DELETE RESTRICT gerefereerd
+ * (migratie 054) — een schema dat nog in een herstelplan wordt gebruikt
+ * kan hierdoor niet stilzwijgend verdwijnen; de Postgres-foreignkeyfout
+ * (23503) wordt hier omgezet naar een begrijpelijke melding.
  */
 export async function deleteScheduleLibraryItem(scheduleId: string): Promise<{ error: string | null }> {
   const supabase = createClient();
   const { error } = await supabase.from("schedule_library").delete().eq("id", scheduleId);
-  if (error) { logErr("deleteScheduleLibraryItem", error); return { error: "Verwijderen van het schema is niet gelukt." }; }
+  if (error) {
+    logErr("deleteScheduleLibraryItem", error);
+    if (error.code === "23503") {
+      return { error: "Dit schema wordt nog gebruikt in een herstelplan en kan daarom niet verwijderd worden. Verwijder eerst de koppeling in het herstelplan." };
+    }
+    return { error: "Verwijderen van het schema is niet gelukt." };
+  }
   return { error: null };
 }
 
@@ -1334,6 +1356,8 @@ export interface PortalPatientProtocolPhase {
   startedAt: string | null;
   completedAt: string | null;
   forbiddenActivities: string[];
+  transitionPainScore: number | null;
+  transitionNote: string | null;
   criteria: PortalPatientProtocolCriterion[];
   milestones: PortalPatientProtocolMilestone[];
   educationItems: PortalPatientProtocolEducationItem[];
@@ -1467,7 +1491,7 @@ export async function loadPatientProtocolAssignment(patientId: string): Promise<
 
   const { data: phaseRows, error: phasesError } = await supabase
     .from("patient_protocol_phases")
-    .select("id, sort_order, name, description, therapist_notes, status, started_at, completed_at, forbidden_activities")
+    .select("id, sort_order, name, description, therapist_notes, status, started_at, completed_at, forbidden_activities, transition_pain_score, transition_note")
     .eq("patient_protocol_id", assignment.id)
     .order("sort_order");
   if (phasesError) logErr("loadPatientProtocolAssignment(phases)", phasesError);
@@ -1558,6 +1582,7 @@ export async function loadPatientProtocolAssignment(patientId: string): Promise<
   const phases: PortalPatientProtocolPhase[] = (phaseRows ?? []).map((p) => ({
     id: p.id, name: p.name, description: p.description, therapistNotes: p.therapist_notes,
     status: p.status, startedAt: p.started_at, completedAt: p.completed_at, forbiddenActivities: p.forbidden_activities ?? [],
+    transitionPainScore: p.transition_pain_score, transitionNote: p.transition_note,
     criteria: criteriaByPhase.get(p.id) ?? [],
     milestones: milestonesByPhase.get(p.id) ?? [],
     educationItems: educationByPhase.get(p.id) ?? [],
@@ -1682,16 +1707,23 @@ export async function updateMilestoneCompletion(
 /**
  * Zet de huidige fase op 'completed' en de volgende op 'active' — twee
  * sequentiële updates zodat de partial-unique-index (max 1 actieve fase per
- * toewijzing) nooit tijdelijk twee actieve rijen ziet.
+ * toewijzing) nooit tijdelijk twee actieve rijen ziet. painScoreNow/note zijn
+ * de optionele faseovergang-check-in (migratie 108) — vastgelegd op de net
+ * afgesloten fase, naast de al bestaande criteria-/mijlpaalafvinklijst.
  */
 export async function advanceToNextPhase(
   currentPhaseId: string,
-  nextPhaseId: string
+  nextPhaseId: string,
+  painScoreNow?: number | null,
+  note?: string
 ): Promise<{ error: string | null }> {
   const supabase = createClient();
   const { error: completeError } = await supabase
     .from("patient_protocol_phases")
-    .update({ status: "completed", completed_at: new Date().toISOString() })
+    .update({
+      status: "completed", completed_at: new Date().toISOString(),
+      transition_pain_score: painScoreNow ?? null, transition_note: note?.trim() || null,
+    })
     .eq("id", currentPhaseId);
   if (completeError) { logErr("advanceToNextPhase(complete)", completeError); return { error: "Afronden van de fase is niet gelukt." }; }
 

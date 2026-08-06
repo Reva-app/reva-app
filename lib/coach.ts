@@ -20,6 +20,7 @@ import type {
 } from "./data";
 import type { PatientProtocolPhaseView } from "./services/patientProtocolService";
 import { computeTrend, average, countLeadingStreak, dayOfYearIndex, type Trend } from "./insights";
+import { getBodyRegion, type BodyRegion } from "./intakeAnalysis";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -285,6 +286,38 @@ function computeMoodTag(weekly: WeeklySummary, todayCheckIn: CheckIn | undefined
 // valt op"-sectie, hier hergebruikt via lib/insights.ts. Max 2 regels,
 // prioriteitsvolgorde: streak > trainingscorrelatie > protocol-tip.
 
+// Generieke, regio-bewuste tips voor patiënten zonder actief protocol (of
+// zonder educatie-items in de huidige fase) — zij missen anders elke
+// vorm van op hun blessure toegespitste duiding, terwijl protocolpatiënten
+// die al krijgen via protocolPhase.educationItems hierboven. Bewust breed
+// per BodyRegion (niet per exact blessuretype) en zonder medisch advies.
+const BODY_REGION_TIPS: Record<BodyRegion, string[]> = {
+  joint: [
+    "Bij gewrichtsherstel is gecontroleerde bewegingsuitslag vaak belangrijker dan snelheid. Bouw rustig op.",
+    "Lichte zwelling na training is normaal, aanhoudende of toenemende zwelling bespreek je met je zorgverlener.",
+    "Wissel belasting af met voldoende rust, zodat het gewricht kan wennen aan de opbouw.",
+  ],
+  muscle: [
+    "Spier- en peesweefsel heeft tijd nodig om kracht op te bouwen. Een geleidelijke opbouw voorkomt terugval.",
+    "Goed opwarmen voor je oefeningen helpt spierweefsel zich voor te bereiden op belasting.",
+    "Lichte spierspanning na training is normaal, scherpe pijn tijdens een oefening is een signaal om af te bouwen.",
+  ],
+  spine: [
+    "Regelmatig van houding wisselen is vaak prettiger voor rug of nek dan lang stilzitten of -staan.",
+    "Rustig in beweging blijven ondersteunt herstel van rug- of nekklachten meestal beter dan volledige rust.",
+    "Let op je houding tijdens dagelijkse activiteiten, kleine aanpassingen kunnen al verschil maken.",
+  ],
+  pelvic: [
+    "Bouw buikdruk-belastende bewegingen rustig op en let op je ademhaling tijdens inspanning.",
+    "Bekken- en bekkenbodemherstel vraagt om een geleidelijke opbouw, forceren werkt meestal averechts.",
+    "Een stevige basis van rust en ontspanning ondersteunt herstel in dit gebied.",
+  ],
+  other: [
+    "Consistentie in kleine, haalbare stappen levert op de lange termijn vaak het meeste op.",
+    "Luister goed naar signalen van je lichaam tijdens de opbouw van je herstel.",
+  ],
+};
+
 function buildExtraInsights(input: CoachInput): string[] {
   const insights: string[] = [];
   const recentSorted = [...input.checkIns].sort((a, b) => b.date.localeCompare(a.date));
@@ -324,6 +357,10 @@ function buildExtraInsights(input: CoachInput): string[] {
     const items = input.protocolPhase.educationItems;
     const tip = items[dayOfYearIndex(items.length, input.now)];
     insights.push(`Wist je dat: ${tip.title}${tip.body ? `. ${tip.body}` : ""}`);
+  } else if (input.profile.blessureType) {
+    const region = getBodyRegion(input.profile.blessureType);
+    const tips = BODY_REGION_TIPS[region];
+    insights.push(tips[dayOfYearIndex(tips.length, input.now)]);
   }
 
   return insights.slice(0, 2);

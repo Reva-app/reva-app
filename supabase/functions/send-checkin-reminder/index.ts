@@ -356,15 +356,19 @@ Deno.serve(async (req: Request) => {
   }
 
   // ── 2. Medicatie herinneringen ───────────────────────────────────────────
+  // Tijden staan sinds migratie 005 in de genormaliseerde junction-tabel
+  // medication_schedule_times, niet meer in het legacy times-jsonb-veld op
+  // medication_schedules zelf (dat wordt door de app niet meer geschreven,
+  // zie lib/db/mappers.ts medicatieSchemaToDb).
   const { data: schemas } = await supabase
     .from("medication_schedules")
-    .select("user_id, medication_name, times")
+    .select("user_id, medication_name, medication_schedule_times(time)")
     .eq("active", true);
 
   if (schemas && schemas.length > 0) {
     const medUserMap = new Map<string, string[]>();
     for (const s of schemas) {
-      const times = (s.times as string[] | null) ?? [];
+      const times = ((s.medication_schedule_times as { time: string }[] | null) ?? []).map((t) => t.time);
       for (const t of times) {
         const [hh, mm] = t.split(":").map(Number);
         if (hh === localHour && Math.floor((mm || 0) / 15) === localMinuteBucket) {

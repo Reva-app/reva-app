@@ -31,7 +31,7 @@ const pageTitles: Record<string, string> = {
   "/medicatie":     "Medicatie",
   "/doelstellingen":"Doelstellingen",
   "/analyse":       "Analyse",
-  "/instellingen":  "Instellingen",
+  "/instellingen":  "Mijn Gegevens",
 };
 
 export function TopBar() {

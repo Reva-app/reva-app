@@ -9,12 +9,14 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { ActionMenu } from "@/components/ui/ActionMenu";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { SortableHeader } from "@/components/ui/table/SortableHeader";
 import { Pagination } from "@/components/ui/table/Pagination";
 import { useTableState } from "@/components/ui/table/useTableState";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import {
   loadRevaSchedules, loadOrgSchedules, createScheduleLibraryItem, updateScheduleLibraryArchived, duplicateScheduleLibraryItem,
+  deleteScheduleLibraryItem,
   MANAGE_PROTOCOLS_ROLES,
   type PortalScheduleLibraryCard,
 } from "@/lib/services/protocolService";
@@ -50,6 +52,8 @@ export default function PortalSchemasPage() {
   const [sourceFilter, setSourceFilter] = useState("");
 
   const [creatingDraft, setCreatingDraft] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<PortalScheduleLibraryCard | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { showToast, toastNode } = useToast();
 
   const canManage = !!membership && MANAGE_PROTOCOLS_ROLES.includes(membership.roleKey);
@@ -121,6 +125,17 @@ export default function PortalSchemasPage() {
     const { error } = await duplicateScheduleLibraryItem(s.id, membership.organizationId);
     if (error) { showToast(error, "error"); return; }
     showToast("Schema gedupliceerd naar eigen bibliotheek");
+    refresh(membership.organizationId);
+  }
+
+  async function handleConfirmDelete() {
+    if (!confirmDelete || !membership) return;
+    setDeleting(true);
+    const { error } = await deleteScheduleLibraryItem(confirmDelete.id);
+    setDeleting(false);
+    if (error) { showToast(error, "error"); setConfirmDelete(null); return; }
+    showToast("Schema verwijderd");
+    setConfirmDelete(null);
     refresh(membership.organizationId);
   }
 
@@ -232,6 +247,7 @@ export default function PortalSchemasPage() {
                               ? [
                                   { label: "Dupliceren", onClick: () => handleDuplicate(s) },
                                   { label: s.archived ? "Dearchiveren" : "Archiveren", onClick: () => handleToggleArchived(s) },
+                                  ...(s.archived ? [{ label: "Verwijderen", onClick: () => setConfirmDelete(s), danger: true }] : []),
                                 ]
                               : [{ label: "Dupliceren", onClick: () => handleDuplicate(s) }]
                           }
@@ -247,6 +263,16 @@ export default function PortalSchemasPage() {
         <Pagination page={page} totalPages={totalPages} totalCount={filtered.length} itemLabel="resultaat" itemLabelPlural="resultaten" onPageChange={setPage} />
       </div>
 
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Schema verwijderen?"
+          message={`"${confirmDelete.title}" wordt permanent verwijderd. Dit kan alleen als het schema nergens meer in een herstelplan wordt gebruikt.`}
+          confirmLabel="Schema verwijderen"
+          loading={deleting}
+          onCancel={() => setConfirmDelete(null)}
+          onConfirm={handleConfirmDelete}
+        />
+      )}
       {toastNode}
     </div>
   );

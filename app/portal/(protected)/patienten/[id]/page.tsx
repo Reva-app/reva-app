@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { PhaseTransitionModal } from "@/components/portal/PhaseTransitionModal";
 import { useToast } from "@/components/ui/Toast";
 import { ScoreBar } from "@/components/ui/ScoreBar";
 import { Tabs } from "@/components/ui/Tabs";
@@ -321,6 +322,14 @@ function ProtocolTab({
               </div>
             </div>
             {phase.description && <p className="text-xs text-gray-500 mb-3">{phase.description}</p>}
+
+            {phase.status === "completed" && (phase.transitionPainScore !== null || phase.transitionNote) && (
+              <div className="rounded-xl p-3 text-xs space-y-1 mb-3" style={{ background: "#f8f7f4" }}>
+                <p className="font-medium text-gray-500 uppercase tracking-wide" style={{ fontSize: "10px" }}>Check-in bij afronden fase</p>
+                {phase.transitionPainScore !== null && <p className="text-gray-700">Pijnscore: {phase.transitionPainScore}/10</p>}
+                {phase.transitionNote && <p className="text-gray-700">{phase.transitionNote}</p>}
+              </div>
+            )}
 
             {isActive && (
               <div className="space-y-4 mt-3">
@@ -915,14 +924,14 @@ export default function PortalPatientDetailPage() {
     refreshProtocol();
   }
 
-  async function confirmAdvancePhase() {
+  async function confirmAdvancePhase(painScoreNow: number | null, note: string) {
     if (!assignment || !confirmAdvance) return;
     const sorted = assignment.phases;
     const index = sorted.findIndex((p) => p.id === confirmAdvance.id);
     const next = sorted[index + 1];
     if (!next) { setConfirmAdvance(null); return; }
     setPhaseChanging(true);
-    const { error } = await advanceToNextPhase(confirmAdvance.id, next.id);
+    const { error } = await advanceToNextPhase(confirmAdvance.id, next.id, painScoreNow, note);
     setPhaseChanging(false);
     setConfirmAdvance(null);
     if (error) { showToast(error, "error"); return; }
@@ -1210,11 +1219,8 @@ export default function PortalPatientDetailPage() {
           )}
 
           {confirmAdvance && (
-            <ConfirmDialog
-              title="Volgende fase starten?"
-              message={`De fase "${confirmAdvance.name}" wordt gemarkeerd als voltooid en de volgende fase gaat direct van start.`}
-              confirmLabel="Volgende fase starten"
-              danger={false}
+            <PhaseTransitionModal
+              phaseName={confirmAdvance.name}
               loading={phaseChanging}
               onCancel={() => setConfirmAdvance(null)}
               onConfirm={confirmAdvancePhase}

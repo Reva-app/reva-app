@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { clsx } from "clsx";
 import { BlockableLink as Link } from "./BlockableLink";
 import {
   LayoutDashboard,
@@ -30,7 +31,7 @@ const primaryNav = [
 
 const secondaryNav = [
   { href: "/analyse", label: "Analyse", icon: BarChart2 },
-  { href: "/instellingen", label: "Instellingen", icon: Settings },
+  { href: "/instellingen", label: "Mijn Gegevens", icon: Settings },
 ];
 
 export function Sidebar() {
@@ -65,10 +66,13 @@ export function Sidebar() {
     return (
       <Link
         href={href}
-        className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium"
+        className={clsx(
+          "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium",
+          !isActive && "hover:bg-white/5"
+        )}
         style={{
           color: isActive ? "#ffffff" : "#7c7c8a",
-          background: isActive ? "rgba(255,255,255,0.07)" : "transparent",
+          background: isActive ? "rgba(255,255,255,0.07)" : undefined,
         }}
       >
         <Icon size={16} style={{ color: isActive ? "var(--brand-accent, #e8632a)" : "#52525e" }} />
@@ -124,25 +128,30 @@ export function Sidebar() {
         style={{ background: "rgba(255,255,255,0.04)" }}
       >
         <div className="flex items-center gap-2.5">
-          <div
-            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden"
-            style={{ background: hydrated && profile.profielfoto ? "transparent" : "var(--brand-accent, #e8632a)" }}
+          <Link
+            href="/instellingen"
+            className="flex items-center gap-2.5 flex-1 min-w-0 rounded-lg -m-1 p-1 transition-colors hover:bg-white/5"
           >
-            {hydrated && profile.profielfoto ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={profile.profielfoto} alt="Profielfoto" className="w-full h-full object-cover" />
-            ) : (
-              initials
-            )}
-          </div>
-          <div className="overflow-hidden min-w-0 flex-1">
-            <p className="text-white text-xs font-medium truncate">
-              {displayNaam}
-            </p>
-            <p className="text-[11px] truncate" style={{ color: "#52525e" }}>
-              {hydrated ? `Dag ${dagsSindsBlessure}: ${fase.split(": ")[0]}` : user?.email ?? ""}
-            </p>
-          </div>
+            <div
+              className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden"
+              style={{ background: hydrated && profile.profielfoto ? "transparent" : "var(--brand-accent, #e8632a)" }}
+            >
+              {hydrated && profile.profielfoto ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profile.profielfoto} alt="Profielfoto" className="w-full h-full object-cover" />
+              ) : (
+                initials
+              )}
+            </div>
+            <div className="overflow-hidden min-w-0 flex-1">
+              <p className="text-white text-xs font-medium truncate">
+                {displayNaam}
+              </p>
+              <p className="text-[11px] truncate" style={{ color: "#52525e" }}>
+                {hydrated ? `Dag ${dagsSindsBlessure}: ${fase.split(": ")[0]}` : user?.email ?? ""}
+              </p>
+            </div>
+          </Link>
           <button
             type="button"
             onClick={signOut}

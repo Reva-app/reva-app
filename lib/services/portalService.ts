@@ -756,6 +756,11 @@ export async function invitePortalPatient(
       }
       return { outcome: "failed", error: "Koppelen van het account is niet gelukt." };
     }
+    // Bij een gloednieuw account loopt deze kopie via ensure_personal_organization()
+    // (migratie 091, getriggerd op de auth.users-insert); dit pad (bestaand
+    // account, direct gekoppeld) triggert dat niet, dus hier expliciet aanroepen.
+    const { error: copyGoalsError } = await supabase.rpc("copy_intake_goals_to_patient", { p_patient_id: patientId });
+    if (copyGoalsError) logErr("invitePortalPatient(copyGoals)", copyGoalsError);
     if (!isResend) {
       return { outcome: "linked", error: null, patientId };
     }

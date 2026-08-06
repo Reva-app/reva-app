@@ -17,9 +17,13 @@ import {
 const inputStyle = { borderColor: "#e8e5df", background: "#ffffff", color: "#1a1a1a" };
 
 /**
- * Vervangt Training & Oefeningen volledig zodra een patiënt een protocol
- * toegewezen heeft gekregen: alleen nog lezen + afvinken/loggen, geen eigen
- * oefeningen/schema's meer aanmaken (die komen van de fysiotherapeut).
+ * Het officiële, door de fysio samengestelde behandelplan: alleen lezen +
+ * afvinken/loggen, geen eigen oefeningen/schema's aanmaken binnen dit
+ * onderdeel. Patiënten met een protocol kunnen daarnaast, via de "Thuis
+ * schema"-tab op dezelfde pagina, wél zelf aanvullende thuisoefeningen
+ * bijhouden (TrainingSchemasSection) — bewust een aparte tab, niet hier
+ * doorheen gemengd, zodat voorgeschreven en zelf-toegevoegde content nooit
+ * door elkaar lopen.
  */
 export function ProtocolTrainingView({
   protocol, patientId, onLogged,
