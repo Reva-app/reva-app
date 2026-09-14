@@ -18,7 +18,7 @@ import {
   loadAdminOrganizationDetail, updateAdminOrganization, uploadOrganizationLogo,
   loadAdminOrgLocations, loadAdminOrgMembers, loadAdminOrgPatientStats, loadAdminOrgUsage,
   loadAdminRoles, findExistingAccountByEmail, linkExistingAccountToOrg,
-  inviteAdminOrgMember, loadAdminOrgInvites, resendAdminOrgInvite, cancelAdminOrgInvite,
+  inviteAdminOrgMember, loadAdminOrgInvites, resendAdminOrgInvite, cancelAdminOrgInvite, relinkAdminOrgMember,
   type AdminOrganizationDetail, type AdminOrgLocation, type AdminOrgMember,
   type AdminOrgPatientStats, type AdminOrgUsage, type AdminRoleOption,
   type AdminAccountMatch, type AdminOrgInvite,
@@ -88,6 +88,8 @@ function AdminOrganizationDetailContent() {
   const [loading, setLoading] = useState(true);
   const [resettingMfaUserId, setResettingMfaUserId] = useState<string | null>(null);
   const [mfaResetMessage, setMfaResetMessage] = useState<{ userId: string; text: string; ok: boolean } | null>(null);
+  const [relinkingUserId, setRelinkingUserId] = useState<string | null>(null);
+  const [relinkMessage, setRelinkMessage] = useState<{ userId: string; text: string; ok: boolean } | null>(null);
 
   async function handleMfaReset(userId: string) {
     if (!window.confirm("Tweestapsverificatie resetten voor deze medewerker? Diegene moet dan opnieuw instellen bij de volgende keer inloggen.")) return;
@@ -97,6 +99,16 @@ function AdminOrganizationDetailContent() {
     setResettingMfaUserId(null);
     setMfaResetMessage({ userId, ok: !error, text: error ?? "Gereset." });
     setTimeout(() => setMfaResetMessage(null), 4000);
+  }
+
+  async function handleRelink(member: AdminOrgMember) {
+    if (!window.confirm(`Nieuwe activatielink sturen naar ${member.fullName || member.email}? De oude link (indien nog niet gebruikt) werkt daarna niet meer.`)) return;
+    setRelinkingUserId(member.userId);
+    setRelinkMessage(null);
+    const { error } = await relinkAdminOrgMember(orgId, member);
+    setRelinkingUserId(null);
+    setRelinkMessage({ userId: member.userId, ok: !error, text: error ?? "Nieuwe link verstuurd." });
+    setTimeout(() => setRelinkMessage(null), 4000);
   }
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -579,9 +591,24 @@ function AdminOrganizationDetailContent() {
                       {mfaResetMessage.text}
                     </p>
                   )}
+                  {relinkMessage?.userId === m.userId && (
+                    <p className="text-[11px] mt-0.5" style={{ color: relinkMessage.ok ? "#16a34a" : "#dc2626" }}>
+                      {relinkMessage.text}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <Badge variant={roleBadgeVariant(m.roleKey)}>{m.roleName}</Badge>
+                  <button
+                    type="button"
+                    disabled={relinkingUserId === m.userId}
+                    onClick={() => handleRelink(m)}
+                    className="text-xs font-medium hover:opacity-70 disabled:opacity-40"
+                    style={{ color: "#9ca3af" }}
+                    title="Stuur een nieuwe link waarmee deze medewerker opnieuw een wachtwoord en 2FA kan instellen"
+                  >
+                    Nieuwe link versturen
+                  </button>
                   <button
                     type="button"
                     disabled={resettingMfaUserId === m.userId}

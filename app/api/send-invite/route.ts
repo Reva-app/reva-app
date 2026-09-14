@@ -20,6 +20,7 @@ type Body =
   | { context: "admin"; inviteId: string }
   | { context: "portal-staff"; inviteId: string }
   | { context: "portal-staff-linked"; organizationId: string; email: string; firstName: string; roleId: string }
+  | { context: "admin-relink"; organizationId: string; targetUserId: string; email: string; firstName: string }
   | { context: "portal-patient"; organizationId: string; patientId: string; linkType?: "invite" | "recovery" };
 
 export async function POST(request: Request) {
@@ -138,6 +139,56 @@ export async function POST(request: Request) {
       if (!targetMembership) {
         return NextResponse.json({ error: "Geen actief lidmaatschap gevonden voor dit account binnen deze organisatie" }, { status: 404 });
       }
+    } else if (body.context === "admin-relink") {
+      // Voor een medewerker die al een membership heeft (dus niet meer als
+      // "openstaande uitnodiging" zichtbaar is — zie migratie 041,
+      // ensure_personal_organization() zet membership_invites al op
+      // 'accepted' zodra de link één keer is geopend, ook als diegene het
+      // wachtwoord/2FA-instellen nooit heeft afgerond) maar vastzit: hiermee
+      // kan een platformbeheerder of organization_owner alsnog een verse,
+      // werkende link sturen. Zelfde autorisatiepatroon als /api/mfa-reset.
+      const { data: callerIsAdmin } = await supabase
+        .from("platform_admins")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      let authorized = !!callerIsAdmin;
+      if (!authorized) {
+        const { data: callerMembership } = await supabase
+          .from("memberships")
+          .select("status, roles(key)")
+          .eq("organization_id", body.organizationId)
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .maybeSingle();
+        const callerRoleKey = (callerMembership?.roles as unknown as { key: string } | null)?.key ?? null;
+        authorized = callerRoleKey === "organization_owner";
+      }
+      if (!authorized) {
+        return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
+      }
+
+      // profiles-RLS (migratie 084) laat een platformbeheerder geen profiel
+      // lezen van een organisatie waar diegene zelf geen lid van is — email/
+      // voornaam komen daarom rechtstreeks van de admin-UI, die deze gegevens
+      // al toont via admin_list_org_members(). We verifiëren hier alleen dat
+      // het lidmaatschap ook echt bestaat binnen de opgegeven organisatie.
+      const { data: targetMembership, error: targetMembershipError } = await supabase
+        .from("memberships")
+        .select("status, roles(key, name)")
+        .eq("organization_id", body.organizationId)
+        .eq("user_id", body.targetUserId)
+        .maybeSingle();
+      if (targetMembershipError || !targetMembership) {
+        return NextResponse.json({ error: "Lidmaatschap niet gevonden" }, { status: 404 });
+      }
+
+      organizationId = body.organizationId;
+      email = body.email.trim().toLowerCase();
+      firstName = body.firstName;
+      const role = targetMembership.roles as unknown as { key: string; name: string } | null;
+      roleKey = role?.key ?? null;
+      roleName = role?.name ?? null;
     } else if (body.context === "portal-patient") {
       const { data: membership } = await supabase
         .from("memberships")
@@ -209,7 +260,7 @@ export async function POST(request: Request) {
     // alsnog een (nieuw) wachtwoord instellen.
     const linkType: "invite" | "recovery" =
       body.context === "portal-patient" ? (body.linkType ?? "invite")
-      : body.context === "portal-staff-linked" ? "recovery"
+      : body.context === "portal-staff-linked" || body.context === "admin-relink" ? "recovery"
       : "invite";
 
     const admin = createSupabaseClient(supabaseUrl, serviceRoleKey);

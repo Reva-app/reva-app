@@ -97,6 +97,39 @@ export async function loadAdminDashboardStats(): Promise<AdminDashboardStats> {
   };
 }
 
+export interface AdminRecoveryDurationByCategory {
+  injuryCategory: string;
+  count: number;
+  avgDurationDays: number;
+}
+
+export interface AdminRecoveryDurationYear {
+  year: number;
+  count: number;
+}
+
+export interface AdminRecoveryDurationStats {
+  totalDischarged: number;
+  avgDurationDays: number | null;
+  byInjuryCategory: AdminRecoveryDurationByCategory[];
+  patientsPerYear: AdminRecoveryDurationYear[];
+}
+
+/**
+ * Platformbrede herstel-/doorlooptijdcijfers (migratie 116), gebundeld over
+ * alle organisaties — t.b.v. publieke rapportage door de platformeigenaar.
+ * Loopt via de admin_recovery_duration_stats-RPC (platform-admin-only).
+ */
+export async function loadAdminRecoveryDurationStats(): Promise<AdminRecoveryDurationStats> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("admin_recovery_duration_stats");
+  if (error) {
+    logErr("loadAdminRecoveryDurationStats", error);
+    return { totalDischarged: 0, avgDurationDays: null, byInjuryCategory: [], patientsPerYear: [] };
+  }
+  return data as AdminRecoveryDurationStats;
+}
+
 // ─── Organisaties ───────────────────────────────────────────────────────────
 
 interface RawOrgRow {
@@ -670,6 +703,27 @@ export async function cancelAdminOrgInvite(inviteId: string): Promise<{ error: s
   const { error } = await supabase.from("membership_invites").delete().eq("id", inviteId);
   if (error) { logErr("cancelAdminOrgInvite", error); return { error: "Verwijderen van de uitnodiging is niet gelukt." }; }
   return { error: null };
+}
+
+/**
+ * Stuurt een verse activatielink naar een medewerker die al een membership
+ * heeft (dus niet meer als "openstaande uitnodiging" zichtbaar is) maar
+ * vastzit — bv. de invite-link is verbruikt/verlopen voordat wachtwoord of
+ * 2FA-instellen is afgerond. Gebruikt dezelfde /api/send-invite-route als
+ * een gewone uitnodiging, maar dan met een "recovery"-link i.p.v. "invite".
+ */
+export async function relinkAdminOrgMember(
+  orgId: string,
+  member: Pick<AdminOrgMember, "userId" | "fullName" | "email">
+): Promise<{ error: string | null }> {
+  if (!member.email) return { error: "Dit account heeft geen bekend e-mailadres." };
+  return callSendInviteApi({
+    context: "admin-relink",
+    organizationId: orgId,
+    targetUserId: member.userId,
+    email: member.email,
+    firstName: member.fullName?.split(" ")[0] ?? "",
+  });
 }
 
 export async function loadAdminOrgUsage(orgId: string): Promise<AdminOrgUsage> {
