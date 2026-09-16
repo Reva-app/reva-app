@@ -188,7 +188,7 @@ export default function PortalStaffPage() {
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
                           <Avatar fullName={member.fullName} email={member.email} avatarUrl={member.avatarUrl} size={36} />
-                          <div className="min-w-0">
+                          <div className="min-w-0 max-w-[50vw]">
                             <p className="font-medium text-gray-800 truncate">
                               {member.fullName || member.email || "Onbekend"}
                               {isSelf && <span className="text-xs text-gray-400 font-normal ml-2">(jij)</span>}

@@ -173,7 +173,8 @@ export function PatientWizard({
   }
 
   return (
-    <Card>
+    <Card padding="none">
+      <div className="p-5">
       <div className="flex items-start justify-between">
         <CardHeader title="Patiënt toevoegen" subtitle={`Stap ${step + 1} van ${STEPS.length}: ${STEPS[step]}`} />
         <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 shrink-0 -mt-1">
@@ -346,9 +347,22 @@ export function PatientWizard({
           )}
         </div>
       )}
+      </div>
 
+      {/* Sticky footer — blijft altijd bereikbaar onderin de modal, ook
+          wanneer een stap (bv. Intake) langer is dan het scherm. Eerder
+          scrollde deze knopbalk gewoon mee met de stap-inhoud, waardoor
+          "Volgende" op mobiel vaak pas na scrollen (of helemaal niet
+          zichtbaar, achter het toetsenbord) te raken was. */}
       {!result && (
-        <div className="flex justify-between mt-6">
+        <div
+          className="flex justify-between items-center gap-3 px-5 py-4 sticky bottom-0 rounded-b-2xl"
+          style={{
+            background: "#ffffff",
+            borderTop: "1px solid #e8e5df",
+            paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)",
+          }}
+        >
           <Button type="button" size="sm" variant="secondary" onClick={goBack} disabled={step === 0}>
             <ChevronLeft size={14} /> {step === 4 ? "Intake aanpassen" : "Vorige"}
           </Button>

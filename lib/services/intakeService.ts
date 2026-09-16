@@ -40,6 +40,8 @@ export async function createPatientIntake(
     body_side: intake.bodySide || null,
     pregnancy_related: intake.pregnancyRelated,
     radiating_pain: intake.radiatingPain,
+    height_cm: intake.heightCm,
+    weight_kg: intake.weightKg,
     pain_score_now: intake.painScoreNow,
     swelling: intake.swelling || null,
     pain_location: intake.painLocation.trim() || null,

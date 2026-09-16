@@ -261,7 +261,7 @@ export default function PortalOefeningenPage() {
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
                           <ExerciseThumb mediaPath={ex.mediaPath} mediaType={ex.mediaType} size={36} />
-                          <p className="font-medium text-gray-800 truncate">{ex.title}</p>
+                          <p className="font-medium text-gray-800 truncate min-w-0 max-w-[50vw]">{ex.title}</p>
                         </div>
                       </td>
                       <td className="px-5 py-3.5 text-gray-600">{EXERCISE_TYPE_LABELS[ex.exerciseType] ?? ex.exerciseType}</td>

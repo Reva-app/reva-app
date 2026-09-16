@@ -230,7 +230,7 @@ export default function PortalSchemasPage() {
                         <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#f8f7f4" }}>
                           <ListChecks size={15} className="text-gray-400" />
                         </div>
-                        <p className="font-medium text-gray-800 truncate">{s.title}</p>
+                        <p className="font-medium text-gray-800 truncate min-w-0 max-w-[50vw]">{s.title}</p>
                       </div>
                     </td>
                     <td className="px-5 py-3.5 text-gray-500 max-w-xs truncate">{s.description || "—"}</td>

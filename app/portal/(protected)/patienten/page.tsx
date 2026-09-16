@@ -477,7 +477,7 @@ export default function PortalPatientsPage() {
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
                           <Avatar patient={p} />
-                          <div className="min-w-0">
+                          <div className="min-w-0 max-w-[50vw]">
                             <p className="font-medium text-gray-800 truncate">{p.fullName || "Nog niet ingevuld"}</p>
                             {!p.hasAccount && (
                               <div className="text-xs">{accountBadge(p)}</div>

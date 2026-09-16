@@ -337,7 +337,7 @@ export default function PortalProtocolDetailPage() {
                             <div className="flex items-center justify-center w-8 h-8 rounded-lg text-xs font-semibold shrink-0" style={{ background: "#f8f7f4", color: "#8a847d" }}>
                               {index + 1}
                             </div>
-                            <p className="font-medium text-gray-800 truncate">{phase.name}</p>
+                            <p className="font-medium text-gray-800 truncate min-w-0 max-w-[50vw]">{phase.name}</p>
                           </div>
                         </td>
                         <td className="px-5 py-3.5 text-gray-500">{phase.weekRangeLabel || "—"}</td>

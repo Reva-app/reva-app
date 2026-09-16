@@ -26,6 +26,28 @@ export function IntakeStep({ value, onChange, injuryType }: IntakeStepProps) {
       </p>
 
       <div>
+        <SectionHeading>Lichaamsgegevens</SectionHeading>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <FieldLabel>Lengte in cm (optioneel)</FieldLabel>
+            <input
+              type="number" min={50} max={250} value={value.heightCm ?? ""}
+              onChange={(e) => onChange("heightCm", e.target.value === "" ? null : Number(e.target.value))}
+              placeholder="Bijv. 178" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+            />
+          </div>
+          <div>
+            <FieldLabel>Gewicht in kg (optioneel)</FieldLabel>
+            <input
+              type="number" min={20} max={300} step={0.1} value={value.weightKg ?? ""}
+              onChange={(e) => onChange("weightKg", e.target.value === "" ? null : Number(e.target.value))}
+              placeholder="Bijv. 82.5" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div>
         <SectionHeading>Klachten &amp; pijn</SectionHeading>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>

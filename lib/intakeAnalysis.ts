@@ -74,6 +74,9 @@ export interface IntakeInput {
   pregnancyRelated: boolean;
   radiatingPain: boolean;
 
+  heightCm: number | null;
+  weightKg: number | null;
+
   painScoreNow: number | null;
   swelling: Swelling | "";
   painLocation: string;
@@ -100,6 +103,8 @@ export const emptyIntakeInput: IntakeInput = {
   bodySide: "",
   pregnancyRelated: false,
   radiatingPain: false,
+  heightCm: null,
+  weightKg: null,
   painScoreNow: null,
   swelling: "",
   painLocation: "",
