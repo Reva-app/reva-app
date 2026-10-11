@@ -300,16 +300,9 @@ function LoginForm() {
           Doorgaan met Google
         </button>
 
-        {/* Register link */}
+        {/* Geen zelfstandige registratie: accounts komen via een uitnodiging van de praktijk */}
         <p className="text-center text-xs text-gray-500 mt-6">
-          Nog geen account?{" "}
-          <Link
-            href="/register"
-            className="font-semibold hover:opacity-70 transition-opacity"
-            style={{ color: "#e8632a" }}
-          >
-            Account aanmaken
-          </Link>
+          Nog geen account? Je ontvangt een uitnodiging van je praktijk.
         </p>
       </div>
     </div>
