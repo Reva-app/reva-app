@@ -26,7 +26,8 @@ function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString("nl-NL", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-function actionBadgeVariant(action: AuditAction): "success" | "warning" | "danger" | "purple" {
+function actionBadgeVariant(action: AuditAction): "success" | "warning" | "danger" | "purple" | "blue" {
+  if (action === "view") return "blue";
   if (action === "insert") return "success";
   if (action === "update") return "warning";
   if (action === "delete") return "danger";
@@ -84,7 +85,7 @@ export default function ActiviteitenlogPage() {
   if (checked && membership && !canView) {
     return (
       <div className="p-4 sm:p-6 max-w-2xl mx-auto">
-        <SectionHeader title="Activiteitenlog" subtitle="Wie wat heeft gewijzigd aan patiëntgegevens" />
+        <SectionHeader title="Activiteitenlog" subtitle="Wie welk dossier heeft bekeken of gewijzigd" />
         <p className="text-sm text-gray-400 mt-4">
           Alleen de praktijkeigenaar kan het activiteitenlog bekijken.
         </p>
@@ -143,7 +144,7 @@ export default function ActiviteitenlogPage() {
           <EmptyState
             icon={History}
             title="Nog geen activiteit"
-            description="Wijzigingen aan patiëntgegevens verschijnen hier zodra ze plaatsvinden."
+            description="Inzage en wijzigingen van patiëntgegevens verschijnen hier zodra ze plaatsvinden."
           />
         ) : (
           <ScrollHintX>

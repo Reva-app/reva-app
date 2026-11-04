@@ -8,7 +8,7 @@ function logErr(fn: string, error: { message?: string; code?: string; details?: 
 /** Moet in sync blijven met can_view_audit_log() in migratie 066. */
 export const VIEW_AUDIT_LOG_ROLES = ["organization_owner"];
 
-export type AuditAction = "insert" | "update" | "delete" | "export";
+export type AuditAction = "insert" | "update" | "delete" | "export" | "view";
 
 export const AUDIT_TABLE_LABELS: Record<string, string> = {
   checkins: "Check-in",
@@ -33,6 +33,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   update: "Gewijzigd",
   delete: "Verwijderd",
   export: "Geëxporteerd",
+  view: "Bekeken",
 };
 
 /**
@@ -176,6 +177,17 @@ export interface AuditLogFilters {
   action?: AuditAction;
   dateFrom?: string; // "YYYY-MM-DD"
   dateTo?: string;   // "YYYY-MM-DD"
+}
+
+/**
+ * NEN 7513: meldt dat de ingelogde medewerker dit patiëntdossier opent.
+ * De database controleert de rechten en voegt hooguit één regel per 10
+ * minuten toe (migratie 127). Een mislukte melding blokkeert het dossier niet.
+ */
+export async function logPatientView(patientId: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("log_patient_view", { p_patient_id: patientId });
+  logErr("logPatientView", error);
 }
 
 // Pragmatisch plafond bij de huidige schaal (kleine praktijken, geen hoog
