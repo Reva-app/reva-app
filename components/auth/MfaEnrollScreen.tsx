@@ -8,15 +8,18 @@ import { createClient } from "@/lib/supabaseClient";
 interface MfaEnrollScreenProps {
   onVerified: () => void;
   onSignOut: () => void;
+  /** Lopende-tekstnaam van het portaal, bv. "het beheerportaal". */
+  portalLabel?: string;
 }
 
 /**
  * Blokkerend instelscherm voor tweestapsverificatie — zelfde patroon als
  * RequiredHerstelModal (app/(app)/instellingen/page.tsx): eigen volledige
- * achtergrond, geen sluitknop, niet weg te klikken. Alleen bereikbaar via
- * PortalGate wanneer een organisatielid nog geen geverifieerde factor heeft.
+ * achtergrond, geen sluitknop, niet weg te klikken. Bereikbaar via
+ * PortalGate (organisatielid) en AdminGate (platform-beheerder) wanneer er
+ * nog geen geverifieerde factor is.
  */
-export function MfaEnrollScreen({ onVerified, onSignOut }: MfaEnrollScreenProps) {
+export function MfaEnrollScreen({ onVerified, onSignOut, portalLabel = "het praktijkportaal" }: MfaEnrollScreenProps) {
   const [factorId, setFactorId] = useState<string | null>(null);
   const [qrCode, setQrCode] = useState("");
   const [secret, setSecret] = useState("");
@@ -87,7 +90,7 @@ export function MfaEnrollScreen({ onVerified, onSignOut }: MfaEnrollScreenProps)
           Tweestapsverificatie instellen
         </h2>
         <p className="text-sm leading-relaxed mb-5" style={{ color: "#6b6560" }}>
-          Om toegang te krijgen tot het praktijkportaal moet je tweestapsverificatie instellen. Scan de QR-code met een
+          Om toegang te krijgen tot {portalLabel} moet je tweestapsverificatie instellen. Scan de QR-code met een
           authenticator-app (bijvoorbeeld Google Authenticator of Authy) en vul de 6-cijferige code in.
         </p>
 

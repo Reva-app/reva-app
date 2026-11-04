@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { ShieldAlert } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { usePlatformAdmin } from "@/lib/hooks/usePlatformAdmin";
+import { useMfaStatus } from "@/lib/hooks/useMfaStatus";
+import { MfaEnrollScreen } from "@/components/auth/MfaEnrollScreen";
+import { MfaChallengeScreen } from "@/components/auth/MfaChallengeScreen";
 import { Button } from "@/components/ui/Button";
 
 /**
@@ -13,14 +16,17 @@ import { Button } from "@/components/ui/Button";
  * - Geen sessie: redirect naar /login.
  * - Sessie, maar geen platform admin: nette "geen toegang"-melding (geen
  *   redirect — dit account kan legitiem een gewone patiënt zijn).
- * - Platform admin: render children.
+ * - Platform admin zonder aal2: tweestapsverificatie instellen of invullen.
+ * - Platform admin + aal2: render children.
  *
  * Dit is een UX-laag; de echte grens is RLS (is_platform_admin() op elke
- * tabel-policy) — zie docs/REVA-V2-MASTERPLAN.md §16.1.
+ * tabel-policy, sinds migratie 120 inclusief aal2-eis) — zie
+ * docs/REVA-V2-MASTERPLAN.md §16.1.
  */
 export function AdminGate({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading, signOut } = useAuth();
   const { checked, isAdmin } = usePlatformAdmin();
+  const { checked: mfaChecked, satisfied: mfaSatisfied, needsEnrollment, factorId, refresh: refreshMfa } = useMfaStatus();
   const router = useRouter();
 
   useEffect(() => {
@@ -72,6 +78,20 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     );
+  }
+
+  if (!mfaChecked) {
+    return (
+      <div className="flex h-screen items-center justify-center" style={{ background: "#f8f7f4" }}>
+        <p className="text-sm" style={{ color: "#9ca3af" }}>Laden…</p>
+      </div>
+    );
+  }
+
+  if (!mfaSatisfied) {
+    return needsEnrollment
+      ? <MfaEnrollScreen portalLabel="het beheerportaal" onVerified={refreshMfa} onSignOut={signOut} />
+      : <MfaChallengeScreen factorId={factorId!} onVerified={refreshMfa} onSignOut={signOut} />;
   }
 
   return <>{children}</>;
