@@ -1,6 +1,8 @@
 import { Resend } from "resend";
 import { NextResponse } from "next/server";
-import { stripNewlines, feedbackEmailHtml } from "@/lib/emailHtml";
+import { stripNewlines } from "@/lib/emailHtml";
+import { renderEmail } from "@/lib/email/layout";
+import { feedbackNotificationEmail } from "@/lib/email/messages";
 import { checkRateLimit, getClientIp, rateLimitedResponse } from "@/lib/rateLimit";
 
 // Onauthenticated route (iedereen kan feedback sturen, ook uitgelogd) — dus
@@ -31,25 +33,29 @@ export async function POST(request: Request) {
     }
 
     const resend = new Resend(apiKey);
+    const { subject, html, text } = renderEmail(feedbackNotificationEmail({ categorie, onderwerp, naam, email, bericht }));
 
+    // Interne mail: eigen afzendernaam, zodat feedback in de inbox
+    // herkenbaar en te filteren is.
     const { error } = await resend.emails.send({
       from: "REVA Feedback <feedback@reva-app.nl>",
       to: "info@reva-app.nl",
       replyTo: email || undefined,
-      subject: `[Feedback] ${categorie ? `${categorie}: ` : ""}${onderwerp}`,
-      html: feedbackEmailHtml({ categorie, onderwerp, naam, email, bericht }),
+      subject,
+      html,
+      text,
     });
 
     if (error) {
       console.error("[feedback] Resend error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: "Versturen is niet gelukt. Probeer het later opnieuw." }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[feedback] Onverwachte fout:", err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Onbekende fout" },
+      { error: "Er ging iets mis. Probeer het later opnieuw." },
       { status: 500 }
     );
   }

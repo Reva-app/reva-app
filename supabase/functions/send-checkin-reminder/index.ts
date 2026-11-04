@@ -5,7 +5,7 @@
  *  1. Dagelijkse check-in herinnering (op ingesteld tijdstip) — E-MAIL
  *  2. Medicatie herinneringen (op ingesteld schema-tijdstip) — E-MAIL
  *  3. Wekelijkse foto update herinnering (elke zondag om 20:00) — E-MAIL
- *  5. Afspraak herinnering (4 uur vóór de afspraaktijd zelf, incl. details) — E-MAIL
+ *  5. Afspraak herinnering (4 uur vóór de afspraaktijd zelf, alleen het tijdstip) — E-MAIL
  *  6. Doel deadline herinnering (dag ervoor om 09:00) — push
  *
  * Typen 1/2/3/5 zijn omgezet van push naar e-mail (via Resend) — push werkte
@@ -34,7 +34,20 @@
  *                              geldige JWT is en dus niet volstaat als autorisatiecheck.
  */
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+// Opmaak en teksten van alle REVA-mails — GEGENEREERD uit lib/email/ met
+// `npm run email:build`. Wijzig teksten dáár, niet in email.ts.
+import {
+  EMAIL_REPLY_TO,
+  appointmentReminderEmail,
+  checkinReminderEmail,
+  emailFrom,
+  medicationReminderEmail,
+  photoReminderEmail,
+  renderEmail,
+  type EmailBrand,
+  type EmailContent,
+} from "./email.ts";
 
 // ─── FCM v1 helpers ────────────────────────────────────────────────────────────
 
@@ -149,57 +162,49 @@ async function sendFCM(
   return res.ok;
 }
 
-// ─── E-mail helpers (Resend) ────────────────────────────────────────────────
-// Zelfde REVA-huisstijl als lib/emailHtml.ts's inviteEmailHtml() — hier
-// zelfstandig herhaald omdat deze Edge Function los draait van de Next.js-
-// app en dus niet uit lib/ kan importeren.
+// ─── E-mail (Resend) ───────────────────────────────────────────────────────
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+interface PendingEmail {
+  userId: string;
+  to: string;
+  build: (brand: EmailBrand) => EmailContent;
 }
 
-interface ReminderEmailOptions {
-  heading: string;
-  bodyLines: string[];
-  ctaLabel: string;
-  ctaUrl: string;
+/**
+ * Huisstijl per ontvanger: patiënten van een praktijk krijgen de naam en
+ * kleur van hun praktijk (zelfde uitstraling als hun uitnodiging); wie
+ * alleen een persoonlijke werkruimte heeft krijgt REVA-branding. Een
+ * organisatie telt als praktijk zodra er minstens één actieve medewerker is.
+ */
+async function loadBrands(supabase: SupabaseClient, userIds: string[]): Promise<Map<string, EmailBrand>> {
+  const brands = new Map<string, EmailBrand>();
+  if (userIds.length === 0) return brands;
+
+  const { data: patients } = await supabase
+    .from("patients")
+    .select("user_id, organization_id, organizations(name, primary_color)")
+    .in("user_id", userIds);
+  const orgIds = [...new Set((patients ?? []).map((p) => p.organization_id as string))];
+  if (orgIds.length === 0) return brands;
+
+  const { data: staff } = await supabase
+    .from("memberships")
+    .select("organization_id")
+    .in("organization_id", orgIds)
+    .eq("status", "active");
+  const practiceOrgIds = new Set((staff ?? []).map((m) => m.organization_id as string));
+
+  for (const p of patients ?? []) {
+    const org = p.organizations as unknown as { name: string; primary_color: string | null } | null;
+    if (org && practiceOrgIds.has(p.organization_id as string)) {
+      brands.set(p.user_id as string, { kind: "practice", name: org.name, color: org.primary_color });
+    }
+  }
+  return brands;
 }
 
-function reminderEmailHtml({ heading, bodyLines, ctaLabel, ctaUrl }: ReminderEmailOptions): string {
-  const accentColor = "#e8632a";
-  return `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f7f4; padding: 32px 16px;">
-      <div style="max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e8e5df;">
-        <div style="background: ${accentColor}; padding: 20px 32px; color: #ffffff; font-weight: 700; font-size: 15px; letter-spacing: 0.01em;">
-          REVA
-        </div>
-        <div style="padding: 32px;">
-          <h1 style="margin: 0 0 16px; font-size: 22px; color: #1a1a1a; line-height: 1.3;">${escapeHtml(heading)}</h1>
-          ${bodyLines.map((line) => `<p style="margin: 0 0 14px; font-size: 14px; color: #4b5563; line-height: 1.6;">${escapeHtml(line)}</p>`).join("")}
-          <div style="margin: 28px 0 8px;">
-            <a href="${ctaUrl}" style="display: inline-block; background: ${accentColor}; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 14px; padding: 12px 24px; border-radius: 10px;">
-              ${escapeHtml(ctaLabel)}
-            </a>
-          </div>
-        </div>
-        <div style="padding: 4px 32px 20px; font-size: 12px; color: #9ca3af;">
-          REVA — vragen? Mail <a href="mailto:info@reva-app.nl" style="color: #9ca3af;">info@reva-app.nl</a>. Je ontvangt dit omdat deze melding aanstaat bij Instellingen → Meldingen.
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function reminderEmailText({ heading, bodyLines, ctaLabel, ctaUrl }: ReminderEmailOptions): string {
-  return [heading, "", ...bodyLines, "", `${ctaLabel}: ${ctaUrl}`, "", "REVA — vragen? Mail info@reva-app.nl"].join("\n");
-}
-
-async function sendReminderEmail(resendApiKey: string, to: string, subject: string, options: ReminderEmailOptions): Promise<boolean> {
+async function sendReminderEmail(resendApiKey: string, to: string, content: EmailContent): Promise<boolean> {
+  const { subject, html, text } = renderEmail(content);
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -207,11 +212,12 @@ async function sendReminderEmail(resendApiKey: string, to: string, subject: stri
       "Authorization": `Bearer ${resendApiKey}`,
     },
     body: JSON.stringify({
-      from: "REVA <noreply@reva-app.nl>",
+      from: emailFrom(content.brand),
       to: [to],
+      reply_to: EMAIL_REPLY_TO,
       subject,
-      html: reminderEmailHtml(options),
-      text: reminderEmailText(options),
+      html,
+      text,
     }),
   });
   return res.ok;
@@ -305,7 +311,7 @@ Deno.serve(async (req: Request) => {
   const in4HoursMinute = parseInt(in4HoursParts.minute, 10);
 
   const notifications: { token: string; title: string; body: string; route: string }[] = [];
-  const emails: { to: string; subject: string; options: ReminderEmailOptions }[] = [];
+  const emails: PendingEmail[] = [];
 
   // ── 1. Check-in herinneringen ────────────────────────────────────────────
   const { data: settings } = await supabase
@@ -335,21 +341,12 @@ Deno.serve(async (req: Request) => {
       if (pending.length > 0) {
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("email")
+          .select("id, email")
           .in("id", pending);
 
-        (profiles ?? []).forEach(({ email }) => {
+        (profiles ?? []).forEach(({ id, email }) => {
           if (!email) return;
-          emails.push({
-            to: email,
-            subject: "Hoe gaat het vandaag?",
-            options: {
-              heading: "Tijd voor je dagelijkse check-in",
-              bodyLines: ["Neem even een moment voor je dagelijkse check-in en houd je herstel bij."],
-              ctaLabel: "Check-in invullen",
-              ctaUrl: `${siteUrl}/check-in`,
-            },
-          });
+          emails.push({ userId: id as string, to: email, build: (brand) => checkinReminderEmail({ brand, siteUrl }) });
         });
       }
     }
@@ -397,21 +394,12 @@ Deno.serve(async (req: Request) => {
       if (enabledUsers.length > 0) {
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("email")
+          .select("id, email")
           .in("id", enabledUsers);
 
-        (profiles ?? []).forEach(({ email }) => {
+        (profiles ?? []).forEach(({ id, email }) => {
           if (!email) return;
-          emails.push({
-            to: email,
-            subject: "Tijd voor je medicatie",
-            options: {
-              heading: "Tijd voor je medicatie",
-              bodyLines: ["Je hebt een medicatiemoment ingepland. Bekijk in REVA wat je nu inneemt."],
-              ctaLabel: "Naar medicatie",
-              ctaUrl: `${siteUrl}/medicatie`,
-            },
-          });
+          emails.push({ userId: id as string, to: email, build: (brand) => medicationReminderEmail({ brand, siteUrl }) });
         });
       }
     }
@@ -433,21 +421,12 @@ Deno.serve(async (req: Request) => {
     if (fotoUsers.length > 0) {
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("email")
+        .select("id, email")
         .in("id", fotoUsers);
 
-      (profiles ?? []).forEach(({ email }) => {
+      (profiles ?? []).forEach(({ id, email }) => {
         if (!email) return;
-        emails.push({
-          to: email,
-          subject: "Leg je voortgang vast",
-          options: {
-            heading: "Leg je voortgang vast",
-            bodyLines: ["Maak je wekelijkse foto en zie hoe ver je al bent gekomen."],
-            ctaLabel: "Foto toevoegen",
-            ctaUrl: `${siteUrl}/dossier?tab=foto-updates`,
-          },
-        });
+        emails.push({ userId: id as string, to: email, build: (brand) => photoReminderEmail({ brand, siteUrl }) });
       });
     }
   }
@@ -507,20 +486,13 @@ Deno.serve(async (req: Request) => {
         for (const appt of filteredAppts) {
           const email: string | null = emailByUserId.get(appt.user_id as string) ?? null;
           if (!email) continue;
-          const tijdLabel = appt.time ? (appt.time as string).slice(0, 5) : null;
-          const bodyLines = [
-            tijdLabel ? `Je hebt vandaag om ${tijdLabel} een afspraak.` : "Je hebt vandaag een afspraak.",
-            "Bekijk in REVA waar het is en wat je mee moet nemen.",
-          ];
+          const time = appt.time ? (appt.time as string).slice(0, 5) : null;
+          // 4 uur vooruit kan na middernacht vallen (bv. 21:00 → afspraak om 01:00).
+          const day = in4HoursDateStr === today ? "vandaag" : "morgen";
           emails.push({
+            userId: appt.user_id as string,
             to: email,
-            subject: "Herinnering: je afspraak van vandaag",
-            options: {
-              heading: "Je afspraak komt eraan",
-              bodyLines,
-              ctaLabel: "Bekijk je afspraak",
-              ctaUrl: `${siteUrl}/afspraken`,
-            },
+            build: (brand) => appointmentReminderEmail({ brand, siteUrl, day, time }),
           });
         }
       }
@@ -594,8 +566,9 @@ Deno.serve(async (req: Request) => {
     console.error("[email] RESEND_API_KEY niet ingesteld — e-mails worden overgeslagen");
     emailErrors.push("RESEND_API_KEY niet ingesteld");
   } else if (resendApiKey) {
-    for (const { to, subject, options } of emails) {
-      const ok = await sendReminderEmail(resendApiKey, to, subject, options);
+    const brands = await loadBrands(supabase, [...new Set(emails.map((e) => e.userId))]);
+    for (const { userId, to, build } of emails) {
+      const ok = await sendReminderEmail(resendApiKey, to, build(brands.get(userId) ?? { kind: "reva" }));
       if (ok) {
         emailsSent++;
       } else {

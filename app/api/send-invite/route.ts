@@ -1,7 +1,14 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { NextResponse } from "next/server";
-import { escapeHtml, inviteEmailHtml, inviteEmailText } from "@/lib/emailHtml";
+import { EMAIL_REPLY_TO, emailFrom, renderEmail } from "@/lib/email/layout";
+import {
+  activationReminderEmail,
+  ownerInviteEmail,
+  patientInviteEmail,
+  staffAccessGrantedEmail,
+  staffInviteEmail,
+} from "@/lib/email/messages";
 import { checkRateLimit, rateLimitedResponse } from "@/lib/rateLimit";
 import { tokenHasAal2 } from "@/lib/apiAuth";
 
@@ -14,8 +21,6 @@ const RATE_LIMIT_WINDOW_SECONDS = 60 * 60;
 // portalService elders in dit project).
 const MANAGE_PATIENTS_ROLES = ["organization_owner", "therapist"];
 const MANAGE_STAFF_ROLES = ["organization_owner"];
-
-const DEFAULT_ACCENT = "#e8632a";
 
 type Body =
   | { context: "admin"; inviteId: string }
@@ -294,96 +299,34 @@ export async function POST(request: Request) {
     const actionLink = `${origin}/auth/verify?token_hash=${tokenHash}&type=${linkType}&next=${encodeURIComponent(postVerifyPath)}`;
 
     const resend = new Resend(resendApiKey);
-    const orgName = org.name as string;
-    const accentColor = (org.primary_color as string | null) ?? DEFAULT_ACCENT;
-    const safeFirstName = escapeHtml(firstName || "");
-    const safeOrgName = escapeHtml(orgName);
+    const practice = { name: org.name as string, color: (org.primary_color as string | null) ?? null };
 
-    let subject: string;
-    let html: string;
-    let text: string;
+    // Eigenaren krijgen REVA-branding (zij richten de praktijk nog in);
+    // patiënten en medewerkers zien de huisstijl van hun praktijk.
+    const content =
+      body.context === "portal-patient"
+        ? patientInviteEmail({ practice, firstName, url: actionLink })
+        : body.context === "admin-relink"
+          ? activationReminderEmail({
+              brand: roleKey === "organization_owner" ? { kind: "reva" } : { kind: "practice", ...practice },
+              organizationName: practice.name,
+              firstName,
+              url: actionLink,
+            })
+          : roleKey === "organization_owner"
+            ? ownerInviteEmail({ organizationName: practice.name, firstName, url: actionLink })
+            : body.context === "portal-staff-linked"
+              ? staffAccessGrantedEmail({ practice, firstName, roleName, url: actionLink })
+              : staffInviteEmail({ practice, firstName, roleName, url: actionLink });
 
-    if (body.context === "portal-patient") {
-      subject = `${orgName} heeft je herstel-dashboard klaargezet`;
-      const heading = `${safeFirstName ? `${safeFirstName}, w` : "W"}elkom bij je herstel-dashboard`;
-      html = inviteEmailHtml({
-        accentColor,
-        headerLabel: orgName,
-        heading,
-        bodyHtmlLines: [
-          `<strong>${safeOrgName}</strong> heeft een persoonlijk herstel-dashboard voor je klaargezet op REVA.`,
-          `Hier houd je je afspraken, oefeningen en voortgang overzichtelijk bij, en blijft je behandelaar altijd op de hoogte.`,
-        ],
-        ctaLabel: "Naar mijn dashboard",
-        ctaUrl: actionLink,
-      });
-      text = inviteEmailText({
-        headerLabel: orgName,
-        heading,
-        bodyLines: [
-          `${orgName} heeft een persoonlijk herstel-dashboard voor je klaargezet op REVA.`,
-          `Hier houd je je afspraken, oefeningen en voortgang overzichtelijk bij, en blijft je behandelaar altijd op de hoogte.`,
-        ],
-        ctaLabel: "Naar mijn dashboard",
-        ctaUrl: actionLink,
-      });
-    } else if (roleKey === "organization_owner") {
-      subject = `Welkom bij REVA, start met ${orgName}`;
-      const heading = `${safeFirstName ? `${safeFirstName}, w` : "W"}elkom bij REVA!`;
-      html = inviteEmailHtml({
-        accentColor: DEFAULT_ACCENT,
-        headerLabel: "REVA",
-        heading,
-        bodyHtmlLines: [
-          `Je bent uitgenodigd om <strong>${safeOrgName}</strong> te beheren op REVA: het platform waarmee jouw praktijk grip houdt op iedere fase van het hersteltraject van je patiënten.`,
-          `Klik op de knop hieronder, kies een wachtwoord, en je hebt direct toegang, er komt geen aparte bevestigingsmail. Daarna kun je meteen je team uitnodigen, locaties inrichten en het platform naar jullie eigen huisstijl aanpassen.`,
-        ],
-        ctaLabel: "Start met REVA",
-        ctaUrl: actionLink,
-      });
-      text = inviteEmailText({
-        headerLabel: "REVA",
-        heading,
-        bodyLines: [
-          `Je bent uitgenodigd om ${orgName} te beheren op REVA, het platform waarmee jouw praktijk grip houdt op iedere fase van het hersteltraject van je patiënten.`,
-          `Klik op de link hieronder, kies een wachtwoord, en je hebt direct toegang, er komt geen aparte bevestigingsmail. Daarna kun je meteen je team uitnodigen, locaties inrichten en het platform naar jullie eigen huisstijl aanpassen.`,
-        ],
-        ctaLabel: "Start met REVA",
-        ctaUrl: actionLink,
-      });
-    } else {
-      subject = `Je bent uitgenodigd bij ${orgName}`;
-      const heading = `${safeFirstName ? `${safeFirstName}, j` : "J"}e bent uitgenodigd bij ${safeOrgName}`;
-      html = inviteEmailHtml({
-        accentColor,
-        headerLabel: orgName,
-        heading,
-        bodyHtmlLines: [
-          `Je bent uitgenodigd om als <strong>${escapeHtml(roleName ?? "medewerker")}</strong> mee te werken binnen ${safeOrgName} op REVA.`,
-          `Klik op de knop hieronder en kies een wachtwoord, je hebt dan direct toegang, zonder aparte bevestigingsmail.`,
-        ],
-        ctaLabel: "Account activeren",
-        ctaUrl: actionLink,
-      });
-      text = inviteEmailText({
-        headerLabel: orgName,
-        heading,
-        bodyLines: [
-          `Je bent uitgenodigd om als ${roleName ?? "medewerker"} mee te werken binnen ${orgName} op REVA.`,
-          `Klik op de link hieronder en kies een wachtwoord, je hebt dan direct toegang, zonder aparte bevestigingsmail.`,
-        ],
-        ctaLabel: "Account activeren",
-        ctaUrl: actionLink,
-      });
-    }
-
+    const { subject, html, text } = renderEmail(content);
     const { error: sendError } = await resend.emails.send({
-      from: "REVA <noreply@reva-app.nl>",
+      from: emailFrom(content.brand),
       to: email,
       subject,
       html,
       text,
-      replyTo: "info@reva-app.nl",
+      replyTo: EMAIL_REPLY_TO,
     });
     if (sendError) {
       console.error("[send-invite] Resend error:", sendError);
