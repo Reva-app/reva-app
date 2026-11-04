@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     const { data: { user }, error: authError } = await authClient.auth.getUser(token);
     if (authError || !user) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 
-    const rateLimitOk = await checkRateLimit(authClient, `calendar-feed:${user.id}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_SECONDS);
+    const rateLimitOk = await checkRateLimit(`calendar-feed:${user.id}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_SECONDS);
     if (!rateLimitOk) return rateLimitedResponse();
 
     // RLS-gebonden client op het geverifieerde token — de select/update op
