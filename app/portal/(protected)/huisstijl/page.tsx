@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { UnsavedBadge } from "@/components/ui/UnsavedBadge";
 import { useToast } from "@/components/ui/Toast";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { ColorPicker } from "@/components/ui/ColorPicker";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { usePortalBranding } from "@/lib/hooks/usePortalBranding";
 import { updatePortalBranding, uploadPortalLogo, removePortalLogo, MANAGE_BRANDING_ROLES } from "@/lib/services/portalService";
@@ -150,31 +151,17 @@ export default function PortalHuisstijlPage() {
           </Card>
 
           <Card>
-            <CardHeader title="Kleur" subtitle="Voor knoppen, links en accenten" />
-            <div className="flex items-center gap-2 flex-wrap">
-              <input
-                type="color"
-                value={colorValid ? color : savedColor}
-                onChange={(e) => setColorEdit(e.target.value)}
-                className="w-11 h-11 rounded-xl border cursor-pointer"
-                style={{ borderColor: "#e8e5df", padding: 0 }}
-                aria-label="Kleur kiezen"
-              />
-              <input
-                type="text"
-                value={color}
-                onChange={(e) => setColorEdit(e.target.value.trim())}
-                placeholder="#E8632A"
-                className="w-28 text-sm rounded-xl border px-3 py-2 focus:outline-none"
-                style={inputStyle}
-                aria-label="Kleurcode"
-              />
-              {color.toLowerCase() !== REVA_ORANGE && (
-                <Button size="sm" variant="ghost" onClick={() => setColorEdit(REVA_ORANGE)}>
-                  <RotateCcw size={14} /> REVA-oranje
-                </Button>
-              )}
-            </div>
+            <CardHeader title="Kleur" subtitle="Voor knoppen, links en accenten. Kies uit het palet of stel een eigen kleur in." />
+            <ColorPicker value={colorValid ? color : savedColor} onChange={(hex) => setColorEdit(hex)} />
+            {color.toLowerCase() !== REVA_ORANGE && (
+              <button
+                type="button"
+                onClick={() => setColorEdit(REVA_ORANGE)}
+                className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-800"
+              >
+                <RotateCcw size={12} /> Terug naar REVA-oranje
+              </button>
+            )}
             {!colorValid && (
               <p className="text-xs mt-2" style={{ color: "#dc2626" }}>Gebruik een kleurcode met # en zes tekens, bijvoorbeeld #E8632A.</p>
             )}

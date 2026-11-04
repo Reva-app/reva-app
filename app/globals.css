@@ -156,3 +156,9 @@ main,
 .bottom-sheet-content {
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
 }
+
+/* Kleurkiezer (components/ui/ColorPicker.tsx, react-colorful) */
+.reva-colorful .react-colorful { width: 100%; height: 180px; }
+.reva-colorful .react-colorful__saturation { border-radius: 12px; border-bottom: none; }
+.reva-colorful .react-colorful__hue { height: 14px; margin-top: 12px; border-radius: 999px; }
+.reva-colorful .react-colorful__pointer { width: 22px; height: 22px; border-width: 3px; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); }
