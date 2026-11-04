@@ -7,7 +7,7 @@ import { LayoutDashboard, HeartPulse, ClipboardList, Users, MoreHorizontal, X, L
 import { useAuth } from "@/components/auth/AuthProvider";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { getPortalNavItems } from "./PortalSidebar";
-import { MANAGE_BRANDING_ROLES, VIEW_ANALYTICS_ROLES } from "@/lib/services/portalService";
+import { MANAGE_BRANDING_ROLES, VIEW_ANALYTICS_ROLES, canViewClinicalData } from "@/lib/services/portalService";
 import { VIEW_AUDIT_LOG_ROLES } from "@/lib/services/auditService";
 
 /**
@@ -32,7 +32,7 @@ export function PortalMobileNav() {
   const canManageBranding = !!membership && MANAGE_BRANDING_ROLES.includes(membership.roleKey);
   const canViewAnalytics = !!membership && VIEW_ANALYTICS_ROLES.includes(membership.roleKey);
   const canViewAuditLog = !!membership && VIEW_AUDIT_LOG_ROLES.includes(membership.roleKey);
-  const { primary, secondary } = getPortalNavItems(canManageBranding, canViewAnalytics, canViewAuditLog);
+  const { primary, secondary } = getPortalNavItems(canManageBranding, canViewAnalytics, canViewAuditLog, canViewClinicalData(membership?.roleKey));
   const allNav = [...primary, ...secondary];
 
   useEffect(() => {

@@ -12,12 +12,13 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { useToast } from "@/components/ui/Toast";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { mondayOfWeek, weekDates } from "@/lib/dateUtils";
-import { formatDate } from "@/lib/data";
+import { formatDate, appointmentTypeLabel, type AppointmentType } from "@/lib/data";
 import { WeekScheduleGrid } from "@/components/portal/WeekScheduleGrid";
 import {
   loadPortalLocations, loadPortalMembers, loadLocationRooms, loadRoomReservations,
   loadWorkSchedulesForLocation, createReservation, deleteReservation,
   loadRoomReservationsForWeek, loadStaffLeaveForLocation, loadOrgAppointmentsForWeek, loadPortalLocationFull,
+  canViewClinicalData,
   type PortalLocationOption, type PortalMember, type PortalRoom, type PortalReservation,
   type PortalStaffLeave, type PortalWeekAppointment, type PortalOpeningHours,
 } from "@/lib/services/portalService";
@@ -367,7 +368,12 @@ export default function ReserveringenPage() {
           </Card>
 
           <Card>
-            <CardHeader title="Afspraken deze week" subtitle="Patiëntafspraken, ter info: nog niet gekoppeld aan een ruimte of fysio" />
+            <CardHeader
+              title="Afspraken deze week"
+              subtitle={canViewClinicalData(membership?.roleKey)
+                ? "Patiëntafspraken, ter info: nog niet gekoppeld aan een ruimte of fysio"
+                : "Fysio-afspraken van patiënten, ter info: nog niet gekoppeld aan een ruimte"}
+            />
             {weekLoading ? (
               <p className="text-sm text-gray-400">Laden…</p>
             ) : weekAppointments.length === 0 ? (
@@ -384,7 +390,10 @@ export default function ReserveringenPage() {
                         {dayAppointments.map((a) => (
                           <div key={a.id} className="flex items-center justify-between gap-2 rounded-lg px-2.5 py-2" style={{ background: "#f8f7f4" }}>
                             <div className="min-w-0">
-                              <p className="text-xs font-medium text-gray-800 truncate">{a.patientName ?? "Onbekende patiënt"} · {a.title}</p>
+                              <p className="text-xs font-medium text-gray-800 truncate">
+                                {a.patientName ?? "Onbekende patiënt"}
+                                {a.title ? ` · ${a.title}` : a.appointmentType ? ` · ${appointmentTypeLabel(a.appointmentType as AppointmentType)}` : ""}
+                              </p>
                               <p className="text-[11px] text-gray-400 truncate">
                                 {a.time ?? "Tijd onbekend"}{a.providerName ? ` · ${a.providerName}` : ""}{a.location ? ` · ${a.location}` : ""}
                               </p>

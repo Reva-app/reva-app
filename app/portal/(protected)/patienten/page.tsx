@@ -17,10 +17,11 @@ import { ScrollHintX } from "@/components/ui/table/ScrollHintX";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { PatientWizard } from "@/components/portal/PatientWizard";
 import { PatientEditForm } from "@/components/portal/PatientEditForm";
+import { PatientDirectory } from "@/components/portal/PatientDirectory";
 import {
   loadPortalPatients, loadPortalLocations, loadPortalMembers,
   invitePortalPatient, updatePortalPatientStatus, deletePortalPatient, logPatientsExport,
-  MANAGE_PATIENTS_ROLES, isPatientInactive,
+  MANAGE_PATIENTS_ROLES, isPatientInactive, canViewClinicalData,
   type PortalPatient, type PortalLocationOption, type PortalMember,
 } from "@/lib/services/portalService";
 import { loadRevaProtocols, loadOrgProtocols, type PortalProtocolCard } from "@/lib/services/protocolService";
@@ -167,7 +168,21 @@ function SortableHeader({
   );
 }
 
+/**
+ * Behandelaars (eigenaar, therapeut) krijgen het volledige overzicht met
+ * dossiers; overige rollen (o.a. de receptie) alleen de contactlijst.
+ */
 export default function PortalPatientsPage() {
+  const { checked, membership } = usePortalMembership();
+  if (!checked || !membership) {
+    return <p className="text-sm text-gray-400 p-6">Laden…</p>;
+  }
+  return canViewClinicalData(membership.roleKey)
+    ? <ClinicalPatientsPage />
+    : <PatientDirectory organizationId={membership.organizationId} />;
+}
+
+function ClinicalPatientsPage() {
   const router = useRouter();
   const { checked, membership } = usePortalMembership();
   const [patients, setPatients] = useState<PortalPatient[]>([]);

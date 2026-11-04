@@ -128,6 +128,59 @@ export const DISCHARGE_OUTCOME_LABELS: Record<DischargeOutcome, string> = {
 export const MANAGE_PATIENTS_ROLES = ["organization_owner", "therapist"];
 
 /**
+ * Rollen die klinische gegevens mogen zien (dossier, check-ins, intake,
+ * herstelplannen) — moet in sync blijven met can_view_clinical_data() in
+ * migratie 122. Overige leden (practice_staff, o.a. de receptie) zien alleen
+ * NAW-gegevens (loadPortalPatientDirectory) en de agenda.
+ */
+export const CLINICAL_ROLES = ["organization_owner", "therapist"];
+
+export function canViewClinicalData(roleKey: string | null | undefined): boolean {
+  return !!roleKey && CLINICAL_ROLES.includes(roleKey);
+}
+
+/** Één regel uit de patiëntenlijst voor niet-klinische rollen: alleen NAW. */
+export interface PortalPatientContact {
+  id: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  dateOfBirth: string | null;
+  status: string;
+  locationName: string | null;
+  therapistName: string | null;
+  hasAccount: boolean;
+}
+
+/** Patiëntenlijst met alleen NAW-gegevens, via een afgeschermde RPC (migratie 122). */
+export async function loadPortalPatientDirectory(organizationId: string): Promise<{ rows: PortalPatientContact[]; error: string | null }> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("portal_patient_directory", { p_organization_id: organizationId });
+  if (error) {
+    logErr("loadPortalPatientDirectory", error);
+    return { rows: [], error: "De patiëntenlijst kon niet worden geladen." };
+  }
+  const rows = (data ?? []) as {
+    id: string; name: string | null; email: string | null; phone: string | null; date_of_birth: string | null;
+    status: string; location_name: string | null; therapist_name: string | null; has_account: boolean;
+  }[];
+  return {
+    rows: rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      email: r.email,
+      phone: r.phone,
+      dateOfBirth: r.date_of_birth,
+      status: r.status,
+      locationName: r.location_name,
+      therapistName: r.therapist_name,
+      hasAccount: r.has_account,
+    })),
+    error: null,
+  };
+}
+
+/**
  * Logt een bulk-CSV-export van de patiëntenlijst in audit_log (migratie 066)
  * — exportPatientsCsv() zelf is puur client-side (geen serveraanroep), dus
  * zonder deze aparte logaanroep zou zo'n bulk-onttrekking van
@@ -281,7 +334,8 @@ export async function markMembershipWelcomed(membershipId: string): Promise<{ er
 export async function loadPortalDashboardStats(organizationId: string): Promise<PortalDashboardStats> {
   const supabase = createClient();
   const [patients, colleagues, locations] = await Promise.all([
-    supabase.from("patients").select("id", { count: "exact", head: true }).eq("organization_id", organizationId),
+    // Via RPC: niet-klinische rollen mogen de patients-tabel zelf niet lezen (migratie 122).
+    supabase.rpc("portal_patient_count", { p_organization_id: organizationId }),
     supabase.from("memberships").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("status", "active"),
     supabase.from("locations").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("archived", false),
   ]);
@@ -289,7 +343,7 @@ export async function loadPortalDashboardStats(organizationId: string): Promise<
   if (colleagues.error) logErr("loadPortalDashboardStats(memberships)", colleagues.error);
   if (locations.error) logErr("loadPortalDashboardStats(locations)", locations.error);
   return {
-    patientCount: patients.count ?? 0,
+    patientCount: (patients.data as number | null) ?? 0,
     colleagueCount: colleagues.count ?? 0,
     locationCount: locations.count ?? 0,
   };
@@ -709,63 +763,46 @@ export interface PortalWeekAppointment {
   id: string;
   patientId: string;
   patientName: string | null;
-  title: string;
   appointmentType: string | null;
   date: string;
   time: string | null;
-  location: string | null;
   providerName: string | null;
+  /** Alleen voor klinische rollen; voor de receptie altijd null (migratie 122). */
+  title: string | null;
+  location: string | null;
 }
 
 /**
- * Patiëntafspraken van de hele organisatie, binnen een week — puur
- * informatief naast de ruimte-weekweergave. `location`/`provider_name` zijn
- * vrije tekst (geen FK naar locations/memberships), dus dit toont géén
- * gekoppelde ruimte of fysio, alleen wat de patiënt zelf heeft ingevuld.
+ * Patiëntafspraken van de hele organisatie binnen een week, via de RPC
+ * portal_org_agenda (migratie 122). Afspraken voert de patiënt zelf in en
+ * kunnen dus ook ziekenhuis/MRI/operatie zijn: behandelaars zien alles, de
+ * receptie alleen fysio-afspraken zonder titel en locatie. `location`/
+ * `provider_name` zijn vrije tekst (geen FK naar ruimte of medewerker).
  */
 export async function loadOrgAppointmentsForWeek(organizationId: string, weekStart: string): Promise<PortalWeekAppointment[]> {
   const supabase = createClient();
   const days = weekDates(weekStart);
-
-  const { data: patientsData, error: patientsError } = await supabase
-    .from("patients")
-    .select("id, first_name, last_name, user_id")
-    .eq("organization_id", organizationId);
-  if (patientsError) { logErr("loadOrgAppointmentsForWeek(patients)", patientsError); return []; }
-  const patientRows = patientsData ?? [];
-  if (patientRows.length === 0) return [];
-
-  const userIds = [...new Set(patientRows.map((p) => p.user_id).filter((v): v is string => !!v))];
-  const { data: profilesData } = userIds.length > 0
-    ? await supabase.from("profiles").select("id, full_name").in("id", userIds)
-    : { data: [] as { id: string; full_name: string | null }[] };
-  const profileMap = new Map((profilesData ?? []).map((p) => [p.id, p.full_name]));
-
-  const nameByPatientId = new Map(patientRows.map((p) => {
-    const dossierName = [p.first_name, p.last_name].filter(Boolean).join(" ") || null;
-    return [p.id as string, (p.user_id ? profileMap.get(p.user_id) : null) ?? dossierName];
-  }));
-
-  const { data, error } = await supabase
-    .from("appointments")
-    .select("id, patient_id, title, appointment_type, date, time, location, provider_name")
-    .in("patient_id", patientRows.map((p) => p.id))
-    .gte("date", days[0])
-    .lte("date", days[6])
-    .order("date")
-    .order("time");
+  const { data, error } = await supabase.rpc("portal_org_agenda", {
+    p_organization_id: organizationId,
+    p_from: days[0],
+    p_to: days[6],
+  });
   if (error) { logErr("loadOrgAppointmentsForWeek", error); return []; }
 
-  return (data ?? []).map((r) => ({
-    id: r.id as string,
-    patientId: r.patient_id as string,
-    patientName: nameByPatientId.get(r.patient_id as string) ?? null,
-    title: r.title as string,
-    appointmentType: r.appointment_type as string | null,
-    date: r.date as string,
-    time: r.time as string | null,
-    location: r.location as string | null,
-    providerName: r.provider_name as string | null,
+  const rows = (data ?? []) as {
+    id: string; patient_id: string; patient_name: string | null; appointment_type: string | null;
+    date: string; time: string | null; provider_name: string | null; title: string | null; location: string | null;
+  }[];
+  return rows.map((r) => ({
+    id: r.id,
+    patientId: r.patient_id,
+    patientName: r.patient_name,
+    appointmentType: r.appointment_type,
+    date: r.date,
+    time: r.time,
+    providerName: r.provider_name,
+    title: r.title,
+    location: r.location,
   }));
 }
 

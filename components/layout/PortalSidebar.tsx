@@ -8,15 +8,15 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { usePortalBranding } from "@/lib/hooks/usePortalBranding";
 import { Avatar } from "@/components/ui/Avatar";
-import { MANAGE_BRANDING_ROLES, BRANDING_SETTINGS_ENABLED, VIEW_ANALYTICS_ROLES } from "@/lib/services/portalService";
+import { MANAGE_BRANDING_ROLES, BRANDING_SETTINGS_ENABLED, VIEW_ANALYTICS_ROLES, canViewClinicalData } from "@/lib/services/portalService";
 import { VIEW_AUDIT_LOG_ROLES } from "@/lib/services/auditService";
 
 const nav = [
   { href: "/portal", label: "Dashboard", icon: LayoutDashboard },
   { href: "/portal/patienten", label: "Patiënten", icon: HeartPulse },
-  { href: "/portal/herstelplannen", label: "Herstelplannen", icon: ClipboardList },
-  { href: "/portal/schemas", label: "Schema's", icon: ListChecks },
-  { href: "/portal/oefeningen", label: "Oefeningen", icon: Dumbbell },
+  { href: "/portal/herstelplannen", label: "Herstelplannen", icon: ClipboardList, clinical: true },
+  { href: "/portal/schemas", label: "Schema's", icon: ListChecks, clinical: true },
+  { href: "/portal/oefeningen", label: "Oefeningen", icon: Dumbbell, clinical: true },
   { href: "/portal/locaties", label: "Locaties", icon: MapPin },
   { href: "/portal/medewerkers", label: "Medewerkers", icon: Users },
   { href: "/portal/reserveringen", label: "Reserveringen", icon: CalendarRange },
@@ -28,10 +28,13 @@ const nav = [
  * Activiteitenlog) hoort onderaan de balk, boven het accountblok — zelfde
  * indeling als primaryNav/secondaryNav bij de patiënten-sidebar.
  */
-export function getPortalNavItems(canManageBranding: boolean, canViewAnalytics: boolean, canViewAuditLog: boolean) {
+export function getPortalNavItems(canManageBranding: boolean, canViewAnalytics: boolean, canViewAuditLog: boolean, canViewClinical: boolean) {
+  // Behandelinhoud (herstelplannen, schema's, oefeningen) alleen voor klinische
+  // rollen; de receptie ziet patiënten (NAW), locaties, medewerkers en de agenda.
+  const roleNav = nav.filter((item) => canViewClinical || !item.clinical);
   const primary = canManageBranding && BRANDING_SETTINGS_ENABLED
-    ? [...nav, { href: "/portal/huisstijl", label: "Huisstijl", icon: Palette }]
-    : nav;
+    ? [...roleNav, { href: "/portal/huisstijl", label: "Huisstijl", icon: Palette }]
+    : roleNav;
 
   const secondary = [
     ...(canViewAnalytics ? [{ href: "/portal/analyse", label: "Analyse", icon: BarChart3 }] : []),
@@ -49,7 +52,7 @@ export function PortalSidebar() {
   const canManageBranding = !!membership && MANAGE_BRANDING_ROLES.includes(membership.roleKey);
   const canViewAnalytics = !!membership && VIEW_ANALYTICS_ROLES.includes(membership.roleKey);
   const canViewAuditLog = !!membership && VIEW_AUDIT_LOG_ROLES.includes(membership.roleKey);
-  const { primary, secondary } = getPortalNavItems(canManageBranding, canViewAnalytics, canViewAuditLog);
+  const { primary, secondary } = getPortalNavItems(canManageBranding, canViewAnalytics, canViewAuditLog, canViewClinicalData(membership?.roleKey));
 
   const NavLink = ({
     href, label, icon: Icon,

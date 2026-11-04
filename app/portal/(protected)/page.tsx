@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { HeartPulse, Users, AlertTriangle, ChevronRight } from "lucide-react";
+import { HeartPulse, Users, AlertTriangle, ChevronRight, CalendarRange } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -13,7 +13,7 @@ import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
   loadPortalDashboardStats, loadMyPortalPatientsSummary, loadTherapistWorkload, loadOrgActivitySummary,
-  ATTENTION_REASON_LABELS,
+  ATTENTION_REASON_LABELS, canViewClinicalData,
   type PortalDashboardStats, type PortalMyPatientsSummary, type PortalTherapistWorkload,
   type PortalOrgActivitySummary, type PatientAttentionReason,
 } from "@/lib/services/portalService";
@@ -35,13 +35,17 @@ export default function PortalDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   const isOwner = membership?.roleKey === "organization_owner";
+  const isClinical = canViewClinicalData(membership?.roleKey);
 
   useEffect(() => {
     if (!checked || !membership || !user) return;
     let cancelled = false;
     Promise.all([
       loadPortalDashboardStats(membership.organizationId),
-      loadMyPortalPatientsSummary(membership.organizationId, user.id),
+      // Klinische signalen (pijnscore, zwelling) alleen voor behandelaars.
+      canViewClinicalData(membership.roleKey)
+        ? loadMyPortalPatientsSummary(membership.organizationId, user.id)
+        : Promise.resolve(null),
       membership.roleKey === "organization_owner"
         ? Promise.all([loadTherapistWorkload(membership.organizationId), loadOrgActivitySummary(membership.organizationId)])
         : Promise.resolve(null),
@@ -89,6 +93,31 @@ export default function PortalDashboardPage() {
       )}
 
       <div className="space-y-4">
+        {!isClinical && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {[
+              { href: "/portal/reserveringen", title: "Agenda", description: "Ruimtes, reserveringen en fysio-afspraken van deze week", icon: CalendarRange },
+              { href: "/portal/patienten", title: "Patiënten", description: "Contactgegevens, behandelaar en locatie", icon: HeartPulse },
+            ].map((item) => (
+              <Link key={item.href} href={item.href} className="block">
+                <Card className="h-full transition-colors hover:bg-gray-50">
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "#fff3ee" }}>
+                      <item.icon size={18} style={{ color: "var(--brand-accent, #e8632a)" }} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-900">{item.title}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
+                    </div>
+                    <ChevronRight size={16} className="text-gray-300 mt-2.5 shrink-0" />
+                  </div>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {isClinical && (
         <Card>
           <CardHeader title="Mijn patiënten" subtitle="Patiënten toegewezen aan jou" />
           {loading ? (
@@ -140,6 +169,7 @@ export default function PortalDashboardPage() {
             </div>
           )}
         </Card>
+        )}
 
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-3">Organisatie</p>
