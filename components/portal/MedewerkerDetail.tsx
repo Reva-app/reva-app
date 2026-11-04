@@ -242,13 +242,13 @@ export function MedewerkerDetail({
   }, [tab, scheduleLocationId, scheduleLoadedForLocationId, membershipId]);
 
   useEffect(() => {
-    if (tab !== "werkuren" || calendarFeedLoaded) return;
+    if (tab !== "werkuren" || calendarFeedLoaded || !canEditGeneral) return;
     loadCalendarFeed(membershipId).then((feed) => {
       setCalendarFeed(feed);
       setIcsUrlInput(feed?.icsUrl ?? "");
       setCalendarFeedLoaded(true);
     });
-  }, [tab, calendarFeedLoaded, membershipId]);
+  }, [tab, calendarFeedLoaded, canEditGeneral, membershipId]);
 
   useEffect(() => {
     if (tab !== "verlof" || leaveLoaded) return;
@@ -624,7 +624,9 @@ export function MedewerkerDetail({
                 <p className="text-xs text-gray-400 mb-3">
                   Koppel de iCal-link van je persoonlijke agenda (bijv. Google Calendar&apos;s &quot;geheime adres in iCal-indeling&quot;) om drukke tijden hier te zien. Alleen-lezen, er wordt nooit iets teruggeschreven.
                 </p>
-                {!calendarFeedLoaded ? (
+                {!canEditGeneral ? (
+                  <p className="text-sm text-gray-400">De agenda-koppeling is privé: alleen zichtbaar voor de medewerker zelf en de Practice Owner.</p>
+                ) : !calendarFeedLoaded ? (
                   <p className="text-sm text-gray-400">Laden…</p>
                 ) : (
                   <div className="space-y-3">

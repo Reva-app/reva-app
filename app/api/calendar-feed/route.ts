@@ -69,9 +69,9 @@ export async function POST(request: Request) {
     const rateLimitOk = await checkRateLimit(`calendar-feed:${user.id}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_SECONDS);
     if (!rateLimitOk) return rateLimitedResponse();
 
-    // RLS-gebonden client op het geverifieerde token — de select/update op
-    // staff_calendar_feeds is al is_org_member/can_manage_org_staff-gated
-    // (migratie 118), dus dit is meteen ook de autorisatiecheck.
+    // RLS-gebonden client op het geverifieerde token — staff_calendar_feeds is
+    // alleen leesbaar voor de medewerker zelf en de Practice Owner (migratie
+    // 124), dus dit is meteen ook de autorisatiecheck.
     const supabase = createSupabaseClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: `Bearer ${token}` } },
     });
