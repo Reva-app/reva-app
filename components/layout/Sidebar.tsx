@@ -18,7 +18,7 @@ import {
 import { useAppData } from "@/lib/store";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAppBranding } from "@/lib/hooks/useAppBranding";
-import { RevaGlyph } from "@/components/brand/RevaGlyph";
+import { BrandMark } from "@/components/brand/BrandMark";
 
 const primaryNav = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -90,19 +90,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="px-5 py-5">
         <div className="flex items-center gap-2.5">
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 overflow-hidden"
-            style={{ background: "var(--brand-accent, #e8632a)" }}
-          >
-            {hasOwnBranding && branding?.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={branding.logoUrl} alt="" className="w-full h-full object-cover" />
-            ) : hasOwnBranding ? (
-              <span className="text-white font-bold text-xs">{branding!.name[0].toUpperCase()}</span>
-            ) : (
-              <RevaGlyph className="h-3.5 text-white" />
-            )}
-          </div>
+          <BrandMark logoUrl={hasOwnBranding ? branding?.logoUrl : null} initial={hasOwnBranding ? branding!.name[0] : null} />
           <div className="leading-none">
             <p className="text-white font-semibold text-sm tracking-tight">{hasOwnBranding ? branding!.name : "REVA"}</p>
             <p className="text-[11px] mt-0.5" style={{ color: "#52525e" }}>Herstel Dashboard</p>

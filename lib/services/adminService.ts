@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabaseClient";
 import { apiUrl } from "@/lib/apiBase";
+import { normalizeLogo } from "@/lib/logoImage";
 
 function logErr(fn: string, error: { message?: string; code?: string; details?: string; hint?: string } | null) {
   if (!error) return;
@@ -357,13 +358,17 @@ export async function updateAdminOrganization(orgId: string, patch: AdminOrganiz
 }
 
 export async function uploadOrganizationLogo(orgId: string, file: File): Promise<{ logoUrl: string | null; error: string | null }> {
+  // Altijd als geschaalde PNG opslaan — zie lib/logoImage.ts (e-mail en
+  // /api/org-logo werken alleen met PNG).
+  const { blob, error: normalizeError } = await normalizeLogo(file);
+  if (!blob) return { logoUrl: null, error: normalizeError };
+
   const supabase = createClient();
-  const ext = file.name.split(".").pop() ?? "png";
-  const path = `${orgId}/${Date.now()}.${ext}`;
+  const path = `${orgId}/${Date.now()}.png`;
 
   const { error: uploadError } = await supabase.storage
     .from(LOGO_BUCKET)
-    .upload(path, file, { upsert: false, contentType: file.type });
+    .upload(path, blob, { upsert: false, contentType: "image/png" });
   if (uploadError) { logErr("uploadOrganizationLogo(upload)", uploadError); return { logoUrl: null, error: uploadError.message }; }
 
   const { error: updateError } = await supabase.from("organizations").update({ logo_path: path }).eq("id", orgId);

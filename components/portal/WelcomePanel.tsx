@@ -6,13 +6,13 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { OnboardingItemGrid } from "@/components/ui/OnboardingItemGrid";
 import { OnboardingProgressPill } from "@/components/ui/OnboardingProgressPill";
-import { loadPortalBranding, markMembershipWelcomed, BRANDING_SETTINGS_ENABLED, type PortalDashboardStats } from "@/lib/services/portalService";
+import { loadPortalBranding, markMembershipWelcomed, type PortalDashboardStats } from "@/lib/services/portalService";
 
 const USPS = [
   "Nodig je hele team uit en regel rollen en rechten in een paar klikken.",
   "Beheer al je locaties overzichtelijk op één plek.",
   "Patiënten krijgen een eigen dashboard voor afspraken, oefeningen en voortgang.",
-  ...(BRANDING_SETTINGS_ENABLED ? ["Alles in jouw eigen huisstijl — logo en kleur naar keuze."] : []),
+  "Alles in jouw eigen huisstijl: logo en kleur naar keuze, ook in de app van je patiënten en in e-mails.",
 ];
 
 interface WelcomePanelProps {
@@ -51,9 +51,7 @@ export function WelcomePanel({ membershipId, organizationId, organizationName, s
 
   const checklist = [
     { label: "Voeg een locatie toe", done: stats.locationCount > 0, href: "/portal/locaties", icon: MapPin },
-    ...(BRANDING_SETTINGS_ENABLED
-      ? [{ label: "Stel je huisstijl in", done: brandingSet === true, href: "/portal/huisstijl", icon: Palette }]
-      : []),
+    { label: "Stel je huisstijl in", done: brandingSet === true, href: "/portal/huisstijl", icon: Palette },
     { label: "Nodig een collega uit", done: stats.colleagueCount > 1, href: "/portal/medewerkers", icon: Users },
     { label: "Voeg je eerste patiënt toe", done: stats.patientCount > 0, href: "/portal/patienten", icon: HeartPulse },
   ];

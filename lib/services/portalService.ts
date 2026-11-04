@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabaseClient";
 import { apiUrl } from "@/lib/apiBase";
 import { mondayOfWeek, weekDates } from "@/lib/dateUtils";
+import { normalizeLogo } from "@/lib/logoImage";
 
 function logErr(fn: string, error: { message?: string; code?: string; details?: string; hint?: string } | null) {
   if (!error) return;
@@ -2635,16 +2636,6 @@ const LOGO_SIGNED_URL_TTL_SECONDS = 60 * 60;
  */
 export const MANAGE_BRANDING_ROLES = ["organization_owner"];
 
-/**
- * Tijdelijk uitgeschakeld op verzoek: de Huisstijl-instellingenpagina en elke
- * link ernaartoe (nav, onboarding-checklist) worden overal verborgen — geen
- * must-have voor nu. De onderliggende logica (RLS, service-functies,
- * `usePortalBranding`/`useAppBranding` die een reeds ingestelde orgkleur/logo
- * toepassen) blijft volledig intact en actief; alleen de UI-toegang tot de
- * instellingenpagina zelf wordt gated. Zelfde patroon als
- * `SUBSCRIPTIONS_ENABLED` in lib/subscription.ts.
- */
-export const BRANDING_SETTINGS_ENABLED = false;
 
 export interface PortalBranding {
   name: string;
@@ -2697,17 +2688,29 @@ export async function updatePortalBranding(
   return { error: null };
 }
 
+/** Verwijdert het praktijklogo; de huisstijl valt terug op de beginletter. */
+export async function removePortalLogo(organizationId: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("organizations").update({ logo_path: null }).eq("id", organizationId);
+  if (error) { logErr("removePortalLogo", error); return { error: "Verwijderen van het logo is niet gelukt." }; }
+  return { error: null };
+}
+
 export async function uploadPortalLogo(
   organizationId: string,
   file: File
 ): Promise<{ logoUrl: string | null; error: string | null }> {
+  // Altijd als geschaalde PNG opslaan — zie lib/logoImage.ts (e-mail en
+  // /api/org-logo werken alleen met PNG).
+  const { blob, error: normalizeError } = await normalizeLogo(file);
+  if (!blob) return { logoUrl: null, error: normalizeError };
+
   const supabase = createClient();
-  const ext = file.name.split(".").pop() ?? "png";
-  const path = `${organizationId}/${Date.now()}.${ext}`;
+  const path = `${organizationId}/${Date.now()}.png`;
 
   const { error: uploadError } = await supabase.storage
     .from(LOGO_BUCKET)
-    .upload(path, file, { upsert: false, contentType: file.type });
+    .upload(path, blob, { upsert: false, contentType: "image/png" });
   if (uploadError) {
     logErr("uploadPortalLogo(upload)", uploadError);
     return { logoUrl: null, error: "Uploaden van het logo is niet gelukt." };

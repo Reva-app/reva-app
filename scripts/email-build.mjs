@@ -16,19 +16,22 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const brandSrc = readFileSync(join(root, "lib/brand.ts"), "utf8");
 const layoutSrc = readFileSync(join(root, "lib/email/layout.ts"), "utf8");
 const messagesSrc = readFileSync(join(root, "lib/email/messages.ts"), "utf8");
 
 // ── 1. Edge Function-bundel ─────────────────────────────────────────────────
 const banner = `// ⚠️ GEGENEREERD door \`npm run email:build\` — niet hier wijzigen.
-// Bron: lib/email/layout.ts + lib/email/messages.ts\n\n`;
-const messagesWithoutImport = messagesSrc.replace(/^import .*?from "\.\/layout\.ts";\n/m, "");
-if (messagesWithoutImport === messagesSrc) {
-  throw new Error("Importregel van ./layout.ts niet gevonden in messages.ts");
+// Bron: lib/brand.ts + lib/email/layout.ts + lib/email/messages.ts\n\n`;
+/** Haalt een relatieve importregel weg (die bestanden staan in de bundel zelf). */
+function stripImport(src, from, file) {
+  const out = src.replace(new RegExp(`^import [^;]*?from "${from.replace(/[./]/g, "\\$&")}";\\n`, "m"), "");
+  if (out === src) throw new Error(`Importregel van ${from} niet gevonden in ${file}`);
+  return out;
 }
 writeFileSync(
   join(root, "supabase/functions/send-checkin-reminder/email.ts"),
-  banner + layoutSrc + "\n" + messagesWithoutImport
+  banner + brandSrc + "\n" + stripImport(layoutSrc, "../brand.ts", "layout.ts") + "\n" + stripImport(messagesSrc, "./layout.ts", "messages.ts")
 );
 
 // ── 2. Supabase-templates ───────────────────────────────────────────────────

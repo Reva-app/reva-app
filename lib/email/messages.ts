@@ -10,15 +10,16 @@
  * versleuteld en wordt doorgestuurd en gedeeld. Details staan in de app.
  */
 
-import { EMAIL_REPLY_TO, type EmailBrand, type EmailContent } from "./layout.ts";
+import { EMAIL_REPLY_TO, type EmailBrand, type EmailContent, type EmailLogo } from "./layout.ts";
 
 export interface PracticeInfo {
   name: string;
   color: string | null;
+  logo?: EmailLogo | null;
 }
 
 function practiceBrand(practice: PracticeInfo): EmailBrand {
-  return { kind: "practice", name: practice.name, color: practice.color };
+  return { kind: "practice", name: practice.name, color: practice.color, logo: practice.logo ?? null };
 }
 
 /** "Fysiotherapeut" → "fysiotherapeut", voor gebruik in een lopende zin. */

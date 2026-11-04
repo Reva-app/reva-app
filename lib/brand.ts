@@ -27,6 +27,47 @@ export const REVA_GLYPH = {
     "C 467.41 210.38 454.8 180.28 429.58 159.2 C 404.37 138.12 367.68 127.58 319.52 127.58 L 146.78 127.58 Z",
 } as const;
 
+// ─── Huisstijlkleur van een praktijk ────────────────────────────────────────
+// Eén regel voor app, portal en e-mail: de accentkleur draagt witte tekst
+// (knoppen, tegels) én wordt als tekstkleur op wit gebruikt (links, iconen).
+// Contrast is symmetrisch, dus één ondergrens dekt beide. 3:1 is de WCAG-norm
+// voor knoppen, iconen en vette/grote tekst; REVA-oranje (3,4:1) voldoet en
+// blijft ongewijzigd. Te lichte praktijkkleuren (geel, pastel) worden
+// stapsgewijs donkerder gemaakt tot ze leesbaar zijn, met behoud van de tint.
+
+export const MIN_ACCENT_CONTRAST = 3;
+
+export function isHexColor(value: string | null | undefined): value is string {
+  return !!value && /^#[0-9a-fA-F]{6}$/.test(value);
+}
+
+function relativeLuminance(hex: string): number {
+  const [r, g, b] = [1, 3, 5]
+    .map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** Contrastverhouding (1–21) tussen twee hexkleuren. */
+export function contrastRatio(a: string, b: string): number {
+  const [hi, lo] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/**
+ * De accentkleur zoals REVA hem toont: de opgegeven kleur als die leesbaar
+ * is met witte tekst, anders een donkerdere tint. Ongeldig of leeg → REVA-oranje.
+ */
+export function accessibleAccent(color: string | null | undefined): string {
+  let c = isHexColor(color) ? color.toLowerCase() : REVA_ORANGE;
+  for (let i = 0; i < 30 && contrastRatio("#ffffff", c) < MIN_ACCENT_CONTRAST; i++) {
+    c = "#" + [1, 3, 5]
+      .map((j) => Math.round(parseInt(c.slice(j, j + 2), 16) * 0.92).toString(16).padStart(2, "0"))
+      .join("");
+  }
+  return c;
+}
+
 export interface RevaIconOptions {
   /** Hoekafronding als fractie van de breedte; 0 = vierkant (iOS/Android ronden zelf af). */
   radius?: number;

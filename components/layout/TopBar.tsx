@@ -15,7 +15,7 @@ import dynamic from "next/dynamic";
 import type { InnameFormFields } from "@/components/medicatie/InnameModal";
 import { nowTimeStr, todayStr } from "@/lib/dateUtils";
 import type { MedicatieLog } from "@/lib/data";
-import { RevaGlyph } from "@/components/brand/RevaGlyph";
+import { BrandMark } from "@/components/brand/BrandMark";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const InnameModal = dynamic<any>(
@@ -210,19 +210,7 @@ export function TopBar() {
         {/* Logo center (mobile only) */}
         <div className="lg:hidden flex-1 flex justify-center">
           <div className="flex items-center gap-2">
-            <div
-              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 overflow-hidden"
-              style={{ background: "var(--brand-accent, #e8632a)" }}
-            >
-              {hasOwnBranding && branding?.logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={branding.logoUrl} alt="" className="w-full h-full object-cover" />
-              ) : hasOwnBranding ? (
-                <span className="text-white font-bold text-sm leading-none">{branding!.name[0].toUpperCase()}</span>
-              ) : (
-                <RevaGlyph className="h-3.5 text-white" />
-              )}
-            </div>
+            <BrandMark logoUrl={hasOwnBranding ? branding?.logoUrl : null} initial={hasOwnBranding ? branding!.name[0] : null} />
             <span className="font-bold text-base" style={{ color: "#1a1a1a" }}>{hasOwnBranding ? branding!.name : "REVA"}</span>
           </div>
         </div>

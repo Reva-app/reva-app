@@ -5,16 +5,18 @@
  *   - Supabase-auth-mails: bevestigen, wachtwoord, e-mail wijzigen
  *     (supabase/templates/*.html, via de Hostnet-SMTP in het Supabase-dashboard)
  *
- * Bewust ZONDER imports: `npm run email:build` kopieert dit bestand 1-op-1
- * naar de Edge Function (Deno kan niet uit lib/ importeren) en genereert er
- * de Supabase-templates mee. Wijzig dus alleen hier, en draai daarna dat script.
+ * Importeert alleen ../brand.ts (kleurregel en logo): `npm run email:build`
+ * voegt brand.ts, dit bestand en messages.ts samen tot één bestand voor de
+ * Edge Function (Deno kan niet uit lib/ importeren) en genereert er de
+ * Supabase-templates mee. Wijzig dus alleen hier, en draai daarna dat script.
  *
  * Opmaak met tabellen i.p.v. divs: Outlook voor Windows rendert met de
  * Word-engine en negeert o.a. max-width, border-radius en padding op divs.
  * Alle tekst wordt hier ge-escaped — aanroepers geven platte tekst door.
  */
 
-export const REVA_ORANGE = "#e8632a";
+import { REVA_ORANGE, accessibleAccent } from "../brand.ts";
+
 export const EMAIL_FROM_ADDRESS = "noreply@reva-app.nl";
 export const EMAIL_REPLY_TO = "info@reva-app.nl";
 const LOGO_URL = "https://dashboard.reva-app.nl/email/reva-logo.png";
@@ -26,9 +28,16 @@ const COLOR_HEADING = "#1a1a1a";
 const COLOR_BODY = "#4b5563";
 const COLOR_MUTED = "#6b7280";
 
+/** Praktijklogo zoals het in de mail komt: publieke PNG-URL plus weergavemaat. */
+export interface EmailLogo {
+  url: string;
+  width: number;
+  height: number;
+}
+
 export type EmailBrand =
   | { kind: "reva" }
-  | { kind: "practice"; name: string; color: string | null };
+  | { kind: "practice"; name: string; color: string | null; logo?: EmailLogo | null };
 
 /** Een stukje lopende tekst; `{ bold }` wordt vetgedrukt. */
 export type EmailInline = string | { bold: string };
@@ -64,47 +73,38 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function isHexColor(value: string | null | undefined): value is string {
-  return !!value && /^#[0-9a-fA-F]{6}$/.test(value);
-}
-
-function luminance(hex: string): number {
-  const [r, g, b] = [1, 3, 5]
-    .map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
-    .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-function contrast(a: string, b: string): number {
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
-}
-
-function darken(hex: string, factor: number): string {
-  return "#" + [1, 3, 5]
-    .map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * factor).toString(16).padStart(2, "0"))
-    .join("");
-}
-
-/** De huisstijlkleur van het merk, of REVA-oranje als die ontbreekt. */
+/** De huisstijlkleur van het merk, leesbaar gemaakt volgens lib/brand.ts. */
 export function brandAccent(brand: EmailBrand): string {
-  return brand.kind === "practice" && isHexColor(brand.color) ? brand.color : REVA_ORANGE;
+  return accessibleAccent(brand.kind === "practice" ? brand.color : REVA_ORANGE);
 }
 
 /**
- * Knopkleuren met leesbare tekst (WCAG AA, 4,5:1) voor élke huisstijlkleur:
- * witte tekst als dat kan; donkere tekst op heel lichte kleuren (geel,
- * lichtblauw); anders de kleur stapsgewijs donkerder tot wit leesbaar is.
+ * Breedte en hoogte uit de kop van een PNG-bestand (IHDR), of null als het
+ * geen PNG is. Praktijklogo's worden bij het uploaden al naar PNG omgezet.
  */
-export function buttonColors(accent: string): { background: string; text: string } {
-  const base = isHexColor(accent) ? accent : REVA_ORANGE;
-  if (contrast("#ffffff", base) >= 4.5) return { background: base, text: "#ffffff" };
-  if (contrast(COLOR_HEADING, base) >= 7) return { background: base, text: COLOR_HEADING };
-  let background = base;
-  for (let i = 0; i < 20 && contrast("#ffffff", background) < 4.5; i++) {
-    background = darken(background, 0.92);
+export function pngDimensions(bytes: Uint8Array): { width: number; height: number } | null {
+  const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  if (bytes.length < 24 || signature.some((b, i) => bytes[i] !== b)) return null;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const width = view.getUint32(16);
+  const height = view.getUint32(20);
+  return width > 0 && height > 0 ? { width, height } : null;
+}
+
+/**
+ * Weergavemaat voor een praktijklogo in de mailkop: 36 px hoog, maximaal
+ * 200 px breed. Outlook heeft vaste width/height-attributen nodig.
+ */
+export function emailLogoBox(width: number, height: number): { width: number; height: number } {
+  const targetHeight = 36;
+  const maxWidth = 200;
+  let w = Math.round((width * targetHeight) / height);
+  let h = targetHeight;
+  if (w > maxWidth) {
+    h = Math.max(1, Math.round((height * maxWidth) / width));
+    w = maxWidth;
   }
-  return { background, text: "#ffffff" };
+  return { width: w, height: h };
 }
 
 /** Afzendernaam: "REVA", of "Fysio Cura Plaza via REVA" bij praktijkmails. */
@@ -138,6 +138,11 @@ function brandName(brand: EmailBrand): string {
 // ─── HTML ───────────────────────────────────────────────────────────────────
 
 function headerHtml(brand: EmailBrand): string {
+  if (brand.kind === "practice" && brand.logo) {
+    // Een praktijklogo bevat vrijwel altijd de naam al — dus logo óf naam.
+    const { url, width, height } = brand.logo;
+    return `<img src="${escapeHtml(url)}" width="${width}" height="${height}" alt="${escapeHtml(brand.name)}" style="display:block;border:0;height:${height}px;width:${width}px;">`;
+  }
   if (brand.kind === "practice") {
     return `<span style="font-family:${FONT};font-size:17px;font-weight:700;color:${COLOR_HEADING};letter-spacing:-0.01em;">${escapeHtml(brand.name)}</span>`;
   }
@@ -170,7 +175,6 @@ function footerHtml(content: EmailContent): string {
 
 export function renderEmailHtml(content: EmailContent): string {
   const accent = brandAccent(content.brand);
-  const button = buttonColors(accent);
 
   const paragraphs = content.paragraphs
     .map((p) => `<p style="margin:0 0 16px;font-family:${FONT};font-size:15px;line-height:1.6;color:${COLOR_BODY};">${inlineHtml(p)}</p>`)
@@ -193,8 +197,8 @@ export function renderEmailHtml(content: EmailContent): string {
 
   const buttonHtml = content.button
     ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:28px 0 8px;"><tr>
-        <td align="center" bgcolor="${button.background}" style="border-radius:10px;background:${button.background};">
-          <a href="${escapeHtml(content.button.url)}" target="_blank" style="display:inline-block;padding:14px 26px;font-family:${FONT};font-size:15px;font-weight:600;line-height:20px;color:${button.text};text-decoration:none;border-radius:10px;">${escapeHtml(content.button.label)}</a>
+        <td align="center" bgcolor="${accent}" style="border-radius:10px;background:${accent};">
+          <a href="${escapeHtml(content.button.url)}" target="_blank" style="display:inline-block;padding:14px 26px;font-family:${FONT};font-size:15px;font-weight:600;line-height:20px;color:#ffffff;text-decoration:none;border-radius:10px;">${escapeHtml(content.button.label)}</a>
         </td>
       </tr></table>`
     : "";
@@ -235,7 +239,7 @@ export function renderEmailHtml(content: EmailContent): string {
         <tr>
           <td style="background:#ffffff;border:1px solid ${COLOR_BORDER};border-radius:16px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-              <tr><td height="4" style="height:4px;line-height:4px;font-size:0;background:${button.background};border-radius:16px 16px 0 0;">&nbsp;</td></tr>
+              <tr><td height="4" style="height:4px;line-height:4px;font-size:0;background:${accent};border-radius:16px 16px 0 0;">&nbsp;</td></tr>
               <tr>
                 <td class="reva-card" style="padding:36px 36px 32px;">
                   <h1 style="margin:0 0 18px;font-family:${FONT};font-size:24px;line-height:1.3;font-weight:700;color:${COLOR_HEADING};letter-spacing:-0.01em;">${escapeHtml(content.heading)}</h1>

@@ -11,6 +11,7 @@ import { TrialBanner } from "@/components/subscription/TrialBanner";
 import { SUBSCRIPTIONS_ENABLED } from "@/lib/subscription";
 import { useAppBranding } from "@/lib/hooks/useAppBranding";
 import { NavigationBlockerProvider } from "@/lib/hooks/useNavigationBlocker";
+import { accessibleAccent } from "@/lib/brand";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const branding = useAppBranding();
@@ -19,7 +20,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <AppLoadingGate>
         <AuthGate>
           <NavigationBlockerProvider>
-            <div className="flex h-full" style={{ ["--brand-accent" as string]: branding?.primaryColor || "#e8632a" }}>
+            <div className="flex h-full" style={{ ["--brand-accent" as string]: accessibleAccent(branding?.primaryColor) }}>
               <Sidebar />
               <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
                 {SUBSCRIPTIONS_ENABLED && <TrialBanner />}

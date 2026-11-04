@@ -8,8 +8,9 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { usePortalBranding } from "@/lib/hooks/usePortalBranding";
 import { Avatar } from "@/components/ui/Avatar";
-import { MANAGE_BRANDING_ROLES, BRANDING_SETTINGS_ENABLED, VIEW_ANALYTICS_ROLES, canViewClinicalData } from "@/lib/services/portalService";
+import { MANAGE_BRANDING_ROLES, VIEW_ANALYTICS_ROLES, canViewClinicalData } from "@/lib/services/portalService";
 import { VIEW_AUDIT_LOG_ROLES } from "@/lib/services/auditService";
+import { BrandMark } from "@/components/brand/BrandMark";
 
 const nav = [
   { href: "/portal", label: "Dashboard", icon: LayoutDashboard },
@@ -32,7 +33,7 @@ export function getPortalNavItems(canManageBranding: boolean, canViewAnalytics: 
   // Behandelinhoud (herstelplannen, schema's, oefeningen) alleen voor klinische
   // rollen; de receptie ziet patiënten (NAW), locaties, medewerkers en de agenda.
   const roleNav = nav.filter((item) => canViewClinical || !item.clinical);
-  const primary = canManageBranding && BRANDING_SETTINGS_ENABLED
+  const primary = canManageBranding
     ? [...roleNav, { href: "/portal/huisstijl", label: "Huisstijl", icon: Palette }]
     : roleNav;
 
@@ -83,14 +84,7 @@ export function PortalSidebar() {
     >
       <div className="px-5 py-5">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 overflow-hidden" style={{ background: "var(--brand-accent, #e8632a)" }}>
-            {branding?.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={branding.logoUrl} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-white font-bold text-xs">{(membership?.organizationName || "R")[0].toUpperCase()}</span>
-            )}
-          </div>
+          <BrandMark logoUrl={branding?.logoUrl} initial={(membership?.organizationName || "R")[0]} />
           <div className="leading-none min-w-0">
             <p className="text-white font-semibold text-sm tracking-tight truncate">
               {membership?.organizationName ?? "REVA"}

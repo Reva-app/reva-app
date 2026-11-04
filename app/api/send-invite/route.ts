@@ -2,6 +2,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { NextResponse } from "next/server";
 import { EMAIL_REPLY_TO, emailFrom, renderEmail } from "@/lib/email/layout";
+import { loadEmailLogo } from "@/lib/email/practiceLogo";
 import {
   activationReminderEmail,
   ownerInviteEmail,
@@ -246,7 +247,7 @@ export async function POST(request: Request) {
 
     const { data: org, error: orgError } = await supabase
       .from("organizations")
-      .select("name, primary_color")
+      .select("name, primary_color, logo_path")
       .eq("id", organizationId)
       .maybeSingle();
     if (orgError || !org) {
@@ -299,7 +300,11 @@ export async function POST(request: Request) {
     const actionLink = `${origin}/auth/verify?token_hash=${tokenHash}&type=${linkType}&next=${encodeURIComponent(postVerifyPath)}`;
 
     const resend = new Resend(resendApiKey);
-    const practice = { name: org.name as string, color: (org.primary_color as string | null) ?? null };
+    const practice = {
+      name: org.name as string,
+      color: (org.primary_color as string | null) ?? null,
+      logo: await loadEmailLogo(admin, origin, organizationId, org.logo_path as string | null),
+    };
 
     // Eigenaren krijgen REVA-branding (zij richten de praktijk nog in);
     // patiënten en medewerkers zien de huisstijl van hun praktijk.

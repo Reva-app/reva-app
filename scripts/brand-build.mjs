@@ -39,7 +39,7 @@ function renderPng(svg, size, outPath) {
     "--headless=new", "--disable-gpu", "--hide-scrollbars",
     "--default-background-color=00000000", "--force-device-scale-factor=1",
     `--window-size=${size},${size}`, `--screenshot=${outPath}`, `file://${html}`,
-  ], { stdio: "ignore" });
+  ], { stdio: "ignore", timeout: 30_000 });
   const png = readFileSync(outPath);
   const w = png.readUInt32BE(16), h = png.readUInt32BE(20);
   if (w !== size || h !== size) throw new Error(`${outPath}: ${w}×${h}, verwacht ${size}×${size}`);

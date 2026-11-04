@@ -42,11 +42,14 @@ import {
   appointmentReminderEmail,
   checkinReminderEmail,
   emailFrom,
+  emailLogoBox,
   medicationReminderEmail,
+  pngDimensions,
   photoReminderEmail,
   renderEmail,
   type EmailBrand,
   type EmailContent,
+  type EmailLogo,
 } from "./email.ts";
 
 // ─── FCM v1 helpers ────────────────────────────────────────────────────────────
@@ -176,13 +179,13 @@ interface PendingEmail {
  * alleen een persoonlijke werkruimte heeft krijgt REVA-branding. Een
  * organisatie telt als praktijk zodra er minstens één actieve medewerker is.
  */
-async function loadBrands(supabase: SupabaseClient, userIds: string[]): Promise<Map<string, EmailBrand>> {
+async function loadBrands(supabase: SupabaseClient, userIds: string[], siteUrl: string): Promise<Map<string, EmailBrand>> {
   const brands = new Map<string, EmailBrand>();
   if (userIds.length === 0) return brands;
 
   const { data: patients } = await supabase
     .from("patients")
-    .select("user_id, organization_id, organizations(name, primary_color)")
+    .select("user_id, organization_id, organizations(name, primary_color, logo_path)")
     .in("user_id", userIds);
   const orgIds = [...new Set((patients ?? []).map((p) => p.organization_id as string))];
   if (orgIds.length === 0) return brands;
@@ -194,10 +197,33 @@ async function loadBrands(supabase: SupabaseClient, userIds: string[]): Promise<
     .eq("status", "active");
   const practiceOrgIds = new Set((staff ?? []).map((m) => m.organization_id as string));
 
+  // Logo één keer per praktijk ophalen (zelfde logica als lib/email/practiceLogo.ts).
+  const logos = new Map<string, EmailLogo | null>();
+  async function logoFor(orgId: string, logoPath: string | null): Promise<EmailLogo | null> {
+    if (logos.has(orgId)) return logos.get(orgId)!;
+    let logo: EmailLogo | null = null;
+    if (logoPath && logoPath.endsWith(".png")) {
+      const { data: file } = await supabase.storage.from("organization-logos").download(logoPath);
+      const size = file ? pngDimensions(new Uint8Array(await file.arrayBuffer())) : null;
+      if (size) {
+        const version = encodeURIComponent(logoPath.split("/").pop() ?? "1");
+        logo = { url: `${siteUrl}/api/org-logo/${orgId}?v=${version}`, ...emailLogoBox(size.width, size.height) };
+      }
+    }
+    logos.set(orgId, logo);
+    return logo;
+  }
+
   for (const p of patients ?? []) {
-    const org = p.organizations as unknown as { name: string; primary_color: string | null } | null;
-    if (org && practiceOrgIds.has(p.organization_id as string)) {
-      brands.set(p.user_id as string, { kind: "practice", name: org.name, color: org.primary_color });
+    const org = p.organizations as unknown as { name: string; primary_color: string | null; logo_path: string | null } | null;
+    const orgId = p.organization_id as string;
+    if (org && practiceOrgIds.has(orgId)) {
+      brands.set(p.user_id as string, {
+        kind: "practice",
+        name: org.name,
+        color: org.primary_color,
+        logo: await logoFor(orgId, org.logo_path),
+      });
     }
   }
   return brands;
@@ -566,7 +592,7 @@ Deno.serve(async (req: Request) => {
     console.error("[email] RESEND_API_KEY niet ingesteld — e-mails worden overgeslagen");
     emailErrors.push("RESEND_API_KEY niet ingesteld");
   } else if (resendApiKey) {
-    const brands = await loadBrands(supabase, [...new Set(emails.map((e) => e.userId))]);
+    const brands = await loadBrands(supabase, [...new Set(emails.map((e) => e.userId))], siteUrl);
     for (const { userId, to, build } of emails) {
       const ok = await sendReminderEmail(resendApiKey, to, build(brands.get(userId) ?? { kind: "reva" }));
       if (ok) {
