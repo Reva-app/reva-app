@@ -15,6 +15,7 @@ import { ScoreBar } from "@/components/ui/ScoreBar";
 import { Tabs } from "@/components/ui/Tabs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PatientEditForm } from "@/components/portal/PatientEditForm";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { ExerciseMultiSelectModal } from "@/components/portal/ExerciseMultiSelectModal";
 import { ExerciseThumb } from "@/components/portal/ExerciseThumb";
 import { SortableExerciseList } from "@/components/portal/SortableExerciseList";
@@ -31,8 +32,10 @@ import {
   loadPatientCheckinHistory,
   invitePortalPatient,
   updatePortalPatientStatus,
+  updatePatientDischarge,
   deletePortalPatient,
   MANAGE_PATIENTS_ROLES,
+  DISCHARGE_OUTCOME_LABELS,
   type PortalPatient,
   type PortalPatientExtras,
   type PortalCheckinTrendPoint,
@@ -40,8 +43,10 @@ import {
   type PortalLocationOption,
   type PortalMember,
   type PortalPhotoHistoryItem,
+  type DischargeOutcome,
 } from "@/lib/services/portalService";
 import { resolveSignedUrl, resolveSignedUrls } from "@/lib/services/storageService";
+import { loadPatientIntake, type PortalPatientIntake } from "@/lib/services/intakeService";
 import {
   loadRevaProtocols, loadOrgProtocols, assignProtocolToPatient,
   loadPatientProtocolAssignment, toggleCriterionMet, updateMilestoneCompletion, advanceToNextPhase, revertToPreviousPhase,
@@ -51,8 +56,20 @@ import {
   MANAGE_PROTOCOLS_ROLES,
   type PortalProtocolCard, type PortalPatientProtocolAssignment, type PortalPatientProtocolPhase, type PortalPatientSessionNote,
   type PortalExerciseLibraryItem, type PortalPatientProtocolScheduleExercise, type PortalPatientScheduleExerciseInput,
-  type PortalPatientStaffNote,
+  type PortalPatientStaffNote, type PhaseTransitionCheckin, type TransitionProgressVsExpected,
 } from "@/lib/services/protocolService";
+
+const PROGRESS_VS_EXPECTED_LABELS: Record<TransitionProgressVsExpected, string> = {
+  better: "Beter dan verwacht",
+  as_expected: "Zoals verwacht",
+  harder: "Lastiger dan verwacht",
+};
+
+function hasTransitionCheckin(phase: PortalPatientProtocolPhase): boolean {
+  return phase.transitionPainScore !== null || phase.transitionMobilityScore !== null
+    || phase.transitionSwelling !== null || phase.transitionSatisfactionScore !== null
+    || !!phase.transitionProgressVsExpected || !!phase.transitionNote;
+}
 
 function statusBadge(status: string) {
   if (status === "active") return <Badge variant="success">Actief</Badge>;
@@ -108,7 +125,7 @@ const TREND_RANGES = [
 
 function TrendRangeFilter({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
-    <div className="flex items-center gap-1 rounded-lg p-0.5" style={{ background: "#f3f0eb" }}>
+    <div className="flex items-center flex-wrap gap-1 rounded-lg p-0.5" style={{ background: "#f3f0eb" }}>
       {TREND_RANGES.map((r) => (
         <button
           key={r.value}
@@ -323,10 +340,14 @@ function ProtocolTab({
             </div>
             {phase.description && <p className="text-xs text-gray-500 mb-3">{phase.description}</p>}
 
-            {phase.status === "completed" && (phase.transitionPainScore !== null || phase.transitionNote) && (
+            {phase.status === "completed" && hasTransitionCheckin(phase) && (
               <div className="rounded-xl p-3 text-xs space-y-1 mb-3" style={{ background: "#f8f7f4" }}>
                 <p className="font-medium text-gray-500 uppercase tracking-wide" style={{ fontSize: "10px" }}>Check-in bij afronden fase</p>
                 {phase.transitionPainScore !== null && <p className="text-gray-700">Pijnscore: {phase.transitionPainScore}/10</p>}
+                {phase.transitionMobilityScore !== null && <p className="text-gray-700">Mobiliteit/functioneren: {phase.transitionMobilityScore}/5</p>}
+                {phase.transitionSwelling !== null && <p className="text-gray-700">Zwelling: {phase.transitionSwelling ? "Ja" : "Nee"}</p>}
+                {phase.transitionSatisfactionScore !== null && <p className="text-gray-700">Tevredenheid patiënt: {phase.transitionSatisfactionScore}/5</p>}
+                {phase.transitionProgressVsExpected && <p className="text-gray-700">Verloop: {PROGRESS_VS_EXPECTED_LABELS[phase.transitionProgressVsExpected]}</p>}
                 {phase.transitionNote && <p className="text-gray-700">{phase.transitionNote}</p>}
               </div>
             )}
@@ -489,9 +510,168 @@ function noteTimestamp(dateStr: string): string {
   return `${formatDate(dateStr)} om ${date.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}`;
 }
 
+const SWELLING_LABELS: Record<string, string> = { none: "Geen", mild: "Licht", significant: "Aanzienlijk" };
+const MOBILITY_AID_LABELS: Record<string, string> = {
+  none: "Geen", one_crutch: "1 kruk", two_crutches: "2 krukken", walker: "Rollator",
+  wheelchair: "Rolstoel", tape_bandage: "Tape/verband", brace: "Brace", other: "Anders",
+};
+const WEIGHT_BEARING_LABELS: Record<string, string> = { full: "Volledig belasten", partial: "Deels belasten", non_weight_bearing: "Niet belasten" };
+const BODY_SIDE_LABELS: Record<string, string> = { left: "Links", right: "Rechts", both: "Beide zijden" };
+const SYMPTOM_ONSET_LABELS: Record<string, string> = {
+  lt_2_weeks: "Minder dan 2 weken", "2_6_weeks": "2 tot 6 weken", "6_12_weeks": "6 tot 12 weken", gt_3_months: "Meer dan 3 maanden",
+};
+const DAILY_IMPACT_LABELS: Record<string, string> = { none: "Geen impact", mild: "Lichte impact", moderate: "Matige impact", severe: "Grote impact" };
+
+function IntakeField({ label, value }: { label: string; value: React.ReactNode }) {
+  if (value === null || value === undefined || value === "") return null;
+  return (
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{label}</p>
+      <p className="text-sm text-gray-800 mt-0.5">{value}</p>
+    </div>
+  );
+}
+
+function IntakeSubTab({ intake, loading }: { intake: PortalPatientIntake | null; loading: boolean }) {
+  if (loading) return <Card><p className="text-sm text-gray-400">Laden…</p></Card>;
+  if (!intake) {
+    return (
+      <Card>
+        <EmptyState
+          icon={ClipboardList}
+          title="Geen intake gevonden"
+          description="Deze patiënt is aangemaakt zonder de intake-wizard te doorlopen, of de intake is nog niet afgerond."
+        />
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {intake.aiSummary && (
+        <Card>
+          <CardHeader title="REVA Analyse" subtitle={intake.completedAt ? `Intake afgerond op ${formatDate(intake.completedAt)}${intake.createdByName ? ` door ${intake.createdByName}` : ""}` : undefined} />
+          <p className="text-sm text-gray-700 leading-relaxed">{intake.aiSummary}</p>
+          {intake.aiAttentionPoints.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {intake.aiAttentionPoints.map((a, i) => (
+                <Badge key={i} variant={a.severity === "warning" ? "warning" : "default"}>{a.label}</Badge>
+              ))}
+            </div>
+          )}
+          {intake.aiRecommendedProtocolName && (
+            <p className="text-xs text-gray-500 mt-3">
+              Aanbevolen herstelplan: <span className="font-medium text-gray-700">{intake.aiRecommendedProtocolName}</span>
+              {intake.aiRecommendationReasoning && ` — ${intake.aiRecommendationReasoning}`}
+            </p>
+          )}
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader title="Lichaamsgegevens" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
+          <IntakeField label="Lengte" value={intake.heightCm !== null ? `${intake.heightCm} cm` : null} />
+          <IntakeField label="Gewicht" value={intake.weightKg !== null ? `${intake.weightKg} kg` : null} />
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader title="Klachten & pijn" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
+          <IntakeField label="Reden bezoek" value={intake.visitReason} />
+          <IntakeField label="Zijde" value={intake.bodySide ? BODY_SIDE_LABELS[intake.bodySide] ?? intake.bodySide : null} />
+          <IntakeField label="Pijnscore bij intake" value={intake.painScoreNow !== null ? `${intake.painScoreNow}/10` : null} />
+          <IntakeField label="Zwelling" value={intake.swelling ? SWELLING_LABELS[intake.swelling] ?? intake.swelling : null} />
+          <IntakeField label="Pijnlocatie" value={intake.painLocation} />
+          <IntakeField label="Sinds wanneer" value={intake.symptomOnset ? SYMPTOM_ONSET_LABELS[intake.symptomOnset] ?? intake.symptomOnset : null} />
+          <IntakeField label="Impact op dagelijks leven" value={intake.dailyImpact ? DAILY_IMPACT_LABELS[intake.dailyImpact] ?? intake.dailyImpact : null} />
+          <IntakeField label="Uitstraling" value={intake.radiatingPain ? "Ja" : null} />
+          <IntakeField label="Gerelateerd aan zwangerschap" value={intake.pregnancyRelated ? "Ja" : null} />
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader title="Mobiliteit & functioneren" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
+          <IntakeField label="Hulpmiddel" value={intake.mobilityAid ? MOBILITY_AID_LABELS[intake.mobilityAid] ?? intake.mobilityAid : null} />
+          <IntakeField label="Belasting" value={intake.weightBearingStatus ? WEIGHT_BEARING_LABELS[intake.weightBearingStatus] ?? intake.weightBearingStatus : null} />
+          <IntakeField label="ROM bij intake" value={intake.romDegrees !== null ? `${intake.romDegrees}°` : null} />
+          <IntakeField label="Aanvullende ingreep" value={intake.additionalProcedures} />
+          <IntakeField label="Eerdere behandeling" value={intake.previousTreatmentText} />
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader title="Herstel & doelen" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
+          <IntakeField label="Terug naar sport" value={intake.returnToSportGoal ? (intake.sportType || "Ja") : null} />
+          <IntakeField label="Terug naar werk" value={intake.returnToWorkGoal ? "Ja" : null} />
+          <IntakeField label="Doel binnen" value={intake.goalTimeframeMonths !== null ? `${intake.goalTimeframeMonths} ${intake.goalTimeframeMonths === 1 ? "maand" : "maanden"}` : null} />
+        </div>
+        {intake.patientGoalText && (
+          <p className="text-sm text-gray-600 italic mt-3">&ldquo;{intake.patientGoalText}&rdquo;</p>
+        )}
+        {intake.therapistObservations && (
+          <div className="mt-3 pt-3" style={{ borderTop: "1px solid #f0ede8" }}>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Observaties therapeut</p>
+            <p className="text-sm text-gray-700">{intake.therapistObservations}</p>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function FaseovergangenSubTab({ phases }: { phases: PortalPatientProtocolPhase[] }) {
+  const withCheckin = phases
+    .filter(hasTransitionCheckin)
+    .sort((a, b) => (b.completedAt ?? "").localeCompare(a.completedAt ?? ""));
+
+  if (withCheckin.length === 0) {
+    return (
+      <Card>
+        <EmptyState
+          icon={Flag}
+          title="Nog geen faseovergangen"
+          description="Zodra een fase van het herstelplan wordt afgerond met een check-in, verschijnt die hier."
+        />
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {withCheckin.map((phase) => (
+        <Card key={phase.id}>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-gray-900">{phase.name}</h3>
+            {phase.completedAt && <span className="text-xs text-gray-400">{formatDate(phase.completedAt)}</span>}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3">
+            <IntakeField label="Pijnscore" value={phase.transitionPainScore !== null ? `${phase.transitionPainScore}/10` : null} />
+            <IntakeField label="Mobiliteit/functioneren" value={phase.transitionMobilityScore !== null ? `${phase.transitionMobilityScore}/5` : null} />
+            <IntakeField label="Zwelling" value={phase.transitionSwelling !== null ? (phase.transitionSwelling ? "Ja" : "Nee") : null} />
+            <IntakeField label="Tevredenheid patiënt" value={phase.transitionSatisfactionScore !== null ? `${phase.transitionSatisfactionScore}/5` : null} />
+            <IntakeField label="Verloop" value={phase.transitionProgressVsExpected ? PROGRESS_VS_EXPECTED_LABELS[phase.transitionProgressVsExpected] : null} />
+          </div>
+          {phase.transitionNote && <p className="text-sm text-gray-600 mt-3 whitespace-pre-wrap">{phase.transitionNote}</p>}
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+type LogboekSubTab = "notities" | "intake" | "faseovergangen";
+const LOGBOEK_SUB_TAB_OPTIONS: { value: LogboekSubTab; label: string }[] = [
+  { value: "notities", label: "Notities" },
+  { value: "intake", label: "Intake" },
+  { value: "faseovergangen", label: "Faseovergangen" },
+];
+
 function LogboekTab({
   notes, currentUserId, saving, onAdd, editingNoteId, editDraft, onEditDraftChange, editSaving,
-  onStartEdit, onCancelEdit, onSaveEdit, onDeleteClick,
+  onStartEdit, onCancelEdit, onSaveEdit, onDeleteClick, intake, intakeLoading, phases,
 }: {
   notes: PortalPatientStaffNote[];
   currentUserId: string | null;
@@ -505,101 +685,114 @@ function LogboekTab({
   onCancelEdit: () => void;
   onSaveEdit: () => void;
   onDeleteClick: (note: PortalPatientStaffNote) => void;
+  intake: PortalPatientIntake | null;
+  intakeLoading: boolean;
+  phases: PortalPatientProtocolPhase[];
 }) {
   const [draft, setDraft] = useState("");
+  const [subTab, setSubTab] = useState<LogboekSubTab>("notities");
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader title="Nieuwe notitie" subtitle="Alleen zichtbaar voor collega's binnen deze praktijk" />
-        <div className="space-y-2.5">
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="Bijv. bijzonderheden over de behandeling, afspraken met de patiënt, aandachtspunten voor collega's..."
-            rows={3}
-            className="w-full text-sm rounded-xl border px-3 py-2.5 resize-none focus:outline-none"
-            style={{ borderColor: "#e8e5df", background: "#ffffff", color: "#1a1a1a" }}
-          />
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              disabled={saving || !draft.trim()}
-              onClick={() => { onAdd(draft.trim()); setDraft(""); }}
-            >
-              {saving ? <Loader2 size={13} className="animate-spin" /> : "Notitie toevoegen"}
-            </Button>
-          </div>
-        </div>
-      </Card>
+      <Tabs options={LOGBOEK_SUB_TAB_OPTIONS} value={subTab} onChange={setSubTab} />
 
-      {notes.length === 0 ? (
-        <Card>
-          <EmptyState
-            icon={MessageSquare}
-            title="Nog geen notities"
-            description="Fysiotherapeuten binnen deze praktijk kunnen hier onderling notities bijhouden over deze patiënt."
-          />
-        </Card>
-      ) : (
-        <Card>
-          <div className="space-y-2.5">
-            {notes.map((n) => {
-              const isOwn = !!currentUserId && n.authorId === currentUserId;
-              const isEditing = editingNoteId === n.id;
-              return (
-                <div key={n.id} className="rounded-xl p-3" style={{ background: "#f8f7f4" }}>
-                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                    <Avatar fullName={n.authorName} avatarUrl={n.authorAvatarUrl} size={20} />
-                    <span className="text-xs font-medium text-gray-700">{n.authorName ?? "Onbekend teamlid"}</span>
-                    <span className="text-xs text-gray-400">{noteTimestamp(n.createdAt)}</span>
-                    {n.updatedAt !== n.createdAt && <span className="text-xs text-gray-400 italic">(bewerkt)</span>}
-                    {isOwn && !isEditing && (
-                      <div className="ml-auto flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => onStartEdit(n)}
-                          className="text-gray-400 hover:text-gray-600 p-1"
-                          aria-label="Notitie bewerken"
-                        >
-                          <Pencil size={13} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onDeleteClick(n)}
-                          className="text-gray-400 hover:text-red-500 p-1"
-                          aria-label="Notitie verwijderen"
-                        >
-                          <Trash2 size={13} />
-                        </button>
+      {subTab === "notities" && (
+        <div className="space-y-4">
+          <Card>
+            <CardHeader title="Nieuwe notitie" subtitle="Alleen zichtbaar voor collega's binnen deze praktijk" />
+            <div className="space-y-2.5">
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="Bijv. bijzonderheden over de behandeling, afspraken met de patiënt, aandachtspunten voor collega's..."
+                rows={3}
+                className="w-full text-sm rounded-xl border px-3 py-2.5 resize-none focus:outline-none"
+                style={{ borderColor: "#e8e5df", background: "#ffffff", color: "#1a1a1a" }}
+              />
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  disabled={saving || !draft.trim()}
+                  onClick={() => { onAdd(draft.trim()); setDraft(""); }}
+                >
+                  {saving ? <Loader2 size={13} className="animate-spin" /> : "Notitie toevoegen"}
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          {notes.length === 0 ? (
+            <Card>
+              <EmptyState
+                icon={MessageSquare}
+                title="Nog geen notities"
+                description="Fysiotherapeuten binnen deze praktijk kunnen hier onderling notities bijhouden over deze patiënt."
+              />
+            </Card>
+          ) : (
+            <Card>
+              <div className="space-y-2.5">
+                {notes.map((n) => {
+                  const isOwn = !!currentUserId && n.authorId === currentUserId;
+                  const isEditing = editingNoteId === n.id;
+                  return (
+                    <div key={n.id} className="rounded-xl p-3" style={{ background: "#f8f7f4" }}>
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        <Avatar fullName={n.authorName} avatarUrl={n.authorAvatarUrl} size={20} />
+                        <span className="text-xs font-medium text-gray-700">{n.authorName ?? "Onbekend teamlid"}</span>
+                        <span className="text-xs text-gray-400">{noteTimestamp(n.createdAt)}</span>
+                        {n.updatedAt !== n.createdAt && <span className="text-xs text-gray-400 italic">(bewerkt)</span>}
+                        {isOwn && !isEditing && (
+                          <div className="ml-auto flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => onStartEdit(n)}
+                              className="text-gray-400 hover:text-gray-600 p-1"
+                              aria-label="Notitie bewerken"
+                            >
+                              <Pencil size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onDeleteClick(n)}
+                              className="text-gray-400 hover:text-red-500 p-1"
+                              aria-label="Notitie verwijderen"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  {isEditing ? (
-                    <div className="space-y-2 pl-[2px]">
-                      <textarea
-                        value={editDraft}
-                        onChange={(e) => onEditDraftChange(e.target.value)}
-                        rows={3}
-                        className="w-full text-sm rounded-lg border px-2.5 py-2 resize-none focus:outline-none"
-                        style={{ borderColor: "#e8e5df", background: "#ffffff", color: "#1a1a1a" }}
-                      />
-                      <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="secondary" onClick={onCancelEdit}>Annuleren</Button>
-                        <Button size="sm" disabled={editSaving || !editDraft.trim()} onClick={onSaveEdit}>
-                          {editSaving ? <Loader2 size={13} className="animate-spin" /> : "Opslaan"}
-                        </Button>
-                      </div>
+                      {isEditing ? (
+                        <div className="space-y-2 pl-[2px]">
+                          <textarea
+                            value={editDraft}
+                            onChange={(e) => onEditDraftChange(e.target.value)}
+                            rows={3}
+                            className="w-full text-sm rounded-lg border px-2.5 py-2 resize-none focus:outline-none"
+                            style={{ borderColor: "#e8e5df", background: "#ffffff", color: "#1a1a1a" }}
+                          />
+                          <div className="flex justify-end gap-2">
+                            <Button size="sm" variant="secondary" onClick={onCancelEdit}>Annuleren</Button>
+                            <Button size="sm" disabled={editSaving || !editDraft.trim()} onClick={onSaveEdit}>
+                              {editSaving ? <Loader2 size={13} className="animate-spin" /> : "Opslaan"}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-600 whitespace-pre-wrap">{n.note}</p>
+                      )}
                     </div>
-                  ) : (
-                    <p className="text-sm text-gray-600 whitespace-pre-wrap">{n.note}</p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </Card>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+        </div>
       )}
+
+      {subTab === "intake" && <IntakeSubTab intake={intake} loading={intakeLoading} />}
+      {subTab === "faseovergangen" && <FaseovergangenSubTab phases={phases} />}
     </div>
   );
 }
@@ -648,9 +841,18 @@ export default function PortalPatientDetailPage() {
   const [confirmDeletePatient, setConfirmDeletePatient] = useState(false);
   const [deletingPatient, setDeletingPatient] = useState(false);
 
+  // Afsluiting behandeling (Herstel datum) — inline formuliertje, geen modal,
+  // want maar 2 velden (datum + uitkomst).
+  const [editingDischarge, setEditingDischarge] = useState(false);
+  const [dischargeDateInput, setDischargeDateInput] = useState("");
+  const [dischargeOutcomeInput, setDischargeOutcomeInput] = useState<DischargeOutcome | "">("");
+  const [savingDischarge, setSavingDischarge] = useState(false);
+
   const [assignment, setAssignment] = useState<PortalPatientProtocolAssignment | null>(null);
   const [sessionNotes, setSessionNotes] = useState<PortalPatientSessionNote[]>([]);
   const [staffNotes, setStaffNotes] = useState<PortalPatientStaffNote[]>([]);
+  const [intake, setIntake] = useState<PortalPatientIntake | null>(null);
+  const [intakeLoading, setIntakeLoading] = useState(true);
   const [revaProtocols, setRevaProtocols] = useState<PortalProtocolCard[]>([]);
   const [orgProtocols, setOrgProtocols] = useState<PortalProtocolCard[]>([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -797,6 +999,33 @@ export default function PortalPatientDetailPage() {
     if (membership) refresh(membership.organizationId);
   }
 
+  function openDischargeForm() {
+    setDischargeDateInput(patient?.dischargedAt ? patient.dischargedAt.slice(0, 10) : "");
+    setDischargeOutcomeInput(patient?.dischargeOutcome ?? "");
+    setEditingDischarge(true);
+  }
+
+  async function handleSaveDischarge() {
+    if (!patient || !dischargeDateInput) return;
+    setSavingDischarge(true);
+    const { error } = await updatePatientDischarge(patient.id, dischargeDateInput, dischargeOutcomeInput || null);
+    setSavingDischarge(false);
+    if (error) { showToast(error, "error"); return; }
+    setEditingDischarge(false);
+    showToast("Afsluitdatum opgeslagen");
+    if (membership) refresh(membership.organizationId);
+  }
+
+  async function handleReopenDischarge() {
+    if (!patient) return;
+    setSavingDischarge(true);
+    const { error } = await updatePatientDischarge(patient.id, null, null);
+    setSavingDischarge(false);
+    if (error) { showToast(error, "error"); return; }
+    showToast("Behandeling heropend");
+    if (membership) refresh(membership.organizationId);
+  }
+
   async function handleDeletePatient() {
     if (!patient) return;
     setDeletingPatient(true);
@@ -823,7 +1052,8 @@ export default function PortalPatientDetailPage() {
       loadPatientSessionNotes(patientId),
       loadExerciseLibrary(organizationId),
       loadPatientStaffNotes(patientId),
-    ]).then(([patients, extrasData, locationsData, membersData, assignmentData, revaData, orgData, sessionNotesData, exerciseData, staffNotesData]) => {
+      loadPatientIntake(patientId),
+    ]).then(([patients, extrasData, locationsData, membersData, assignmentData, revaData, orgData, sessionNotesData, exerciseData, staffNotesData, intakeData]) => {
       if (cancelled) return;
       const found = patients.find((p) => p.id === patientId) ?? null;
       setPatient(found);
@@ -837,6 +1067,8 @@ export default function PortalPatientDetailPage() {
       setSessionNotes(sessionNotesData);
       setExercises(exerciseData);
       setStaffNotes(staffNotesData);
+      setIntake(intakeData);
+      setIntakeLoading(false);
       setLoading(false);
     });
     return () => {
@@ -924,14 +1156,14 @@ export default function PortalPatientDetailPage() {
     refreshProtocol();
   }
 
-  async function confirmAdvancePhase(painScoreNow: number | null, note: string) {
+  async function confirmAdvancePhase(checkin: PhaseTransitionCheckin) {
     if (!assignment || !confirmAdvance) return;
     const sorted = assignment.phases;
     const index = sorted.findIndex((p) => p.id === confirmAdvance.id);
     const next = sorted[index + 1];
     if (!next) { setConfirmAdvance(null); return; }
     setPhaseChanging(true);
-    const { error } = await advanceToNextPhase(confirmAdvance.id, next.id, painScoreNow, note);
+    const { error } = await advanceToNextPhase(confirmAdvance.id, next.id, checkin);
     setPhaseChanging(false);
     setConfirmAdvance(null);
     if (error) { showToast(error, "error"); return; }
@@ -1009,7 +1241,7 @@ export default function PortalPatientDetailPage() {
                   title="Check-in status"
                   subtitle={lastCheckin ? `Laatste check-in op ${formatDate(lastCheckin.date)}` : undefined}
                   action={
-                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                    <div className="flex items-center gap-2 flex-wrap justify-end w-full sm:w-auto">
                       {lastCheckin?.swelling && <Badge variant="warning" className="flex items-center gap-1"><Droplets size={12} /> Zwelling gemeld</Badge>}
                       <Button size="sm" variant="secondary" onClick={openCheckinHistory}>
                         <History size={13} /> Geschiedenis
@@ -1153,6 +1385,9 @@ export default function PortalPatientDetailPage() {
                   onCancelEdit={() => { setEditingNoteId(null); setEditNoteDraft(""); }}
                   onSaveEdit={handleSaveEditNote}
                   onDeleteClick={setConfirmDeleteNote}
+                  intake={intake}
+                  intakeLoading={intakeLoading}
+                  phases={assignment?.phases ?? []}
                 />
               )}
             </div>
@@ -1183,6 +1418,66 @@ export default function PortalPatientDetailPage() {
 
               <Card>
                 <CardHeader
+                  title="Afsluiting behandeling"
+                  subtitle="Wanneer is deze patiënt daadwerkelijk uitbehandeld"
+                />
+                {editingDischarge ? (
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs text-gray-400 mb-1">Afsluitdatum</p>
+                      <DatePicker value={dischargeDateInput} onChange={setDischargeDateInput} placeholder="Kies een datum" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 mb-1">Uitkomst</p>
+                      <select
+                        value={dischargeOutcomeInput}
+                        onChange={(e) => setDischargeOutcomeInput(e.target.value as DischargeOutcome | "")}
+                        className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none appearance-none"
+                        style={{ borderColor: "#e8e5df", background: "#ffffff", color: "#1a1a1a" }}
+                      >
+                        <option value="">Niet aangegeven</option>
+                        {(Object.entries(DISCHARGE_OUTCOME_LABELS) as [DischargeOutcome, string][]).map(([value, label]) => (
+                          <option key={value} value={value}>{label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <Button size="sm" disabled={!dischargeDateInput || savingDischarge} onClick={handleSaveDischarge}>
+                        {savingDischarge ? "Opslaan…" : "Behandeling afsluiten"}
+                      </Button>
+                      <Button size="sm" variant="secondary" disabled={savingDischarge} onClick={() => setEditingDischarge(false)}>
+                        Annuleren
+                      </Button>
+                    </div>
+                  </div>
+                ) : patient.dischargedAt ? (
+                  <div className="space-y-3 text-sm">
+                    <div><p className="text-xs text-gray-400">Afgesloten op</p><p className="text-gray-800">{formatDate(patient.dischargedAt)}</p></div>
+                    <div>
+                      <p className="text-xs text-gray-400">Uitkomst</p>
+                      <p className="text-gray-800">{patient.dischargeOutcome ? DISCHARGE_OUTCOME_LABELS[patient.dischargeOutcome] : "Niet aangegeven"}</p>
+                    </div>
+                    {canManagePatients && (
+                      <div className="flex gap-2 pt-1">
+                        <Button size="sm" variant="secondary" onClick={openDischargeForm}>Wijzigen</Button>
+                        <Button size="sm" variant="secondary" disabled={savingDischarge} onClick={handleReopenDischarge}>
+                          {savingDischarge ? "Bezig…" : "Heropenen"}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-400">Nog niet afgesloten.</p>
+                    {canManagePatients && (
+                      <Button size="sm" variant="secondary" onClick={openDischargeForm}>Behandeling afsluiten</Button>
+                    )}
+                  </div>
+                )}
+              </Card>
+
+              <Card>
+                <CardHeader
                   title="Behandelgegevens"
                   subtitle="Basisgegevens en behandeltraject"
                   action={canManagePatients ? (
@@ -1198,7 +1493,6 @@ export default function PortalPatientDetailPage() {
                   <div><p className="text-xs text-gray-400">Locatie</p><p className="text-gray-800">{patient.locationName || "—"}</p></div>
                   <div><p className="text-xs text-gray-400">Behandelend therapeut</p><p className="text-gray-800">{patient.therapistName || "—"}</p></div>
                   <div><p className="text-xs text-gray-400">Herstelplan</p><p className="text-gray-800">{patient.protocolName || "—"}</p></div>
-                  <div><p className="text-xs text-gray-400">Startdatum behandeling</p><p className="text-gray-800">{patient.treatmentStartDate ? formatDate(patient.treatmentStartDate) : "—"}</p></div>
                   <div><p className="text-xs text-gray-400">Operatiedatum</p><p className="text-gray-800">{patient.surgeryDate ? formatDate(patient.surgeryDate) : "—"}</p></div>
                   <div><p className="text-xs text-gray-400">Blessuredatum</p><p className="text-gray-800">{patient.injuryDate ? formatDate(patient.injuryDate) : "—"}</p></div>
                   <div><p className="text-xs text-gray-400">Blessuretype</p><p className="text-gray-800">{injuryTypeLabel(patient.injuryType)}</p></div>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Building2, Users, Kanban, LogOut } from "lucide-react";
+import { LayoutDashboard, Building2, Users, Kanban, LogOut, BarChart3 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 
 const nav = [
@@ -10,6 +10,7 @@ const nav = [
   { href: "/admin/organisaties", label: "Bedrijven", icon: Building2 },
   { href: "/admin/pijplijn", label: "Pijplijn", icon: Kanban },
   { href: "/admin/gebruikers", label: "Gebruikers", icon: Users },
+  { href: "/admin/statistieken", label: "Statistieken", icon: BarChart3 },
 ];
 
 export function AdminSidebar() {
@@ -53,7 +54,8 @@ export function AdminSidebar() {
             className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
             style={{ background: "#e8632a" }}
           >
-            <span className="text-white font-bold text-xs">R</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/reva-logo-transparant.svg" alt="REVA" className="w-4 h-4" />
           </div>
           <div className="leading-none">
             <p className="text-white font-semibold text-sm tracking-tight">REVA</p>

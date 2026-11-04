@@ -153,7 +153,6 @@ export interface IntakeAnalysisInput {
   injuryType: string;
   injuryDate: string;
   surgeryDate: string;
-  treatmentStartDate: string;
   intake: IntakeInput;
   availableProtocols: PortalProtocolCard[];
   now?: Date;

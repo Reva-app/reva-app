@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ScrollHintX } from "@/components/ui/table/ScrollHintX";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import {
   loadProtocolDetail, updateProtocol, updateProtocolName, updateProtocolArchived, deleteProtocol, duplicateProtocol,
@@ -312,7 +313,7 @@ export default function PortalProtocolDetailPage() {
                 <EmptyState icon={Layers} title="Nog geen fases" description={canEdit ? "Voeg de eerste fase toe om te beginnen." : undefined} />
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <ScrollHintX>
                 <table className="w-full text-sm">
                   <thead>
                     <tr style={{ borderBottom: "1px solid #e8e5df" }}>
@@ -366,7 +367,7 @@ export default function PortalProtocolDetailPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </ScrollHintX>
             )}
           </Card>
         </>

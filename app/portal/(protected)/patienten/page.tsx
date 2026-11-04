@@ -13,6 +13,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { ActionMenu } from "@/components/ui/ActionMenu";
 import { formatDate } from "@/lib/data";
+import { ScrollHintX } from "@/components/ui/table/ScrollHintX";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { PatientWizard } from "@/components/portal/PatientWizard";
 import { PatientEditForm } from "@/components/portal/PatientEditForm";
@@ -452,7 +453,7 @@ export default function PortalPatientsPage() {
             description={patients.length === 0 ? "Voeg een patiëntdossier toe om te beginnen." : "Pas de filters aan om meer resultaten te zien."}
           />
         ) : (
-          <div className="overflow-x-auto">
+          <ScrollHintX>
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: "1px solid #e8e5df" }}>
@@ -514,7 +515,7 @@ export default function PortalPatientsPage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </ScrollHintX>
         )}
         {!loading && sortedPatients.length > 0 && totalPages > 1 && (
           <div className="flex items-center justify-between px-5 py-3 flex-wrap gap-2" style={{ borderTop: "1px solid #f8f7f4" }}>

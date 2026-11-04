@@ -96,8 +96,11 @@ export function Sidebar() {
             {hasOwnBranding && branding?.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={branding.logoUrl} alt="" className="w-full h-full object-cover" />
+            ) : hasOwnBranding ? (
+              <span className="text-white font-bold text-xs">{branding!.name[0].toUpperCase()}</span>
             ) : (
-              <span className="text-white font-bold text-xs">{hasOwnBranding ? branding!.name[0].toUpperCase() : "R"}</span>
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src="/reva-logo-transparant.svg" alt="REVA" className="w-4 h-4" />
             )}
           </div>
           <div className="leading-none">

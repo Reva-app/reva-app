@@ -14,6 +14,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { SortableHeader } from "@/components/ui/table/SortableHeader";
 import { Pagination } from "@/components/ui/table/Pagination";
 import { useTableState } from "@/components/ui/table/useTableState";
+import { ScrollHintX } from "@/components/ui/table/ScrollHintX";
 import { ExerciseThumb } from "@/components/portal/ExerciseThumb";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import {
@@ -235,7 +236,7 @@ export default function PortalOefeningenPage() {
             description={exercises.length === 0 ? "Voeg je eerste oefening toe om te beginnen." : "Pas de filters aan om meer resultaten te zien."}
           />
         ) : (
-          <div className="overflow-x-auto">
+          <ScrollHintX>
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: "1px solid #e8e5df" }}>
@@ -293,7 +294,7 @@ export default function PortalOefeningenPage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </ScrollHintX>
         )}
         <Pagination page={page} totalPages={totalPages} totalCount={filtered.length} itemLabel="resultaat" itemLabelPlural="resultaten" onPageChange={setPage} />
       </div>

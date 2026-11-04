@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ActionMenu } from "@/components/ui/ActionMenu";
 import { StaffInviteForm } from "@/components/portal/StaffInviteForm";
 import { Avatar } from "@/components/ui/Avatar";
+import { ScrollHintX } from "@/components/ui/table/ScrollHintX";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
@@ -164,7 +165,7 @@ export default function PortalStaffPage() {
         ) : staff.length === 0 ? (
           <EmptyState icon={Users} title="Nog geen medewerkers" description="Nodig je eerste medewerker uit om te beginnen." />
         ) : (
-          <div className="overflow-x-auto">
+          <ScrollHintX>
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: "1px solid #e8e5df" }}>
@@ -230,7 +231,7 @@ export default function PortalStaffPage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </ScrollHintX>
         )}
       </div>
 

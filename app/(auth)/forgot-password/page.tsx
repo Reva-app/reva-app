@@ -43,7 +43,8 @@ export default function ForgotPasswordPage() {
             className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: "#e8632a" }}
           >
-            <span className="text-white font-bold text-sm">R</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/reva-logo-transparant.svg" alt="REVA" className="w-5 h-5" />
           </div>
           <span className="font-bold text-lg" style={{ color: "#1a1a1a" }}>
             REVA

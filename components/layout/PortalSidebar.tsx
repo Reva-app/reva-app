@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
-import { LayoutDashboard, HeartPulse, MapPin, Users, ClipboardList, ListChecks, Dumbbell, Palette, LogOut, BarChart3, History } from "lucide-react";
+import { LayoutDashboard, HeartPulse, MapPin, Users, ClipboardList, ListChecks, Dumbbell, Palette, LogOut, BarChart3, History, CalendarRange } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { usePortalBranding } from "@/lib/hooks/usePortalBranding";
@@ -19,6 +19,7 @@ const nav = [
   { href: "/portal/oefeningen", label: "Oefeningen", icon: Dumbbell },
   { href: "/portal/locaties", label: "Locaties", icon: MapPin },
   { href: "/portal/medewerkers", label: "Medewerkers", icon: Users },
+  { href: "/portal/reserveringen", label: "Reserveringen", icon: CalendarRange },
 ];
 
 /**

@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabaseClient";
 import { apiUrl } from "@/lib/apiBase";
-import { mondayOfWeek } from "@/lib/dateUtils";
+import { mondayOfWeek, weekDates } from "@/lib/dateUtils";
 
 function logErr(fn: string, error: { message?: string; code?: string; details?: string; hint?: string } | null) {
   if (!error) return;
@@ -98,7 +98,6 @@ export interface PortalPatient {
   therapistId: string | null;
   therapistName: string | null;
   protocolName: string | null;
-  treatmentStartDate: string | null;
   surgeryDate: string | null;
   injuryDate: string | null;
   injuryType: string | null;
@@ -107,7 +106,18 @@ export interface PortalPatient {
   hasAccount: boolean;
   invitedAt: string | null;
   lastCheckinDate: string | null;
+  dischargedAt: string | null;
+  dischargeOutcome: DischargeOutcome | null;
 }
+
+export type DischargeOutcome = "fully_recovered" | "partially_recovered" | "stopped_early" | "transferred";
+
+export const DISCHARGE_OUTCOME_LABELS: Record<DischargeOutcome, string> = {
+  fully_recovered: "Volledig hersteld",
+  partially_recovered: "Gedeeltelijk hersteld",
+  stopped_early: "Voortijdig gestopt",
+  transferred: "Overgedragen",
+};
 
 /**
  * Rollen die patiëntdossiers mogen beheren (aanmaken/bewerken/archiveren/
@@ -515,13 +525,95 @@ export async function loadOrgUsageStats(organizationId: string, periodDays: 7 | 
   return data as PortalOrgUsageStats;
 }
 
+export interface PortalRoomOccupancy {
+  locationId: string;
+  locationName: string;
+  roomCount: number;
+  reservedMinutes: number;
+  availableMinutes: number;
+}
+
+/**
+ * Ruimtebezetting per locatie over de gekozen periode — gereserveerde
+ * minuten (room_reservations) t.o.v. beschikbare minuten (actieve ruimtes ×
+ * locatie-openingstijden). Loopt via de portal_room_occupancy_stats-RPC
+ * (migratie 115, eigenaar-only afgedwongen), zelfde patroon als
+ * loadOrgUsageStats hierboven.
+ */
+export async function loadRoomOccupancyStats(organizationId: string, periodDays: 7 | 14 | 30): Promise<PortalRoomOccupancy[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("portal_room_occupancy_stats", {
+    p_organization_id: organizationId, p_period_days: periodDays,
+  });
+  if (error) { logErr("loadRoomOccupancyStats", error); return []; }
+  return (data ?? []) as PortalRoomOccupancy[];
+}
+
+export interface PortalQualityStats {
+  completedPhasesCount: number;
+  completedPhasesWithCheckinCount: number;
+  aiIntakeCount: number;
+  aiRoomSuggestionsTakenCount: number;
+}
+
+/**
+ * Telbare indicatoren voor automatisering en documentatiegraad — bewust
+ * geen kant-en-klare "bespaarde uren"-conversie; die aanname blijft
+ * zichtbaar in de UI (analyse-pagina) i.p.v. verstopt in deze functie.
+ * Loopt via de portal_quality_stats-RPC (migratie 115, eigenaar-only).
+ */
+export async function loadQualityStats(organizationId: string, periodDays: 7 | 14 | 30): Promise<PortalQualityStats> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("portal_quality_stats", {
+    p_organization_id: organizationId, p_period_days: periodDays,
+  });
+  if (error) {
+    logErr("loadQualityStats", error);
+    return { completedPhasesCount: 0, completedPhasesWithCheckinCount: 0, aiIntakeCount: 0, aiRoomSuggestionsTakenCount: 0 };
+  }
+  return data as PortalQualityStats;
+}
+
+export interface PortalRecoveryDurationByCategory {
+  injuryCategory: string;
+  count: number;
+  avgDurationDays: number;
+}
+
+export interface PortalRecoveryDurationYear {
+  year: number;
+  count: number;
+}
+
+export interface PortalRecoveryDurationStats {
+  totalDischarged: number;
+  avgDurationDays: number | null;
+  byInjuryCategory: PortalRecoveryDurationByCategory[];
+  patientsPerYear: PortalRecoveryDurationYear[];
+}
+
+/**
+ * Gemiddelde doorlooptijd per blessurecategorie + patiënten per jaar, op
+ * basis van de afsluitdatum (migratie 116). Loopt via de
+ * portal_recovery_duration_stats-RPC (eigenaar-only).
+ */
+export async function loadRecoveryDurationStats(organizationId: string): Promise<PortalRecoveryDurationStats> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("portal_recovery_duration_stats", { p_organization_id: organizationId });
+  if (error) {
+    logErr("loadRecoveryDurationStats", error);
+    return { totalDischarged: 0, avgDurationDays: null, byInjuryCategory: [], patientsPerYear: [] };
+  }
+  return data as PortalRecoveryDurationStats;
+}
+
 // ─── Patiënten ──────────────────────────────────────────────────────────────
 
 export async function loadPortalPatients(organizationId: string): Promise<PortalPatient[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("patients")
-    .select("id, user_id, location_id, status, created_at, first_name, last_name, email, phone, gender, date_of_birth, invited_at, assigned_therapist_id, treatment_start_date, surgery_date, injury_date, injury_type")
+    .select("id, user_id, location_id, status, created_at, first_name, last_name, email, phone, gender, date_of_birth, invited_at, assigned_therapist_id, surgery_date, injury_date, injury_type, discharged_at, discharge_outcome")
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false });
   if (error) { logErr("loadPortalPatients", error); return []; }
@@ -580,7 +672,6 @@ export async function loadPortalPatients(organizationId: string): Promise<Portal
       therapistId: r.assigned_therapist_id as string | null,
       therapistName: therapist?.full_name ?? null,
       protocolName: activeProtocolMap.get(r.id as string) ?? null,
-      treatmentStartDate: r.treatment_start_date as string | null,
       surgeryDate: r.surgery_date as string | null,
       injuryDate: r.injury_date as string | null,
       injuryType: r.injury_type as string | null,
@@ -589,8 +680,93 @@ export async function loadPortalPatients(organizationId: string): Promise<Portal
       hasAccount: !!r.user_id,
       invitedAt: r.invited_at as string | null,
       lastCheckinDate: lastCheckinMap.get(r.id as string) ?? null,
+      dischargedAt: r.discharged_at as string | null,
+      dischargeOutcome: r.discharge_outcome as DischargeOutcome | null,
     };
   });
+}
+
+/**
+ * Zet of wist de afsluitdatum (klinisch "uitbehandeld", los van
+ * patients.status — zie migratie 116). dischargedAt=null wist de afsluiting
+ * ("heropenen"), en neemt de uitkomst dan automatisch ook weg.
+ */
+export async function updatePatientDischarge(
+  patientId: string,
+  dischargedAt: string | null,
+  dischargeOutcome: DischargeOutcome | null
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("patients")
+    .update({ discharged_at: dischargedAt, discharge_outcome: dischargedAt ? dischargeOutcome : null })
+    .eq("id", patientId);
+  if (error) { logErr("updatePatientDischarge", error); return { error: "Opslaan van de afsluitdatum is niet gelukt." }; }
+  return { error: null };
+}
+
+export interface PortalWeekAppointment {
+  id: string;
+  patientId: string;
+  patientName: string | null;
+  title: string;
+  appointmentType: string | null;
+  date: string;
+  time: string | null;
+  location: string | null;
+  providerName: string | null;
+}
+
+/**
+ * Patiëntafspraken van de hele organisatie, binnen een week — puur
+ * informatief naast de ruimte-weekweergave. `location`/`provider_name` zijn
+ * vrije tekst (geen FK naar locations/memberships), dus dit toont géén
+ * gekoppelde ruimte of fysio, alleen wat de patiënt zelf heeft ingevuld.
+ */
+export async function loadOrgAppointmentsForWeek(organizationId: string, weekStart: string): Promise<PortalWeekAppointment[]> {
+  const supabase = createClient();
+  const days = weekDates(weekStart);
+
+  const { data: patientsData, error: patientsError } = await supabase
+    .from("patients")
+    .select("id, first_name, last_name, user_id")
+    .eq("organization_id", organizationId);
+  if (patientsError) { logErr("loadOrgAppointmentsForWeek(patients)", patientsError); return []; }
+  const patientRows = patientsData ?? [];
+  if (patientRows.length === 0) return [];
+
+  const userIds = [...new Set(patientRows.map((p) => p.user_id).filter((v): v is string => !!v))];
+  const { data: profilesData } = userIds.length > 0
+    ? await supabase.from("profiles").select("id, full_name").in("id", userIds)
+    : { data: [] as { id: string; full_name: string | null }[] };
+  const profileMap = new Map((profilesData ?? []).map((p) => [p.id, p.full_name]));
+
+  const nameByPatientId = new Map(patientRows.map((p) => {
+    const dossierName = [p.first_name, p.last_name].filter(Boolean).join(" ") || null;
+    return [p.id as string, (p.user_id ? profileMap.get(p.user_id) : null) ?? dossierName];
+  }));
+
+  const { data, error } = await supabase
+    .from("appointments")
+    .select("id, patient_id, title, appointment_type, date, time, location, provider_name")
+    .in("patient_id", patientRows.map((p) => p.id))
+    .gte("date", days[0])
+    .lte("date", days[6])
+    .order("date")
+    .order("time");
+  if (error) { logErr("loadOrgAppointmentsForWeek", error); return []; }
+
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    patientId: r.patient_id as string,
+    patientName: nameByPatientId.get(r.patient_id as string) ?? null,
+    title: r.title as string,
+    appointmentType: r.appointment_type as string | null,
+    date: r.date as string,
+    time: r.time as string | null,
+    location: r.location as string | null,
+    providerName: r.provider_name as string | null,
+  }));
 }
 
 export async function loadPortalLocations(organizationId: string): Promise<PortalLocationOption[]> {
@@ -614,7 +790,6 @@ export interface PortalPatientInput {
   gender: string; // "man" | "vrouw" | "anders" | ""
   locationId: string | null;
   therapistId: string | null;
-  treatmentStartDate: string;
   surgeryDate: string;
   injuryDate: string;
   injuryType: string;
@@ -630,7 +805,6 @@ function patientInputToRow(input: PortalPatientInput) {
     date_of_birth: input.dateOfBirth || null,
     gender: input.gender || null,
     assigned_therapist_id: input.therapistId,
-    treatment_start_date: input.treatmentStartDate || null,
     surgery_date: input.surgeryDate || null,
     injury_date: input.injuryDate || null,
     injury_type: input.injuryType || null,
@@ -1173,6 +1347,195 @@ export async function deletePortalLocationChecked(locationId: string): Promise<{
   return { error: null };
 }
 
+// ─── Ruimtes & reserveringen ────────────────────────────────────────────────
+// Fundament voor het ruimtereserveringssysteem (migraties 113/114). Ruimtes
+// zijn eenvoudige entiteiten per locatie; reserveringen zijn tijdvakken
+// (starts_at/ends_at) per ruimte, met een database-exclude-constraint die
+// overlap op dezelfde ruimte hard voorkomt.
+
+export interface PortalRoom {
+  id: string;
+  locationId: string;
+  name: string;
+  sortOrder: number;
+  archived: boolean;
+}
+
+export async function loadLocationRooms(locationId: string): Promise<PortalRoom[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("location_rooms")
+    .select("id, location_id, name, sort_order, archived")
+    .eq("location_id", locationId)
+    .order("sort_order");
+  if (error) { logErr("loadLocationRooms", error); return []; }
+  return (data ?? []).map((r) => ({
+    id: r.id as string, locationId: r.location_id as string, name: r.name as string,
+    sortOrder: r.sort_order as number, archived: r.archived as boolean,
+  }));
+}
+
+export async function createLocationRoom(locationId: string, name: string, sortOrder: number): Promise<{ id: string | null; error: string | null }> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("location_rooms")
+    .insert({ location_id: locationId, name: name.trim(), sort_order: sortOrder })
+    .select("id")
+    .single();
+  if (error) { logErr("createLocationRoom", error); return { id: null, error: "Aanmaken van de ruimte is niet gelukt." }; }
+  return { id: data.id as string, error: null };
+}
+
+export async function updateLocationRoom(roomId: string, name: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("location_rooms").update({ name: name.trim() }).eq("id", roomId);
+  if (error) { logErr("updateLocationRoom", error); return { error: "Bijwerken van de ruimte is niet gelukt." }; }
+  return { error: null };
+}
+
+export async function updateRoomArchived(roomId: string, archived: boolean): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("location_rooms").update({ archived }).eq("id", roomId);
+  if (error) { logErr("updateRoomArchived", error); return { error: "Bijwerken van de ruimte is niet gelukt." }; }
+  return { error: null };
+}
+
+/** Faalt vriendelijk als de ruimte nog reserveringen heeft (FK-restrict), zelfde patroon als deleteOrgExercise. */
+export async function deleteLocationRoom(roomId: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("location_rooms").delete().eq("id", roomId);
+  if (error) {
+    logErr("deleteLocationRoom", error);
+    if (error.code === "23503") {
+      return { error: "Deze ruimte heeft nog reserveringen en kan niet verwijderd worden. Verwijder eerst de reserveringen, of archiveer de ruimte." };
+    }
+    return { error: "Verwijderen van de ruimte is niet gelukt." };
+  }
+  return { error: null };
+}
+
+export interface PortalReservation {
+  id: string;
+  roomId: string;
+  membershipId: string;
+  membershipName: string | null;
+  startsAt: string;
+  endsAt: string;
+  source: "manual" | "ai_suggested";
+}
+
+/**
+ * memberships.user_id verwijst naar auth.users, niet naar profiles — er
+ * bestaat dus geen foreign key waarmee PostgREST `memberships(profiles(...))`
+ * automatisch kan embedden (dat gaf PGRST200 "Could not find a relationship").
+ * Twee losse leesacties + zelf koppelen op user_id, zelfde patroon als
+ * loadPortalPatients hierboven.
+ */
+async function resolveMembershipFullNames(membershipIds: string[]): Promise<Map<string, string | null>> {
+  if (membershipIds.length === 0) return new Map();
+  const supabase = createClient();
+  const { data: membershipRows } = await supabase.from("memberships").select("id, user_id").in("id", membershipIds);
+  const userIds = [...new Set((membershipRows ?? []).map((m) => m.user_id as string).filter(Boolean))];
+  const { data: profileRows } = userIds.length > 0
+    ? await supabase.from("profiles").select("id, full_name").in("id", userIds)
+    : { data: [] as { id: string; full_name: string | null }[] };
+  const nameByUserId = new Map((profileRows ?? []).map((p) => [p.id as string, p.full_name as string | null]));
+  return new Map((membershipRows ?? []).map((m) => [m.id as string, nameByUserId.get(m.user_id as string) ?? null]));
+}
+
+/** Alle reserveringen van alle ruimtes van een locatie, op een specifieke dag. */
+export async function loadRoomReservations(locationId: string, date: string): Promise<PortalReservation[]> {
+  const supabase = createClient();
+  const dayStart = `${date}T00:00:00`;
+  const dayEnd = `${date}T23:59:59`;
+  const { data, error } = await supabase
+    .from("room_reservations")
+    .select("id, room_id, membership_id, starts_at, ends_at, source, location_rooms!inner(location_id)")
+    .eq("location_rooms.location_id", locationId)
+    .gte("starts_at", dayStart)
+    .lte("starts_at", dayEnd)
+    .order("starts_at");
+  if (error) { logErr("loadRoomReservations", error); return []; }
+
+  const rows = (data ?? []) as unknown as { id: string; room_id: string; membership_id: string; starts_at: string; ends_at: string; source: "manual" | "ai_suggested" }[];
+  const nameMap = await resolveMembershipFullNames([...new Set(rows.map((r) => r.membership_id))]);
+
+  return rows.map((r) => ({
+    id: r.id, roomId: r.room_id, membershipId: r.membership_id,
+    membershipName: nameMap.get(r.membership_id) ?? null,
+    startsAt: r.starts_at, endsAt: r.ends_at, source: r.source,
+  }));
+}
+
+/** Alle reserveringen van alle ruimtes van een locatie, over een hele week (ma t/m zo, weekStart moet een maandag zijn). Voor de tijdas-weekweergave. */
+export async function loadRoomReservationsForWeek(locationId: string, weekStart: string): Promise<PortalReservation[]> {
+  const supabase = createClient();
+  const days = weekDates(weekStart);
+  const rangeStart = `${days[0]}T00:00:00`;
+  const rangeEnd = `${days[6]}T23:59:59`;
+  const { data, error } = await supabase
+    .from("room_reservations")
+    .select("id, room_id, membership_id, starts_at, ends_at, source, location_rooms!inner(location_id)")
+    .eq("location_rooms.location_id", locationId)
+    .gte("starts_at", rangeStart)
+    .lte("starts_at", rangeEnd)
+    .order("starts_at");
+  if (error) { logErr("loadRoomReservationsForWeek", error); return []; }
+
+  const rows = (data ?? []) as unknown as { id: string; room_id: string; membership_id: string; starts_at: string; ends_at: string; source: "manual" | "ai_suggested" }[];
+  const nameMap = await resolveMembershipFullNames([...new Set(rows.map((r) => r.membership_id))]);
+
+  return rows.map((r) => ({
+    id: r.id, roomId: r.room_id, membershipId: r.membership_id,
+    membershipName: nameMap.get(r.membership_id) ?? null,
+    startsAt: r.starts_at, endsAt: r.ends_at, source: r.source,
+  }));
+}
+
+export interface PortalReservationInput {
+  roomId: string;
+  membershipId: string;
+  startsAt: string; // ISO
+  endsAt: string; // ISO
+  source?: "manual" | "ai_suggested";
+}
+
+/** Vriendelijke afvang van de exclude-constraint (23P01): dezelfde ruimte, overlappend tijdvak. */
+function reservationConflictError(error: { code?: string }): string | null {
+  if (error.code === "23P01") return "Deze ruimte is op dat tijdstip al gereserveerd.";
+  return null;
+}
+
+export async function createReservation(input: PortalReservationInput, createdBy: string | null): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("room_reservations").insert({
+    room_id: input.roomId, membership_id: input.membershipId,
+    starts_at: input.startsAt, ends_at: input.endsAt,
+    source: input.source ?? "manual", created_by: createdBy,
+  });
+  if (error) { logErr("createReservation", error); return { error: reservationConflictError(error) ?? "Aanmaken van de reservering is niet gelukt." }; }
+  return { error: null };
+}
+
+export async function updateReservation(reservationId: string, patch: Partial<PortalReservationInput>): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const row: Record<string, unknown> = {};
+  if (patch.roomId !== undefined) row.room_id = patch.roomId;
+  if (patch.membershipId !== undefined) row.membership_id = patch.membershipId;
+  if (patch.startsAt !== undefined) row.starts_at = patch.startsAt;
+  if (patch.endsAt !== undefined) row.ends_at = patch.endsAt;
+  const { error } = await supabase.from("room_reservations").update(row).eq("id", reservationId);
+  if (error) { logErr("updateReservation", error); return { error: reservationConflictError(error) ?? "Bijwerken van de reservering is niet gelukt." }; }
+  return { error: null };
+}
+
+export async function deleteReservation(reservationId: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("room_reservations").delete().eq("id", reservationId);
+  if (error) { logErr("deleteReservation", error); return { error: "Verwijderen van de reservering is niet gelukt." }; }
+  return { error: null };
+}
+
 // ─── Medewerkers (zelf-service) ─────────────────────────────────────────────
 
 /**
@@ -1621,12 +1984,18 @@ export const DEFAULT_WORK_SCHEDULE: PortalWorkSchedule = WEEKDAY_KEYS.reduce((ac
   return acc;
 }, {} as PortalWorkSchedule);
 
-export async function loadWorkSchedule(membershipId: string): Promise<PortalWorkSchedule> {
+/**
+ * Werkrooster is per medewerker PER LOCATIE (migratie 113) — iemand kan op
+ * maandag bij locatie A werken en op dinsdag bij locatie B. Nodig als
+ * fundament voor de AI-suggestie bij ruimtereservering (roomSuggestionService.ts).
+ */
+export async function loadWorkSchedule(membershipId: string, locationId: string): Promise<PortalWorkSchedule> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("work_schedules")
     .select("weekday, start_time, end_time, is_off")
-    .eq("membership_id", membershipId);
+    .eq("membership_id", membershipId)
+    .eq("location_id", locationId);
   if (error) { logErr("loadWorkSchedule", error); return { ...DEFAULT_WORK_SCHEDULE }; }
   const schedule = { ...DEFAULT_WORK_SCHEDULE };
   for (const row of (data ?? []) as { weekday: string; start_time: string | null; end_time: string | null; is_off: boolean }[]) {
@@ -1640,18 +2009,211 @@ export async function loadWorkSchedule(membershipId: string): Promise<PortalWork
   return schedule;
 }
 
-export async function updateWorkSchedule(membershipId: string, schedule: PortalWorkSchedule): Promise<{ error: string | null }> {
+/** Werkrooster van alle medewerkers die aan deze locatie gekoppeld zijn — voor de ruimteverdeling-suggestie. */
+export async function loadWorkSchedulesForLocation(locationId: string): Promise<{ membershipId: string; workingHours: PortalWorkSchedule }[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("work_schedules")
+    .select("membership_id, weekday, start_time, end_time, is_off")
+    .eq("location_id", locationId);
+  if (error) { logErr("loadWorkSchedulesForLocation", error); return []; }
+
+  const byMembership = new Map<string, PortalWorkSchedule>();
+  for (const row of (data ?? []) as { membership_id: string; weekday: string; start_time: string | null; end_time: string | null; is_off: boolean }[]) {
+    const schedule = byMembership.get(row.membership_id) ?? { ...DEFAULT_WORK_SCHEDULE };
+    schedule[row.weekday as PortalWeekday] = {
+      isOff: row.is_off, startTime: row.start_time ?? "09:00", endTime: row.end_time ?? "17:00",
+    };
+    byMembership.set(row.membership_id, schedule);
+  }
+  return [...byMembership.entries()].map(([membershipId, workingHours]) => ({ membershipId, workingHours }));
+}
+
+export async function updateWorkSchedule(membershipId: string, locationId: string, schedule: PortalWorkSchedule): Promise<{ error: string | null }> {
   const supabase = createClient();
   const rows = WEEKDAY_KEYS.map((day) => ({
     membership_id: membershipId,
+    location_id: locationId,
     weekday: day,
     is_off: schedule[day].isOff,
     start_time: schedule[day].isOff ? null : schedule[day].startTime,
     end_time: schedule[day].isOff ? null : schedule[day].endTime,
   }));
-  const { error } = await supabase.from("work_schedules").upsert(rows, { onConflict: "membership_id,weekday" });
+  const { error } = await supabase.from("work_schedules").upsert(rows, { onConflict: "membership_id,weekday,location_id" });
   if (error) { logErr("updateWorkSchedule", error); return { error: "Bijwerken van de werkuren is niet gelukt." }; }
   return { error: null };
+}
+
+// ─── Verlof ──────────────────────────────────────────────────────────────────
+// Vakantie/vrije dagen per medewerker (migratie 117) — hele dagen, geen
+// tijdvakken (net als isOff op work_schedules). Zonder deze data zou de
+// AI-suggestie (roomSuggestionService.ts) een fysio nog steeds voorstellen
+// op een dag dat diegene er niet is.
+
+export type PortalLeaveType = "vakantie" | "vrije_dag" | "ziek" | "overig";
+
+export const LEAVE_TYPE_LABELS: Record<PortalLeaveType, string> = {
+  vakantie: "Vakantie",
+  vrije_dag: "Vrije dag",
+  ziek: "Ziek",
+  overig: "Overig",
+};
+
+export interface PortalStaffLeave {
+  id: string;
+  membershipId: string;
+  membershipName: string | null;
+  startsOn: string;
+  endsOn: string;
+  leaveType: PortalLeaveType;
+  note: string | null;
+}
+
+/** Verlof van alle medewerkers gekoppeld aan deze locatie (primair óf extra, via membership_locations), dat overlapt met de gegeven week. */
+export async function loadStaffLeaveForLocation(locationId: string, weekStart: string): Promise<PortalStaffLeave[]> {
+  const supabase = createClient();
+  const days = weekDates(weekStart);
+  const [primaryRes, extraRes] = await Promise.all([
+    supabase.from("memberships").select("id").eq("location_id", locationId),
+    supabase.from("membership_locations").select("membership_id").eq("location_id", locationId),
+  ]);
+  const membershipIds = [...new Set([
+    ...((primaryRes.data ?? []).map((m) => m.id as string)),
+    ...((extraRes.data ?? []).map((m) => m.membership_id as string)),
+  ])];
+  if (membershipIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("staff_leave")
+    .select("id, membership_id, starts_on, ends_on, leave_type, note")
+    .in("membership_id", membershipIds)
+    .lte("starts_on", days[6])
+    .gte("ends_on", days[0])
+    .order("starts_on");
+  if (error) { logErr("loadStaffLeaveForLocation", error); return []; }
+
+  const rows = (data ?? []) as unknown as {
+    id: string; membership_id: string; starts_on: string; ends_on: string; leave_type: PortalLeaveType; note: string | null;
+  }[];
+  const nameMap = await resolveMembershipFullNames([...new Set(rows.map((r) => r.membership_id))]);
+  return rows.map((r) => ({
+    id: r.id, membershipId: r.membership_id,
+    membershipName: nameMap.get(r.membership_id) ?? null,
+    startsOn: r.starts_on, endsOn: r.ends_on, leaveType: r.leave_type, note: r.note,
+  }));
+}
+
+/** Al het verlof van één medewerker, nieuwste eerst — voor het Verlof-tabblad bij de medewerker. */
+export async function loadStaffLeaveForMembership(membershipId: string): Promise<PortalStaffLeave[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("staff_leave")
+    .select("id, membership_id, starts_on, ends_on, leave_type, note")
+    .eq("membership_id", membershipId)
+    .order("starts_on", { ascending: false });
+  if (error) { logErr("loadStaffLeaveForMembership", error); return []; }
+  return (data ?? []).map((r) => ({
+    id: r.id as string, membershipId: r.membership_id as string, membershipName: null,
+    startsOn: r.starts_on as string, endsOn: r.ends_on as string,
+    leaveType: r.leave_type as PortalLeaveType, note: r.note as string | null,
+  }));
+}
+
+export interface PortalStaffLeaveInput {
+  membershipId: string;
+  startsOn: string;
+  endsOn: string;
+  leaveType: PortalLeaveType;
+  note: string;
+}
+
+export async function createStaffLeave(input: PortalStaffLeaveInput, createdBy: string | null): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("staff_leave").insert({
+    membership_id: input.membershipId, starts_on: input.startsOn, ends_on: input.endsOn,
+    leave_type: input.leaveType, note: input.note.trim() || null, created_by: createdBy,
+  });
+  if (error) { logErr("createStaffLeave", error); return { error: "Toevoegen van het verlof is niet gelukt." }; }
+  return { error: null };
+}
+
+export async function deleteStaffLeave(leaveId: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("staff_leave").delete().eq("id", leaveId);
+  if (error) { logErr("deleteStaffLeave", error); return { error: "Verwijderen van het verlof is niet gelukt." }; }
+  return { error: null };
+}
+
+// ─── Agenda-koppeling ────────────────────────────────────────────────────────
+// Alleen-lezen iCal-feed per medewerker (migratie 118) — zelf-service (owner
+// of de medewerker zelf), in tegenstelling tot verlof. Het daadwerkelijk
+// ophalen/parsen gebeurt server-side via /api/calendar-feed (CORS + een
+// eventueel onveilige URL horen niet in de browser thuis).
+
+export interface PortalCalendarFeed {
+  membershipId: string;
+  icsUrl: string;
+  lastSyncedAt: string | null;
+  lastSyncError: string | null;
+}
+
+export async function loadCalendarFeed(membershipId: string): Promise<PortalCalendarFeed | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("staff_calendar_feeds")
+    .select("membership_id, ics_url, last_synced_at, last_sync_error")
+    .eq("membership_id", membershipId)
+    .maybeSingle();
+  if (error) { logErr("loadCalendarFeed", error); return null; }
+  if (!data) return null;
+  return {
+    membershipId: data.membership_id, icsUrl: data.ics_url,
+    lastSyncedAt: data.last_synced_at, lastSyncError: data.last_sync_error,
+  };
+}
+
+export async function saveCalendarFeed(membershipId: string, icsUrl: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("staff_calendar_feeds")
+    .upsert({ membership_id: membershipId, ics_url: icsUrl.trim(), last_synced_at: null, last_sync_error: null }, { onConflict: "membership_id" });
+  if (error) { logErr("saveCalendarFeed", error); return { error: "Opslaan van de agenda-koppeling is niet gelukt." }; }
+  return { error: null };
+}
+
+export async function deleteCalendarFeed(membershipId: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("staff_calendar_feeds").delete().eq("membership_id", membershipId);
+  if (error) { logErr("deleteCalendarFeed", error); return { error: "Ontkoppelen van de agenda is niet gelukt." }; }
+  return { error: null };
+}
+
+export interface PortalBusyBlock {
+  startsAt: string;
+  endsAt: string;
+  summary: string;
+}
+
+/** Roept /api/calendar-feed aan — server-side ophalen/parsen, zie route voor SSRF-afscherming en RRULE-expansie. */
+export async function loadExternalBusyBlocks(membershipId: string, rangeStart: string, rangeEnd: string): Promise<{ blocks: PortalBusyBlock[]; error: string | null }> {
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return { blocks: [], error: "Niet ingelogd." };
+
+  try {
+    const res = await fetch(apiUrl("/api/calendar-feed"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ membershipId, rangeStart, rangeEnd }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok && !json.blocks) {
+      return { blocks: [], error: json.error ?? "Ophalen van de agenda is niet gelukt." };
+    }
+    return { blocks: (json.blocks ?? []) as PortalBusyBlock[], error: json.error ?? null };
+  } catch {
+    return { blocks: [], error: "Ophalen van de agenda is niet gelukt." };
+  }
 }
 
 export interface PortalEmployeeOnboardingStatus {

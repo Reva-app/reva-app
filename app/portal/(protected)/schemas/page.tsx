@@ -13,6 +13,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { SortableHeader } from "@/components/ui/table/SortableHeader";
 import { Pagination } from "@/components/ui/table/Pagination";
 import { useTableState } from "@/components/ui/table/useTableState";
+import { ScrollHintX } from "@/components/ui/table/ScrollHintX";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import {
   loadRevaSchedules, loadOrgSchedules, createScheduleLibraryItem, updateScheduleLibraryArchived, duplicateScheduleLibraryItem,
@@ -203,7 +204,7 @@ export default function PortalSchemasPage() {
             description={allSchedules.length === 0 ? "Maak je eerste schema aan om te beginnen." : "Pas de filters aan om meer resultaten te zien."}
           />
         ) : (
-          <div className="overflow-x-auto">
+          <ScrollHintX>
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: "1px solid #e8e5df" }}>
@@ -258,7 +259,7 @@ export default function PortalSchemasPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollHintX>
         )}
         <Pagination page={page} totalPages={totalPages} totalCount={filtered.length} itemLabel="resultaat" itemLabelPlural="resultaten" onPageChange={setPage} />
       </div>

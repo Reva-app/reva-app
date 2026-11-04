@@ -23,7 +23,7 @@ const STEPS = ["Basisgegevens", "Aanleiding", "Behandeltraject", "Intake", "REVA
 
 const emptyInput: PortalPatientInput = {
   firstName: "", lastName: "", email: "", phone: "", dateOfBirth: "", gender: "",
-  locationId: null, therapistId: null, treatmentStartDate: "", surgeryDate: "",
+  locationId: null, therapistId: null, surgeryDate: "",
   injuryDate: "", injuryType: "",
 };
 
@@ -75,9 +75,9 @@ export function PatientWizard({
   const analysis = useMemo(
     () => generateIntakeAnalysis({
       injuryType: input.injuryType, injuryDate: input.injuryDate, surgeryDate: input.surgeryDate,
-      treatmentStartDate: input.treatmentStartDate, intake, availableProtocols: allProtocols,
+      intake, availableProtocols: allProtocols,
     }),
-    [input.injuryType, input.injuryDate, input.surgeryDate, input.treatmentStartDate, intake, allProtocols]
+    [input.injuryType, input.injuryDate, input.surgeryDate, intake, allProtocols]
   );
   const summary = summaryOverride ?? analysis.summary;
   const goals = goalsOverride ?? analysis.suggestedGoals;

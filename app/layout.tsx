@@ -8,9 +8,16 @@ const geist = Geist({
   subsets: ["latin"],
 });
 
+const SITE_URL = "https://www.reva-app.nl";
+const SITE_DESCRIPTION = "REVA App is het herstel dashboard en behandelplatform voor fysiotherapiepraktijken en hun patiënten: grip op je herstel, van intake tot afsluiting.";
+
 export const metadata: Metadata = {
-  title: "REVA: Herstel Dashboard",
-  description: "Jouw persoonlijk herstel dashboard",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "REVA App: Grip op je herstel",
+    template: "%s · REVA App",
+  },
+  description: SITE_DESCRIPTION,
   applicationName: "REVA",
   appleWebApp: {
     capable: true,
@@ -20,6 +27,28 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+  openGraph: {
+    type: "website",
+    locale: "nl_NL",
+    siteName: "REVA App",
+    title: "REVA App: Grip op je herstel",
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "REVA App: Grip op je herstel",
+    description: SITE_DESCRIPTION,
+  },
+};
+
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "REVA App",
+  url: SITE_URL,
+  logo: `${SITE_URL}/reva-logo.svg`,
+  description: SITE_DESCRIPTION,
 };
 
 // viewportFit=cover enables env(safe-area-inset-*) on iPhone notch / home indicator
@@ -39,6 +68,10 @@ export default function RootLayout({
   return (
     <html lang="nl" className={`${geist.variable} h-full`}>
       <body className="h-full antialiased">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

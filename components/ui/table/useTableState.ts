@@ -17,7 +17,7 @@ export function useTableState<T, K extends string>(
   defaultDirForKey?: (key: K) => "asc" | "desc"
 ) {
   const [sortKey, setSortKey] = useState<K>(initialSortKey);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(defaultDirForKey?.(initialSortKey) ?? "asc");
   const [page, setPage] = useState(1);
 
   const sorted = useMemo(() => {

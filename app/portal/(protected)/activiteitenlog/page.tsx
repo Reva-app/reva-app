@@ -8,6 +8,7 @@ import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Pagination } from "@/components/ui/table/Pagination";
 import { useTableState } from "@/components/ui/table/useTableState";
+import { ScrollHintX } from "@/components/ui/table/ScrollHintX";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { loadPortalPatients, type PortalPatient } from "@/lib/services/portalService";
 import {
@@ -145,7 +146,7 @@ export default function ActiviteitenlogPage() {
             description="Wijzigingen aan patiëntgegevens verschijnen hier zodra ze plaatsvinden."
           />
         ) : (
-          <div className="overflow-x-auto">
+          <ScrollHintX>
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: "1px solid #e8e5df" }}>
@@ -187,7 +188,7 @@ export default function ActiviteitenlogPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollHintX>
         )}
         <Pagination page={page} totalPages={totalPages} totalCount={entries.length} itemLabel="gebeurtenis" itemLabelPlural="gebeurtenissen" onPageChange={setPage} />
       </div>

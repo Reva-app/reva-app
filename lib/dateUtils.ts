@@ -25,3 +25,14 @@ export function mondayOfWeek(date: Date = new Date()): string {
   monday.setDate(date.getDate() - (dow === 0 ? 6 : dow - 1));
   return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
 }
+
+/** De 7 datums (ma t/m zo) van de week die begint op `weekStart` ("YYYY-MM-DD", moet zelf al een maandag zijn — zie mondayOfWeek). */
+export function weekDates(weekStart: string): string[] {
+  const [y, m, d] = weekStart.split("-").map(Number);
+  const start = new Date(y, m - 1, d);
+  return Array.from({ length: 7 }, (_, i) => {
+    const day = new Date(start);
+    day.setDate(start.getDate() + i);
+    return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+  });
+}

@@ -121,6 +121,14 @@ export const config = {
     // each one already checks auth itself and returns a proper JSON error/401
     // (see app/api/delete-account/route.ts). A middleware redirect here turns
     // into a non-JSON response that breaks the calling fetch().
-    "/((?!_next/static|_next/image|favicon\\.ico|auth/callback|auth/reset-password|auth/verify|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    //
+    // Ook uitgezonderd: de dynamische icon/manifest-routes (app/icon.tsx,
+    // apple-icon.tsx, opengraph-image.tsx, manifest.ts) — die hebben geen
+    // bestandsextensie in hun pad (Next serveert ze op /icon, niet /icon.png),
+    // dus vielen zonder deze uitzondering buiten de statische-asset-regel
+    // hierboven en werden onterecht naar /login omgeleid. Daardoor toonden
+    // browsertab-favicon, PWA-installicoon en gedeelde link-previews nooit
+    // het echte REVA-logo, alleen een lege/redirect-response.
+    "/((?!_next/static|_next/image|favicon\\.ico|manifest\\.webmanifest|icon$|apple-icon$|opengraph-image$|twitter-image$|auth/callback|auth/reset-password|auth/verify|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

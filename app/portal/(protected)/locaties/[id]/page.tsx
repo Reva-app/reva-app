@@ -2,20 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Star, Pencil, UserPlus, Loader2 } from "lucide-react";
+import { ArrowLeft, Star, Pencil, UserPlus, Loader2, Plus, Trash2, Archive, ArchiveRestore, DoorOpen } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Avatar } from "@/components/ui/Avatar";
 import { LocationForm } from "@/components/portal/LocationForm";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import {
   loadPortalLocationFull, loadPortalRoles, addPortalMember,
+  loadLocationRooms, createLocationRoom, updateLocationRoom, updateRoomArchived, deleteLocationRoom,
   OPENING_HOURS_DAY_LABELS, MANAGE_LOCATIONS_ROLES,
-  type PortalLocationFull, type PortalRoleOption, type PortalOpeningHoursDayKey,
+  type PortalLocationFull, type PortalRoleOption, type PortalOpeningHoursDayKey, type PortalRoom,
 } from "@/lib/services/portalService";
 
 const DAY_ORDER: PortalOpeningHoursDayKey[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
@@ -48,12 +50,19 @@ export default function PortalLocationDetailPage() {
   const [addEmployeeError, setAddEmployeeError] = useState("");
   const { showToast, toastNode } = useToast();
 
+  const [rooms, setRooms] = useState<PortalRoom[]>([]);
+  const [newRoomName, setNewRoomName] = useState("");
+  const [addingRoom, setAddingRoom] = useState(false);
+  const [editingRoom, setEditingRoom] = useState<{ id: string; name: string } | null>(null);
+  const [confirmDeleteRoom, setConfirmDeleteRoom] = useState<PortalRoom | null>(null);
+
   const canManage = !!membership && MANAGE_LOCATIONS_ROLES.includes(membership.roleKey);
 
   function refresh() {
-    loadPortalLocationFull(locationId).then((data) => {
+    Promise.all([loadPortalLocationFull(locationId), loadLocationRooms(locationId)]).then(([data, roomsData]) => {
       setLocation(data);
       setNotFound(!data);
+      setRooms(roomsData);
       setLoading(false);
     });
   }
@@ -61,11 +70,12 @@ export default function PortalLocationDetailPage() {
   useEffect(() => {
     if (!checked || !membership) return;
     let cancelled = false;
-    Promise.all([loadPortalLocationFull(locationId), loadPortalRoles()]).then(([data, rolesData]) => {
+    Promise.all([loadPortalLocationFull(locationId), loadPortalRoles(), loadLocationRooms(locationId)]).then(([data, rolesData, roomsData]) => {
       if (cancelled) return;
       setLocation(data);
       setNotFound(!data);
       setRoles(rolesData);
+      setRooms(roomsData);
       if (rolesData.length > 0) setEmployeeRoleId(rolesData[0].id);
       setLoading(false);
     });
@@ -73,6 +83,40 @@ export default function PortalLocationDetailPage() {
       cancelled = true;
     };
   }, [checked, membership, locationId]);
+
+  async function handleAddRoom() {
+    if (!newRoomName.trim()) return;
+    setAddingRoom(true);
+    const { error } = await createLocationRoom(locationId, newRoomName.trim(), rooms.length);
+    setAddingRoom(false);
+    if (error) { showToast(error, "error"); return; }
+    setNewRoomName("");
+    refresh();
+  }
+
+  async function handleSaveRoomName() {
+    if (!editingRoom || !editingRoom.name.trim()) return;
+    const { error } = await updateLocationRoom(editingRoom.id, editingRoom.name.trim());
+    if (error) { showToast(error, "error"); return; }
+    setEditingRoom(null);
+    refresh();
+  }
+
+  async function handleToggleRoomArchived(room: PortalRoom) {
+    const { error } = await updateRoomArchived(room.id, !room.archived);
+    if (error) { showToast(error, "error"); return; }
+    showToast(room.archived ? "Ruimte gedearchiveerd" : "Ruimte gearchiveerd");
+    refresh();
+  }
+
+  async function handleDeleteRoom() {
+    if (!confirmDeleteRoom) return;
+    const { error } = await deleteLocationRoom(confirmDeleteRoom.id);
+    setConfirmDeleteRoom(null);
+    if (error) { showToast(error, "error"); return; }
+    showToast("Ruimte verwijderd");
+    refresh();
+  }
 
   async function handleAddEmployee(e: React.FormEvent) {
     e.preventDefault();
@@ -160,6 +204,73 @@ export default function PortalLocationDetailPage() {
               })}
             </div>
           </Card>
+
+          <Card>
+            <CardHeader title="Ruimtes" subtitle={`${rooms.filter((r) => !r.archived).length} actieve ${rooms.filter((r) => !r.archived).length === 1 ? "ruimte" : "ruimtes"}`} />
+            {rooms.length === 0 ? (
+              <p className="text-sm text-gray-400">Nog geen ruimtes voor deze locatie.</p>
+            ) : (
+              <div className="space-y-2 mb-3">
+                {rooms.map((room) => (
+                  <div key={room.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: "#f8f7f4" }}>
+                    <DoorOpen size={14} className="text-gray-400 shrink-0" />
+                    {editingRoom?.id === room.id ? (
+                      <input
+                        autoFocus value={editingRoom.name}
+                        onChange={(e) => setEditingRoom({ id: room.id, name: e.target.value })}
+                        onKeyDown={(e) => e.key === "Enter" && handleSaveRoomName()}
+                        onBlur={handleSaveRoomName}
+                        className="flex-1 text-sm rounded-lg border px-2 py-1 focus:outline-none" style={inputStyle}
+                      />
+                    ) : (
+                      <span className="flex-1 text-sm text-gray-800 truncate">{room.name}</span>
+                    )}
+                    {room.archived && <Badge variant="muted">Gearchiveerd</Badge>}
+                    {canManage && editingRoom?.id !== room.id && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button type="button" onClick={() => setEditingRoom({ id: room.id, name: room.name })}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-gray-100">
+                          <Pencil size={12} className="text-gray-400" />
+                        </button>
+                        <button type="button" onClick={() => handleToggleRoomArchived(room)}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-gray-100">
+                          {room.archived ? <ArchiveRestore size={12} className="text-gray-400" /> : <Archive size={12} className="text-gray-400" />}
+                        </button>
+                        {room.archived && (
+                          <button type="button" onClick={() => setConfirmDeleteRoom(room)}
+                            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50">
+                            <Trash2 size={12} className="text-gray-300 hover:text-red-400" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {canManage && (
+              <div className="flex items-center gap-2">
+                <input
+                  value={newRoomName} onChange={(e) => setNewRoomName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddRoom()}
+                  placeholder="Naam van de ruimte" className="flex-1 text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+                />
+                <Button size="sm" variant="secondary" disabled={addingRoom || !newRoomName.trim()} onClick={handleAddRoom}>
+                  {addingRoom ? <Loader2 size={13} className="animate-spin" /> : <><Plus size={13} /> Toevoegen</>}
+                </Button>
+              </div>
+            )}
+          </Card>
+
+          {confirmDeleteRoom && (
+            <ConfirmDialog
+              title="Ruimte verwijderen?"
+              message={`"${confirmDeleteRoom.name}" wordt permanent verwijderd.`}
+              confirmLabel="Verwijderen"
+              onCancel={() => setConfirmDeleteRoom(null)}
+              onConfirm={handleDeleteRoom}
+            />
+          )}
 
           <Card>
             <CardHeader

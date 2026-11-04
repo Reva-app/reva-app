@@ -110,7 +110,8 @@ export default function AuthCallbackPage() {
         className="w-10 h-10 rounded-xl flex items-center justify-center"
         style={{ background: "#e8632a" }}
       >
-        <span className="text-white font-bold text-base leading-none">R</span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/reva-logo-transparant.svg" alt="REVA" className="w-6 h-6" />
       </div>
       <p className="text-sm text-gray-500">Inloggen&hellip;</p>
     </div>

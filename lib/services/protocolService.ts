@@ -1347,6 +1347,8 @@ export interface PortalPatientProtocolSchedule {
   exercises: PortalPatientProtocolScheduleExercise[];
 }
 
+export type TransitionProgressVsExpected = "better" | "as_expected" | "harder";
+
 export interface PortalPatientProtocolPhase {
   id: string;
   name: string;
@@ -1358,6 +1360,10 @@ export interface PortalPatientProtocolPhase {
   forbiddenActivities: string[];
   transitionPainScore: number | null;
   transitionNote: string | null;
+  transitionMobilityScore: number | null;
+  transitionSwelling: boolean | null;
+  transitionSatisfactionScore: number | null;
+  transitionProgressVsExpected: TransitionProgressVsExpected | null;
   criteria: PortalPatientProtocolCriterion[];
   milestones: PortalPatientProtocolMilestone[];
   educationItems: PortalPatientProtocolEducationItem[];
@@ -1491,7 +1497,7 @@ export async function loadPatientProtocolAssignment(patientId: string): Promise<
 
   const { data: phaseRows, error: phasesError } = await supabase
     .from("patient_protocol_phases")
-    .select("id, sort_order, name, description, therapist_notes, status, started_at, completed_at, forbidden_activities, transition_pain_score, transition_note")
+    .select("id, sort_order, name, description, therapist_notes, status, started_at, completed_at, forbidden_activities, transition_pain_score, transition_note, transition_mobility_score, transition_swelling, transition_satisfaction_score, transition_progress_vs_expected")
     .eq("patient_protocol_id", assignment.id)
     .order("sort_order");
   if (phasesError) logErr("loadPatientProtocolAssignment(phases)", phasesError);
@@ -1583,6 +1589,9 @@ export async function loadPatientProtocolAssignment(patientId: string): Promise<
     id: p.id, name: p.name, description: p.description, therapistNotes: p.therapist_notes,
     status: p.status, startedAt: p.started_at, completedAt: p.completed_at, forbiddenActivities: p.forbidden_activities ?? [],
     transitionPainScore: p.transition_pain_score, transitionNote: p.transition_note,
+    transitionMobilityScore: p.transition_mobility_score, transitionSwelling: p.transition_swelling,
+    transitionSatisfactionScore: p.transition_satisfaction_score,
+    transitionProgressVsExpected: p.transition_progress_vs_expected as TransitionProgressVsExpected | null,
     criteria: criteriaByPhase.get(p.id) ?? [],
     milestones: milestonesByPhase.get(p.id) ?? [],
     educationItems: educationByPhase.get(p.id) ?? [],
@@ -1705,24 +1714,38 @@ export async function updateMilestoneCompletion(
 }
 
 /**
+ * Faseovergang-check-in (migratie 108 + 112) — vastgelegd op de net
+ * afgesloten fase, naast de al bestaande criteria-/mijlpaalafvinklijst.
+ * Alle velden optioneel: de therapeut vult in wat relevant is.
+ */
+export interface PhaseTransitionCheckin {
+  painScoreNow: number | null;
+  note: string;
+  mobilityScore: number | null;
+  swelling: boolean | null;
+  satisfactionScore: number | null;
+  progressVsExpected: TransitionProgressVsExpected | null;
+}
+
+/**
  * Zet de huidige fase op 'completed' en de volgende op 'active' — twee
  * sequentiële updates zodat de partial-unique-index (max 1 actieve fase per
- * toewijzing) nooit tijdelijk twee actieve rijen ziet. painScoreNow/note zijn
- * de optionele faseovergang-check-in (migratie 108) — vastgelegd op de net
- * afgesloten fase, naast de al bestaande criteria-/mijlpaalafvinklijst.
+ * toewijzing) nooit tijdelijk twee actieve rijen ziet.
  */
 export async function advanceToNextPhase(
   currentPhaseId: string,
   nextPhaseId: string,
-  painScoreNow?: number | null,
-  note?: string
+  checkin?: PhaseTransitionCheckin
 ): Promise<{ error: string | null }> {
   const supabase = createClient();
   const { error: completeError } = await supabase
     .from("patient_protocol_phases")
     .update({
       status: "completed", completed_at: new Date().toISOString(),
-      transition_pain_score: painScoreNow ?? null, transition_note: note?.trim() || null,
+      transition_pain_score: checkin?.painScoreNow ?? null, transition_note: checkin?.note?.trim() || null,
+      transition_mobility_score: checkin?.mobilityScore ?? null, transition_swelling: checkin?.swelling ?? null,
+      transition_satisfaction_score: checkin?.satisfactionScore ?? null,
+      transition_progress_vs_expected: checkin?.progressVsExpected ?? null,
     })
     .eq("id", currentPhaseId);
   if (completeError) { logErr("advanceToNextPhase(complete)", completeError); return { error: "Afronden van de fase is niet gelukt." }; }

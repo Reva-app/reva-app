@@ -32,7 +32,6 @@ function toInput(p: PortalPatient): PortalPatientInput {
     gender: p.gender || "",
     locationId: p.locationId,
     therapistId: p.therapistId,
-    treatmentStartDate: p.treatmentStartDate || "",
     surgeryDate: p.surgeryDate || "",
     injuryDate: p.injuryDate || "",
     injuryType: p.injuryType || "",
@@ -145,10 +144,6 @@ export function PatientEditForm({ patient, locations, members, onSaved, onClose 
           <div>
             <FieldLabel>Datum blessure</FieldLabel>
             <DatePicker value={input.injuryDate} onChange={(v) => update("injuryDate", v)} placeholder="Kies een datum" />
-          </div>
-          <div>
-            <FieldLabel>Startdatum behandeling</FieldLabel>
-            <DatePicker value={input.treatmentStartDate} onChange={(v) => update("treatmentStartDate", v)} placeholder="Kies een datum" />
           </div>
           <div>
             <FieldLabel>Operatiedatum</FieldLabel>

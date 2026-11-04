@@ -12,18 +12,23 @@ import { Tabs } from "@/components/ui/Tabs";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Avatar } from "@/components/ui/Avatar";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { formatDate } from "@/lib/data";
+import { todayStr } from "@/lib/dateUtils";
 import { apiUrl } from "@/lib/apiBase";
 import {
   loadPortalStaffOverview, loadPortalLocations, loadPortalRoles, loadTherapistWorkload,
   loadMembershipLocations, updateMembershipLocations,
   loadWorkSchedule, updateWorkSchedule, DEFAULT_WORK_SCHEDULE, WEEKDAY_LABELS,
+  loadStaffLeaveForMembership, createStaffLeave, deleteStaffLeave, LEAVE_TYPE_LABELS,
+  loadCalendarFeed, saveCalendarFeed, deleteCalendarFeed, loadExternalBusyBlocks,
   updateStaffMember, updateStaffProfile, deleteStaffMember, resetStaffMfa, uploadOwnAvatar,
   MANAGE_STAFF_ROLES, PORTAL_STAFF_STATUS_LABELS, STAFF_INACTIVITY_THRESHOLD_DAYS, isDateStale,
   type PortalStaffMember, type PortalLocationOption, type PortalRoleOption,
-  type PortalWorkSchedule, type PortalWeekday,
+  type PortalWorkSchedule, type PortalWeekday, type PortalStaffLeave, type PortalLeaveType,
+  type PortalCalendarFeed, type PortalBusyBlock,
 } from "@/lib/services/portalService";
 
 const inputStyle = {
@@ -43,15 +48,18 @@ const ROLE_EXPLANATIONS: Record<string, string> = {
   therapist: "Fysiotherapeut kan patiëntdossiers aanmaken, inzien en bewerken, en herstelplannen, schema's en oefeningen beheren. Geen toegang tot medewerkers- of locatiebeheer, en geen inzage in de praktijkbrede analyses.",
 };
 
-type TabKey = "algemeen" | "werkuren" | "locaties" | "rol" | "account";
+type TabKey = "algemeen" | "werkuren" | "verlof" | "locaties" | "rol" | "account";
 
 const TAB_OPTIONS: { value: TabKey; label: string }[] = [
   { value: "algemeen", label: "Algemene gegevens" },
   { value: "werkuren", label: "Werkuren" },
+  { value: "verlof", label: "Verlof" },
   { value: "locaties", label: "Locaties" },
   { value: "rol", label: "Rol" },
   { value: "account", label: "Account" },
 ];
+
+const LEAVE_TYPE_OPTIONS: PortalLeaveType[] = ["vakantie", "vrije_dag", "ziek", "overig"];
 
 /**
  * Gedeeld door de medewerkerslijst-detailpagina (`/portal/medewerkers/[id]`)
@@ -93,10 +101,31 @@ export function MedewerkerDetail({
   const [bigNumber, setBigNumber] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
 
-  // Tab 2
+  // Tab 2 — werkrooster is per locatie (migratie 113)
   const [schedule, setSchedule] = useState<PortalWorkSchedule>(DEFAULT_WORK_SCHEDULE);
-  const [scheduleLoaded, setScheduleLoaded] = useState(false);
+  const [scheduleLocationId, setScheduleLocationId] = useState("");
+  const [scheduleLoadedForLocationId, setScheduleLoadedForLocationId] = useState<string | null>(null);
   const [savingSchedule, setSavingSchedule] = useState(false);
+
+  // Agenda-koppeling (migratie 118) — alleen-lezen iCal-feed, zelfde tab als werkuren
+  const [calendarFeed, setCalendarFeed] = useState<PortalCalendarFeed | null>(null);
+  const [calendarFeedLoaded, setCalendarFeedLoaded] = useState(false);
+  const [icsUrlInput, setIcsUrlInput] = useState("");
+  const [savingCalendarFeed, setSavingCalendarFeed] = useState(false);
+  const [busyBlocks, setBusyBlocks] = useState<PortalBusyBlock[] | null>(null);
+  const [busyBlocksLoading, setBusyBlocksLoading] = useState(false);
+  const [busyBlocksError, setBusyBlocksError] = useState("");
+
+  // Tab "verlof" — alleen praktijkeigenaar (zie MANAGE_STAFF_ROLES-gating verderop)
+  const [leaveList, setLeaveList] = useState<PortalStaffLeave[]>([]);
+  const [leaveLoaded, setLeaveLoaded] = useState(false);
+  const [leaveStartsOn, setLeaveStartsOn] = useState("");
+  const [leaveEndsOn, setLeaveEndsOn] = useState("");
+  const [leaveType, setLeaveType] = useState<PortalLeaveType>("vakantie");
+  const [leaveNote, setLeaveNote] = useState("");
+  const [savingLeave, setSavingLeave] = useState(false);
+  const [confirmDeleteLeaveId, setConfirmDeleteLeaveId] = useState<string | null>(null);
+  const [deletingLeave, setDeletingLeave] = useState(false);
 
   // Tab 3
   const [mainLocationId, setMainLocationId] = useState("");
@@ -186,21 +215,52 @@ export function MedewerkerDetail({
     return () => { cancelled = true; };
   }, [checked, membership, canManage, member?.userId]);
 
-  useEffect(() => {
-    if (tab !== "werkuren" || scheduleLoaded) return;
-    loadWorkSchedule(membershipId).then((data) => {
-      setSchedule(data);
-      setScheduleLoaded(true);
-    });
-  }, [tab, scheduleLoaded, membershipId]);
+  // Alle locaties waar deze medewerker aan gekoppeld is (hoofdlocatie + extra) —
+  // dat is de keuzelijst voor "voor welke locatie stel ik dit werkrooster in".
+  const scheduleLocationOptions = [mainLocationId, ...extraLocationIds]
+    .filter((id, i, arr) => id && arr.indexOf(id) === i)
+    .map((id) => locations.find((l) => l.id === id))
+    .filter((l): l is PortalLocationOption => !!l);
 
   useEffect(() => {
-    if (tab !== "locaties" || locationsLoaded) return;
+    if ((tab !== "werkuren" && tab !== "locaties") || locationsLoaded) return;
     loadMembershipLocations(membershipId).then((ids) => {
       setExtraLocationIds(ids);
       setLocationsLoaded(true);
     });
   }, [tab, locationsLoaded, membershipId]);
+
+  // Zodra de locatiekeuzes bekend zijn, standaard de hoofdlocatie selecteren.
+  useEffect(() => {
+    if (scheduleLocationId || scheduleLocationOptions.length === 0) return;
+    setScheduleLocationId(scheduleLocationOptions[0].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scheduleLocationOptions.length]);
+
+  useEffect(() => {
+    if (tab !== "werkuren" || !scheduleLocationId || scheduleLoadedForLocationId === scheduleLocationId) return;
+    loadWorkSchedule(membershipId, scheduleLocationId).then((data) => {
+      setSchedule(data);
+      setScheduleLoadedForLocationId(scheduleLocationId);
+    });
+  }, [tab, scheduleLocationId, scheduleLoadedForLocationId, membershipId]);
+
+  useEffect(() => {
+    if (tab !== "werkuren" || calendarFeedLoaded) return;
+    loadCalendarFeed(membershipId).then((feed) => {
+      setCalendarFeed(feed);
+      setIcsUrlInput(feed?.icsUrl ?? "");
+      setCalendarFeedLoaded(true);
+    });
+  }, [tab, calendarFeedLoaded, membershipId]);
+
+  useEffect(() => {
+    if (tab !== "verlof" || leaveLoaded) return;
+    loadStaffLeaveForMembership(membershipId).then((data) => {
+      setLeaveList(data);
+      setLeaveLoaded(true);
+    });
+  }, [tab, leaveLoaded, membershipId]);
 
   async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault();
@@ -225,11 +285,73 @@ export function MedewerkerDetail({
   }
 
   async function handleSaveSchedule() {
+    if (!scheduleLocationId) return;
     setSavingSchedule(true);
-    const { error } = await updateWorkSchedule(membershipId, schedule);
+    const { error } = await updateWorkSchedule(membershipId, scheduleLocationId, schedule);
     setSavingSchedule(false);
     if (error) { showToast("Opslaan mislukt: " + error, "error"); return; }
     showToast("Werkuren opgeslagen");
+  }
+
+  async function handleSaveCalendarFeed() {
+    if (!icsUrlInput.trim()) return;
+    setSavingCalendarFeed(true);
+    const { error } = await saveCalendarFeed(membershipId, icsUrlInput);
+    setSavingCalendarFeed(false);
+    if (error) { showToast(error, "error"); return; }
+    setBusyBlocks(null);
+    setCalendarFeedLoaded(false);
+    showToast("Agenda gekoppeld");
+  }
+
+  async function handleDisconnectCalendarFeed() {
+    setSavingCalendarFeed(true);
+    const { error } = await deleteCalendarFeed(membershipId);
+    setSavingCalendarFeed(false);
+    if (error) { showToast(error, "error"); return; }
+    setIcsUrlInput("");
+    setBusyBlocks(null);
+    setCalendarFeedLoaded(false);
+    showToast("Agenda ontkoppeld");
+  }
+
+  async function handleRefreshBusyBlocks() {
+    setBusyBlocksLoading(true);
+    setBusyBlocksError("");
+    const rangeStart = todayStr();
+    const rangeEndDate = new Date();
+    rangeEndDate.setDate(rangeEndDate.getDate() + 6);
+    const rangeEnd = `${rangeEndDate.getFullYear()}-${String(rangeEndDate.getMonth() + 1).padStart(2, "0")}-${String(rangeEndDate.getDate()).padStart(2, "0")}`;
+    const { blocks, error } = await loadExternalBusyBlocks(membershipId, rangeStart, rangeEnd);
+    setBusyBlocksLoading(false);
+    setBusyBlocks(blocks);
+    if (error) { setBusyBlocksError(error); return; }
+    setCalendarFeedLoaded(false);
+  }
+
+  async function handleAddLeave() {
+    if (!leaveStartsOn || !leaveEndsOn) return;
+    setSavingLeave(true);
+    const { error } = await createStaffLeave(
+      { membershipId, startsOn: leaveStartsOn, endsOn: leaveEndsOn, leaveType, note: leaveNote },
+      user?.id ?? null
+    );
+    setSavingLeave(false);
+    if (error) { showToast(error, "error"); return; }
+    setLeaveStartsOn(""); setLeaveEndsOn(""); setLeaveType("vakantie"); setLeaveNote("");
+    setLeaveLoaded(false);
+    showToast("Verlof toegevoegd");
+  }
+
+  async function handleDeleteLeave() {
+    if (!confirmDeleteLeaveId) return;
+    setDeletingLeave(true);
+    const { error } = await deleteStaffLeave(confirmDeleteLeaveId);
+    setDeletingLeave(false);
+    setConfirmDeleteLeaveId(null);
+    if (error) { showToast(error, "error"); return; }
+    setLeaveLoaded(false);
+    showToast("Verlof verwijderd");
   }
 
   async function handleSaveLocations() {
@@ -442,10 +564,25 @@ export function MedewerkerDetail({
           {tab === "werkuren" && (
             <Card>
               <CardHeader title="Werkuren" subtitle={canEditGeneral ? undefined : "Alleen de medewerker zelf of de Practice Owner kan dit bewerken."} />
-              {!scheduleLoaded ? (
-                <p className="text-sm text-gray-400">Laden…</p>
+              {scheduleLocationOptions.length === 0 ? (
+                <p className="text-sm text-gray-400">Ken eerst een locatie toe via het tabblad &quot;Locaties&quot; om een werkrooster in te stellen.</p>
               ) : (
-                <div className="space-y-2">
+                <>
+                  {scheduleLocationOptions.length > 1 && (
+                    <div className="mb-4">
+                      <FieldLabel>Werkrooster voor locatie</FieldLabel>
+                      <select
+                        value={scheduleLocationId} onChange={(e) => setScheduleLocationId(e.target.value)}
+                        className="w-full sm:w-80 text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+                      >
+                        {scheduleLocationOptions.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {scheduleLoadedForLocationId !== scheduleLocationId ? (
+                    <p className="text-sm text-gray-400">Laden…</p>
+                  ) : (
+                    <div className="space-y-2">
                   {WEEKDAY_ORDER.map((day) => {
                     const d = schedule[day];
                     return (
@@ -480,6 +617,141 @@ export function MedewerkerDetail({
                     <Button size="sm" className="mt-2" disabled={savingSchedule} onClick={handleSaveSchedule}>
                       {savingSchedule ? <Loader2 size={13} className="animate-spin" /> : "Opslaan"}
                     </Button>
+                  )}
+                </div>
+                  )}
+                </>
+              )}
+
+              <div className="mt-6 pt-5" style={{ borderTop: "1px solid #f0eee8" }}>
+                <p className="text-sm font-medium text-gray-800 mb-1">Externe agenda</p>
+                <p className="text-xs text-gray-400 mb-3">
+                  Koppel de iCal-link van je persoonlijke agenda (bijv. Google Calendar&apos;s &quot;geheime adres in iCal-indeling&quot;) om drukke tijden hier te zien. Alleen-lezen, er wordt nooit iets teruggeschreven.
+                </p>
+                {!calendarFeedLoaded ? (
+                  <p className="text-sm text-gray-400">Laden…</p>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-end gap-2">
+                      <div className="flex-1 min-w-[220px]">
+                        <FieldLabel>iCal-link</FieldLabel>
+                        <input type="url" value={icsUrlInput} onChange={(e) => setIcsUrlInput(e.target.value)} disabled={!canEditGeneral}
+                          placeholder="https://calendar.google.com/calendar/ical/.../basic.ics"
+                          className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60" style={inputStyle} />
+                      </div>
+                      {canEditGeneral && (
+                        <div className="flex gap-2">
+                          <Button size="sm" disabled={savingCalendarFeed || !icsUrlInput.trim()} onClick={handleSaveCalendarFeed}>
+                            {savingCalendarFeed ? <Loader2 size={13} className="animate-spin" /> : "Opslaan"}
+                          </Button>
+                          {calendarFeed && (
+                            <Button size="sm" variant="secondary" disabled={savingCalendarFeed} onClick={handleDisconnectCalendarFeed}>
+                              Ontkoppelen
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {calendarFeed && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-gray-400">
+                          {calendarFeed.lastSyncError
+                            ? <span style={{ color: "#dc2626" }}>Synchronisatie mislukt: {calendarFeed.lastSyncError}</span>
+                            : calendarFeed.lastSyncedAt
+                              ? `Laatst gesynchroniseerd: ${formatDate(calendarFeed.lastSyncedAt)}`
+                              : "Nog niet gesynchroniseerd."}
+                        </p>
+                        <Button size="sm" variant="secondary" disabled={busyBlocksLoading} onClick={handleRefreshBusyBlocks}>
+                          {busyBlocksLoading ? <Loader2 size={13} className="animate-spin" /> : "Ververs (komende 7 dagen)"}
+                        </Button>
+                        {busyBlocksError && <p className="text-xs" style={{ color: "#dc2626" }}>{busyBlocksError}</p>}
+                        {busyBlocks && busyBlocks.length > 0 && (
+                          <div className="space-y-1.5 mt-2">
+                            {busyBlocks.map((b, i) => (
+                              <div key={i} className="rounded-lg px-2.5 py-2 text-xs" style={{ background: "#f8f7f4" }}>
+                                <p className="font-medium text-gray-700">{formatDate(b.startsAt)} · {b.startsAt.slice(11, 16)}–{b.endsAt.slice(11, 16)}</p>
+                                {b.summary && <p className="text-gray-400 mt-0.5">{b.summary}</p>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {busyBlocks && busyBlocks.length === 0 && !busyBlocksError && (
+                          <p className="text-xs text-gray-400">Geen drukke tijden gevonden in de komende 7 dagen.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {tab === "verlof" && (
+            <Card>
+              <CardHeader title="Verlof" subtitle={canManage ? undefined : "Alleen de Practice Owner kan verlof beheren."} />
+              {!leaveLoaded ? (
+                <p className="text-sm text-gray-400">Laden…</p>
+              ) : (
+                <div className="space-y-5">
+                  {leaveList.length === 0 ? (
+                    <p className="text-sm text-gray-400">Nog geen verlof geregistreerd.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {leaveList.map((l) => (
+                        <div key={l.id} className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5" style={{ borderColor: "#e8e5df" }}>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm text-gray-800">
+                                {formatDate(l.startsOn)}{l.startsOn !== l.endsOn ? ` tot ${formatDate(l.endsOn)}` : ""}
+                              </span>
+                              <Badge variant="default">{LEAVE_TYPE_LABELS[l.leaveType]}</Badge>
+                            </div>
+                            {l.note && <p className="text-xs text-gray-400 mt-0.5 truncate">{l.note}</p>}
+                          </div>
+                          {canManage && (
+                            <Button size="sm" variant="secondary" onClick={() => setConfirmDeleteLeaveId(l.id)}>Verwijderen</Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {canManage && (
+                    <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "#e8e5df" }}>
+                      <p className="text-sm font-medium text-gray-800">Verlof toevoegen</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <FieldLabel>Van</FieldLabel>
+                          <DatePicker value={leaveStartsOn} onChange={setLeaveStartsOn} placeholder="Kies een datum" />
+                        </div>
+                        <div>
+                          <FieldLabel>Tot</FieldLabel>
+                          <DatePicker value={leaveEndsOn} onChange={setLeaveEndsOn} placeholder="Kies een datum" />
+                        </div>
+                      </div>
+                      <div>
+                        <FieldLabel>Type</FieldLabel>
+                        <select
+                          value={leaveType} onChange={(e) => setLeaveType(e.target.value as PortalLeaveType)}
+                          className="w-full sm:w-80 text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+                        >
+                          {LEAVE_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{LEAVE_TYPE_LABELS[t]}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <FieldLabel>Notitie (optioneel)</FieldLabel>
+                        <input type="text" value={leaveNote} onChange={(e) => setLeaveNote(e.target.value)}
+                          className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
+                      </div>
+                      <Button
+                        size="sm"
+                        disabled={!leaveStartsOn || !leaveEndsOn || leaveEndsOn < leaveStartsOn || savingLeave}
+                        onClick={handleAddLeave}
+                      >
+                        {savingLeave ? <Loader2 size={13} className="animate-spin" /> : "Verlof toevoegen"}
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}
@@ -645,6 +917,17 @@ export function MedewerkerDetail({
               loading={accountBusy}
               onCancel={() => setConfirmDelete(false)}
               onConfirm={handleDelete}
+            />
+          )}
+
+          {confirmDeleteLeaveId && (
+            <ConfirmDialog
+              title="Verlof verwijderen?"
+              message="Dit verlofrecord wordt permanent verwijderd."
+              confirmLabel="Verwijderen"
+              loading={deletingLeave}
+              onCancel={() => setConfirmDeleteLeaveId(null)}
+              onConfirm={handleDeleteLeave}
             />
           )}
 
