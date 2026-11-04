@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, AlertCircle, Loader2, Building2 } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
+import { RevaGlyph } from "@/components/brand/RevaGlyph";
 
 /**
  * Los inlogscherm voor de Practice Portal — net als /admin/login bewust apart
@@ -50,8 +51,7 @@ function PortalLoginForm() {
       <div className="text-center mb-8">
         <div className="inline-flex items-center gap-2 mb-6">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "#18181a" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/reva-logo-transparant.svg" alt="REVA" className="w-5 h-5" />
+            <RevaGlyph className="h-[18px] text-white" />
           </div>
           <span className="font-bold text-lg" style={{ color: "#1a1a1a" }}>REVA</span>
         </div>

@@ -11,7 +11,8 @@
     "cap:sync": "npx cap sync",
     "cap:ios": "npx cap open ios",
     "cap:android": "npx cap open android",
-    "email:build": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/email-build.mjs"
+    "email:build": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/email-build.mjs",
+    "brand:build": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/brand-build.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.0",

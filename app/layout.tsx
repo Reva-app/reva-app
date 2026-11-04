@@ -47,7 +47,7 @@ const organizationJsonLd = {
   "@type": "Organization",
   name: "REVA App",
   url: SITE_URL,
-  logo: `${SITE_URL}/reva-logo.svg`,
+  logo: `${SITE_URL}/brand/reva-icon-512.png`,
   description: SITE_DESCRIPTION,
 };
 

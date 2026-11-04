@@ -15,6 +15,7 @@ import dynamic from "next/dynamic";
 import type { InnameFormFields } from "@/components/medicatie/InnameModal";
 import { nowTimeStr, todayStr } from "@/lib/dateUtils";
 import type { MedicatieLog } from "@/lib/data";
+import { RevaGlyph } from "@/components/brand/RevaGlyph";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const InnameModal = dynamic<any>(
@@ -219,8 +220,7 @@ export function TopBar() {
               ) : hasOwnBranding ? (
                 <span className="text-white font-bold text-sm leading-none">{branding!.name[0].toUpperCase()}</span>
               ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src="/reva-logo-transparant.svg" alt="REVA" className="w-4 h-4" />
+                <RevaGlyph className="h-3.5 text-white" />
               )}
             </div>
             <span className="font-bold text-base" style={{ color: "#1a1a1a" }}>{hasOwnBranding ? branding!.name : "REVA"}</span>

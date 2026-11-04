@@ -122,13 +122,12 @@ export const config = {
     // (see app/api/delete-account/route.ts). A middleware redirect here turns
     // into a non-JSON response that breaks the calling fetch().
     //
-    // Ook uitgezonderd: de dynamische icon/manifest-routes (app/icon.tsx,
-    // apple-icon.tsx, opengraph-image.tsx, manifest.ts) — die hebben geen
-    // bestandsextensie in hun pad (Next serveert ze op /icon, niet /icon.png),
-    // dus vielen zonder deze uitzondering buiten de statische-asset-regel
-    // hierboven en werden onterecht naar /login omgeleid. Daardoor toonden
-    // browsertab-favicon, PWA-installicoon en gedeelde link-previews nooit
-    // het echte REVA-logo, alleen een lege/redirect-response.
-    "/((?!_next/static|_next/image|favicon\\.ico|manifest\\.webmanifest|icon$|apple-icon$|opengraph-image$|twitter-image$|auth/callback|auth/reset-password|auth/verify|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // Ook uitgezonderd: manifest.webmanifest, favicon en de dynamische
+    // link-preview-routes (opengraph-image.tsx/twitter-image) — browsers en
+    // link-previews halen die op zónder inlogcookies, dus een redirect naar
+    // /login brak de PWA-installatie en de gedeelde link-previews. De
+    // app-iconen zelf zijn statische bestanden (app/icon.svg,
+    // apple-icon.png) en vallen al onder de extensieregel.
+    "/((?!_next/static|_next/image|favicon\\.ico|manifest\\.webmanifest|opengraph-image$|twitter-image$|auth/callback|auth/reset-password|auth/verify|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).*)",
   ],
 };

@@ -18,6 +18,7 @@ import {
 import { useAppData } from "@/lib/store";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAppBranding } from "@/lib/hooks/useAppBranding";
+import { RevaGlyph } from "@/components/brand/RevaGlyph";
 
 const primaryNav = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -99,8 +100,7 @@ export function Sidebar() {
             ) : hasOwnBranding ? (
               <span className="text-white font-bold text-xs">{branding!.name[0].toUpperCase()}</span>
             ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src="/reva-logo-transparant.svg" alt="REVA" className="w-4 h-4" />
+              <RevaGlyph className="h-3.5 text-white" />
             )}
           </div>
           <div className="leading-none">

@@ -143,7 +143,7 @@ function headerHtml(brand: EmailBrand): string {
   }
   return `
     <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-      <td style="vertical-align:middle;padding-right:10px;"><img src="${LOGO_URL}" width="32" height="32" alt="" style="display:block;border:0;border-radius:8px;"></td>
+      <td style="vertical-align:middle;padding-right:10px;"><img src="${LOGO_URL}" width="32" height="32" alt="REVA" style="display:block;border:0;"></td>
       <td style="vertical-align:middle;font-family:${FONT};font-size:18px;font-weight:700;color:${COLOR_HEADING};letter-spacing:-0.01em;">REVA</td>
     </tr></table>`;
 }

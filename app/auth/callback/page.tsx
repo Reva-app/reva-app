@@ -16,6 +16,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
+import { RevaGlyph } from "@/components/brand/RevaGlyph";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -110,8 +111,7 @@ export default function AuthCallbackPage() {
         className="w-10 h-10 rounded-xl flex items-center justify-center"
         style={{ background: "#e8632a" }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/reva-logo-transparant.svg" alt="REVA" className="w-6 h-6" />
+        <RevaGlyph className="h-5 text-white" />
       </div>
       <p className="text-sm text-gray-500">Inloggen&hellip;</p>
     </div>
