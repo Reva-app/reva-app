@@ -25,7 +25,7 @@ import {
   loadStaffLeaveForMembership, createStaffLeave, deleteStaffLeave, LEAVE_TYPE_LABELS,
   loadCalendarFeed, saveCalendarFeed, deleteCalendarFeed, loadExternalBusyBlocks,
   updateStaffMember, updateStaffProfile, deleteStaffMember, resetStaffMfa, uploadOwnAvatar,
-  MANAGE_STAFF_ROLES, PORTAL_STAFF_STATUS_LABELS, STAFF_INACTIVITY_THRESHOLD_DAYS, isDateStale,
+  MANAGE_STAFF_ROLES, ROLE_EXPLANATIONS, PORTAL_STAFF_STATUS_LABELS, STAFF_INACTIVITY_THRESHOLD_DAYS, isDateStale,
   type PortalStaffMember, type PortalLocationOption, type PortalRoleOption,
   type PortalWorkSchedule, type PortalWeekday, type PortalStaffLeave, type PortalLeaveType,
   type PortalCalendarFeed, type PortalBusyBlock,
@@ -43,10 +43,6 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 
 const WEEKDAY_ORDER: PortalWeekday[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 
-const ROLE_EXPLANATIONS: Record<string, string> = {
-  organization_owner: "Praktijk eigenaar heeft volledige toegang: kan medewerkers uitnodigen en verwijderen, locaties beheren, analyses inzien, en alle patiëntdossiers en herstelplannen beheren.",
-  therapist: "Fysiotherapeut kan patiëntdossiers aanmaken, inzien en bewerken, en herstelplannen, schema's en oefeningen beheren. Geen toegang tot medewerkers- of locatiebeheer, en geen inzage in de praktijkbrede analyses.",
-};
 
 type TabKey = "algemeen" | "werkuren" | "verlof" | "locaties" | "rol" | "account";
 

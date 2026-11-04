@@ -12,7 +12,7 @@
 --
 -- STAP 2 — vervang in dit bestand (Zoeken en vervangen):
 --   ORG_ID        → organization_id van je praktijk
---   RECEPTIE_ID   → user_id van een account met rol practice_staff
+--   RECEPTIE_ID   → user_id van een account met rol reception (Receptie, migratie 123)
 --   THERAPEUT_ID  → user_id van een account met rol therapist
 --
 -- STAP 3 — selecteer telkens één blok en klik Run. De kolomnaam zegt wat je

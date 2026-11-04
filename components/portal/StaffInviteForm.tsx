@@ -5,7 +5,7 @@ import { Loader2, X } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import {
-  inviteStaffMember,
+  inviteStaffMember, ROLE_EXPLANATIONS,
   type PortalRoleOption, type PortalLocationOption, type InviteStaffMemberResult,
 } from "@/lib/services/portalService";
 
@@ -93,6 +93,12 @@ export function StaffInviteForm({ organizationId, roles, locations, onInvited, o
                 <option key={r.id} value={r.id}>{r.name}</option>
               ))}
             </select>
+            {(() => {
+              const key = roles.find((r) => r.id === roleId)?.key;
+              return key && ROLE_EXPLANATIONS[key]
+                ? <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{ROLE_EXPLANATIONS[key]}</p>
+                : null;
+            })()}
           </div>
           <div>
             <FieldLabel>Hoofdlocatie (optioneel)</FieldLabel>

@@ -1583,20 +1583,31 @@ export async function deleteReservation(reservationId: string): Promise<{ error:
  */
 export const MANAGE_STAFF_ROLES = ["organization_owner"];
 
-/** De twee canonieke rollen (organization_owner/therapist) — zie migratie 041/063. */
-const CANONICAL_ROLE_KEYS = ["organization_owner", "therapist"];
+/**
+ * De rollen die een praktijk kan toekennen, in de volgorde van de keuzelijst
+ * (de eerste is de standaardkeuze). `reception` is in migratie 123 opnieuw
+ * in gebruik genomen; de overige rolrijen uit migratie 016/041 blijven
+ * ongebruikt in de database staan.
+ */
+const CANONICAL_ROLE_KEYS = ["therapist", "reception", "organization_owner"];
 
-/** Precies de 3 canonieke rollen — de overige 5 rolrijen blijven in de database staan maar worden niet meer aangeboden (migratie 041). */
+/** Wat een rol mag — getoond bij uitnodigen en op de medewerkerpagina. */
+export const ROLE_EXPLANATIONS: Record<string, string> = {
+  organization_owner: "Praktijk eigenaar heeft volledige toegang: kan medewerkers uitnodigen en verwijderen, locaties beheren, analyses inzien, en alle patiëntdossiers en herstelplannen beheren.",
+  therapist: "Fysiotherapeut kan patiëntdossiers aanmaken, inzien en bewerken, en herstelplannen, schema's en oefeningen beheren. Geen toegang tot medewerkers- of locatiebeheer, en geen inzage in de praktijkbrede analyses.",
+  reception: "Receptie ziet de agenda (ruimtes, reserveringen en fysio-afspraken) en de contactgegevens van patiënten. Geen toegang tot medische gegevens, dossiers of herstelplannen.",
+};
+
 export async function loadPortalRoles(): Promise<PortalRoleOption[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("roles")
     .select("id, key, name")
-    .in("key", CANONICAL_ROLE_KEYS)
-    .order("scope")
-    .order("key");
+    .in("key", CANONICAL_ROLE_KEYS);
   if (error) { logErr("loadPortalRoles", error); return []; }
-  return (data ?? []) as PortalRoleOption[];
+  return ((data ?? []) as PortalRoleOption[]).sort(
+    (a, b) => CANONICAL_ROLE_KEYS.indexOf(a.key) - CANONICAL_ROLE_KEYS.indexOf(b.key)
+  );
 }
 
 export async function loadPortalMembers(organizationId: string): Promise<PortalMember[]> {
