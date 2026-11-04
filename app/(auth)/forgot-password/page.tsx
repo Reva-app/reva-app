@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { AlertCircle, Loader2, ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
+import { RevaGlyph } from "@/components/brand/RevaGlyph";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -43,7 +44,7 @@ export default function ForgotPasswordPage() {
             className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: "#e8632a" }}
           >
-            <span className="text-white font-bold text-sm">R</span>
+            <RevaGlyph className="h-[18px] text-white" />
           </div>
           <span className="font-bold text-lg" style={{ color: "#1a1a1a" }}>
             REVA

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Building2, Users, Kanban, LogOut } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { RevaGlyph } from "@/components/brand/RevaGlyph";
 
 const nav = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -53,7 +54,7 @@ export function AdminSidebar() {
             className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
             style={{ background: "#e8632a" }}
           >
-            <span className="text-white font-bold text-xs">R</span>
+            <RevaGlyph className="h-3.5 text-white" />
           </div>
           <div className="leading-none">
             <p className="text-white font-semibold text-sm tracking-tight">REVA</p>
