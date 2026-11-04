@@ -1,4 +1,3 @@
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { NextResponse } from "next/server";
 import { stripNewlines, feedbackEmailHtml } from "@/lib/emailHtml";
@@ -17,10 +16,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "E-mail service niet geconfigureerd" }, { status: 500 });
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    const rateLimitClient = createSupabaseClient(supabaseUrl, anonKey);
-    const allowed = await checkRateLimit(rateLimitClient, `feedback:${getClientIp(request)}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_SECONDS);
+    const allowed = await checkRateLimit(`feedback:${getClientIp(request)}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_SECONDS);
     if (!allowed) return rateLimitedResponse();
 
     const body = await request.json();

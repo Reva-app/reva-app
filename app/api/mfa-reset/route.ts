@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
   }
 
-  const rateLimitOk = await checkRateLimit(authClient, `mfa-reset:${user.id}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_SECONDS);
+  const rateLimitOk = await checkRateLimit(`mfa-reset:${user.id}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_SECONDS);
   if (!rateLimitOk) return rateLimitedResponse();
 
   if (!tokenHasAal2(token)) {

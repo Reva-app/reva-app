@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
     }
 
-    const rateLimitOk = await checkRateLimit(authClient, `send-invite:${user.id}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_SECONDS);
+    const rateLimitOk = await checkRateLimit(`send-invite:${user.id}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_SECONDS);
     if (!rateLimitOk) return rateLimitedResponse();
 
     // Elke context hier is een medewerker- of beheerdersactie; niet elke
@@ -76,7 +76,6 @@ export async function POST(request: Request) {
     let firstName: string;
     let roleKey: string | null = null;
     let roleName: string | null = null;
-    let intakeSummary: string | null = null;
 
     if (body.context === "admin" || body.context === "portal-staff") {
       const { data: invite, error: inviteError } = await supabase
@@ -171,11 +170,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
       }
 
-      // profiles-RLS (migratie 084) laat een platformbeheerder geen profiel
-      // lezen van een organisatie waar diegene zelf geen lid van is — email/
-      // voornaam komen daarom rechtstreeks van de admin-UI, die deze gegevens
-      // al toont via admin_list_org_members(). We verifiëren hier alleen dat
-      // het lidmaatschap ook echt bestaat binnen de opgegeven organisatie.
+      // Eerst verifiëren dat het lidmaatschap echt bestaat binnen de
+      // opgegeven organisatie (RLS-gebonden, dus binnen de rechten van de
+      // aanroeper) — pas daarna e-mail/voornaam ophalen.
       const { data: targetMembership, error: targetMembershipError } = await supabase
         .from("memberships")
         .select("status, roles(key, name)")
@@ -186,9 +183,23 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Lidmaatschap niet gevonden" }, { status: 404 });
       }
 
+      // E-mail en voornaam komen uit de database, nooit uit het verzoek —
+      // anders kon een eigenaar deze herstellink (met "je bent
+      // uitgenodigd"-tekst) naar elk willekeurig REVA-account laten sturen.
+      // Via de service-role-client: profiles-RLS (migratie 084) laat een
+      // platformbeheerder geen profiel lezen buiten de eigen organisaties.
+      const lookup = createSupabaseClient(supabaseUrl, serviceRoleKey);
+      const [{ data: targetAuth }, { data: targetProfile }] = await Promise.all([
+        lookup.auth.admin.getUserById(body.targetUserId),
+        lookup.from("profiles").select("first_name").eq("id", body.targetUserId).maybeSingle(),
+      ]);
+      if (!targetAuth?.user?.email) {
+        return NextResponse.json({ error: "Account niet gevonden" }, { status: 404 });
+      }
+
       organizationId = body.organizationId;
-      email = body.email.trim().toLowerCase();
-      firstName = body.firstName;
+      email = targetAuth.user.email.trim().toLowerCase();
+      firstName = (targetProfile?.first_name as string | null) ?? "";
       const role = targetMembership.roles as unknown as { key: string; name: string } | null;
       roleKey = role?.key ?? null;
       roleName = role?.name ?? null;
@@ -221,14 +232,9 @@ export async function POST(request: Request) {
       organizationId = patient.organization_id;
       email = patient.email;
       firstName = patient.first_name || "";
-
-      const { data: intake } = await supabase
-        .from("patient_intakes")
-        .select("ai_summary")
-        .eq("patient_id", body.patientId)
-        .not("completed_at", "is", null)
-        .maybeSingle();
-      intakeSummary = intake?.ai_summary?.trim() || null;
+      // Bewust géén intake-samenvatting in deze mail: e-mail is niet
+      // end-to-end versleuteld en wordt doorgestuurd of gedeeld — klinische
+      // inhoud hoort alleen achter de login (code-review nov 2026).
     } else {
       return NextResponse.json({ error: "Ongeldig verzoek" }, { status: 400 });
     }
@@ -300,7 +306,6 @@ export async function POST(request: Request) {
     if (body.context === "portal-patient") {
       subject = `${orgName} heeft je herstel-dashboard klaargezet`;
       const heading = `${safeFirstName ? `${safeFirstName}, w` : "W"}elkom bij je herstel-dashboard`;
-      const safeIntakeSummary = intakeSummary ? escapeHtml(intakeSummary) : null;
       html = inviteEmailHtml({
         accentColor,
         headerLabel: orgName,
@@ -309,8 +314,6 @@ export async function POST(request: Request) {
           `<strong>${safeOrgName}</strong> heeft een persoonlijk herstel-dashboard voor je klaargezet op REVA.`,
           `Hier houd je je afspraken, oefeningen en voortgang overzichtelijk bij, en blijft je behandelaar altijd op de hoogte.`,
         ],
-        quoteHtml: safeIntakeSummary ?? undefined,
-        quoteLabel: safeIntakeSummary ? "Van je intake" : undefined,
         ctaLabel: "Naar mijn dashboard",
         ctaUrl: actionLink,
       });
@@ -321,8 +324,6 @@ export async function POST(request: Request) {
           `${orgName} heeft een persoonlijk herstel-dashboard voor je klaargezet op REVA.`,
           `Hier houd je je afspraken, oefeningen en voortgang overzichtelijk bij, en blijft je behandelaar altijd op de hoogte.`,
         ],
-        quoteText: intakeSummary ?? undefined,
-        quoteLabel: intakeSummary ? "Van je intake" : undefined,
         ctaLabel: "Naar mijn dashboard",
         ctaUrl: actionLink,
       });
