@@ -360,29 +360,32 @@ Deno.serve(async (req: Request) => {
   // medication_schedule_times, niet meer in het legacy times-jsonb-veld op
   // medication_schedules zelf (dat wordt door de app niet meer geschreven,
   // zie lib/db/mappers.ts medicatieSchemaToDb).
+  //
+  // Bewust zonder medicijnnaam in de mail: e-mail is niet end-to-end
+  // versleuteld en is zichtbaar op gedeelde apparaten en in previews —
+  // de naam staat in de app achter de login (code-review nov 2026).
   const { data: schemas } = await supabase
     .from("medication_schedules")
-    .select("user_id, medication_name, medication_schedule_times(time)")
+    .select("user_id, medication_schedule_times(time)")
     .eq("active", true);
 
   if (schemas && schemas.length > 0) {
-    const medUserMap = new Map<string, string[]>();
+    const medUserIds = new Set<string>();
     for (const s of schemas) {
       const times = ((s.medication_schedule_times as { time: string }[] | null) ?? []).map((t) => t.time);
       for (const t of times) {
         const [hh, mm] = t.split(":").map(Number);
         if (hh === localHour && Math.floor((mm || 0) / 15) === localMinuteBucket) {
-          if (!medUserMap.has(s.user_id)) medUserMap.set(s.user_id, []);
-          medUserMap.get(s.user_id)!.push(s.medication_name as string);
+          medUserIds.add(s.user_id as string);
         }
       }
     }
 
-    if (medUserMap.size > 0) {
+    if (medUserIds.size > 0) {
       const { data: notifSettings } = await supabase
         .from("settings")
         .select("user_id, notifications")
-        .in("user_id", [...medUserMap.keys()]);
+        .in("user_id", [...medUserIds]);
 
       const enabledUsers = (notifSettings ?? [])
         .filter((s) => {
@@ -394,18 +397,17 @@ Deno.serve(async (req: Request) => {
       if (enabledUsers.length > 0) {
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("id, email")
+          .select("email")
           .in("id", enabledUsers);
 
-        (profiles ?? []).forEach(({ id, email }) => {
+        (profiles ?? []).forEach(({ email }) => {
           if (!email) return;
-          const meds = medUserMap.get(id as string) ?? [];
           emails.push({
             to: email,
             subject: "Tijd voor je medicatie",
             options: {
               heading: "Tijd voor je medicatie",
-              bodyLines: [`Vergeet niet je ${meds.join(" en ")} in te nemen.`],
+              bodyLines: ["Je hebt een medicatiemoment ingepland. Bekijk in REVA wat je nu inneemt."],
               ctaLabel: "Naar medicatie",
               ctaUrl: `${siteUrl}/medicatie`,
             },
@@ -455,10 +457,13 @@ Deno.serve(async (req: Request) => {
   // van de afspraak zelf, 4 uur vooruit vanaf nu (zelfde hour-only precisie
   // als de andere tijdgebonden secties hierboven, die ook alleen op het uur
   // matchen, niet op de exacte minuut).
+  //
+  // Alleen het tijdstip in de mail — titel, locatie en behandelaar kunnen
+  // medisch van aard zijn ("MRI knie", "Orthopedie") en staan in de app.
   if (currentMinUTC < 15) {
     const { data: appointments } = await supabase
       .from("appointments")
-      .select("user_id, title, time, location, provider_name")
+      .select("user_id, time")
       .eq("date", in4HoursDateStr)
       .eq("reminder_enabled", true);
 
@@ -503,14 +508,13 @@ Deno.serve(async (req: Request) => {
           const email: string | null = emailByUserId.get(appt.user_id as string) ?? null;
           if (!email) continue;
           const tijdLabel = appt.time ? (appt.time as string).slice(0, 5) : null;
-          const bodyLines = [`Over ongeveer 4 uur heb je een afspraak: ${appt.title ?? "Afspraak"}.`];
-          if (tijdLabel) bodyLines.push(`Tijd: ${tijdLabel}`);
-          if (appt.location) bodyLines.push(`Locatie: ${appt.location}`);
-          if (appt.provider_name) bodyLines.push(`Behandelaar: ${appt.provider_name}`);
-          bodyLines.push("Zorg dat je goed voorbereid bent.");
+          const bodyLines = [
+            tijdLabel ? `Je hebt vandaag om ${tijdLabel} een afspraak.` : "Je hebt vandaag een afspraak.",
+            "Bekijk in REVA waar het is en wat je mee moet nemen.",
+          ];
           emails.push({
             to: email,
-            subject: `Afspraak vandaag: ${appt.title ?? "Afspraak"}`,
+            subject: "Herinnering: je afspraak van vandaag",
             options: {
               heading: "Je afspraak komt eraan",
               bodyLines,
@@ -527,7 +531,7 @@ Deno.serve(async (req: Request) => {
   if (localHour === 9 && currentMinUTC < 15) {
     const { data: expiredGoals } = await supabase
       .from("goals")
-      .select("user_id, title")
+      .select("user_id")
       .eq("target_date", tomorrowStr)
       .eq("completed", false);
 
@@ -535,15 +539,16 @@ Deno.serve(async (req: Request) => {
       const goalUserIds = [...new Set(expiredGoals.map((g) => g.user_id as string))];
       const { data: tokens } = await supabase
         .from("push_tokens")
-        .select("token, user_id")
+        .select("token")
         .in("user_id", goalUserIds);
 
-      (tokens ?? []).forEach(({ token, user_id }) => {
-        const goal = expiredGoals.find((g) => g.user_id === user_id);
+      // Zonder doeltitel: een pushbericht staat op het vergrendelscherm en
+      // loopt via Firebase (VS) — de titel kan medisch van aard zijn.
+      (tokens ?? []).forEach(({ token }) => {
         notifications.push({
           token,
           title: "Je deadline nadert",
-          body:  `'${goal?.title ?? "Jouw doel"}' loopt morgen af. Geef het nog één keer alles!`,
+          body:  "Een van je doelen loopt morgen af. Geef het nog één keer alles!",
           route: "/doelstellingen",
         });
       });

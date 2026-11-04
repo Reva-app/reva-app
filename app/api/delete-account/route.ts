@@ -53,7 +53,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
   }
 
-  const rateLimitOk = await checkRateLimit(authClient, `delete-account:${user.id}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_SECONDS);
+  const rateLimitOk = await checkRateLimit(`delete-account:${user.id}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_SECONDS);
   if (!rateLimitOk) return rateLimitedResponse();
 
   // RLS-gebonden client, geauthenticeerd met hetzelfde geverifieerde token —
