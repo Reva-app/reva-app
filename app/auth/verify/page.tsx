@@ -19,6 +19,20 @@ import type { EmailOtpType } from "@supabase/supabase-js";
  * een eigen pagina die de token pas via JavaScript inwisselt — een scanner
  * haalt de pagina wel op, maar voert geen JS uit, dus verbruikt de token niet.
  */
+/**
+ * Uitnodigingen gebruiken soms een "recovery"-token (bestaand account, zie
+ * app/api/send-invite) — die herken je aan mode=invite in het vervolgpad.
+ */
+function expiredLinkMessage(type: EmailOtpType, next: string): string {
+  if (type === "invite" || next.includes("mode=invite")) {
+    return "Deze uitnodiging is verlopen of al gebruikt. Vraag je praktijk om een nieuwe uitnodiging.";
+  }
+  if (type === "recovery") {
+    return "Deze link is verlopen of al gebruikt. Vraag op de inlogpagina via “Wachtwoord vergeten” een nieuwe aan.";
+  }
+  return "Deze link is verlopen of al gebruikt. Probeer opnieuw in te loggen, of mail naar info@reva-app.nl.";
+}
+
 export default function VerifyPage() {
   return (
     <Suspense fallback={null}>
@@ -45,7 +59,7 @@ function VerifyHandler() {
     const supabase = createClient();
     supabase.auth.verifyOtp({ token_hash: tokenHash, type }).then(({ error }) => {
       if (error) {
-        setError("Deze link is niet meer geldig. Vraag een nieuwe uitnodiging aan.");
+        setError(expiredLinkMessage(type, next));
         return;
       }
       router.replace(next);
