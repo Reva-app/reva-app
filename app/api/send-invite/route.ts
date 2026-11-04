@@ -3,6 +3,7 @@ import { Resend } from "resend";
 import { NextResponse } from "next/server";
 import { escapeHtml, inviteEmailHtml, inviteEmailText } from "@/lib/emailHtml";
 import { checkRateLimit, rateLimitedResponse } from "@/lib/rateLimit";
+import { tokenHasAal2 } from "@/lib/apiAuth";
 
 const RATE_LIMIT_MAX = 20;
 const RATE_LIMIT_WINDOW_SECONDS = 60 * 60;
@@ -53,6 +54,12 @@ export async function POST(request: Request) {
 
     const rateLimitOk = await checkRateLimit(authClient, `send-invite:${user.id}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_SECONDS);
     if (!rateLimitOk) return rateLimitedResponse();
+
+    // Elke context hier is een medewerker- of beheerdersactie; niet elke
+    // autorisatiecheck hieronder loopt via een aal2-gebonden policy.
+    if (!tokenHasAal2(token)) {
+      return NextResponse.json({ error: "Tweestapsverificatie vereist" }, { status: 403 });
+    }
 
     // RLS-gebonden client, geauthenticeerd met hetzelfde geverifieerde token —
     // dit doet voor admin/portal-staff meteen ook de autorisatiecheck: de
@@ -147,11 +154,7 @@ export async function POST(request: Request) {
       // wachtwoord/2FA-instellen nooit heeft afgerond) maar vastzit: hiermee
       // kan een platformbeheerder of organization_owner alsnog een verse,
       // werkende link sturen. Zelfde autorisatiepatroon als /api/mfa-reset.
-      const { data: callerIsAdmin } = await supabase
-        .from("platform_admins")
-        .select("user_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const { data: callerIsAdmin } = await supabase.rpc("is_platform_admin");
       let authorized = !!callerIsAdmin;
       if (!authorized) {
         const { data: callerMembership } = await supabase

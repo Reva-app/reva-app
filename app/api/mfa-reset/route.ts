@@ -1,6 +1,7 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { checkRateLimit, rateLimitedResponse } from "@/lib/rateLimit";
+import { tokenHasAal2 } from "@/lib/apiAuth";
 
 const RATE_LIMIT_MAX = 10;
 const RATE_LIMIT_WINDOW_SECONDS = 60 * 60;
@@ -40,6 +41,10 @@ export async function POST(request: Request) {
   const rateLimitOk = await checkRateLimit(authClient, `mfa-reset:${user.id}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_SECONDS);
   if (!rateLimitOk) return rateLimitedResponse();
 
+  if (!tokenHasAal2(token)) {
+    return NextResponse.json({ error: "Tweestapsverificatie vereist" }, { status: 403 });
+  }
+
   const { targetUserId, organizationId } = (await request.json()) as { targetUserId?: string; organizationId?: string };
   if (!targetUserId || !organizationId) {
     return NextResponse.json({ error: "Ongeldig verzoek" }, { status: 400 });
@@ -55,11 +60,9 @@ export async function POST(request: Request) {
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
 
-  const { data: callerIsAdmin } = await supabase
-    .from("platform_admins")
-    .select("user_id")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  // Via is_platform_admin() i.p.v. een directe select op platform_admins —
+  // de functie eist sinds migratie 120 ook een aal2-sessie.
+  const { data: callerIsAdmin } = await supabase.rpc("is_platform_admin");
 
   let authorized = !!callerIsAdmin;
   if (!authorized) {
