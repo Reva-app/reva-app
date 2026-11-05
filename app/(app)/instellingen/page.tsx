@@ -30,6 +30,7 @@ import { validatePassword } from "@/lib/passwordPolicy";
 import { downloadDataExport } from "@/lib/dataExport";
 import { useToast } from "@/components/ui/Toast";
 import { UnsavedBadge } from "@/components/ui/UnsavedBadge";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -669,7 +670,14 @@ export default function InstellingenPage() {
   }
 
   // ── Wachtwoord wijzigen ────────────────────────────────────────────────────
-  const isGmail = profile.authProvider === "google" || profile.authProvider === "gmail";
+  // Heeft dit account een wachtwoord? Rechtstreeks uit de inlogsessie, niet
+  // uit profiles.auth_provider (dat veld is leeg bij profielen die de database
+  // aanmaakt en viel dan terug op "email"). Google-accounts hebben geen
+  // wachtwoord: daar valt niets te controleren, dus geen wachtwoordformulier.
+  const { user: authUser } = useAuth();
+  const authProviders = (authUser?.app_metadata?.providers as string[] | undefined) ?? [];
+  const hasPassword = authProviders.includes("email") || authUser?.identities?.some((i) => i.provider === "email") === true;
+  const signInProviderLabel = authProviders.includes("google") ? "Google" : null;
   const [huidigWw, setHuidigWw] = useState("");
   const [nieuwWw, setNieuwWw] = useState("");
   const [herhalingWw, setHerhalingWw] = useState("");
@@ -1074,7 +1082,14 @@ export default function InstellingenPage() {
           </div>
 
           {/* Wachtwoord wijzigen — alleen voor niet-Gmail accounts */}
-          {!isGmail && (
+          {authUser && !hasPassword && (
+            <div className="pt-3 mt-1" style={{ borderTop: "1px solid #f0ede8" }}>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Je logt in met {signInProviderLabel ?? "een extern account"}. Je wachtwoord en beveiliging beheer je daar; in REVA heb je geen apart wachtwoord nodig.
+              </p>
+            </div>
+          )}
+          {hasPassword && (
             <>
               <div className="pt-2 pb-1" style={{ borderTop: "1px solid #f0ede8" }}>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mt-2">
