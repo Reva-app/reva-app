@@ -2,18 +2,20 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { HeartPulse, UserPlus, Search, ChevronUp, ChevronDown, Download, Users, AlertTriangle, UserX } from "lucide-react";
+import { HeartPulse, UserPlus, Download, Users, AlertTriangle, UserX } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { StatCard } from "@/components/ui/StatCard";
+import { StatStrip } from "@/components/ui/StatStrip";
+import { ResponsiveList, type ListColumn } from "@/components/ui/ResponsiveList";
+import { FilterBar } from "@/components/ui/FilterBar";
+import { Field, Select } from "@/components/ui/Field";
+import { Pagination } from "@/components/ui/table/Pagination";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
-import { ActionMenu } from "@/components/ui/ActionMenu";
 import { formatDate } from "@/lib/data";
-import { ScrollHintX } from "@/components/ui/table/ScrollHintX";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { PatientWizard } from "@/components/portal/PatientWizard";
 import { PatientEditForm } from "@/components/portal/PatientEditForm";
@@ -25,12 +27,6 @@ import {
   type PortalPatient, type PortalLocationOption, type PortalMember,
 } from "@/lib/services/portalService";
 import { loadRevaProtocols, loadOrgProtocols, type PortalProtocolCard } from "@/lib/services/protocolService";
-
-const inputStyle = {
-  borderColor: "#e8e5df",
-  background: "#ffffff",
-  color: "#1a1a1a",
-};
 
 const CHECKIN_BUCKETS = [
   { value: "", label: "Alle" },
@@ -148,23 +144,72 @@ function compareNullableStrings(a: string | null, b: string | null): number {
   return a.localeCompare(b, "nl");
 }
 
-function SortableHeader({
-  label, sortKeyValue, activeKey, direction, onSort, align = "left",
-}: {
-  label: string; sortKeyValue: SortKey; activeKey: SortKey; direction: "asc" | "desc";
-  onSort: (key: SortKey) => void; align?: "left" | "right";
-}) {
-  const isActive = activeKey === sortKeyValue;
+const SORT_OPTIONS: { key: SortKey; dir: "asc" | "desc"; label: string }[] = [
+  { key: "name", dir: "asc", label: "Naam (A-Z)" },
+  { key: "name", dir: "desc", label: "Naam (Z-A)" },
+  { key: "lastCheckin", dir: "desc", label: "Laatste check-in (recent)" },
+  { key: "lastCheckin", dir: "asc", label: "Laatste check-in (oudst)" },
+  { key: "therapist", dir: "asc", label: "Behandelaar" },
+  { key: "protocol", dir: "asc", label: "Herstelplan" },
+  { key: "location", dir: "asc", label: "Locatie" },
+  { key: "status", dir: "asc", label: "Dossierstatus" },
+];
+
+function activityBadge(p: PortalPatient) {
+  if (p.status !== "active" || !isPatientInactive(p.lastCheckinDate, p.createdAt)) return null;
+  return <Badge variant="warning">{p.lastCheckinDate ? "Weinig activiteit" : "Nog geen activiteit"}</Badge>;
+}
+
+const PATIENT_COLUMNS: ListColumn<PortalPatient, SortKey>[] = [
+  {
+    key: "name", header: "Naam", sortKey: "name",
+    cell: (p) => (
+      <div className="flex items-center gap-3">
+        <Avatar patient={p} />
+        <div className="min-w-0">
+          <p className="font-medium text-gray-800">{p.fullName || "Nog niet ingevuld"}</p>
+          {!p.hasAccount && <div className="text-xs">{accountBadge(p)}</div>}
+        </div>
+      </div>
+    ),
+  },
+  { key: "therapist", header: "Behandelaar", sortKey: "therapist", hideBelow: "lg", className: "text-gray-600", cell: (p) => p.therapistName || "—" },
+  { key: "protocol", header: "Herstelplan", sortKey: "protocol", className: "text-gray-600", cell: (p) => p.protocolName || "—" },
+  { key: "location", header: "Locatie", sortKey: "location", hideBelow: "xl", className: "text-gray-600", cell: (p) => p.locationName || "—" },
+  {
+    key: "lastCheckin", header: "Laatste check-in", sortKey: "lastCheckin", className: "text-gray-500",
+    cell: (p) => (
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span>{p.lastCheckinDate ? formatDate(p.lastCheckinDate) : "—"}</span>
+        {activityBadge(p)}
+      </div>
+    ),
+  },
+  { key: "status", header: "Dossierstatus", sortKey: "status", cell: (p) => statusBadge(p.status) },
+];
+
+/** Kaart voor de patiëntenlijst op telefoon: wie, welk traject, hoe gaat het. */
+function PatientCard({ patient: p }: { patient: PortalPatient }) {
+  const details = [
+    p.lastCheckinDate ? `Check-in ${formatDate(p.lastCheckinDate)}` : "Nog geen check-in",
+    p.therapistName,
+  ].filter(Boolean).join(" · ");
   return (
-    <th
-      onClick={() => onSort(sortKeyValue)}
-      className={`${align === "left" ? "text-left" : "text-right"} font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3 cursor-pointer select-none hover:text-gray-600`}
-    >
-      <span className={`inline-flex items-center gap-1 ${align === "right" ? "flex-row-reverse" : ""}`}>
-        {label}
-        {isActive ? (direction === "asc" ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : null}
-      </span>
-    </th>
+    <div className="flex items-start gap-3">
+      <Avatar patient={p} />
+      <div className="min-w-0 flex-1">
+        <p className="font-medium text-gray-900 leading-snug">{p.fullName || "Nog niet ingevuld"}</p>
+        <p className="text-sm text-gray-600 leading-snug mt-0.5">
+          {p.protocolName || p.injuryType || "Nog geen herstelplan"}
+        </p>
+        <p className="text-xs text-gray-500 mt-1">{details}</p>
+        <div className="flex flex-wrap gap-1.5 mt-2 empty:hidden">
+          {activityBadge(p)}
+          {p.status !== "active" && statusBadge(p.status)}
+          {!p.hasAccount && accountBadge(p)}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -304,6 +349,18 @@ function ClinicalPatientsPage() {
     setPage(1);
   }
 
+  function setSort(key: SortKey, dir: "asc" | "desc") {
+    setSortKey(key);
+    setSortDir(dir);
+    setPage(1);
+  }
+
+  function resetFilters() {
+    setStatusFilter(""); setLocationFilter(""); setTherapistFilter(""); setProtocolFilter(""); setCheckinFilter("");
+    setPage(1);
+  }
+  const activeFilterCount = [statusFilter, locationFilter, therapistFilter, protocolFilter, checkinFilter].filter(Boolean).length;
+
   const activeMembers = members.filter((m) => m.membershipStatus === "active");
 
   async function handleInviteAction(p: PortalPatient) {
@@ -370,12 +427,14 @@ function ClinicalPatientsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard label="Totaal" value={patients.length} icon={Users} />
-        <StatCard label="Actief" value={activePatientsCount} icon={HeartPulse} />
-        <StatCard label="Weinig activiteit" value={lowActivityCount} icon={AlertTriangle} />
-        <StatCard label="Nog geen account" value={noAccountCount} icon={UserX} />
-      </div>
+      <StatStrip
+        items={[
+          { label: "Totaal", value: patients.length, icon: Users },
+          { label: "Actief", value: activePatientsCount, icon: HeartPulse },
+          { label: "Weinig activiteit", value: lowActivityCount, icon: AlertTriangle },
+          { label: "Nog geen account", value: noAccountCount, icon: UserX },
+        ]}
+      />
 
       {showWizard && membership && (
         <Modal onClose={() => setShowWizard(false)} maxWidth="max-w-3xl" dismissOnBackdropClick={false}>
@@ -403,64 +462,55 @@ function ClinicalPatientsPage() {
         </Modal>
       )}
 
-      {/* Filters */}
-      <div className="rounded-2xl border p-4 flex flex-wrap gap-3 items-end" style={{ background: "#ffffff", borderColor: "#e8e5df" }}>
-        <div className="flex-1 min-w-[200px]">
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">Zoeken</label>
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Naam of e-mailadres…" className="w-full text-base sm:text-sm rounded-xl border pl-9 pr-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
-            />
-          </div>
-        </div>
-        <div className="w-[calc(50%-0.375rem)] sm:w-36">
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">Dossierstatus</label>
-          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
+      <FilterBar
+        search={search}
+        onSearchChange={(v) => { setSearch(v); setPage(1); }}
+        searchPlaceholder="Naam of e-mailadres…"
+        activeCount={activeFilterCount}
+        onReset={resetFilters}
+        resultCount={filteredPatients.length}
+      >
+        <Field label="Dossierstatus" className="md:w-36">
+          <Select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
             <option value="">Alle</option>
             <option value="active">Actief</option>
             <option value="inactive">Inactief</option>
             <option value="archived">Gearchiveerd</option>
-          </select>
-        </div>
-        <div className="w-[calc(50%-0.375rem)] sm:w-44">
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">Locatie</label>
-          <select value={locationFilter} onChange={(e) => { setLocationFilter(e.target.value); setPage(1); }} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
+          </Select>
+        </Field>
+        <Field label="Locatie" className="md:w-44">
+          <Select value={locationFilter} onChange={(e) => { setLocationFilter(e.target.value); setPage(1); }}>
             <option value="">Alle</option>
             {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
-        </div>
-        <div className="w-[calc(50%-0.375rem)] sm:w-40">
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">Behandelaar</label>
-          <select value={therapistFilter} onChange={(e) => { setTherapistFilter(e.target.value); setPage(1); }} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
+          </Select>
+        </Field>
+        <Field label="Behandelaar" className="md:w-40">
+          <Select value={therapistFilter} onChange={(e) => { setTherapistFilter(e.target.value); setPage(1); }}>
             <option value="">Alle</option>
             {activeMembers.map((m) => <option key={m.userId} value={m.userId}>{m.fullName || m.email}</option>)}
-          </select>
-        </div>
-        <div className="w-[calc(50%-0.375rem)] sm:w-40">
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">Herstelplan</label>
-          <select value={protocolFilter} onChange={(e) => { setProtocolFilter(e.target.value); setPage(1); }} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
+          </Select>
+        </Field>
+        <Field label="Herstelplan" className="md:w-40">
+          <Select value={protocolFilter} onChange={(e) => { setProtocolFilter(e.target.value); setPage(1); }}>
             <option value="">Alle</option>
             {[...new Set([...orgProtocols, ...revaProtocols].map((p) => p.name))].sort().map((name) => (
               <option key={name} value={name}>{name}</option>
             ))}
-          </select>
-        </div>
-        <div className="w-[calc(50%-0.375rem)] sm:w-44">
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">Laatste check-in</label>
-          <select value={checkinFilter} onChange={(e) => { setCheckinFilter(e.target.value); setPage(1); }} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
+          </Select>
+        </Field>
+        <Field label="Laatste check-in" className="md:w-44">
+          <Select value={checkinFilter} onChange={(e) => { setCheckinFilter(e.target.value); setPage(1); }}>
             {CHECKIN_BUCKETS.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
-          </select>
-        </div>
-      </div>
+          </Select>
+        </Field>
+      </FilterBar>
 
       <div
         className="rounded-2xl border overflow-hidden"
         style={{ background: "#ffffff", borderColor: "#e8e5df", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
       >
         {loading ? (
-          <p className="text-sm text-gray-400 p-6">Laden…</p>
+          <p className="text-sm text-gray-500 p-6">Laden…</p>
         ) : filteredPatients.length === 0 ? (
           <EmptyState
             icon={HeartPulse}
@@ -468,80 +518,37 @@ function ClinicalPatientsPage() {
             description={patients.length === 0 ? "Voeg een patiëntdossier toe om te beginnen." : "Pas de filters aan om meer resultaten te zien."}
           />
         ) : (
-          <ScrollHintX>
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ borderBottom: "1px solid #e8e5df" }}>
-                  <SortableHeader label="Naam" sortKeyValue="name" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
-                  <SortableHeader label="Behandelaar" sortKeyValue="therapist" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
-                  <SortableHeader label="Herstelplan" sortKeyValue="protocol" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
-                  <SortableHeader label="Locatie" sortKeyValue="location" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
-                  <SortableHeader label="Laatste check-in" sortKeyValue="lastCheckin" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
-                  <SortableHeader label="Dossierstatus" sortKeyValue="status" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
-                  <th className="text-right font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Actie</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pagedPatients.map((p) => {
-                  return (
-                    <tr
-                      key={p.id}
-                      onClick={() => router.push(`/portal/patienten/${p.id}`)}
-                      className="cursor-pointer transition-colors hover:bg-gray-50"
-                      style={{ borderBottom: "1px solid #f8f7f4" }}
-                    >
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-3">
-                          <Avatar patient={p} />
-                          <div className="min-w-0 max-w-[50vw]">
-                            <p className="font-medium text-gray-800 truncate">{p.fullName || "Nog niet ingevuld"}</p>
-                            {!p.hasAccount && (
-                              <div className="text-xs">{accountBadge(p)}</div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5 text-gray-600">{p.therapistName || "—"}</td>
-                      <td className="px-5 py-3.5 text-gray-600">{p.protocolName || "—"}</td>
-                      <td className="px-5 py-3.5 text-gray-600">{p.locationName || "—"}</td>
-                      <td className="px-5 py-3.5 text-gray-400">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span>{p.lastCheckinDate ? formatDate(p.lastCheckinDate) : "—"}</span>
-                          {p.status === "active" && isPatientInactive(p.lastCheckinDate, p.createdAt) && (
-                            <Badge variant="warning">{p.lastCheckinDate ? "Weinig activiteit" : "Nog geen activiteit"}</Badge>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5">{statusBadge(p.status)}</td>
-                      <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
-                        {canManagePatients && (
-                          <ActionMenu
-                            items={[
-                              { label: "Uitnodiging versturen", onClick: () => handleInviteAction(p) },
-                              { label: "Wijzigen", onClick: () => setEditingPatient(p) },
-                              { label: p.status === "archived" ? "Dearchiveren" : "Archiveren", onClick: () => handleArchive(p) },
-                              { label: "Verwijderen", onClick: () => setConfirmDeleteId(p.id), danger: true },
-                            ]}
-                          />
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </ScrollHintX>
+          <ResponsiveList
+            rows={pagedPatients}
+            rowKey={(p) => p.id}
+            rowLabel={(p) => p.fullName || "Patiënt zonder naam"}
+            onRowClick={(p) => router.push(`/portal/patienten/${p.id}`)}
+            columns={PATIENT_COLUMNS}
+            card={(p) => <PatientCard patient={p} />}
+            actions={canManagePatients ? (p) => [
+              { label: "Uitnodiging versturen", onClick: () => handleInviteAction(p) },
+              { label: "Wijzigen", onClick: () => setEditingPatient(p) },
+              { label: p.status === "archived" ? "Dearchiveren" : "Archiveren", onClick: () => handleArchive(p) },
+              { label: "Verwijderen", onClick: () => setConfirmDeleteId(p.id), danger: true },
+            ] : undefined}
+            sort={{
+              key: sortKey,
+              dir: sortDir,
+              onSort: handleSort,
+              onSet: setSort,
+              options: SORT_OPTIONS,
+            }}
+          />
         )}
-        {!loading && sortedPatients.length > 0 && totalPages > 1 && (
-          <div className="flex items-center justify-between px-5 py-3 flex-wrap gap-2" style={{ borderTop: "1px solid #f8f7f4" }}>
-            <span className="text-xs text-gray-400">
-              Pagina {safePage} van {totalPages} — {sortedPatients.length} {sortedPatients.length === 1 ? "resultaat" : "resultaten"}
-            </span>
-            <div className="flex gap-2">
-              <Button size="sm" variant="secondary" disabled={safePage <= 1} onClick={() => setPage(safePage - 1)}>Vorige</Button>
-              <Button size="sm" variant="secondary" disabled={safePage >= totalPages} onClick={() => setPage(safePage + 1)}>Volgende</Button>
-            </div>
-          </div>
+        {!loading && (
+          <Pagination
+            page={safePage}
+            totalPages={totalPages}
+            totalCount={sortedPatients.length}
+            itemLabel="resultaat"
+            itemLabelPlural="resultaten"
+            onPageChange={setPage}
+          />
         )}
       </div>
 

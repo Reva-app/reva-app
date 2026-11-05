@@ -384,9 +384,9 @@ Elke taak is klein genoeg voor één avond van 1–3 uur. Na elke stap volgt een
 7. ✅ `IconButton` (44 px) toepassen op ⋮, het kalendericoon, het wachtwoord-oog en de sluitknoppen. *(1 u)*
 
 ### Week 3: de patiëntenlijst (±7 u)
-8. `ResponsiveList` bouwen: tabel vanaf `md`, kaarten daaronder, en sorteren via een keuzelijst. *(3 u)*
-9. De patiëntenlijst erop zetten. De kaart toont herstelplan en fase, signaalbadges, laatste check-in en behandelaar. *(2 u)*
-10. `FilterBar` met een bottom sheet; statistiekkaarten op mobiel als compacte horizontale strook. *(2 u)*
+8. ✅ `ResponsiveList` bouwen: tabel vanaf `md`, kaarten daaronder, en sorteren via een keuzelijst. *(3 u)*
+9. ✅ De patiëntenlijst erop zetten. De kaart toont herstelplan en fase, signaalbadges, laatste check-in en behandelaar. *(2 u)*
+10. ✅ `FilterBar` met een bottom sheet; statistiekkaarten op mobiel als compacte horizontale strook. *(2 u)*
 
 ### Week 4: patiëntdetail (±7 u)
 11. Kopregel van "Check-in status": het filter op een eigen regel onder de titel, als knoppen van 44 px. **Lost L2 op.** *(1 u)*
