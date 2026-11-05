@@ -23,7 +23,7 @@ import { PatientDirectory } from "@/components/portal/PatientDirectory";
 import {
   loadPortalPatients, loadPortalLocations, loadPortalMembers,
   invitePortalPatient, updatePortalPatientStatus, deletePortalPatient, logPatientsExport,
-  MANAGE_PATIENTS_ROLES, isPatientInactive, canViewClinicalData,
+  MANAGE_PATIENTS_ROLES, isPatientInactive, canViewClinicalData, ATTENTION_REASON_LABELS, ATTENTION_BADGE_VARIANT,
   type PortalPatient, type PortalLocationOption, type PortalMember,
 } from "@/lib/services/portalService";
 import { loadRevaProtocols, loadOrgProtocols, type PortalProtocolCard } from "@/lib/services/protocolService";
@@ -160,6 +160,14 @@ function activityBadge(p: PortalPatient) {
   return <Badge variant="warning">{p.lastCheckinDate ? "Weinig activiteit" : "Nog geen activiteit"}</Badge>;
 }
 
+/** Signalen uit de laatste check-in, alleen bij actieve dossiers. */
+function signalBadges(p: PortalPatient) {
+  if (p.status !== "active") return null;
+  return p.checkinSignals.map((reason) => (
+    <Badge key={reason} variant={ATTENTION_BADGE_VARIANT[reason]}>{ATTENTION_REASON_LABELS[reason]}</Badge>
+  ));
+}
+
 const PATIENT_COLUMNS: ListColumn<PortalPatient, SortKey>[] = [
   {
     key: "name", header: "Naam", sortKey: "name",
@@ -182,6 +190,7 @@ const PATIENT_COLUMNS: ListColumn<PortalPatient, SortKey>[] = [
       <div className="flex items-center gap-1.5 flex-wrap">
         <span>{p.lastCheckinDate ? formatDate(p.lastCheckinDate) : "—"}</span>
         {activityBadge(p)}
+        {signalBadges(p)}
       </div>
     ),
   },
@@ -204,6 +213,7 @@ function PatientCard({ patient: p }: { patient: PortalPatient }) {
         </p>
         <p className="text-xs text-gray-500 mt-1">{details}</p>
         <div className="flex flex-wrap gap-1.5 mt-2 empty:hidden">
+          {signalBadges(p)}
           {activityBadge(p)}
           {p.status !== "active" && statusBadge(p.status)}
           {!p.hasAccount && accountBadge(p)}

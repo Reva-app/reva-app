@@ -13,17 +13,11 @@ import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
   loadPortalDashboardStats, loadMyPortalPatientsSummary, loadTherapistWorkload, loadOrgActivitySummary,
-  ATTENTION_REASON_LABELS, canViewClinicalData,
+  ATTENTION_REASON_LABELS, ATTENTION_BADGE_VARIANT, canViewClinicalData,
   type PortalDashboardStats, type PortalMyPatientsSummary, type PortalTherapistWorkload,
-  type PortalOrgActivitySummary, type PatientAttentionReason,
+  type PortalOrgActivitySummary,
 } from "@/lib/services/portalService";
 
-const ATTENTION_BADGE_VARIANT: Record<PatientAttentionReason, "danger" | "warning" | "purple" | "muted"> = {
-  hoge_pijnscore: "danger",
-  zwelling: "warning",
-  lage_dagscore: "purple",
-  inactief: "muted",
-};
 
 export default function PortalDashboardPage() {
   const { checked, membership } = usePortalMembership();

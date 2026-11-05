@@ -119,6 +119,8 @@ export interface PortalPatient {
   hasAccount: boolean;
   invitedAt: string | null;
   lastCheckinDate: string | null;
+  /** Klinische signalen uit de laatste check-in (hoge pijn, zwelling, lage dagscore) — inactiviteit apart via isPatientInactive. */
+  checkinSignals: PatientAttentionReason[];
   dischargedAt: string | null;
   dischargeOutcome: DischargeOutcome | null;
 }
@@ -448,6 +450,25 @@ export const ATTENTION_REASON_LABELS: Record<PatientAttentionReason, string> = {
   lage_dagscore: "Lage dagscore",
 };
 
+/** Badgekleur per signaal — zelfde kleuren op het dashboard en in de patiëntenlijst. */
+export const ATTENTION_BADGE_VARIANT: Record<PatientAttentionReason, "danger" | "warning" | "purple" | "muted"> = {
+  hoge_pijnscore: "danger",
+  zwelling: "warning",
+  lage_dagscore: "purple",
+  inactief: "muted",
+};
+
+/** Signalen uit één check-in — gedeeld door het dashboard en de patiëntenlijst. */
+export function checkinAttentionReasons(
+  painScore: number | null, swelling: boolean | null, dayScore: number | null
+): PatientAttentionReason[] {
+  const reasons: PatientAttentionReason[] = [];
+  if (painScore !== null && painScore >= HIGH_PAIN_SCORE_THRESHOLD) reasons.push("hoge_pijnscore");
+  if (swelling) reasons.push("zwelling");
+  if (dayScore !== null && dayScore <= LOW_DAY_SCORE_THRESHOLD) reasons.push("lage_dagscore");
+  return reasons;
+}
+
 export interface PortalMyPatientRow {
   id: string;
   fullName: string | null;
@@ -495,11 +516,10 @@ export async function loadMyPortalPatientsSummary(organizationId: string, userId
     .map((r) => {
       const inactive = isPatientInactive(r.last_checkin_date, r.created_at);
 
-      const attentionReasons: PatientAttentionReason[] = [];
-      if (inactive) attentionReasons.push("inactief");
-      if (r.last_pain_score !== null && r.last_pain_score >= HIGH_PAIN_SCORE_THRESHOLD) attentionReasons.push("hoge_pijnscore");
-      if (r.last_swelling) attentionReasons.push("zwelling");
-      if (r.last_day_score !== null && r.last_day_score <= LOW_DAY_SCORE_THRESHOLD) attentionReasons.push("lage_dagscore");
+      const attentionReasons: PatientAttentionReason[] = [
+        ...(inactive ? (["inactief"] as const) : []),
+        ...checkinAttentionReasons(r.last_pain_score, r.last_swelling, r.last_day_score),
+      ];
 
       return {
         id: r.patient_id,
@@ -701,81 +721,80 @@ export async function loadRecoveryDurationStats(organizationId: string): Promise
 
 // ─── Patiënten ──────────────────────────────────────────────────────────────
 
+interface PatientListRow {
+  id: string;
+  user_id: string | null;
+  location_id: string | null;
+  status: string;
+  created_at: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  gender: string | null;
+  date_of_birth: string | null;
+  invited_at: string | null;
+  therapist_id: string | null;
+  therapist_name: string | null;
+  location_name: string | null;
+  protocol_name: string | null;
+  surgery_date: string | null;
+  injury_date: string | null;
+  injury_type: string | null;
+  discharged_at: string | null;
+  discharge_outcome: string | null;
+  last_checkin_date: string | null;
+  last_pain_score: number | null;
+  last_swelling: boolean | null;
+  last_day_score: number | null;
+}
+
+/** Supabase geeft maximaal 1000 rijen per vraag terug; daarom in blokken. */
+const PATIENT_LIST_PAGE = 1000;
+
+/**
+ * Alle patiënten van de organisatie, met namen, locatie, actief herstelplan
+ * en de laatste check-in. Eén databasefunctie (migratie 134) i.p.v. vijf
+ * losse vragen: die liepen tegen de limiet van 1000 rijen aan (check-ins
+ * vielen weg, en boven de 1000 dossiers ook patiënten) en stuurden alle
+ * patiënt-id's in de URL mee.
+ */
 export async function loadPortalPatients(organizationId: string): Promise<PortalPatient[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("patients")
-    .select("id, user_id, location_id, status, created_at, first_name, last_name, email, phone, gender, date_of_birth, invited_at, assigned_therapist_id, surgery_date, injury_date, injury_type, discharged_at, discharge_outcome")
-    .eq("organization_id", organizationId)
-    .order("created_at", { ascending: false });
-  if (error) { logErr("loadPortalPatients", error); return []; }
-
-  const rows = data ?? [];
-  const patientIds = rows.map((r) => r.id as string);
-  const userIds = [...new Set(rows.map((r) => r.user_id).filter((v): v is string => !!v))];
-  const therapistIds = [...new Set(rows.map((r) => r.assigned_therapist_id).filter((v): v is string => !!v))];
-  const profileIds = [...new Set([...userIds, ...therapistIds])];
-  const locationIds = [...new Set(rows.map((r) => r.location_id).filter((v): v is string => !!v))];
-
-  const [profilesRes, locationsRes, protocolsRes, checkinsRes] = await Promise.all([
-    profileIds.length > 0
-      ? supabase.from("profiles").select("id, full_name, email").in("id", profileIds)
-      : Promise.resolve({ data: [] as { id: string; full_name: string | null; email: string | null }[], error: null }),
-    locationIds.length > 0
-      ? supabase.from("locations").select("id, name").in("id", locationIds)
-      : Promise.resolve({ data: [] as { id: string; name: string }[], error: null }),
-    patientIds.length > 0
-      // Actief toegewezen protocol (Protocol Engine, migratie 049/054) i.p.v. het
-      // legacy patients.protocol_id — dat wijst sinds migratie 048 naar
-      // protocol_labels_legacy en wordt door geen enkele huidige toewijs-flow
-      // meer bijgewerkt, dus toonde hier altijd "—" ongeacht een echte toewijzing.
-      ? supabase.from("patient_protocols").select("patient_id, name").in("patient_id", patientIds).in("status", ["active", "paused"])
-      : Promise.resolve({ data: [] as { patient_id: string; name: string }[], error: null }),
-    patientIds.length > 0
-      ? supabase.from("checkins").select("patient_id, date").in("patient_id", patientIds).order("date", { ascending: false })
-      : Promise.resolve({ data: [] as { patient_id: string; date: string }[], error: null }),
-  ]);
-  if (profilesRes.error) logErr("loadPortalPatients(profiles)", profilesRes.error);
-  if (locationsRes.error) logErr("loadPortalPatients(locations)", locationsRes.error);
-  if (protocolsRes.error) logErr("loadPortalPatients(patient_protocols)", protocolsRes.error);
-  if (checkinsRes.error) logErr("loadPortalPatients(checkins)", checkinsRes.error);
-
-  const profileMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p]));
-  const locationMap = new Map((locationsRes.data ?? []).map((l) => [l.id, l.name]));
-  const activeProtocolMap = new Map((protocolsRes.data ?? []).map((p) => [p.patient_id, p.name]));
-  const lastCheckinMap = new Map<string, string>();
-  for (const c of checkinsRes.data ?? []) {
-    if (!lastCheckinMap.has(c.patient_id)) lastCheckinMap.set(c.patient_id, c.date);
+  const rows: PatientListRow[] = [];
+  for (let from = 0; ; from += PATIENT_LIST_PAGE) {
+    const { data, error } = await supabase
+      .rpc("portal_patient_list", { p_organization_id: organizationId })
+      .range(from, from + PATIENT_LIST_PAGE - 1);
+    if (error) { logErr("loadPortalPatients", error); return []; }
+    const page = (data ?? []) as PatientListRow[];
+    rows.push(...page);
+    if (page.length < PATIENT_LIST_PAGE) break;
   }
 
-  return rows.map((r) => {
-    const profile = r.user_id ? profileMap.get(r.user_id) : undefined;
-    const dossierName = [r.first_name, r.last_name].filter(Boolean).join(" ") || null;
-    const therapist = r.assigned_therapist_id ? profileMap.get(r.assigned_therapist_id) : undefined;
-    return {
-      id: r.id as string,
-      fullName: profile?.full_name ?? dossierName,
-      email: profile?.email ?? (r.email as string | null),
-      phone: r.phone as string | null,
-      gender: r.gender as string | null,
-      dateOfBirth: r.date_of_birth as string | null,
-      locationId: r.location_id as string | null,
-      locationName: r.location_id ? locationMap.get(r.location_id) ?? null : null,
-      therapistId: r.assigned_therapist_id as string | null,
-      therapistName: therapist?.full_name ?? null,
-      protocolName: activeProtocolMap.get(r.id as string) ?? null,
-      surgeryDate: r.surgery_date as string | null,
-      injuryDate: r.injury_date as string | null,
-      injuryType: r.injury_type as string | null,
-      status: r.status as string,
-      createdAt: r.created_at as string,
-      hasAccount: !!r.user_id,
-      invitedAt: r.invited_at as string | null,
-      lastCheckinDate: lastCheckinMap.get(r.id as string) ?? null,
-      dischargedAt: r.discharged_at as string | null,
-      dischargeOutcome: r.discharge_outcome as DischargeOutcome | null,
-    };
-  });
+  return rows.map((r) => ({
+    id: r.id,
+    fullName: r.full_name,
+    email: r.email,
+    phone: r.phone,
+    gender: r.gender,
+    dateOfBirth: r.date_of_birth,
+    locationId: r.location_id,
+    locationName: r.location_name,
+    therapistId: r.therapist_id,
+    therapistName: r.therapist_name,
+    protocolName: r.protocol_name,
+    surgeryDate: r.surgery_date,
+    injuryDate: r.injury_date,
+    injuryType: r.injury_type,
+    status: r.status,
+    createdAt: r.created_at,
+    hasAccount: !!r.user_id,
+    invitedAt: r.invited_at,
+    lastCheckinDate: r.last_checkin_date,
+    checkinSignals: checkinAttentionReasons(r.last_pain_score, r.last_swelling, r.last_day_score),
+    dischargedAt: r.discharged_at,
+    dischargeOutcome: r.discharge_outcome as DischargeOutcome | null,
+  }));
 }
 
 /**
