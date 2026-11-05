@@ -20,6 +20,7 @@ Bij elke dienst: ga naar de factuur- of organisatie-instellingen en vul de bedri
 - [ ] Vercel (Settings → Billing)
 - [ ] Resend (Settings → Billing)
 - [ ] Google / Firebase (Google Cloud Console → Billing)
+- [ ] Sentry (Settings → Subscription)
 - [ ] Domeinnaam reva-app.nl bij Hostnet op naam van het bedrijf zetten
 - [ ] GitHub-organisatie `Reva-app`: factuurgegevens invullen
 
@@ -41,6 +42,10 @@ REVA verwerkt gezondheidsgegevens, dus met elke dienst die daarbij kan meekijken
   1. Firebase Console → je project → tandwiel → **Project settings** → **Privacy** (of: Google Cloud Console → IAM → Settings)
   2. Accepteer de **Data Processing Terms** en vul je bedrijfsgegevens in
   3. Let op: Firebase verwerkt data in de VS. Noteer dat in je verwerkingsregister (stap 4)
+- [ ] **Sentry** (foutmeldingen)
+  1. Ga naar sentry.io/legal/dpa
+  2. De DPA geldt via de voorwaarden. Download de PDF en sla hem op
+  3. Sentry krijgt alleen technische foutinformatie, geen IP-adressen of patiëntgegevens
 
 ## 4. Eigen privacydocumenten
 
@@ -52,6 +57,7 @@ Praktijken gaan om deze documenten vragen voordat ze tekenen.
   - Vercel: hosting, Frankfurt (fra1)
   - Resend: e-mail, Ierland (eu-west-1)
   - Google Firebase: pushberichten, VS
+  - Sentry: foutmeldingen, Frankfurt (EU)
 - [ ] **Register van verwerkingsactiviteiten.** Een eenvoudige tabel: welke gegevens, waarom, hoe lang bewaard, welke subverwerker.
 - [ ] **Privacyverklaring** op reva-app.nl
 - [ ] **Algemene voorwaarden** voor praktijken (met opzegtermijn, aansprakelijkheid en wat er met data gebeurt na opzegging)

@@ -4,6 +4,7 @@ import type { NextConfig } from "next";
 // Draai `npm run build:cap` om de Capacitor-bundel te bouwen.
 const isCapacitor = process.env.NEXT_BUILD_TARGET === "capacitor";
 
+// Foutmeldingen gaan direct naar Sentry (EU-regio), zie lib/sentry.ts.
 // Supabase-project host, nodig voor connect-src/img-src in de CSP hieronder
 // (signed storage-URLs en de auth/REST-calls van de browser-client gaan hierheen).
 const supabaseOrigin = (() => {
@@ -32,7 +33,7 @@ const cspHeader = `
   style-src 'self' 'unsafe-inline';
   img-src 'self' blob: data: https://*.googleusercontent.com${supabaseOrigin ? ` ${supabaseOrigin}` : ""};
   font-src 'self';
-  connect-src 'self'${supabaseOrigin ? ` ${supabaseOrigin}` : ""};
+  connect-src 'self'${supabaseOrigin ? ` ${supabaseOrigin}` : ""} https://*.ingest.de.sentry.io;
   object-src 'none';
   base-uri 'self';
   form-action 'self';
