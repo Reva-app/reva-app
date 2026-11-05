@@ -54,7 +54,7 @@ export function StaffInviteForm({ organizationId, roles, locations, onInvited, o
           title="Medewerker uitnodigen"
           subtitle="Heeft deze persoon al een REVA-account, dan wordt die direct gekoppeld en krijgt diegene een e-mail. Anders ontvangt diegene een e-mail om zelf een wachtwoord te kiezen."
         />
-        <button type="button" onClick={onClose} aria-label="Sluiten" className="relative tap-target text-gray-400 hover:text-gray-600 shrink-0 -mt-1">
+        <button type="button" onClick={onClose} aria-label="Sluiten" className="relative tap-target text-subtle hover:text-gray-600 shrink-0 -mt-1">
           <X size={18} />
         </button>
       </div>

@@ -95,7 +95,7 @@ export function MfaEnrollScreen({ onVerified, onSignOut, portalLabel = "het prak
         </p>
 
         {loading ? (
-          <p className="text-sm" style={{ color: "#9ca3af" }}>Bezig met voorbereiden…</p>
+          <p className="text-sm" style={{ color: "#6b7280" }}>Bezig met voorbereiden…</p>
         ) : !factorId ? (
           <>
             {error && <p className="text-xs mb-4" style={{ color: "#dc2626" }}>{error}</p>}
@@ -119,7 +119,7 @@ export function MfaEnrollScreen({ onVerified, onSignOut, portalLabel = "het prak
             )}
             {secret && (
               <div>
-                <p className="text-[11px] text-gray-400 mb-1">
+                <p className="text-[11px] text-subtle mb-1">
                   Kun je de QR-code niet scannen? Voer deze code handmatig in:
                 </p>
                 <p className="text-xs font-mono rounded-lg px-3 py-2 select-all" style={{ background: "#f3f0eb", color: "#1a1a1a" }}>
@@ -146,7 +146,7 @@ export function MfaEnrollScreen({ onVerified, onSignOut, portalLabel = "het prak
               <Button type="submit" size="sm" disabled={verifying || code.length !== 6}>
                 {verifying ? "Bevestigen…" : "Bevestigen"}
               </Button>
-              <button type="button" onClick={onSignOut} className="text-xs font-medium hover:opacity-70" style={{ color: "#9ca3af" }}>
+              <button type="button" onClick={onSignOut} className="text-xs font-medium hover:opacity-70" style={{ color: "#6b7280" }}>
                 Uitloggen
               </button>
             </div>

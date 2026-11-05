@@ -275,7 +275,7 @@ export function DatePicker({
           {DAGHEADERS.map((h) => (
             <div
               key={h}
-              className="text-center text-[10px] font-semibold py-1"
+              className="text-center text-[11px] font-semibold py-1"
               style={{ color: "#b5b0a8" }}
             >
               {h}
@@ -328,7 +328,7 @@ export function DatePicker({
         className="flex items-center justify-between px-3 py-2.5 border-t"
         style={{ borderColor: "#f0ede8", background: "#faf9f7" }}
       >
-        <span className="text-xs" style={{ color: "#9ca3af" }}>
+        <span className="text-xs" style={{ color: "#6b7280" }}>
           {pending ? formatDisplay(pending) : "Geen datum geselecteerd"}
         </span>
         <button
@@ -368,7 +368,7 @@ export function DatePicker({
           type="button"
           onClick={openPicker}
           aria-label="Kalender openen"
-          className="shrink-0 -my-2 -mr-1 w-11 h-11 sm:w-8 sm:h-8 sm:my-0 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+          className="shrink-0 -my-2 -mr-1 w-11 h-11 sm:w-8 sm:h-8 sm:my-0 flex items-center justify-center rounded-lg text-subtle hover:text-gray-600 hover:bg-gray-100 transition-colors"
         >
           <Calendar size={15} />
         </button>

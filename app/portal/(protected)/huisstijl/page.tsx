@@ -92,7 +92,7 @@ export default function PortalHuisstijlPage() {
     return (
       <div className="p-4 sm:p-6 max-w-2xl mx-auto">
         <SectionHeader title="Huisstijl" subtitle="Logo, kleur en praktijknaam" />
-        <p className="text-sm text-gray-400 mt-4">Alleen de Practice Owner kan de huisstijl aanpassen.</p>
+        <p className="text-sm text-subtle mt-4">Alleen de Practice Owner kan de huisstijl aanpassen.</p>
       </div>
     );
   }
@@ -208,7 +208,7 @@ export default function PortalHuisstijlPage() {
               </div>
 
               <div className="rounded-xl overflow-hidden border" style={{ borderColor: "#e8e5df", background: "#f8f7f4" }}>
-                <p className="text-[10px] uppercase tracking-wide text-gray-400 px-4 pt-3">E-mail</p>
+                <p className="text-[11px] uppercase tracking-wide text-subtle px-4 pt-3">E-mail</p>
                 <div className="px-4 pt-2 pb-2">
                   {branding?.logoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element

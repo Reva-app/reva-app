@@ -47,7 +47,7 @@ const CATEGORY_ORDER: Record<string, number> = {
 function InfoTooltip({ text }: { text: string }) {
   return (
     <div className="relative flex items-center group">
-      <button type="button" className="w-5 h-5 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
+      <button type="button" className="w-5 h-5 rounded-full flex items-center justify-center text-subtle hover:text-gray-600 transition-colors">
         <Info size={14} />
       </button>
       <div
@@ -252,9 +252,9 @@ export default function PortalScheduleDetailPage() {
       </button>
 
       {loading ? (
-        <p className="text-sm text-gray-400">Laden…</p>
+        <p className="text-sm text-subtle">Laden…</p>
       ) : notFound || !schedule ? (
-        <p className="text-sm text-gray-400">Dit schema is niet gevonden.</p>
+        <p className="text-sm text-subtle">Dit schema is niet gevonden.</p>
       ) : (
         <>
           <div className="flex items-start gap-2 flex-wrap">
@@ -307,7 +307,7 @@ export default function PortalScheduleDetailPage() {
                   }
                 />
                 {schedule.exercises.length === 0 ? (
-                  <p className="text-sm text-gray-400">Nog geen oefeningen toegevoegd.</p>
+                  <p className="text-sm text-subtle">Nog geen oefeningen toegevoegd.</p>
                 ) : (
                   <div className="space-y-1.5">
                     <SortableExerciseList
@@ -318,7 +318,7 @@ export default function PortalScheduleDetailPage() {
                       renderItem={(ex, index, dragHandle) => (
                         <div className="flex items-start gap-2.5 rounded-xl border px-2.5 py-2" style={{ borderColor: "#e8e5df", background: "#ffffff" }}>
                           {dragHandle}
-                          <div className="flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-semibold shrink-0 mt-0.5" style={{ background: "#f3f0eb", color: "#8a847d" }}>
+                          <div className="flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-semibold shrink-0 mt-0.5" style={{ background: "#f3f0eb", color: "#8a847d" }}>
                             {index + 1}
                           </div>
                           <ExerciseThumb
@@ -336,7 +336,7 @@ export default function PortalScheduleDetailPage() {
                               </div>
                             )}
                             {ex.prescriptionNote && (
-                              <p className="text-xs text-gray-400 italic mt-0.5 truncate">{ex.prescriptionNote}</p>
+                              <p className="text-xs text-subtle italic mt-0.5 truncate">{ex.prescriptionNote}</p>
                             )}
                           </div>
                           {canEdit && (
@@ -345,7 +345,7 @@ export default function PortalScheduleDetailPage() {
                                 type="button"
                                 onClick={() => { setEditError(""); setEditingExercise(ex); }}
                                 title="Oefening bewerken"
-                                className="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+                                className="w-6 h-6 rounded-md flex items-center justify-center text-subtle hover:text-gray-700 hover:bg-gray-50 transition-colors"
                               >
                                 <Pencil size={12} />
                               </button>
@@ -353,7 +353,7 @@ export default function PortalScheduleDetailPage() {
                                 type="button"
                                 onClick={() => setConfirmRemove(ex)}
                                 title="Oefening verwijderen"
-                                className="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-gray-50 transition-colors"
+                                className="w-6 h-6 rounded-md flex items-center justify-center text-subtle hover:text-red-600 hover:bg-gray-50 transition-colors"
                               >
                                 <Trash2 size={12} />
                               </button>
@@ -381,7 +381,7 @@ export default function PortalScheduleDetailPage() {
                     </div>
                   )}
                   {schedule.archived && usage.length > 0 && (
-                    <p className="text-xs text-gray-400">Wordt nog gebruikt in {usage.length} {usage.length === 1 ? "herstelplan" : "herstelplannen"} — daarom nog niet te verwijderen.</p>
+                    <p className="text-xs text-subtle">Wordt nog gebruikt in {usage.length} {usage.length === 1 ? "herstelplan" : "herstelplannen"} — daarom nog niet te verwijderen.</p>
                   )}
                 </div>
               </Card>
@@ -405,11 +405,11 @@ export default function PortalScheduleDetailPage() {
                 <CardHeader title="Gegevens" />
                 <div className="space-y-2 text-sm">
                   <div>
-                    <p className="text-xs text-gray-400">Aangemaakt op</p>
+                    <p className="text-xs text-subtle">Aangemaakt op</p>
                     <p className="text-gray-700">{fmtDate(schedule.createdAt)}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-400">Aangemaakt door</p>
+                    <p className="text-xs text-subtle">Aangemaakt door</p>
                     <p className="text-gray-700">{schedule.createdByName ?? "Onbekend"}</p>
                   </div>
                 </div>
@@ -418,7 +418,7 @@ export default function PortalScheduleDetailPage() {
               <Card>
                 <CardHeader title="Gebruikt in herstelplannen" />
                 {usage.length === 0 ? (
-                  <p className="text-sm text-gray-400">Nog niet gebruikt in een herstelplan.</p>
+                  <p className="text-sm text-subtle">Nog niet gebruikt in een herstelplan.</p>
                 ) : (
                   <div className="space-y-1.5">
                     {usage.map((u) => (

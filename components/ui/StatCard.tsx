@@ -42,7 +42,7 @@ export function StatCard({
         <div className="flex-1 min-w-0">
           <p
             className="text-xs font-medium uppercase tracking-wide mb-2"
-            style={{ color: accent ? "rgba(255,255,255,0.5)" : "#9ca3af" }}
+            style={{ color: accent ? "rgba(255,255,255,0.5)" : "#6b7280" }}
           >
             {label}
           </p>
@@ -55,7 +55,7 @@ export function StatCard({
           {subtitle && (
             <p
               className="text-xs mt-1"
-              style={{ color: accent ? "rgba(255,255,255,0.4)" : "#9ca3af" }}
+              style={{ color: accent ? "rgba(255,255,255,0.4)" : "#6b7280" }}
             >
               {subtitle}
             </p>

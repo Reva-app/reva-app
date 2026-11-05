@@ -138,7 +138,7 @@ function LineChart({
       {/* Date labels */}
       <div className="flex justify-between mt-1 px-1">
         {labelIndices.map((idx) => (
-          <span key={idx} className="text-[9px]" style={{ color: "#c4bfb9" }}>
+          <span key={idx} className="text-[11px]" style={{ color: "#c4bfb9" }}>
             {dates[idx] ? fmt(dates[idx]) : ""}
           </span>
         ))}
@@ -187,7 +187,7 @@ function Bar({ label, value, max, color = "#e8632a", sublabel }: {
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-xs text-gray-600">{label}</span>
         <div className="flex items-center gap-1.5">
-          {sublabel && <span className="text-[10px] text-gray-400">{sublabel}</span>}
+          {sublabel && <span className="text-[11px] text-subtle">{sublabel}</span>}
           <span className="text-xs font-semibold text-gray-800">{round1(value)}</span>
         </div>
       </div>
@@ -228,7 +228,7 @@ function PeriodFilter({ value, onChange }: { value: Period; onChange: (p: Period
           className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
           style={{
             background: value === p ? "#ffffff" : "transparent",
-            color: value === p ? "#1a1a1a" : "#9ca3af",
+            color: value === p ? "#1a1a1a" : "#6b7280",
             boxShadow: value === p ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
           }}
         >
@@ -479,7 +479,7 @@ export default function AnalysePage() {
             action={<Lightbulb size={15} className="text-gray-400" />}
           />
           {!s || s.obs.length === 0 ? (
-            <p className="text-sm text-gray-400 mt-2">Vul meer check-ins in voor slimme observaties.</p>
+            <p className="text-sm text-subtle mt-2">Vul meer check-ins in voor slimme observaties.</p>
           ) : (
             <div className="space-y-3 mt-3">
               {s.obs.slice(0, 5).map((obs, i) => (
@@ -490,7 +490,7 @@ export default function AnalysePage() {
               ))}
             </div>
           )}
-          <p className="text-[10px] mt-5 pt-3" style={{ borderTop: "1px solid #f3f0eb", color: "#c4bfb7" }}>
+          <p className="text-[11px] mt-5 pt-3" style={{ borderTop: "1px solid #f3f0eb", color: "#c4bfb7" }}>
             Deze observaties zijn informatief en vormen geen medisch advies.
           </p>
         </Card>
@@ -532,7 +532,7 @@ export default function AnalysePage() {
             <Card>
               <CardHeader title="Mijlpalen van deze fase" />
               {phase.milestones.length === 0 ? (
-                <p className="text-sm text-gray-400">Nog geen mijlpalen ingesteld voor deze fase.</p>
+                <p className="text-sm text-subtle">Nog geen mijlpalen ingesteld voor deze fase.</p>
               ) : (
                 <div className="space-y-2">
                   {phase.milestones.map((m) => (
@@ -540,7 +540,7 @@ export default function AnalysePage() {
                       {m.completed
                         ? <CheckCircle2 size={16} style={{ color: "#22c55e" }} />
                         : <Circle size={16} className="text-gray-300" />}
-                      <span className={`text-sm ${m.completed ? "text-gray-400 line-through" : "text-gray-700"}`}>{m.title}</span>
+                      <span className={`text-sm ${m.completed ? "text-subtle line-through" : "text-gray-700"}`}>{m.title}</span>
                     </div>
                   ))}
                 </div>
@@ -559,7 +559,7 @@ export default function AnalysePage() {
                   {protocolExercises.map((ex) => <option key={ex.id} value={ex.id}>{ex.title}</option>)}
                 </select>
                 {exerciseProgress.length < 2 ? (
-                  <p className="text-sm text-gray-400">Nog geen voortgang gelogd voor deze oefening.</p>
+                  <p className="text-sm text-subtle">Nog geen voortgang gelogd voor deze oefening.</p>
                 ) : (
                   <ProtocolLineChart
                     data={exerciseProgress.map((p) => p.weightKg ?? p.reps ?? 0)}
@@ -582,9 +582,9 @@ export default function AnalysePage() {
         <div className="rounded-2xl border p-5" style={{ borderColor: "#e8e5df", background: "#ffffff", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
           <div className="flex items-start justify-between mb-3">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#9ca3af" }}>Hersteltrend</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "#6b7280" }}>Hersteltrend</p>
               <p className="text-2xl font-bold mt-0.5" style={{ color: "#1a1a1a" }}>
-                {s ? round1(s.avgScore) : "n.v.t."}<span className="text-sm font-normal text-gray-400">/5</span>
+                {s ? round1(s.avgScore) : "n.v.t."}<span className="text-sm font-normal text-subtle">/5</span>
               </p>
             </div>
             <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#fff5f0" }}>
@@ -599,7 +599,7 @@ export default function AnalysePage() {
                 <span className="text-xs font-medium capitalize" style={{ color: trendColor(s.scoreTrend) }}>
                   {s.scoreTrend}
                 </span>
-                <span className="text-xs text-gray-400">t.o.v. vorige periode</span>
+                <span className="text-xs text-subtle">t.o.v. vorige periode</span>
               </div>
             </>
           )}
@@ -609,9 +609,9 @@ export default function AnalysePage() {
         <div className="rounded-2xl border p-5" style={{ borderColor: "#e8e5df", background: "#ffffff", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
           <div className="flex items-start justify-between mb-3">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#9ca3af" }}>Pijn & Mobiliteit</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "#6b7280" }}>Pijn & Mobiliteit</p>
               <p className="text-2xl font-bold mt-0.5" style={{ color: "#1a1a1a" }}>
-                {s ? round1(s.avgPijn) : "n.v.t."}<span className="text-sm font-normal text-gray-400">/10</span>
+                {s ? round1(s.avgPijn) : "n.v.t."}<span className="text-sm font-normal text-subtle">/10</span>
               </p>
             </div>
             <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#fef3c7" }}>
@@ -631,7 +631,7 @@ export default function AnalysePage() {
                 </div>
               </div>
               {s.avgMob > s.prevAvgMob + 0.1 && Math.abs(s.avgPijn - s.prevAvgPijn) < 1 && (
-                <p className="text-[10px] mt-3 leading-relaxed" style={{ color: "#9ca3af" }}>
+                <p className="text-[11px] mt-3 leading-relaxed" style={{ color: "#6b7280" }}>
                   Mobiliteit stijgt terwijl pijn stabiel blijft
                 </p>
               )}
@@ -643,9 +643,9 @@ export default function AnalysePage() {
         <div className="rounded-2xl border p-5" style={{ borderColor: "#e8e5df", background: "#ffffff", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
           <div className="flex items-start justify-between mb-3">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#9ca3af" }}>Activiteit</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "#6b7280" }}>Activiteit</p>
               <p className="text-2xl font-bold mt-0.5" style={{ color: "#1a1a1a" }}>
-                {s ? s.ciCount : "n.v.t."}<span className="text-sm font-normal text-gray-400"> check-ins</span>
+                {s ? s.ciCount : "n.v.t."}<span className="text-sm font-normal text-subtle"> check-ins</span>
               </p>
             </div>
             <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#f0fdf4" }}>
@@ -663,7 +663,7 @@ export default function AnalysePage() {
                 <span className="font-semibold text-gray-800">{s.medCount}</span>
               </div>
               {s.avgScoreOnTrain > s.avgScoreOffTrain + 0.2 && s.trainCount > 0 && (
-                <p className="text-[10px] pt-1 leading-relaxed" style={{ color: "#9ca3af" }}>
+                <p className="text-[11px] pt-1 leading-relaxed" style={{ color: "#6b7280" }}>
                   Op trainingsdagen is je score gemiddeld hoger
                 </p>
               )}
@@ -678,14 +678,14 @@ export default function AnalysePage() {
         <Card>
           <CardHeader title="Check-in trend" subtitle={`Dagscore van de laatste ${period} dagen`} />
           {noData ? (
-            <p className="text-sm text-gray-400 mt-2">Geen check-in data beschikbaar.</p>
+            <p className="text-sm text-subtle mt-2">Geen check-in data beschikbaar.</p>
           ) : (
             <>
               <div className="mt-3">
                 <LineChart data={s!.scoreSeries} dates={s!.chartDates} color="#e8632a" max={5} height={88} />
               </div>
               <div className="flex justify-between items-center mt-2 pt-2" style={{ borderTop: "1px solid #f3f0eb" }}>
-                <span className="text-xs text-gray-400">Gem. {round1(s!.avgScore)}/5</span>
+                <span className="text-xs text-subtle">Gem. {round1(s!.avgScore)}/5</span>
                 <div className="flex items-center gap-1">
                   <TrendIcon trend={s!.scoreTrend} size={12} />
                   <span className="text-xs font-medium capitalize" style={{ color: trendColor(s!.scoreTrend) }}>{s!.scoreTrend}</span>
@@ -698,14 +698,14 @@ export default function AnalysePage() {
         <Card>
           <CardHeader title="Pijnniveau trend" subtitle={`Pijnscore van de laatste ${period} dagen`} />
           {noData ? (
-            <p className="text-sm text-gray-400 mt-2">Geen check-in data beschikbaar.</p>
+            <p className="text-sm text-subtle mt-2">Geen check-in data beschikbaar.</p>
           ) : (
             <>
               <div className="mt-3">
                 <LineChart data={s!.pijnSeries} dates={s!.chartDates} color="#f59e0b" max={10} height={88} />
               </div>
               <div className="flex justify-between items-center mt-2 pt-2" style={{ borderTop: "1px solid #f3f0eb" }}>
-                <span className="text-xs text-gray-400">Gem. {round1(s!.avgPijn)}/10</span>
+                <span className="text-xs text-subtle">Gem. {round1(s!.avgPijn)}/10</span>
                 <div className="flex items-center gap-1">
                   <TrendIcon trend={s!.pijnTrend} size={12} />
                   <span className="text-xs font-medium capitalize" style={{ color: trendColor(s!.pijnTrend) }}>{s!.pijnTrend}</span>
@@ -723,7 +723,7 @@ export default function AnalysePage() {
         <Card>
           <CardHeader title="Gemiddelde herstelwaarden" subtitle={`Over de afgelopen ${period} dagen`} />
           {noData ? (
-            <p className="text-sm text-gray-400 mt-2">Geen data beschikbaar.</p>
+            <p className="text-sm text-subtle mt-2">Geen data beschikbaar.</p>
           ) : (
             <div className="space-y-4 mt-3">
               <Bar label="Pijn (omgekeerd)" value={10 - s!.avgPijn} max={10} color="#e8632a" sublabel="/10, lager is beter" />
@@ -738,7 +738,7 @@ export default function AnalysePage() {
         <Card>
           <CardHeader title="Weekvergelijking" subtitle="Deze week vs vorige week" />
           {!s ? (
-            <p className="text-sm text-gray-400 mt-2">Geen data beschikbaar.</p>
+            <p className="text-sm text-subtle mt-2">Geen data beschikbaar.</p>
           ) : (
             <div className="space-y-0 mt-2">
               {[
@@ -808,7 +808,7 @@ export default function AnalysePage() {
                 ].map(({ label, value }) => (
                   <div key={label} className="rounded-xl p-3" style={{ background: "#f8f7f4" }}>
                     <p className="text-xl font-bold text-gray-900">{value}</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">{label}</p>
+                    <p className="text-[11px] text-subtle mt-0.5">{label}</p>
                   </div>
                 ))}
               </div>
@@ -841,7 +841,7 @@ export default function AnalysePage() {
             action={<Pill size={15} className="text-gray-400" />}
           />
           {!s ? null : s.medByName.length === 0 ? (
-            <p className="text-sm text-gray-400 mt-2">Geen medicatie gelogd in deze periode.</p>
+            <p className="text-sm text-subtle mt-2">Geen medicatie gelogd in deze periode.</p>
           ) : (
             <div className="space-y-4 mt-2">
               <div className="space-y-3">
@@ -881,7 +881,7 @@ export default function AnalysePage() {
           action={<Target size={15} className="text-gray-400" />}
         />
         {!s ? null : s.mijlpalenTotal === 0 ? (
-          <p className="text-sm text-gray-400 mt-2">Nog geen mijlpalen ingesteld.</p>
+          <p className="text-sm text-subtle mt-2">Nog geen mijlpalen ingesteld.</p>
         ) : (
           <div className="space-y-5 mt-3">
             {/* Progress */}
@@ -896,20 +896,20 @@ export default function AnalysePage() {
                 <div className="h-full rounded-full transition-all duration-700"
                   style={{ width: `${s.progress * 100}%`, background: "#e8632a" }} />
               </div>
-              <p className="text-[10px] text-gray-400 mt-1">{Math.round(s.progress * 100)}% van de mijlpalen bereikt</p>
+              <p className="text-[11px] text-subtle mt-1">{Math.round(s.progress * 100)}% van de mijlpalen bereikt</p>
             </div>
 
             {/* Recently completed */}
             {s.recentDone.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Recent behaald</p>
+                <p className="text-xs font-semibold text-subtle uppercase tracking-wide mb-2">Recent behaald</p>
                 <div className="space-y-1.5">
                   {s.recentDone.map((m) => (
                     <div key={m.id} className="flex items-center gap-2.5">
                       <CheckCircle2 size={14} style={{ color: "#e8632a", flexShrink: 0 }} />
                       <span className="text-sm text-gray-700 flex-1">{m.title}</span>
                       {m.completedAt && (
-                        <span className="text-[10px] text-gray-400">{fmt(m.completedAt)}</span>
+                        <span className="text-[11px] text-subtle">{fmt(m.completedAt)}</span>
                       )}
                     </div>
                   ))}
@@ -923,7 +923,7 @@ export default function AnalysePage() {
                 style={{ background: "#faf9f7", border: "1px solid #ece9e3" }}>
                 <Circle size={14} style={{ color: "#d1cdc7", flexShrink: 0 }} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-0.5">Volgende mijlpaal</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-subtle mb-0.5">Volgende mijlpaal</p>
                   <p className="text-sm font-medium text-gray-700 truncate">{s.nextMijl.title}</p>
                 </div>
                 <ChevronRight size={14} className="text-gray-300 shrink-0" />
@@ -941,7 +941,7 @@ export default function AnalysePage() {
           action={<Lightbulb size={15} className="text-gray-400" />}
         />
         {!s || s.obs.length === 0 ? (
-          <p className="text-sm text-gray-400 mt-2">Vul meer check-ins in voor slimme observaties.</p>
+          <p className="text-sm text-subtle mt-2">Vul meer check-ins in voor slimme observaties.</p>
         ) : (
           <div className="space-y-3 mt-3">
             {s.obs.slice(0, 5).map((obs, i) => (
@@ -952,7 +952,7 @@ export default function AnalysePage() {
             ))}
           </div>
         )}
-        <p className="text-[10px] mt-5 pt-3" style={{ borderTop: "1px solid #f3f0eb", color: "#c4bfb7" }}>
+        <p className="text-[11px] mt-5 pt-3" style={{ borderTop: "1px solid #f3f0eb", color: "#c4bfb7" }}>
           Deze observaties zijn informatief en vormen geen medisch advies.
         </p>
       </Card>

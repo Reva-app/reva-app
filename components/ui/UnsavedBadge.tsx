@@ -8,7 +8,7 @@ import { AlertCircle } from "lucide-react";
  */
 export function UnsavedBadge() {
   return (
-    <span className="flex items-center gap-1.5 text-xs" style={{ color: "#9ca3af" }}>
+    <span className="flex items-center gap-1.5 text-xs" style={{ color: "#6b7280" }}>
       <AlertCircle size={12} />
       Niet-opgeslagen wijzigingen
     </span>

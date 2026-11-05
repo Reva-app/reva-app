@@ -1,5 +1,6 @@
 "use client";
 
+import { ScoreScale } from "@/components/checkin/ScoreScale";
 import { useEffect, useState } from "react";
 import { X, Check } from "lucide-react";
 import type { CheckIn } from "@/lib/data";
@@ -35,22 +36,7 @@ function ScoreRow({
           {value}/{max}
         </span>
       </div>
-      <div className="flex gap-1">
-        {Array.from({ length: max }, (_, i) => i + 1).map((v) => (
-          <button
-            key={v}
-            type="button"
-            onClick={() => onChange(v)}
-            className="flex-1 h-9 rounded-xl text-xs font-medium transition-all touch-press"
-            style={{
-              background: v <= value ? color : "#f3f0eb",
-              color: v <= value ? "#ffffff" : "#9ca3af",
-            }}
-          >
-            {v}
-          </button>
-        ))}
-      </div>
+      <ScoreScale label={label} value={value} max={max} onChange={onChange} color={color} />
     </div>
   );
 }
@@ -150,7 +136,7 @@ export function CheckInModal({
         <div className="overflow-y-auto flex-1 px-5 sm:px-6 py-5 space-y-4">
 
           {/* Uitleg */}
-          <p className="text-xs text-gray-400 leading-relaxed">
+          <p className="text-xs text-subtle leading-relaxed">
             Vul in hoe je dag was. Bij alle scores geldt: <strong className="text-gray-500">1 is laag</strong> en de hoogste waarde is het beste, behalve bij pijn, waar lager beter is.
           </p>
 
@@ -178,7 +164,7 @@ export function CheckInModal({
           <div>
             <div className="flex items-center gap-1.5 mb-1.5">
               <label className="text-xs font-medium text-gray-500">Notitie</label>
-              <span className="text-[10px] text-gray-400 italic">optioneel</span>
+              <span className="text-[11px] text-subtle italic">optioneel</span>
             </div>
             <textarea
               value={notitie}

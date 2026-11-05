@@ -26,7 +26,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 {SUBSCRIPTIONS_ENABLED && <TrialBanner />}
                 <TopBar />
                 <main
-                  className="flex-1 overflow-y-auto pb-nav lg:pb-0"
+                  className="flex-1 overflow-y-auto pb-nav-fab lg:pb-0"
                   style={{ background: "#f8f7f4" }}
                 >
                   {children}

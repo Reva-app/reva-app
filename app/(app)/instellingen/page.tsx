@@ -64,7 +64,7 @@ function FieldLabel({ children, optional }: { children: React.ReactNode; optiona
     <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500 mb-1.5">
       {children}
       {optional && (
-        <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-full" style={{ background: "#f3f0eb", color: "#a8a29e" }}>
+        <span className="text-[11px] font-normal px-1.5 py-0.5 rounded-full" style={{ background: "#f3f0eb", color: "#a8a29e" }}>
           Optioneel
         </span>
       )}
@@ -102,7 +102,7 @@ function LockedFieldDisplay({ value }: { value: string }) {
       style={{ borderColor: "#e8e5df", background: "#f3f0eb", color: "#1a1a1a" }}
     >
       <span className="whitespace-nowrap">{value}</span>
-      <span className="flex items-center gap-1 text-[11px] text-gray-400 shrink-0">
+      <span className="flex items-center gap-1 text-[11px] text-subtle shrink-0">
         <Lock size={11} /> Ingesteld door je fysiopraktijk
       </span>
     </div>
@@ -843,7 +843,7 @@ export default function InstellingenPage() {
                       Datum wissen
                     </button>
                   ) : (
-                    <p className="text-[11px] text-gray-400 mt-1.5 ml-0.5">Alleen invullen als je geopereerd bent.</p>
+                    <p className="text-[11px] text-subtle mt-1.5 ml-0.5">Alleen invullen als je geopereerd bent.</p>
                   )}
                 </>
               )}
@@ -916,7 +916,7 @@ export default function InstellingenPage() {
 
           {/* Zorgverzekering divider */}
           <div className="pt-1 pb-1" style={{ borderTop: "1px solid #f0ede8" }}>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mt-2">Zorgverzekering</p>
+            <p className="text-xs font-semibold text-subtle uppercase tracking-wide mt-2">Zorgverzekering</p>
           </div>
 
           <div>
@@ -951,7 +951,7 @@ export default function InstellingenPage() {
                   {aanvullendeVerzekeringen.length > 1 && (
                     <button type="button" onClick={() => removeVerzekering(i)}
                       className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-gray-100 shrink-0"
-                      style={{ color: "#9ca3af" }}>
+                      style={{ color: "#6b7280" }}>
                       <X size={14} />
                     </button>
                   )}
@@ -968,7 +968,7 @@ export default function InstellingenPage() {
           <div className="sm:w-1/2 sm:pr-2">
             <FieldLabel optional>Aantal fysio behandelingen</FieldLabel>
             <TextInput value={aantalFysio} onChange={setAantalFysio} placeholder="Bijvoorbeeld: 9" type="number" />
-            <p className="text-[11px] text-gray-400 mt-1.5 ml-0.5">Het maximaal vergoed aantal behandelingen via jouw polis.</p>
+            <p className="text-[11px] text-subtle mt-1.5 ml-0.5">Het maximaal vergoed aantal behandelingen via jouw polis.</p>
           </div>
 
           <div className="flex items-center gap-3 pt-1">
@@ -1036,7 +1036,7 @@ export default function InstellingenPage() {
                     Foto verwijderen
                   </button>
                 )}
-                <p className="text-[11px] text-gray-400">JPG of PNG · max 5 MB</p>
+                <p className="text-[11px] text-subtle">JPG of PNG · max 5 MB</p>
               </div>
             </div>
           </div>
@@ -1061,7 +1061,7 @@ export default function InstellingenPage() {
                 Voer een geldig e-mailadres in
               </p>
             )}
-            <p className="text-[11px] text-gray-400 mt-1.5 ml-0.5">
+            <p className="text-[11px] text-subtle mt-1.5 ml-0.5">
               Voorbereiding op accountkoppeling en inloggen.
             </p>
           </div>
@@ -1095,7 +1095,7 @@ export default function InstellingenPage() {
           {hasPassword && (
             <>
               <div className="pt-2 pb-1" style={{ borderTop: "1px solid #f0ede8" }}>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mt-2">
+                <p className="text-xs font-semibold text-subtle uppercase tracking-wide mt-2">
                   Wachtwoord wijzigen
                 </p>
               </div>
@@ -1114,7 +1114,7 @@ export default function InstellingenPage() {
                     />
                     <button type="button" onClick={() => setShowWw((v) => !v)}
                       aria-label={showWw ? "Wachtwoorden verbergen" : "Wachtwoorden tonen"}
-                      className="tap-target absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                      className="tap-target absolute right-3 top-1/2 -translate-y-1/2 text-subtle">
                       {showWw ? <EyeOff size={14} /> : <Eye size={14} />}
                     </button>
                   </div>
@@ -1186,7 +1186,7 @@ export default function InstellingenPage() {
                 style={{
                   color: planInfo.plan === "premium"
                     ? "rgba(255,255,255,0.6)"
-                    : "#9ca3af",
+                    : "#6b7280",
                 }}
               >
                 {planInfo.plan === "premium" && "Volledige toegang tot alle functies"}
@@ -1214,7 +1214,7 @@ export default function InstellingenPage() {
                   ? "#c8975a"
                   : planInfo.plan === "trial"
                     ? "#ffffff"
-                    : "#9ca3af",
+                    : "#6b7280",
               }}
             >
               {planInfo.plan === "premium" ? "Actief" : planInfo.plan === "trial" ? "Trial" : "Free"}
@@ -1274,7 +1274,7 @@ export default function InstellingenPage() {
             <div key={key} className="flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-sm font-medium text-gray-800">{label}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
+                <p className="text-xs text-subtle mt-0.5">{desc}</p>
               </div>
               <Toggle
                 enabled={notificationSettings[key]}
@@ -1316,7 +1316,7 @@ export default function InstellingenPage() {
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-gray-400">
+              <p className="text-[11px] text-subtle">
                 Je ontvangt elke dag een e-mail op dit tijdstip als je je check-in nog niet hebt ingevuld.
               </p>
             </div>
@@ -1361,7 +1361,7 @@ export default function InstellingenPage() {
             <Button size="sm" onClick={handleFeedback} disabled={fbSending}>
               {fbSending ? "Versturen..." : "Verstuur feedback"}
             </Button>
-            <p className="text-[11px] text-gray-400 mt-2">Wordt verstuurd naar info@reva-app.nl</p>
+            <p className="text-[11px] text-subtle mt-2">Wordt verstuurd naar info@reva-app.nl</p>
           </div>
         </div>
       </Card>

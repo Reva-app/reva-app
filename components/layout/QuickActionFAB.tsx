@@ -275,12 +275,15 @@ export function QuickActionFAB() {
                   style={{ animation: `fabActionIn 0.22s ease ${i * 45}ms both` }}
                 >
                   <span
+                    aria-hidden
                     className="text-xs font-semibold px-3 py-2 rounded-xl whitespace-nowrap"
                     style={{ background: "#ffffff", color: "#1a1a1a", boxShadow: "0 2px 10px rgba(0,0,0,0.14)" }}
                   >
                     {label}
                   </span>
                   <button
+                    type="button"
+                    aria-label={label}
                     onClick={() => openSheet(action.id)}
                     className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 touch-press"
                     style={{
@@ -313,7 +316,9 @@ export function QuickActionFAB() {
           transition: "background 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease",
           animation: "fabIn 0.3s cubic-bezier(0.34,1.56,0.64,1)",
         }}
+        type="button"
         aria-label="Snelle acties"
+        aria-expanded={fabOpen}
       >
         <Plus size={24} color="#ffffff" strokeWidth={2.5} />
       </button>

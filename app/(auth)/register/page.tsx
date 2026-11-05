@@ -232,7 +232,7 @@ export default function RegisterPage() {
                 type="button"
                 aria-label={showPassword ? "Wachtwoord verbergen" : "Wachtwoord tonen"}
                 onClick={() => setShowPassword((v) => !v)}
-                className="tap-target absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                className="tap-target absolute right-3.5 top-1/2 -translate-y-1/2 text-subtle hover:text-gray-600 transition-colors"
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -312,7 +312,7 @@ export default function RegisterPage() {
         {/* Divider */}
         <div className="flex items-center gap-3 my-5">
           <div className="flex-1 h-px" style={{ background: "#ece9e3" }} />
-          <span className="text-xs text-gray-400">of</span>
+          <span className="text-xs text-subtle">of</span>
           <div className="flex-1 h-px" style={{ background: "#ece9e3" }} />
         </div>
 
@@ -333,7 +333,7 @@ export default function RegisterPage() {
         </button>
 
         {/* Disclaimer note */}
-        <p className="text-[11px] text-gray-400 text-center mt-4 leading-relaxed">
+        <p className="text-[11px] text-subtle text-center mt-4 leading-relaxed">
           Door een account aan te maken ga je akkoord met onze{" "}
           <a
             href="https://www.reva-app.nl/algemene-voorwaarden"

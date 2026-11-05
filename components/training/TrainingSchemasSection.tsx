@@ -95,7 +95,7 @@ function FieldLabel({ children, optional }: { children: React.ReactNode; optiona
     <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500 mb-1.5">
       {children}
       {optional && (
-        <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-full"
+        <span className="text-[11px] font-normal px-1.5 py-0.5 rounded-full"
           style={{ background: "#f3f0eb", color: "#a8a29e" }}>Optioneel</span>
       )}
     </label>
@@ -418,8 +418,8 @@ function SchemaFormModal({
           {oefeningen.length === 0 ? (
             <div className="rounded-xl border px-4 py-6 text-center"
               style={{ borderColor: "#e8e5df", background: "#f8f7f4" }}>
-              <p className="text-xs text-gray-400">Nog geen oefeningen in je database.</p>
-              <p className="text-xs text-gray-400 mt-1">Voeg eerst een oefening toe via &quot;Oefening toevoegen&quot;.</p>
+              <p className="text-xs text-subtle">Nog geen oefeningen in je database.</p>
+              <p className="text-xs text-subtle mt-1">Voeg eerst een oefening toe via &quot;Oefening toevoegen&quot;.</p>
             </div>
           ) : (
             <>
@@ -447,7 +447,7 @@ function SchemaFormModal({
               <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#e8e5df" }}>
                 {filteredOefeningen.length === 0 ? (
                   <div className="px-4 py-5 text-center">
-                    <p className="text-xs text-gray-400">Geen oefeningen van dit type.</p>
+                    <p className="text-xs text-subtle">Geen oefeningen van dit type.</p>
                   </div>
                 ) : (
                   filteredOefeningen.map((oe, i) => {
@@ -470,7 +470,7 @@ function SchemaFormModal({
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-800 truncate">{oe.title}</p>
-                          <p className="text-xs text-gray-400">{oe.type}{oe.repetitions ? ` · ${oe.repetitions}` : ""}</p>
+                          <p className="text-xs text-subtle">{oe.type}{oe.repetitions ? ` · ${oe.repetitions}` : ""}</p>
                         </div>
                         <div
                           className="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all"
@@ -489,7 +489,7 @@ function SchemaFormModal({
             </>
           )}
           {form.exerciseIds.length > 0 && (
-            <p className="text-xs text-gray-400 mt-1.5">
+            <p className="text-xs text-subtle mt-1.5">
               {form.exerciseIds.length} oefening{form.exerciseIds.length !== 1 ? "en" : ""} geselecteerd
             </p>
           )}
@@ -543,10 +543,10 @@ function SchemaCard({
           </div>
           <h3 className="text-sm font-semibold text-gray-900 leading-snug">{schema.title}</h3>
           <div className="flex items-center gap-3 mt-1.5">
-            <span className="flex items-center gap-1 text-xs text-gray-400">
+            <span className="flex items-center gap-1 text-xs text-subtle">
               <Clock size={10} /> {schema.duration}
             </span>
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-subtle">
               {linked.length} oefening{linked.length !== 1 ? "en" : ""}
             </span>
           </div>
@@ -604,10 +604,10 @@ function SchemaCard({
                       <p className="text-xs font-medium text-gray-700 truncate">{oe.title}</p>
                     </div>
                     {oe.repetitions && (
-                      <span className="text-[11px] text-gray-400 shrink-0">{oe.repetitions}</span>
+                      <span className="text-[11px] text-subtle shrink-0">{oe.repetitions}</span>
                     )}
                     {oe.loadOrTime && !oe.repetitions && (
-                      <span className="text-[11px] text-gray-400 shrink-0">{oe.loadOrTime}</span>
+                      <span className="text-[11px] text-subtle shrink-0">{oe.loadOrTime}</span>
                     )}
                   </div>
                 );
@@ -664,7 +664,7 @@ function OefeningCard({
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="text-sm font-semibold text-gray-900 leading-snug truncate">{oefening.title}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{oefening.type} · {oefening.location}</p>
+              <p className="text-xs text-subtle mt-0.5">{oefening.type} · {oefening.location}</p>
             </div>
             <div className="flex items-center gap-1 shrink-0">
               <button onClick={onEdit}
@@ -698,7 +698,7 @@ function OefeningCard({
           </div>
 
           {oefening.note && (
-            <p className="text-[11px] text-gray-400 mt-2 italic leading-relaxed">{oefening.note}</p>
+            <p className="text-[11px] text-subtle mt-2 italic leading-relaxed">{oefening.note}</p>
           )}
         </div>
       </div>
@@ -752,7 +752,7 @@ function PageTabs({ active, onChange, schemaCount, oefeningCount }: {
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
             style={{
               background: isActive ? "#ffffff" : "transparent",
-              color: isActive ? "#1a1a1a" : "#9ca3af",
+              color: isActive ? "#1a1a1a" : "#6b7280",
               boxShadow: isActive ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
             }}
           >
@@ -978,7 +978,7 @@ export function TrainingSchemasSection({ variant }: TrainingSchemasSectionProps)
                 className="flex-1 py-2.5 text-sm font-medium transition-all"
                 style={{
                   background: activeTab === id ? "#ffffff" : "transparent",
-                  color: activeTab === id ? "#1a1a1a" : "#9ca3af",
+                  color: activeTab === id ? "#1a1a1a" : "#6b7280",
                   boxShadow: activeTab === id ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
                   margin: activeTab === id ? "3px" : "0",
                   borderRadius: activeTab === id ? "8px" : "0",
@@ -1154,7 +1154,7 @@ export function TrainingSchemasSection({ variant }: TrainingSchemasSectionProps)
                       return (
                         <div className="flex flex-col items-center justify-center py-10 text-center rounded-2xl border border-dashed"
                           style={{ borderColor: "#e8e5df" }}>
-                          <p className="text-sm text-gray-400">Geen oefeningen van dit type.</p>
+                          <p className="text-sm text-subtle">Geen oefeningen van dit type.</p>
                         </div>
                       );
                     }

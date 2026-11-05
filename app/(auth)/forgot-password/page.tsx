@@ -78,7 +78,7 @@ export default function ForgotPasswordPage() {
             <p className="text-sm text-gray-500 leading-relaxed mb-6">
               Als <span className="font-medium text-gray-700">{email}</span> bij ons bekend is, ontvang je een e-mail met een reset link.
             </p>
-            <p className="text-xs text-gray-400 mb-6">
+            <p className="text-xs text-subtle mb-6">
               Geen e-mail ontvangen? Controleer je spamfolder of probeer opnieuw.
             </p>
             <button

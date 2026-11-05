@@ -79,7 +79,7 @@ export function ExerciseMediaEditor({
             <button
               type="button"
               onClick={() => onChange(null, null)}
-              className="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-red-600 transition-colors"
+              className="flex items-center gap-1 text-xs font-medium text-subtle hover:text-red-600 transition-colors"
             >
               <Trash2 size={12} /> Media verwijderen
             </button>

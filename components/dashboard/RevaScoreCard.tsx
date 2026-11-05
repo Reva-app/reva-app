@@ -29,7 +29,7 @@ export function RevaScoreCircle({ result }: { result: RevaScoreResult }) {
           {result.score !== null ? result.score.toFixed(1) : "–"}
         </span>
       </div>
-      <span className="text-[9px] font-semibold text-gray-400 mt-1.5 uppercase tracking-widest">REVA Score</span>
+      <span className="text-[11px] font-semibold text-subtle mt-1.5 uppercase tracking-widest">REVA Score</span>
     </div>
   );
 }
@@ -61,7 +61,7 @@ export function RevaScoreCard({ result }: RevaScoreCardProps) {
               <span className="text-xs font-bold" style={{ color: cfg.color }}>{result.score.toFixed(1)}/10</span>
             )}
           </div>
-          <span className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">REVA Score</span>
+          <span className="text-[11px] font-medium text-subtle uppercase tracking-widest">REVA Score</span>
         </div>
 
         <p className="text-sm leading-relaxed text-gray-800 mb-3">{result.explanation}</p>
@@ -95,7 +95,7 @@ export function RevaScoreCard({ result }: RevaScoreCardProps) {
           </>
         )}
 
-        <p className="text-[10px] leading-relaxed" style={{ color: "#c4bfb7" }}>
+        <p className="text-[11px] leading-relaxed" style={{ color: "#c4bfb7" }}>
           Gebaseerd op je eigen check-ins, training, medicatie, afspraken en doelstellingen. Geen medisch oordeel, neem bij twijfel contact op met je behandelaar.
         </p>
       </div>

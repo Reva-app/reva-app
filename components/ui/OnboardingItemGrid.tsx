@@ -33,9 +33,9 @@ export function OnboardingItemGrid({ items, columns = 2 }: OnboardingItemGridPro
             className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
             style={{ background: item.done ? "#f0fdf4" : "#f8f7f4" }}
           >
-            {item.done ? <Check size={15} style={{ color: "#16a34a" }} /> : <item.icon size={15} className="text-gray-400" />}
+            {item.done ? <Check size={15} style={{ color: "#16a34a" }} /> : <item.icon size={15} className="text-subtle" />}
           </div>
-          <span className={item.done ? "text-sm text-gray-400 line-through" : "text-sm text-gray-700 font-medium"}>
+          <span className={item.done ? "text-sm text-subtle line-through" : "text-sm text-gray-700 font-medium"}>
             {item.label}
           </span>
         </Link>

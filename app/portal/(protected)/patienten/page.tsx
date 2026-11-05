@@ -230,7 +230,7 @@ function PatientCard({ patient: p }: { patient: PortalPatient }) {
 export default function PortalPatientsPage() {
   const { checked, membership } = usePortalMembership();
   if (!checked || !membership) {
-    return <p className="text-sm text-gray-400 p-6">Laden…</p>;
+    return <p className="text-sm text-subtle p-6">Laden…</p>;
   }
   return canViewClinicalData(membership.roleKey)
     ? <ClinicalPatientsPage />

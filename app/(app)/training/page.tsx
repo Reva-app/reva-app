@@ -73,7 +73,7 @@ function MainTabs({ active, onChange, thuisCount }: {
                   </span>
                 )}
               </p>
-              <p className="text-[11px] text-gray-400 leading-tight mt-0.5">{sublabel}</p>
+              <p className="text-[11px] text-subtle leading-tight mt-0.5">{sublabel}</p>
             </div>
           </button>
         );

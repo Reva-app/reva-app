@@ -27,7 +27,7 @@ export function ThisWeekExpectCard({ expectation }: ThisWeekExpectCardProps) {
         ))}
       </div>
 
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">Normale klachten</p>
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-subtle mb-2">Normale klachten</p>
       <div className="space-y-2 mb-4">
         {expectation.normale.map((n) => (
           <div key={n} className="flex items-center gap-2">
@@ -39,7 +39,7 @@ export function ThisWeekExpectCard({ expectation }: ThisWeekExpectCardProps) {
 
       <div className="flex items-start gap-1.5">
         <Info size={11} className="mt-0.5 shrink-0" style={{ color: "#c4bfb7" }} />
-        <p className="text-[10px] leading-relaxed" style={{ color: "#c4bfb7" }}>
+        <p className="text-[11px] leading-relaxed" style={{ color: "#c4bfb7" }}>
           Een algemene indicatie op basis van je aandoening, geen persoonlijk medisch advies. Bij twijfel neem je contact op met je behandelaar.
         </p>
       </div>

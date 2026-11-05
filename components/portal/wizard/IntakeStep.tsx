@@ -18,7 +18,7 @@ export function IntakeStep({ value, onChange, injuryType }: IntakeStepProps) {
   const region = getBodyRegion(injuryType);
   return (
     <div className="space-y-6">
-      <p className="text-xs text-gray-400 -mt-2">
+      <p className="text-xs text-subtle -mt-2">
         {value.visitReason
           ? `Deze intake is toegespitst op: ${VISIT_REASON_LABELS[value.visitReason].toLowerCase()}. Alle velden hieronder zijn optioneel — vul in wat je nu al weet.`
           : "Alle velden zijn optioneel — vul in wat je nu al weet."}

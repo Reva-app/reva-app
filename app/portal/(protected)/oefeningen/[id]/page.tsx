@@ -197,9 +197,9 @@ export default function PortalOefeningDetailPage() {
       </button>
 
       {loading ? (
-        <p className="text-sm text-gray-400">Laden…</p>
+        <p className="text-sm text-subtle">Laden…</p>
       ) : notFound || !exercise ? (
-        <p className="text-sm text-gray-400">Deze oefening is niet gevonden.</p>
+        <p className="text-sm text-subtle">Deze oefening is niet gevonden.</p>
       ) : (
         <>
           <div className="flex items-start gap-2 flex-wrap">
@@ -314,11 +314,11 @@ export default function PortalOefeningDetailPage() {
               <CardHeader title="Gegevens" />
               <div className="space-y-2 text-sm">
                 <div>
-                  <p className="text-xs text-gray-400">Aangemaakt op</p>
+                  <p className="text-xs text-subtle">Aangemaakt op</p>
                   <p className="text-gray-700">{fmtDate(exercise.createdAt)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400">Aangemaakt door</p>
+                  <p className="text-xs text-subtle">Aangemaakt door</p>
                   <p className="text-gray-700">{exercise.createdByName ?? "Onbekend"}</p>
                 </div>
               </div>
@@ -327,7 +327,7 @@ export default function PortalOefeningDetailPage() {
             <Card>
               <CardHeader title="Gebruikt in schema's" />
               {usage.length === 0 ? (
-                <p className="text-sm text-gray-400">Nog niet gebruikt in een schema.</p>
+                <p className="text-sm text-subtle">Nog niet gebruikt in een schema.</p>
               ) : (
                 <div className="space-y-1.5">
                   {usage.map((u) => (
@@ -350,7 +350,7 @@ export default function PortalOefeningDetailPage() {
               <CardHeader title="Tags" />
               <div className="space-y-3">
                 <div className="flex flex-wrap gap-1.5">
-                  {tags.length === 0 && <p className="text-sm text-gray-400">Geen tags.</p>}
+                  {tags.length === 0 && <p className="text-sm text-subtle">Geen tags.</p>}
                   {tags.map((t, i) => (
                     <Badge key={t} variant="muted" className="flex items-center gap-1">
                       {t}

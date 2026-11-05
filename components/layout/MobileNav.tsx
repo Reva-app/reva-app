@@ -92,7 +92,7 @@ export function MobileNav() {
                 <ClipboardCheck size={24} style={{ color: "#ffffff" }} strokeWidth={2.2} />
               </div>
               <span
-                className="text-[10px] font-medium leading-none"
+                className="text-[11px] max-[389px]:text-[10px] font-medium leading-none"
                 style={{ color: isCheckIn ? "#ffffff" : "#9a9aaa" }}
               >
                 Check-in
@@ -114,7 +114,7 @@ export function MobileNav() {
               strokeWidth={1.8}
             />
             <span
-              className="text-[10px] font-medium leading-none"
+              className="text-[11px] max-[389px]:text-[10px] font-medium leading-none"
               style={{ color: isMeerActive || meerOpen ? "#ffffff" : "#5a5a6a" }}
             >
               Meer
@@ -237,7 +237,7 @@ function NavItem({
       className="flex-1 flex flex-col items-center justify-end gap-1 pb-2 touch-press"
     >
       <Icon size={22} style={{ color: active ? "var(--brand-accent, #e8632a)" : "#5a5a6a" }} strokeWidth={active ? 2.2 : 1.8} />
-      <span className="text-[10px] font-medium leading-none" style={{ color: active ? "#ffffff" : "#5a5a6a" }}>
+      <span className="text-[11px] max-[389px]:text-[10px] font-medium leading-none" style={{ color: active ? "#ffffff" : "#5a5a6a" }}>
         {label}
       </span>
     </Link>

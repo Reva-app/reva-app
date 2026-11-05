@@ -85,7 +85,7 @@ export function PatientDirectory({ organizationId }: { organizationId: string })
 
       <div className="rounded-2xl border overflow-hidden" style={{ background: "#ffffff", borderColor: "#e8e5df", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
         {loading ? (
-          <p className="text-sm text-gray-400 p-6">Laden…</p>
+          <p className="text-sm text-subtle p-6">Laden…</p>
         ) : error ? (
           <EmptyState icon={HeartPulse} title="Kon de patiëntenlijst niet laden" description={`${error} Probeer de pagina te verversen.`} />
         ) : filtered.length === 0 ? (
@@ -100,7 +100,7 @@ export function PatientDirectory({ organizationId }: { organizationId: string })
               <thead>
                 <tr style={{ borderBottom: "1px solid #e8e5df" }}>
                   {["Naam", "Geboortedatum", "Telefoon", "E-mail", "Behandelaar", "Locatie", "Status"].map((h) => (
-                    <th key={h} className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3 whitespace-nowrap">{h}</th>
+                    <th key={h} className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-5 py-3 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>

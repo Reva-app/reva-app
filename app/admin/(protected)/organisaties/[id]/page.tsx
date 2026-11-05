@@ -70,7 +70,7 @@ function roleBadgeVariant(roleKey: string): "accent" | "blue" | "purple" | "defa
 
 export default function AdminOrganizationDetailPage() {
   return (
-    <Suspense fallback={<div className="p-4 sm:p-6 max-w-5xl mx-auto"><p className="text-sm text-gray-400">Laden…</p></div>}>
+    <Suspense fallback={<div className="p-4 sm:p-6 max-w-5xl mx-auto"><p className="text-sm text-subtle">Laden…</p></div>}>
       <AdminOrganizationDetailContent />
     </Suspense>
   );
@@ -315,7 +315,7 @@ function AdminOrganizationDetailContent() {
   if (loading) {
     return (
       <div className="p-4 sm:p-6 max-w-5xl mx-auto">
-        <p className="text-sm text-gray-400">Laden…</p>
+        <p className="text-sm text-subtle">Laden…</p>
       </div>
     );
   }
@@ -447,14 +447,14 @@ function AdminOrganizationDetailContent() {
           action={<MapPin size={15} className="text-gray-400" />}
         />
         {locations.length === 0 ? (
-          <p className="text-sm text-gray-400 mt-2">Geen locaties.</p>
+          <p className="text-sm text-subtle mt-2">Geen locaties.</p>
         ) : (
           <div className="space-y-0 mt-2">
             {locations.map((loc) => (
               <div key={loc.id} className="flex items-center justify-between py-3" style={{ borderBottom: "1px solid #f8f7f4" }}>
                 <div>
                   <p className="text-sm font-medium text-gray-800">{loc.name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{loc.city || "Geen plaats ingesteld"} · {loc.patientCount} {loc.patientCount === 1 ? "patiënt" : "patiënten"}</p>
+                  <p className="text-xs text-subtle mt-0.5">{loc.city || "Geen plaats ingesteld"} · {loc.patientCount} {loc.patientCount === 1 ? "patiënt" : "patiënten"}</p>
                 </div>
                 {loc.archived ? <Badge variant="muted">Gearchiveerd</Badge> : <Badge variant="success">Actief</Badge>}
               </div>
@@ -494,7 +494,7 @@ function AdminOrganizationDetailContent() {
                   Dit e-mailadres hoort al bij een bestaand account: <span className="font-medium">{pendingMatch.fullName || memberEmail}</span>.
                   Koppelen als <span className="font-medium">{roles.find((r) => r.id === memberRoleId)?.name}</span> aan dit bedrijf?
                 </p>
-                <p className="text-xs text-gray-400">Er wordt geen e-mail verstuurd — dit account kan direct inloggen met het bestaande wachtwoord.</p>
+                <p className="text-xs text-subtle">Er wordt geen e-mail verstuurd — dit account kan direct inloggen met het bestaande wachtwoord.</p>
               </>
             ) : (
               <>
@@ -567,7 +567,7 @@ function AdminOrganizationDetailContent() {
         )}
 
         {membersByRole.length === 0 && invites.length === 0 ? (
-          <p className="text-sm text-gray-400 mt-2">
+          <p className="text-sm text-subtle mt-2">
             Nog geen medewerkers gekoppeld.
           </p>
         ) : (
@@ -576,7 +576,7 @@ function AdminOrganizationDetailContent() {
               <div key={inv.id} className="flex items-center justify-between py-3 flex-wrap gap-2" style={{ borderBottom: "1px solid #f8f7f4" }}>
                 <div>
                   <p className="text-sm font-medium text-gray-800">{inv.firstName} {inv.lastName}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-xs text-subtle mt-0.5">
                     {inviteRowMessages[inv.id] ?? `${inv.locationName || "Heel bedrijf"} · Uitgenodigd ${formatDate(inv.invitedAt)}`}
                   </p>
                 </div>
@@ -592,7 +592,7 @@ function AdminOrganizationDetailContent() {
               <div key={m.userId} className="flex items-center justify-between py-3" style={{ borderBottom: "1px solid #f8f7f4" }}>
                 <div>
                   <p className="text-sm font-medium text-gray-800">{m.fullName || m.email || "Onbekend"}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-xs text-subtle mt-0.5">
                     {m.locationName || "Heel bedrijf"} · Laatste login {m.lastSignInAt ? formatDate(m.lastSignInAt) : "nooit"}
                   </p>
                   {mfaResetMessage?.userId === m.userId && (
@@ -613,7 +613,7 @@ function AdminOrganizationDetailContent() {
                     disabled={relinkingUserId === m.userId}
                     onClick={() => handleRelink(m)}
                     className="text-xs font-medium hover:opacity-70 disabled:opacity-40"
-                    style={{ color: "#9ca3af" }}
+                    style={{ color: "#6b7280" }}
                     title="Stuur een nieuwe link waarmee deze medewerker opnieuw een wachtwoord en 2FA kan instellen"
                   >
                     Nieuwe link versturen
@@ -623,7 +623,7 @@ function AdminOrganizationDetailContent() {
                     disabled={resettingMfaUserId === m.userId}
                     onClick={() => handleMfaReset(m.userId)}
                     className="text-xs font-medium hover:opacity-70 disabled:opacity-40"
-                    style={{ color: "#9ca3af" }}
+                    style={{ color: "#6b7280" }}
                   >
                     2FA resetten
                   </button>
@@ -749,7 +749,7 @@ function UsageStat({ label, used, max }: { label: string; used: number | null; m
     <div className="rounded-xl px-4 py-3" style={{ background: "#f8f7f4" }}>
       <p className="text-xs text-gray-500">{label}</p>
       <p className="text-lg font-semibold mt-0.5" style={{ color }}>
-        {used ?? "—"} <span className="text-sm font-normal text-gray-400">/ {limitLabel(max)}</span>
+        {used ?? "—"} <span className="text-sm font-normal text-subtle">/ {limitLabel(max)}</span>
       </p>
       {!unlimited && (
         <div className="h-1.5 rounded-full mt-2 overflow-hidden" style={{ background: "#e8e5df" }}>

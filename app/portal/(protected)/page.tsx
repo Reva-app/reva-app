@@ -116,9 +116,9 @@ export default function PortalDashboardPage() {
         <Card>
           <CardHeader title="Mijn patiënten" subtitle="Patiënten toegewezen aan jou" />
           {loading ? (
-            <p className="text-sm text-gray-400">Laden…</p>
+            <p className="text-sm text-subtle">Laden…</p>
           ) : !myPatients || myPatients.totalCount === 0 ? (
-            <p className="text-sm text-gray-400">Je hebt momenteel geen patiënten toegewezen.</p>
+            <p className="text-sm text-subtle">Je hebt momenteel geen patiënten toegewezen.</p>
           ) : (
             <div className="space-y-5">
               <StatStrip
@@ -164,7 +164,7 @@ export default function PortalDashboardPage() {
         )}
 
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-3">Organisatie</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-subtle mb-3">Organisatie</p>
           <div className="grid grid-cols-2 gap-4">
             <StatCard label="Patiënten" value={loading ? "…" : stats?.patientCount ?? 0} icon={HeartPulse} />
             <StatCard label="Collega's" value={loading ? "…" : stats?.colleagueCount ?? 0} icon={Users} iconColor="#8b5cf6" />
@@ -185,7 +185,7 @@ export default function PortalDashboardPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-gray-400">Nog geen behandelaars.</p>
+                <p className="text-sm text-subtle">Nog geen behandelaars.</p>
               )}
               <Link
                 href="/portal/analyse#werkdruk"

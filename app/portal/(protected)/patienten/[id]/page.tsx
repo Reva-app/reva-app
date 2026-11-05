@@ -138,7 +138,7 @@ function TrendRangeFilter({ value, onChange }: { value: number; onChange: (v: nu
           style={
             value === r.value
               ? { background: "#ffffff", color: "#1a1a1a", boxShadow: "0 1px 2px rgba(0,0,0,0.06)" }
-              : { color: "#9ca3af" }
+              : { color: "#6b7280" }
           }
         >
           {r.label}
@@ -155,7 +155,7 @@ function CheckinTrendChart({ points }: { points: PortalCheckinTrendPoint[] }) {
   const padX = 8;
   const padY = 6;
   const labelZoneH = 16;
-  const chartH = H - labelZoneH;
+  const chartH = H - labelZoneH; // de datums staan als HTML onder de grafiek
   const max = 5;
   const xStep = (W - padX * 2) / (points.length - 1);
   const pts = points.map((p, i) => ({
@@ -169,32 +169,52 @@ function CheckinTrendChart({ points }: { points: PortalCheckinTrendPoint[] }) {
   // elkaar over — bij minder punten (bv. 7-dagenfilter) wordt gewoon elk
   // punt gelabeld.
   const labelStep = Math.max(1, Math.ceil(points.length / 7));
+  // Een tussenlabel vlak vóór het laatste punt valt erover; dan overslaan.
+  const labelIdx = pts
+    .map((_, i) => i)
+    .filter((i) => i === pts.length - 1 || (i % labelStep === 0 && pts.length - 1 - i >= labelStep));
 
+  const last = pts[pts.length - 1];
+
+  // De lijn rekt mee met de breedte (preserveAspectRatio="none"); datums en
+  // eindpunt staan als HTML eroverheen, zodat ze op elk scherm 11px blijven
+  // in plaats van mee te krimpen tot ±6px op een telefoon.
   return (
     <div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: H }}>
-        <defs>
-          <linearGradient id="checkin-trend-grad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" style={{ stopColor: "var(--brand-accent, #e8632a)" }} stopOpacity="0.15" />
-            <stop offset="100%" style={{ stopColor: "var(--brand-accent, #e8632a)" }} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        {[0.25, 0.5, 0.75].map((f) => (
-          <line key={f} x1={padX} y1={padY + f * (chartH - padY * 2)} x2={W - padX} y2={padY + f * (chartH - padY * 2)} stroke="#f0ede8" strokeWidth="1" />
-        ))}
-        <path d={area} fill="url(#checkin-trend-grad)" />
-        <polyline points={polyline} fill="none" style={{ stroke: "var(--brand-accent, #e8632a)" }} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="3" style={{ fill: "var(--brand-accent, #e8632a)" }} />
-        {pts.map((p, i) => {
-          if (i % labelStep !== 0 && i !== pts.length - 1) return null;
-          const anchor = i === 0 ? "start" : i === pts.length - 1 ? "end" : "middle";
+      <div className="relative" style={{ height: chartH }}>
+        <svg viewBox={`0 0 ${W} ${chartH}`} preserveAspectRatio="none" className="absolute inset-0 w-full h-full" aria-hidden>
+          <defs>
+            <linearGradient id="checkin-trend-grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" style={{ stopColor: "var(--brand-accent, #e8632a)" }} stopOpacity="0.15" />
+              <stop offset="100%" style={{ stopColor: "var(--brand-accent, #e8632a)" }} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          {[0.25, 0.5, 0.75].map((f) => (
+            <line key={f} x1={padX} y1={padY + f * (chartH - padY * 2)} x2={W - padX} y2={padY + f * (chartH - padY * 2)} stroke="#f0ede8" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+          ))}
+          <path d={area} fill="url(#checkin-trend-grad)" />
+          <polyline points={polyline} fill="none" style={{ stroke: "var(--brand-accent, #e8632a)" }} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        </svg>
+        <span
+          className="absolute w-1.5 h-1.5 rounded-full -translate-x-1/2 -translate-y-1/2"
+          style={{ left: `${(last.x / W) * 100}%`, top: last.y, background: "var(--brand-accent, #e8632a)" }}
+          aria-hidden
+        />
+      </div>
+      <div className="relative h-4 mt-0.5" aria-hidden>
+        {labelIdx.map((i, j) => {
+          const p = pts[i];
+          const isLast = i === pts.length - 1;
+          const shift = i === 0 ? "" : isLast ? "-translate-x-full" : "-translate-x-1/2";
+          // Op telefoon om de andere datum (eerste en laatste altijd).
+          const mobile = j % 2 === 0 || isLast ? "" : "hidden sm:inline";
           return (
-            <text key={i} x={p.x} y={H - 3} fontSize="8" textAnchor={anchor} fill="#9ca3af">
+            <span key={i} className={`absolute top-0 text-[11px] text-subtle whitespace-nowrap ${shift} ${mobile}`} style={{ left: `${(p.x / W) * 100}%` }}>
               {formatDateShort(points[i].date)}
-            </text>
+            </span>
           );
         })}
-      </svg>
+      </div>
     </div>
   );
 }
@@ -292,7 +312,7 @@ function ProtocolTab({
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h3 className="text-sm font-semibold text-gray-900">{assignment.name}</h3>
-          <p className="text-xs text-gray-400">Toegewezen op {formatDate(assignment.assignedAt)}</p>
+          <p className="text-xs text-subtle">Toegewezen op {formatDate(assignment.assignedAt)}</p>
         </div>
         {canAssign && <Button size="sm" variant="secondary" onClick={onAssignClick}>Herstelplan wijzigen</Button>}
       </div>
@@ -306,7 +326,7 @@ function ProtocolTab({
                 <div className="flex items-center gap-2 mb-1">
                   <MessageSquare size={12} className="text-gray-400 shrink-0" />
                   <span className="text-xs font-medium text-gray-700">{scheduleTitleById.get(n.scheduleId) ?? "Sessie"}</span>
-                  <span className="text-xs text-gray-400 ml-auto shrink-0">{formatDate(n.date)}</span>
+                  <span className="text-xs text-subtle ml-auto shrink-0">{formatDate(n.date)}</span>
                 </div>
                 <p className="text-sm text-gray-600 pl-[18px]">{n.reflection}</p>
               </div>
@@ -334,7 +354,7 @@ function ProtocolTab({
                     type="button"
                     onClick={() => onRevertPhase(phase)}
                     title="Terug naar deze fase (bijv. als de volgende fase per ongeluk is gestart)"
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-subtle hover:text-gray-600"
                   >
                     <RotateCcw size={14} />
                   </button>
@@ -374,7 +394,7 @@ function ProtocolTab({
                       {phase.criteria.map((c) => (
                         <label key={c.id} className="flex items-center gap-2 text-sm text-gray-700">
                           <input type="checkbox" checked={c.met} disabled={!canManageContent} onChange={(e) => onToggleCriterion(c.id, e.target.checked)} className="rounded" />
-                          <span className={c.met ? "line-through text-gray-400" : ""}>{c.description}</span>
+                          <span className={c.met ? "line-through text-subtle" : ""}>{c.description}</span>
                         </label>
                       ))}
                     </div>
@@ -388,7 +408,7 @@ function ProtocolTab({
                       {phase.milestones.map((m) => (
                         <label key={m.id} className="flex items-center gap-2 text-sm text-gray-700">
                           <input type="checkbox" checked={m.completed} disabled={!canManageContent} onChange={(e) => onToggleMilestone(m.id, e.target.checked)} className="rounded" />
-                          <span className={m.completed ? "line-through text-gray-400" : ""}>{m.title}</span>
+                          <span className={m.completed ? "line-through text-subtle" : ""}>{m.title}</span>
                         </label>
                       ))}
                     </div>
@@ -416,7 +436,7 @@ function ProtocolTab({
                       {phase.schedules.map((s) => (
                         <div key={s.id} className="rounded-xl border p-3" style={{ borderColor: "#e8e5df" }}>
                           <div className="flex items-center justify-between gap-2 flex-wrap">
-                            <p className="text-sm font-medium text-gray-800">{s.title} <span className="text-xs text-gray-400 font-normal">— {s.frequencyPerWeek}× per week</span></p>
+                            <p className="text-sm font-medium text-gray-800">{s.title} <span className="text-xs text-subtle font-normal">— {s.frequencyPerWeek}× per week</span></p>
                             <Badge variant={s.completedThisWeek >= s.frequencyPerWeek ? "success" : "muted"}>
                               {s.completedThisWeek}/{s.frequencyPerWeek} deze week
                             </Badge>
@@ -433,7 +453,7 @@ function ProtocolTab({
                                   style={{ borderColor: "#e8e5df", background: "#ffffff" }}
                                 >
                                   {dragHandle}
-                                  <div className="flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-semibold shrink-0 mt-0.5" style={{ background: "#f3f0eb", color: "#8a847d" }}>
+                                  <div className="flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-semibold shrink-0 mt-0.5" style={{ background: "#f3f0eb", color: "#8a847d" }}>
                                     {index + 1}
                                   </div>
                                   <ExerciseThumb mediaPath={ex.mediaPath} size={28} />
@@ -447,7 +467,7 @@ function ProtocolTab({
                                       </div>
                                     )}
                                     {ex.prescriptionNote && (
-                                      <p className="text-[11px] text-gray-400 italic mt-0.5 truncate">{ex.prescriptionNote}</p>
+                                      <p className="text-[11px] text-subtle italic mt-0.5 truncate">{ex.prescriptionNote}</p>
                                     )}
                                   </div>
                                   {canManageContent && (
@@ -456,7 +476,7 @@ function ProtocolTab({
                                         type="button"
                                         onClick={() => onEditExerciseClick(ex)}
                                         title="Oefening bewerken"
-                                        className="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+                                        className="w-6 h-6 rounded-md flex items-center justify-center text-subtle hover:text-gray-700 hover:bg-gray-50 transition-colors"
                                       >
                                         <Pencil size={12} />
                                       </button>
@@ -464,7 +484,7 @@ function ProtocolTab({
                                         type="button"
                                         onClick={() => onRemoveExerciseClick(ex)}
                                         title="Oefening verwijderen"
-                                        className="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-gray-50 transition-colors"
+                                        className="w-6 h-6 rounded-md flex items-center justify-center text-subtle hover:text-red-600 hover:bg-gray-50 transition-colors"
                                       >
                                         <Trash2 size={12} />
                                       </button>
@@ -496,7 +516,7 @@ function ProtocolTab({
                   </Button>
                 )}
                 {canManageContent && hasNextPhase && !allCriteriaMet && phase.criteria.length > 0 && (
-                  <p className="text-xs text-gray-400">Alle criteria moeten afgevinkt zijn voordat de volgende fase kan starten.</p>
+                  <p className="text-xs text-subtle">Alle criteria moeten afgevinkt zijn voordat de volgende fase kan starten.</p>
                 )}
               </div>
             )}
@@ -529,14 +549,14 @@ function IntakeField({ label, value }: { label: string; value: React.ReactNode }
   if (value === null || value === undefined || value === "") return null;
   return (
     <div>
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{label}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-subtle">{label}</p>
       <p className="text-sm text-gray-800 mt-0.5">{value}</p>
     </div>
   );
 }
 
 function IntakeSubTab({ intake, loading }: { intake: PortalPatientIntake | null; loading: boolean }) {
-  if (loading) return <Card><p className="text-sm text-gray-400">Laden…</p></Card>;
+  if (loading) return <Card><p className="text-sm text-subtle">Laden…</p></Card>;
   if (!intake) {
     return (
       <Card>
@@ -617,7 +637,7 @@ function IntakeSubTab({ intake, loading }: { intake: PortalPatientIntake | null;
         )}
         {intake.therapistObservations && (
           <div className="mt-3 pt-3" style={{ borderTop: "1px solid #f0ede8" }}>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Observaties therapeut</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-subtle mb-1">Observaties therapeut</p>
             <p className="text-sm text-gray-700">{intake.therapistObservations}</p>
           </div>
         )}
@@ -649,7 +669,7 @@ function FaseovergangenSubTab({ phases }: { phases: PortalPatientProtocolPhase[]
         <Card key={phase.id}>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-gray-900">{phase.name}</h3>
-            {phase.completedAt && <span className="text-xs text-gray-400">{formatDate(phase.completedAt)}</span>}
+            {phase.completedAt && <span className="text-xs text-subtle">{formatDate(phase.completedAt)}</span>}
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3">
             <IntakeField label="Pijnscore" value={phase.transitionPainScore !== null ? `${phase.transitionPainScore}/10` : null} />
@@ -741,14 +761,14 @@ function LogboekTab({
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                         <Avatar fullName={n.authorName} avatarUrl={n.authorAvatarUrl} size={20} />
                         <span className="text-xs font-medium text-gray-700">{n.authorName ?? "Onbekend teamlid"}</span>
-                        <span className="text-xs text-gray-400">{noteTimestamp(n.createdAt)}</span>
-                        {n.updatedAt !== n.createdAt && <span className="text-xs text-gray-400 italic">(bewerkt)</span>}
+                        <span className="text-xs text-subtle">{noteTimestamp(n.createdAt)}</span>
+                        {n.updatedAt !== n.createdAt && <span className="text-xs text-subtle italic">(bewerkt)</span>}
                         {isOwn && !isEditing && (
                           <div className="ml-auto flex items-center gap-1 shrink-0">
                             <button
                               type="button"
                               onClick={() => onStartEdit(n)}
-                              className="text-gray-400 hover:text-gray-600 p-1"
+                              className="text-subtle hover:text-gray-600 p-1"
                               aria-label="Notitie bewerken"
                             >
                               <Pencil size={13} />
@@ -756,7 +776,7 @@ function LogboekTab({
                             <button
                               type="button"
                               onClick={() => onDeleteClick(n)}
-                              className="text-gray-400 hover:text-red-500 p-1"
+                              className="text-subtle hover:text-red-500 p-1"
                               aria-label="Notitie verwijderen"
                             >
                               <Trash2 size={13} />
@@ -1214,9 +1234,9 @@ export default function PortalPatientDetailPage() {
       </button>
 
       {loading ? (
-        <p className="text-sm text-gray-400">Laden…</p>
+        <p className="text-sm text-subtle">Laden…</p>
       ) : notFound || !patient ? (
-        <p className="text-sm text-gray-400">Dit patiëntdossier is niet gevonden.</p>
+        <p className="text-sm text-subtle">Dit patiëntdossier is niet gevonden.</p>
       ) : (
         <>
           <div className="flex items-start gap-4">
@@ -1282,7 +1302,7 @@ export default function PortalPatientDetailPage() {
                   </div>
                 )}
                 {!lastCheckin ? (
-                  <p className="text-sm text-gray-400">Nog geen check-ins ingevuld.</p>
+                  <p className="text-sm text-subtle">Nog geen check-ins ingevuld.</p>
                 ) : (
                   <div className="space-y-5">
                     <CheckinTrendChart points={extras!.checkinTrend.slice(-trendRange)} />
@@ -1311,7 +1331,7 @@ export default function PortalPatientDetailPage() {
                     ) : undefined}
                   />
                   {!extras?.latestPhoto ? (
-                    <p className="text-sm text-gray-400">Nog geen foto-update.</p>
+                    <p className="text-sm text-subtle">Nog geen foto-update.</p>
                   ) : (
                     <div className="space-y-2">
                       {photoUrl ? (
@@ -1321,7 +1341,7 @@ export default function PortalPatientDetailPage() {
                           className="block w-full h-32 rounded-xl overflow-hidden cursor-zoom-in"
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={photoUrl} alt="Laatste voortgangsfoto" className="w-full h-full object-cover" />
+                          <img src={photoUrl} alt="Laatste voortgangsfoto" loading="lazy" decoding="async" className="w-full h-full object-cover" />
                         </button>
                       ) : (
                         <div className="w-full h-32 rounded-xl flex items-center justify-center" style={{ background: "#f3f0eb" }}>
@@ -1339,12 +1359,12 @@ export default function PortalPatientDetailPage() {
                 <Card>
                   <CardHeader title="Laatste medicatie" />
                   {!extras?.latestMedication ? (
-                    <p className="text-sm text-gray-400">Nog geen medicatie gelogd.</p>
+                    <p className="text-sm text-subtle">Nog geen medicatie gelogd.</p>
                   ) : (
                     <div className="space-y-1">
                       <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5"><Pill size={14} style={{ color: "var(--brand-accent, #e8632a)" }} /> {extras.latestMedication.medicationName}</p>
                       {extras.latestMedication.dosage && <p className="text-xs text-gray-500">{extras.latestMedication.dosage}{extras.latestMedication.quantity ? ` · ${extras.latestMedication.quantity}` : ""}</p>}
-                      <p className="text-xs text-gray-400">{formatDate(extras.latestMedication.date)}{extras.latestMedication.time ? ` om ${extras.latestMedication.time}` : ""}</p>
+                      <p className="text-xs text-subtle">{formatDate(extras.latestMedication.date)}{extras.latestMedication.time ? ` om ${extras.latestMedication.time}` : ""}</p>
                       {extras.latestMedication.reason && <p className="text-xs text-gray-500">Reden: {extras.latestMedication.reason}</p>}
                     </div>
                   )}
@@ -1353,14 +1373,14 @@ export default function PortalPatientDetailPage() {
                 <Card>
                   <CardHeader title="Eerstvolgende afspraak" />
                   {!extras?.upcomingAppointment ? (
-                    <p className="text-sm text-gray-400">Geen geplande afspraak.</p>
+                    <p className="text-sm text-subtle">Geen geplande afspraak.</p>
                   ) : (
                     <div className="space-y-1">
                       <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5"><CalendarClock size={14} style={{ color: "var(--brand-accent, #e8632a)" }} /> {extras.upcomingAppointment.title}</p>
                       {appointmentTypeLabel(extras.upcomingAppointment.appointmentType) && (
                         <p className="text-xs text-gray-500">{appointmentTypeLabel(extras.upcomingAppointment.appointmentType)}</p>
                       )}
-                      <p className="text-xs text-gray-400">{formatDate(extras.upcomingAppointment.date)}{extras.upcomingAppointment.time ? ` om ${extras.upcomingAppointment.time}` : ""}</p>
+                      <p className="text-xs text-subtle">{formatDate(extras.upcomingAppointment.date)}{extras.upcomingAppointment.time ? ` om ${extras.upcomingAppointment.time}` : ""}</p>
                       {extras.upcomingAppointment.location && <p className="text-xs text-gray-500">{extras.upcomingAppointment.location}</p>}
                     </div>
                   )}
@@ -1369,7 +1389,7 @@ export default function PortalPatientDetailPage() {
                 <Card>
                   <CardHeader title="Training deze week" />
                   {!extras || extras.trainingWeek.total === 0 ? (
-                    <p className="text-sm text-gray-400">Nog geen trainingen gelogd.</p>
+                    <p className="text-sm text-subtle">Nog geen trainingen gelogd.</p>
                   ) : (
                     <div className="space-y-3">
                       <div className="flex items-center gap-1.5 text-sm text-gray-700">
@@ -1453,11 +1473,11 @@ export default function PortalPatientDetailPage() {
                 {editingDischarge ? (
                   <div className="space-y-3">
                     <div>
-                      <p className="text-xs text-gray-400 mb-1">Afsluitdatum</p>
+                      <p className="text-xs text-subtle mb-1">Afsluitdatum</p>
                       <DatePicker value={dischargeDateInput} onChange={setDischargeDateInput} placeholder="Kies een datum" />
                     </div>
                     <div>
-                      <p className="text-xs text-gray-400 mb-1">Uitkomst</p>
+                      <p className="text-xs text-subtle mb-1">Uitkomst</p>
                       <select
                         value={dischargeOutcomeInput}
                         onChange={(e) => setDischargeOutcomeInput(e.target.value as DischargeOutcome | "")}
@@ -1481,9 +1501,9 @@ export default function PortalPatientDetailPage() {
                   </div>
                 ) : patient.dischargedAt ? (
                   <div className="space-y-3 text-sm">
-                    <div><p className="text-xs text-gray-400">Afgesloten op</p><p className="text-gray-800">{formatDate(patient.dischargedAt)}</p></div>
+                    <div><p className="text-xs text-subtle">Afgesloten op</p><p className="text-gray-800">{formatDate(patient.dischargedAt)}</p></div>
                     <div>
-                      <p className="text-xs text-gray-400">Uitkomst</p>
+                      <p className="text-xs text-subtle">Uitkomst</p>
                       <p className="text-gray-800">{patient.dischargeOutcome ? DISCHARGE_OUTCOME_LABELS[patient.dischargeOutcome] : "Niet aangegeven"}</p>
                     </div>
                     {canManagePatients && (
@@ -1497,7 +1517,7 @@ export default function PortalPatientDetailPage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <p className="text-sm text-gray-400">Nog niet afgesloten.</p>
+                    <p className="text-sm text-subtle">Nog niet afgesloten.</p>
                     {canManagePatients && (
                       <Button size="sm" variant="secondary" onClick={openDischargeForm}>Behandeling afsluiten</Button>
                     )}
@@ -1516,15 +1536,15 @@ export default function PortalPatientDetailPage() {
                   ) : undefined}
                 />
                 <div className="space-y-3 text-sm">
-                  <div><p className="text-xs text-gray-400">Telefoonnummer</p><p className="text-gray-800">{patient.phone || "—"}</p></div>
-                  <div><p className="text-xs text-gray-400">Geboortedatum</p><p className="text-gray-800">{patient.dateOfBirth ? formatDate(patient.dateOfBirth) : "—"}</p></div>
-                  <div><p className="text-xs text-gray-400">Geslacht</p><p className="text-gray-800">{genderLabel(patient.gender)}</p></div>
-                  <div><p className="text-xs text-gray-400">Locatie</p><p className="text-gray-800">{patient.locationName || "—"}</p></div>
-                  <div><p className="text-xs text-gray-400">Behandelend therapeut</p><p className="text-gray-800">{patient.therapistName || "—"}</p></div>
-                  <div><p className="text-xs text-gray-400">Herstelplan</p><p className="text-gray-800">{patient.protocolName || "—"}</p></div>
-                  <div><p className="text-xs text-gray-400">Operatiedatum</p><p className="text-gray-800">{patient.surgeryDate ? formatDate(patient.surgeryDate) : "—"}</p></div>
-                  <div><p className="text-xs text-gray-400">Blessuredatum</p><p className="text-gray-800">{patient.injuryDate ? formatDate(patient.injuryDate) : "—"}</p></div>
-                  <div><p className="text-xs text-gray-400">Blessuretype</p><p className="text-gray-800">{injuryTypeLabel(patient.injuryType)}</p></div>
+                  <div><p className="text-xs text-subtle">Telefoonnummer</p><p className="text-gray-800">{patient.phone || "—"}</p></div>
+                  <div><p className="text-xs text-subtle">Geboortedatum</p><p className="text-gray-800">{patient.dateOfBirth ? formatDate(patient.dateOfBirth) : "—"}</p></div>
+                  <div><p className="text-xs text-subtle">Geslacht</p><p className="text-gray-800">{genderLabel(patient.gender)}</p></div>
+                  <div><p className="text-xs text-subtle">Locatie</p><p className="text-gray-800">{patient.locationName || "—"}</p></div>
+                  <div><p className="text-xs text-subtle">Behandelend therapeut</p><p className="text-gray-800">{patient.therapistName || "—"}</p></div>
+                  <div><p className="text-xs text-subtle">Herstelplan</p><p className="text-gray-800">{patient.protocolName || "—"}</p></div>
+                  <div><p className="text-xs text-subtle">Operatiedatum</p><p className="text-gray-800">{patient.surgeryDate ? formatDate(patient.surgeryDate) : "—"}</p></div>
+                  <div><p className="text-xs text-subtle">Blessuredatum</p><p className="text-gray-800">{patient.injuryDate ? formatDate(patient.injuryDate) : "—"}</p></div>
+                  <div><p className="text-xs text-subtle">Blessuretype</p><p className="text-gray-800">{injuryTypeLabel(patient.injuryType)}</p></div>
                 </div>
               </Card>
             </div>
@@ -1611,7 +1631,7 @@ export default function PortalPatientDetailPage() {
                     </div>
                   )}
                   {orgProtocols.length === 0 && revaProtocols.length === 0 && (
-                    <p className="text-sm text-gray-400">Nog geen herstelplannen beschikbaar. Maak er eerst een aan via Herstelplannen.</p>
+                    <p className="text-sm text-subtle">Nog geen herstelplannen beschikbaar. Maak er eerst een aan via Herstelplannen.</p>
                   )}
                 </div>
                 {assignError && <p className="text-xs mt-3" style={{ color: "#dc2626" }}>{assignError}</p>}
@@ -1671,22 +1691,22 @@ export default function PortalPatientDetailPage() {
               <div className="rounded-2xl p-6" style={{ background: "#ffffff" }}>
                 <h3 className="font-semibold text-gray-900 mb-4">Check-in geschiedenis</h3>
                 {checkinHistoryLoading ? (
-                  <p className="text-sm text-gray-400">Laden…</p>
+                  <p className="text-sm text-subtle">Laden…</p>
                 ) : checkinHistory.length === 0 ? (
-                  <p className="text-sm text-gray-400">Nog geen check-ins ingevuld.</p>
+                  <p className="text-sm text-subtle">Nog geen check-ins ingevuld.</p>
                 ) : (
                   <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr style={{ borderBottom: "1px solid #e8e5df" }}>
-                          <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-3 py-2">Datum</th>
-                          <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-3 py-2">Dagscore</th>
-                          <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-3 py-2">Pijn</th>
-                          <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-3 py-2">Mobiliteit</th>
-                          <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-3 py-2">Energie</th>
-                          <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-3 py-2">Stemming</th>
-                          <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-3 py-2">Slaap</th>
-                          <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-3 py-2">Notitie</th>
+                          <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-3 py-2">Datum</th>
+                          <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-3 py-2">Dagscore</th>
+                          <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-3 py-2">Pijn</th>
+                          <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-3 py-2">Mobiliteit</th>
+                          <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-3 py-2">Energie</th>
+                          <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-3 py-2">Stemming</th>
+                          <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-3 py-2">Slaap</th>
+                          <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-3 py-2">Notitie</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1767,12 +1787,12 @@ export default function PortalPatientDetailPage() {
                       </div>
                       <div className="p-4">
                         <p className="text-sm font-semibold text-gray-800">
-                          {item ? formatDate(item.date) : ""} <span className="text-xs font-normal text-gray-400">({lightboxIndex + 1}/{photoHistory.length})</span>
+                          {item ? formatDate(item.date) : ""} <span className="text-xs font-normal text-subtle">({lightboxIndex + 1}/{photoHistory.length})</span>
                         </p>
                         {item?.note ? (
                           <p className="text-sm text-gray-600 mt-1.5">&ldquo;{item.note}&rdquo;</p>
                         ) : (
-                          <p className="text-sm italic text-gray-400 mt-1.5">Geen opmerking</p>
+                          <p className="text-sm italic text-subtle mt-1.5">Geen opmerking</p>
                         )}
                       </div>
                     </div>
@@ -1782,9 +1802,9 @@ export default function PortalPatientDetailPage() {
                 <div className="rounded-2xl p-6" style={{ background: "#ffffff" }}>
                   <h3 className="font-semibold text-gray-900 mb-4">Foto&apos;s</h3>
                   {galleryLoading ? (
-                    <p className="text-sm text-gray-400">Laden…</p>
+                    <p className="text-sm text-subtle">Laden…</p>
                   ) : photoHistory.length === 0 ? (
-                    <p className="text-sm text-gray-400">Nog geen foto-updates.</p>
+                    <p className="text-sm text-subtle">Nog geen foto-updates.</p>
                   ) : (
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                       {photoHistory.map((item, index) => {
@@ -1799,7 +1819,7 @@ export default function PortalPatientDetailPage() {
                             <div className="w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center" style={{ background: "#f3f0eb" }}>
                               {url ? (
                                 // eslint-disable-next-line @next/next/no-img-element
-                                <img src={url} alt="" className="w-full h-full object-cover" />
+                                <img src={url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
                               ) : (
                                 <Camera size={18} style={{ color: "#c4bfb9" }} />
                               )}

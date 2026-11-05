@@ -139,7 +139,7 @@ export function ExerciseMultiSelectModal({
             </div>
 
             <div className="flex items-center justify-between">
-              <p className="text-xs text-gray-400">{pickable.length} beschikbaar</p>
+              <p className="text-xs text-subtle">{pickable.length} beschikbaar</p>
               <button type="button" onClick={() => setShowNewExercise(true)} className="text-xs font-medium" style={{ color: "var(--brand-accent, #e8632a)" }}>
                 + Nieuwe oefening
               </button>
@@ -147,12 +147,12 @@ export function ExerciseMultiSelectModal({
 
             <div className="max-h-72 overflow-y-auto rounded-xl border" style={{ borderColor: "#e8e5df" }}>
               {pickable.length === 0 ? (
-                <p className="text-sm text-gray-400 p-4">Geen oefeningen gevonden.</p>
+                <p className="text-sm text-subtle p-4">Geen oefeningen gevonden.</p>
               ) : (
                 <>
                   {orgPickable.length > 0 && (
                     <>
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400 px-3 pt-2.5 pb-1">Eigen bibliotheek</p>
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-subtle px-3 pt-2.5 pb-1">Eigen bibliotheek</p>
                       {orgPickable.map((ex) => (
                         <label key={ex.id} className="flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50">
                           <input type="checkbox" checked={selectedIds.has(ex.id)} onChange={() => toggle(ex.id)} />
@@ -165,7 +165,7 @@ export function ExerciseMultiSelectModal({
                   )}
                   {revaPickable.length > 0 && (
                     <>
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400 px-3 pt-2.5 pb-1">REVA-bibliotheek</p>
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-subtle px-3 pt-2.5 pb-1">REVA-bibliotheek</p>
                       {revaPickable.map((ex) => (
                         <label key={ex.id} className="flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50">
                           <input type="checkbox" checked={selectedIds.has(ex.id)} onChange={() => toggle(ex.id)} />

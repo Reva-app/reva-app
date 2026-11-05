@@ -160,7 +160,7 @@ function ResetPasswordForm() {
             : "Kies een nieuw, sterk wachtwoord voor je account"}
         </p>
         {isInvite && (
-          <p className="text-xs text-gray-400 mt-1.5">
+          <p className="text-xs text-subtle mt-1.5">
             {isPatientInvite
               ? "Na het opslaan heb je direct toegang tot je persoonlijke herstel-dashboard."
               : isOwnerInvite
@@ -224,7 +224,7 @@ function ResetPasswordForm() {
                     type="button"
                     aria-label={showPassword ? "Wachtwoord verbergen" : "Wachtwoord tonen"}
                 onClick={() => setShowPassword((v) => !v)}
-                    className="tap-target absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="tap-target absolute right-3.5 top-1/2 -translate-y-1/2 text-subtle hover:text-gray-600 transition-colors"
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -276,7 +276,7 @@ function ResetPasswordForm() {
               <>
                 <div className="flex items-center gap-3 my-5">
                   <div className="flex-1 h-px" style={{ background: "#ece9e3" }} />
-                  <span className="text-xs text-gray-400">of</span>
+                  <span className="text-xs text-subtle">of</span>
                   <div className="flex-1 h-px" style={{ background: "#ece9e3" }} />
                 </div>
 
@@ -290,7 +290,7 @@ function ResetPasswordForm() {
                   {googleLoading ? <Loader2 size={16} className="animate-spin" /> : <GoogleIcon />}
                   Doorgaan met Google
                 </button>
-                <p className="text-[11px] text-gray-400 text-center mt-2">
+                <p className="text-[11px] text-subtle text-center mt-2">
                   Gebruik hetzelfde e-mailadres als waarop je bent uitgenodigd.
                 </p>
               </>

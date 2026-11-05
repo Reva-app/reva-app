@@ -150,9 +150,9 @@ export default function PortalLocationDetailPage() {
       </button>
 
       {loading ? (
-        <p className="text-sm text-gray-400">Laden…</p>
+        <p className="text-sm text-subtle">Laden…</p>
       ) : notFound || !location ? (
-        <p className="text-sm text-gray-400">Deze locatie is niet gevonden.</p>
+        <p className="text-sm text-subtle">Deze locatie is niet gevonden.</p>
       ) : (
         <>
           <div className="flex items-center justify-between flex-wrap gap-3">
@@ -208,7 +208,7 @@ export default function PortalLocationDetailPage() {
           <Card>
             <CardHeader title="Ruimtes" subtitle={`${rooms.filter((r) => !r.archived).length} actieve ${rooms.filter((r) => !r.archived).length === 1 ? "ruimte" : "ruimtes"}`} />
             {rooms.length === 0 ? (
-              <p className="text-sm text-gray-400">Nog geen ruimtes voor deze locatie.</p>
+              <p className="text-sm text-subtle">Nog geen ruimtes voor deze locatie.</p>
             ) : (
               <div className="space-y-2 mb-3">
                 {rooms.map((room) => (
@@ -283,7 +283,7 @@ export default function PortalLocationDetailPage() {
               ) : undefined}
             />
             {location.employees.length === 0 ? (
-              <p className="text-sm text-gray-400">Nog geen medewerkers aan deze locatie gekoppeld.</p>
+              <p className="text-sm text-subtle">Nog geen medewerkers aan deze locatie gekoppeld.</p>
             ) : (
               <div className="space-y-3">
                 {location.employees.map((emp) => (
@@ -291,7 +291,7 @@ export default function PortalLocationDetailPage() {
                     <Avatar fullName={emp.fullName} avatarUrl={emp.avatarUrl} size={36} />
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-gray-800 truncate">{emp.fullName || "Onbekend"}</p>
-                      <p className="text-xs text-gray-400">{emp.roleName}</p>
+                      <p className="text-xs text-subtle">{emp.roleName}</p>
                     </div>
                   </div>
                 ))}

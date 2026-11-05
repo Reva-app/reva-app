@@ -178,7 +178,7 @@ export function PatientWizard({
       <div className="p-5">
       <div className="flex items-start justify-between">
         <CardHeader title="Patiënt toevoegen" subtitle={`Stap ${step + 1} van ${STEPS.length}: ${STEPS[step]}`} />
-        <button type="button" onClick={onClose} aria-label="Sluiten" className="relative tap-target text-gray-400 hover:text-gray-600 shrink-0 -mt-1">
+        <button type="button" onClick={onClose} aria-label="Sluiten" className="relative tap-target text-subtle hover:text-gray-600 shrink-0 -mt-1">
           <X size={18} />
         </button>
       </div>
@@ -200,12 +200,12 @@ export function PatientWizard({
                 className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
                 style={{
                   background: i < step ? "#16a34a" : i === step ? "var(--brand-accent, #e8632a)" : "#e8e5df",
-                  color: i <= step ? "#ffffff" : "#9ca3af",
+                  color: i <= step ? "#ffffff" : "#6b7280",
                 }}
               >
                 {i < step ? <Check size={12} /> : i + 1}
               </div>
-              <span className="text-xs font-medium hidden sm:inline" style={{ color: i === step ? "#1a1a1a" : "#9ca3af" }}>
+              <span className="text-xs font-medium hidden sm:inline" style={{ color: i === step ? "#1a1a1a" : "#6b7280" }}>
                 {label}
               </span>
               {i < STEPS.length - 1 && <div className="flex-1 h-px" style={{ background: "#e8e5df" }} />}
@@ -277,7 +277,7 @@ export function PatientWizard({
             <div>
               <FieldLabel>Datum blessure</FieldLabel>
               <DatePicker value={input.injuryDate} onChange={(v) => update("injuryDate", v)} placeholder="Kies een datum" />
-              <p className="text-xs text-gray-400 mt-1.5">Komt automatisch terug in de instellingen van de patiënt zelf, en kan daar dan niet meer gewijzigd worden.</p>
+              <p className="text-xs text-subtle mt-1.5">Komt automatisch terug in de instellingen van de patiënt zelf, en kan daar dan niet meer gewijzigd worden.</p>
             </div>
             {intake.visitReason === "surgery" && (
               <div>

@@ -40,7 +40,7 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
         className="flex h-screen items-center justify-center"
         style={{ background: "#f8f7f4" }}
       >
-        <p className="text-sm" style={{ color: "#9ca3af" }}>
+        <p className="text-sm" style={{ color: "#6b7280" }}>
           Laden…
         </p>
       </div>
@@ -63,7 +63,7 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
             <ShieldAlert size={22} style={{ color: "#ef4444" }} />
           </div>
           <p className="text-sm font-medium text-gray-800">Geen toegang</p>
-          <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
+          <p className="text-xs text-subtle mt-1.5 leading-relaxed">
             Dit gedeelte is alleen toegankelijk voor platformbeheerders. Ben
             je van mening dat dit niet klopt, neem dan contact op met REVA.
           </p>
@@ -83,7 +83,7 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
   if (!mfaChecked) {
     return (
       <div className="flex h-screen items-center justify-center" style={{ background: "#f8f7f4" }}>
-        <p className="text-sm" style={{ color: "#9ca3af" }}>Laden…</p>
+        <p className="text-sm" style={{ color: "#6b7280" }}>Laden…</p>
       </div>
     );
   }

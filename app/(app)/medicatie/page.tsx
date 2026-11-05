@@ -237,7 +237,7 @@ function SchemaForm({
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-gray-800">Schema actief</p>
-          <p className="text-xs text-gray-400 mt-0.5">Je ontvangt herinneringen op de ingestelde tijdstippen</p>
+          <p className="text-xs text-subtle mt-0.5">Je ontvangt herinneringen op de ingestelde tijdstippen</p>
         </div>
         <Toggle enabled={form.actief} onChange={(v) => set("actief", v)} />
       </div>
@@ -295,7 +295,7 @@ function SchemaCard({
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-gray-900 truncate">{naam}</p>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-subtle mt-0.5">
               {schema.dosering}{schema.hoeveelheid ? ` · ${schema.hoeveelheid}` : ""}
             </p>
           </div>
@@ -315,7 +315,7 @@ function SchemaCard({
         ))}
       </div>
 
-      {schema.notitie && <p className="text-xs text-gray-400 italic">{schema.notitie}</p>}
+      {schema.notitie && <p className="text-xs text-subtle italic">{schema.notitie}</p>}
 
       <div className="flex items-center gap-1 pt-2 border-t" style={{ borderColor: "#f0ede8" }}>
         <button
@@ -326,7 +326,7 @@ function SchemaCard({
         </button>
         <button
           onClick={() => setConfirmDel(true)}
-          className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors text-gray-400 hover:text-red-400"
+          className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors text-subtle hover:text-red-400"
         >
           <Trash2 size={11} /> Verwijderen
         </button>
@@ -373,7 +373,7 @@ function LogItem({
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <p className="text-sm font-semibold text-gray-900">{med.naam}</p>
-            <span className="flex items-center gap-1 text-xs text-gray-400 shrink-0">
+            <span className="flex items-center gap-1 text-xs text-subtle shrink-0">
               <Clock size={11} /> {med.time}
             </span>
           </div>
@@ -382,18 +382,18 @@ function LogItem({
             {med.hoeveelheid && med.hoeveelheid !== "n.v.t." ? ` · ${med.hoeveelheid}` : ""}
             {" · "}{med.reden}
           </p>
-          {med.notitie && <p className="text-xs text-gray-400 mt-1 italic">{med.notitie}</p>}
+          {med.notitie && <p className="text-xs text-subtle mt-1 italic">{med.notitie}</p>}
 
           <div className="flex items-center gap-1 mt-2.5">
             <button
               onClick={onEdit}
-              className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg hover:bg-gray-50 transition-colors text-gray-400 hover:text-gray-700"
+              className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg hover:bg-gray-50 transition-colors text-subtle hover:text-gray-700"
             >
               <Pencil size={10} /> Bewerken
             </button>
             <button
               onClick={() => setConfirmDel(true)}
-              className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg hover:bg-red-50 transition-colors text-gray-400 hover:text-red-400"
+              className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg hover:bg-red-50 transition-colors text-subtle hover:text-red-400"
             >
               <Trash2 size={10} /> Verwijderen
             </button>
@@ -643,7 +643,7 @@ export default function MedicatiePage() {
             </div>
             <p className="text-2xl font-bold text-gray-900">{innamesVandaag}</p>
           </div>
-          <p className="text-xs text-gray-400 mt-0.5">Innames vandaag</p>
+          <p className="text-xs text-subtle mt-0.5">Innames vandaag</p>
         </div>
 
         {/* Dagen met / zonder medicatie */}
@@ -664,7 +664,7 @@ export default function MedicatiePage() {
             </div>
             <p className="text-2xl font-bold text-gray-900">{stat2Value}</p>
           </div>
-          <p className="text-xs text-gray-400 mt-0.5">{stat2Label}</p>
+          <p className="text-xs text-subtle mt-0.5">{stat2Label}</p>
         </div>
 
         {/* Actieve schema's */}
@@ -683,7 +683,7 @@ export default function MedicatiePage() {
             </div>
             <p className="text-2xl font-bold text-gray-900">{activeSchemasCount}</p>
           </div>
-          <p className="text-xs text-gray-400 mt-0.5">Actieve schema&apos;s</p>
+          <p className="text-xs text-subtle mt-0.5">Actieve schema&apos;s</p>
         </div>
       </div>
 
@@ -696,7 +696,7 @@ export default function MedicatiePage() {
             className="flex-1 py-2.5 text-sm font-medium transition-all"
             style={{
               background: mobileTab === tab ? "#ffffff" : "transparent",
-              color: mobileTab === tab ? "#1a1a1a" : "#9ca3af",
+              color: mobileTab === tab ? "#1a1a1a" : "#6b7280",
               borderRadius: "10px",
               margin: "3px",
               boxShadow: mobileTab === tab ? "0 1px 4px rgba(0,0,0,0.08)" : "none",

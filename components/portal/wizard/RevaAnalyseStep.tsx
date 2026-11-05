@@ -126,7 +126,7 @@ export function RevaAnalyseStep({
                 />
                 <DatePicker value={goal.targetDate} onChange={(v) => updateGoal(i, { targetDate: v })} placeholder="Streefdatum (optioneel)" />
               </div>
-              <button type="button" onClick={() => removeGoal(i)} className="shrink-0 text-gray-400 hover:text-red-500 p-1">
+              <button type="button" onClick={() => removeGoal(i)} className="shrink-0 text-subtle hover:text-red-500 p-1">
                 <Trash2 size={14} />
               </button>
             </div>

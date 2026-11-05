@@ -34,7 +34,7 @@ function FieldLabel({ children, optional }: { children: React.ReactNode; optiona
     <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500 mb-1.5">
       {children}
       {optional && (
-        <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-full"
+        <span className="text-[11px] font-normal px-1.5 py-0.5 rounded-full"
           style={{ background: "#f3f0eb", color: "#a8a29e" }}>Optioneel</span>
       )}
     </label>

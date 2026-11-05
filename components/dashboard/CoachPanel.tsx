@@ -35,7 +35,7 @@ export function CoachPanel({ coachInsights }: CoachPanelProps) {
               {moodCfg.label}
             </span>
           </div>
-          <span className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">Jouw coach</span>
+          <span className="text-[11px] font-medium text-subtle uppercase tracking-widest">Jouw coach</span>
         </div>
 
         {/* Daily insight */}
@@ -57,28 +57,28 @@ export function CoachPanel({ coachInsights }: CoachPanelProps) {
 
         {/* Weekly summary */}
         <div className="rounded-xl px-4 py-3 mb-4" style={{ background: moodCfg.bg, border: `1px solid ${moodCfg.color}22` }}>
-          <p className="text-[10px] font-semibold uppercase tracking-widest mb-2.5" style={{ color: moodCfg.color }}>
+          <p className="text-[11px] font-semibold uppercase tracking-widest mb-2.5" style={{ color: moodCfg.color }}>
             Samenvatting deze week
           </p>
           <div className="grid grid-cols-3 gap-3 mb-3">
             <div>
               <p className="text-base font-bold leading-none text-gray-900">{coachInsights.weekly.trainingCount}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">trainingen</p>
+              <p className="text-[11px] text-subtle mt-0.5">trainingen</p>
             </div>
             <div>
               <p className="text-base font-bold leading-none text-gray-900">{coachInsights.weekly.medCount}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">medicatie</p>
+              <p className="text-[11px] text-subtle mt-0.5">medicatie</p>
             </div>
             <div>
               <p className="text-base font-bold leading-none text-gray-900">{coachInsights.weekly.completedMijl}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">mijlpalen</p>
+              <p className="text-[11px] text-subtle mt-0.5">mijlpalen</p>
             </div>
           </div>
           <p className="text-xs text-gray-600 leading-relaxed">{coachInsights.weekly.coachTekst}</p>
         </div>
 
         {/* Disclaimer */}
-        <p className="text-[10px] leading-relaxed" style={{ color: "#c4bfb7" }}>
+        <p className="text-[11px] leading-relaxed" style={{ color: "#c4bfb7" }}>
           {coachInsights.disclaimerTekst}
         </p>
       </div>

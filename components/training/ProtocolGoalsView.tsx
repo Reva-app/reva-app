@@ -16,7 +16,7 @@ export function ProtocolGoalsView({ protocol }: { protocol: PatientActiveProtoco
   if (!phase) {
     return (
       <Card>
-        <p className="text-sm text-gray-400">Je fysiotherapeut is nog bezig je volgende fase klaar te zetten.</p>
+        <p className="text-sm text-subtle">Je fysiotherapeut is nog bezig je volgende fase klaar te zetten.</p>
       </Card>
     );
   }
@@ -41,7 +41,7 @@ export function ProtocolGoalsView({ protocol }: { protocol: PatientActiveProtoco
                 >
                   {c.met && <Check size={10} className="text-white" />}
                 </span>
-                <span className={c.met ? "text-gray-700" : "text-gray-400"}>{c.description}</span>
+                <span className={c.met ? "text-gray-700" : "text-subtle"}>{c.description}</span>
               </div>
             ))}
           </div>
@@ -60,7 +60,7 @@ export function ProtocolGoalsView({ protocol }: { protocol: PatientActiveProtoco
                 >
                   {m.completed && <Check size={10} className="text-white" />}
                 </span>
-                <span className={m.completed ? "text-gray-700" : "text-gray-400"}>{m.title}</span>
+                <span className={m.completed ? "text-gray-700" : "text-subtle"}>{m.title}</span>
               </div>
             ))}
           </div>

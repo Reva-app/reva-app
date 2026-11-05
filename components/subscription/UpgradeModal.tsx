@@ -161,11 +161,11 @@ export function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold text-gray-900 text-sm">Maandelijks</p>
-                <p className="text-xs mt-0.5 text-gray-400">Opzegbaar per maand</p>
+                <p className="text-xs mt-0.5 text-subtle">Opzegbaar per maand</p>
               </div>
               <div className="text-right">
                 <p className="text-xl font-bold text-gray-900">{MONTHLY_PRICE}</p>
-                <p className="text-xs text-gray-400">per maand</p>
+                <p className="text-xs text-subtle">per maand</p>
               </div>
             </div>
 
@@ -188,7 +188,7 @@ export function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
 
         {/* ── Features ───────────────────────────────────────────────────── */}
         <div className="px-5 pt-4 pb-1">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+          <p className="text-xs font-semibold text-subtle uppercase tracking-wider mb-3">
             Alles inbegrepen bij Premium
           </p>
           <ul className="space-y-2">
@@ -220,14 +220,14 @@ export function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
           </button>
 
           {selected === "yearly" && (
-            <p className="text-center text-xs text-gray-400">
+            <p className="text-center text-xs text-subtle">
               Dat is {YEARLY_PER_MONTH}/maand, je bespaart {YEARLY_DISCOUNT} t.o.v. maandelijks
             </p>
           )}
 
           <button
             onClick={onClose}
-            className="w-full py-2.5 text-sm text-gray-400"
+            className="w-full py-2.5 text-sm text-subtle"
           >
             Misschien later
           </button>

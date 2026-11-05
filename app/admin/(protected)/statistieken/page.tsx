@@ -83,7 +83,7 @@ export default function AdminStatistiekenPage() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-subtle">
             Nog geen afgesloten behandelingen op het platform. Zodra praktijken afsluitdatums invullen bij hun patiënten, verschijnt hier de doorlooptijd per blessure.
           </p>
         )}
@@ -101,7 +101,7 @@ export default function AdminStatistiekenPage() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-gray-400">Nog geen patiënten geregistreerd.</p>
+          <p className="text-sm text-subtle">Nog geen patiënten geregistreerd.</p>
         )}
       </Card>
     </div>

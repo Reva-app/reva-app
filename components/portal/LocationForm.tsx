@@ -92,13 +92,13 @@ export function LocationForm({ organizationId, location, onSaved, onClose }: Loc
     <Card>
       <div className="flex items-start justify-between">
         <CardHeader title={location ? "Locatie wijzigen" : "Nieuwe locatie"} />
-        <button type="button" onClick={onClose} aria-label="Sluiten" className="relative tap-target text-gray-400 hover:text-gray-600 shrink-0 -mt-1">
+        <button type="button" onClick={onClose} aria-label="Sluiten" className="relative tap-target text-subtle hover:text-gray-600 shrink-0 -mt-1">
           <X size={18} />
         </button>
       </div>
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Algemene gegevens</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-subtle mb-3">Algemene gegevens</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="sm:col-span-2">
               <FieldLabel>Naam</FieldLabel>
@@ -124,7 +124,7 @@ export function LocationForm({ organizationId, location, onSaved, onClose }: Loc
         </div>
 
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Adres</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-subtle mb-3">Adres</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <FieldLabel>Straat</FieldLabel>
@@ -155,7 +155,7 @@ export function LocationForm({ organizationId, location, onSaved, onClose }: Loc
         </div>
 
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Openingstijden</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-subtle mb-3">Openingstijden</p>
           <div className="space-y-2">
             {DAY_ORDER.map((day) => {
               const d = input.openingHours[day];
@@ -173,11 +173,11 @@ export function LocationForm({ organizationId, location, onSaved, onClose }: Loc
                   {d.open ? (
                     <div className="flex items-center gap-2 w-full sm:w-auto pl-6 sm:pl-0">
                       <TimePicker compact value={d.from} onChange={(v) => updateDay(day, { from: v })} ariaLabel={`${OPENING_HOURS_DAY_LABELS[day]} van`} placeholder="--:--" />
-                      <span className="text-gray-400 text-sm">tot</span>
+                      <span className="text-subtle text-sm">tot</span>
                       <TimePicker compact value={d.to} onChange={(v) => updateDay(day, { to: v })} ariaLabel={`${OPENING_HOURS_DAY_LABELS[day]} tot`} placeholder="--:--" />
                     </div>
                   ) : (
-                    <span className="text-sm text-gray-400">Gesloten</span>
+                    <span className="text-sm text-subtle">Gesloten</span>
                   )}
                 </div>
               );

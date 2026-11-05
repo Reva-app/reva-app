@@ -153,7 +153,7 @@ export default function AdminOrganizationsPage() {
             </div>
 
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Eigenaar uitnodigen (optioneel)</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-subtle mb-2">Eigenaar uitnodigen (optioneel)</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <input
                   type="text" value={ownerFirstName} onChange={(e) => setOwnerFirstName(e.target.value)}
@@ -168,7 +168,7 @@ export default function AdminOrganizationsPage() {
                   placeholder="E-mailadres" className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
                 />
               </div>
-              <p className="text-xs text-gray-400 mt-2">
+              <p className="text-xs text-subtle mt-2">
                 Ingevuld? Dan ontvangt deze persoon direct een e-mail om zelf een wachtwoord in te stellen en het bedrijf als Practice Owner te beheren. Leeg gelaten: alleen een leeg bedrijf wordt aangemaakt.
               </p>
             </div>
@@ -202,7 +202,7 @@ export default function AdminOrganizationsPage() {
         style={{ background: "#ffffff", borderColor: "#e8e5df", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
       >
         {loading ? (
-          <p className="text-sm text-gray-400 p-6">Laden…</p>
+          <p className="text-sm text-subtle p-6">Laden…</p>
         ) : filteredOrgs.length === 0 ? (
           <EmptyState
             icon={Building2}
@@ -215,12 +215,12 @@ export default function AdminOrganizationsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr style={{ borderBottom: "1px solid #e8e5df" }}>
-                    <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Naam</th>
-                    <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Status</th>
-                    <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Pakket</th>
-                    <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Locaties</th>
-                    <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Actieve patiënten</th>
-                    <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Aangemaakt op</th>
+                    <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-5 py-3">Naam</th>
+                    <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-5 py-3">Status</th>
+                    <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-5 py-3">Pakket</th>
+                    <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-5 py-3">Locaties</th>
+                    <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-5 py-3">Actieve patiënten</th>
+                    <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-5 py-3">Aangemaakt op</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -233,18 +233,18 @@ export default function AdminOrganizationsPage() {
                     >
                       <td className="px-5 py-3.5 font-medium text-gray-800">{org.name}</td>
                       <td className="px-5 py-3.5">{orgStatusBadge(org.status, org.trialEndsAt)}</td>
-                      <td className="px-5 py-3.5 text-gray-600">{org.plan ? PLANS[org.plan].name : <span className="text-gray-400">—</span>}</td>
+                      <td className="px-5 py-3.5 text-gray-600">{org.plan ? PLANS[org.plan].name : <span className="text-subtle">—</span>}</td>
                       <td className="px-5 py-3.5 text-gray-600">{org.locationCount}</td>
                       <td className="px-5 py-3.5 text-gray-600">
                         {org.activePatientCount}
-                        {org.maxPatients !== null && <span className="text-gray-400"> / {org.maxPatients}</span>}
+                        {org.maxPatients !== null && <span className="text-subtle"> / {org.maxPatients}</span>}
                         {org.maxPatients !== null && org.activePatientCount >= org.maxPatients * PATIENT_WARNING_RATIO && (
                           <Badge variant={org.activePatientCount > org.maxPatients ? "danger" : "warning"} className="ml-2">
                             {org.activePatientCount > org.maxPatients ? "Boven limiet" : "Bijna vol"}
                           </Badge>
                         )}
                       </td>
-                      <td className="px-5 py-3.5 text-gray-400">{formatDate(org.createdAt)}</td>
+                      <td className="px-5 py-3.5 text-subtle">{formatDate(org.createdAt)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -252,7 +252,7 @@ export default function AdminOrganizationsPage() {
             </div>
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-5 py-3 flex-wrap gap-2" style={{ borderTop: "1px solid #f8f7f4" }}>
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-subtle">
                   Pagina {safePage} van {totalPages} — {filteredOrgs.length} {filteredOrgs.length === 1 ? "resultaat" : "resultaten"}
                 </span>
                 <div className="flex gap-2">

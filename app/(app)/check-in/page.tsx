@@ -1,5 +1,6 @@
 "use client";
 
+import { ScoreScale } from "@/components/checkin/ScoreScale";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { SectionHeader } from "@/components/ui/SectionHeader";
@@ -8,6 +9,7 @@ import { useAppData } from "@/lib/store";
 import { type CheckIn } from "@/lib/data";
 import { Check, TrendingUp, Pencil, X, Lock } from "lucide-react";
 import { useUserPlan } from "@/lib/hooks/useUserPlan";
+import { useSvgScale } from "@/lib/hooks/useSvgScale";
 import { canUseFullCheckIn } from "@/lib/featureGates";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 import { useToast } from "@/components/ui/Toast";
@@ -63,22 +65,19 @@ function ScoreSelector({ label, value, max, onChange, color = "#e8632a" }: {
         <p className="text-sm font-medium text-gray-700">{label}</p>
         <p className="text-sm font-bold" style={{ color }}>{value}/{max}</p>
       </div>
-      <div className="flex gap-1.5">
-        {Array.from({ length: max }, (_, i) => i + 1).map((v) => (
-          <button key={v} onClick={() => onChange(v)}
-            className="flex-1 h-9 rounded-lg text-sm font-medium transition-all"
-            style={{ background: v <= value ? color : "#f3f0eb", color: v <= value ? "#ffffff" : "#9ca3af" }}>
-            {v}
-          </button>
-        ))}
-      </div>
+      <ScoreScale label={label} value={value} max={max} onChange={onChange} color={color} />
     </div>
   );
 }
 
 // ─── Hersteltrend lijn chart ──────────────────────────────────────────────────
 
+const TREND_VW = 600;
+
 function HerstelTrendLijn({ checkIns }: { checkIns: CheckIn[] }) {
+  // Aslabels altijd 11px op het scherm, hoe smal de grafiek ook wordt.
+  const [svgRef, svgScale] = useSvgScale(TREND_VW);
+  const labelSize = 11 / svgScale;
   const recent = [...checkIns]
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(-14);
@@ -95,7 +94,7 @@ function HerstelTrendLijn({ checkIns }: { checkIns: CheckIn[] }) {
         <div className="flex items-center justify-between mb-4">
           <div>
             <p className="text-base font-semibold text-gray-900">Hersteltrend</p>
-            <p className="text-xs text-gray-400 mt-0.5">Dagscore van de laatste 14 dagen</p>
+            <p className="text-xs text-subtle mt-0.5">Dagscore van de laatste 14 dagen</p>
           </div>
         </div>
         <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -103,14 +102,14 @@ function HerstelTrendLijn({ checkIns }: { checkIns: CheckIn[] }) {
             style={{ background: "#f3f0eb" }}>
             <TrendingUp size={15} className="text-gray-300" />
           </div>
-          <p className="text-sm font-medium text-gray-400">Nog te weinig check-ins</p>
+          <p className="text-sm font-medium text-subtle">Nog te weinig check-ins</p>
           <p className="text-xs text-gray-300 mt-1">Vul meer check-ins in om je trend te zien</p>
         </div>
       </div>
     );
   }
 
-  const VW = 600;
+  const VW = TREND_VW;
   const VH = 130;
   const PL = 30, PR = 16, PT = 12, PB = 28;
   const cW = VW - PL - PR;
@@ -135,17 +134,17 @@ function HerstelTrendLijn({ checkIns }: { checkIns: CheckIn[] }) {
       <div className="flex items-center justify-between mb-4">
         <div>
           <p className="text-base font-semibold text-gray-900">Hersteltrend</p>
-          <p className="text-xs text-gray-400 mt-0.5">Dagscore van de laatste {recent.length} check-ins</p>
+          <p className="text-xs text-subtle mt-0.5">Dagscore van de laatste {recent.length} check-ins</p>
         </div>
         {avg !== null && (
           <div className="text-right">
             <p className="text-2xl font-bold leading-none" style={{ color: "#e8632a" }}>{avg}</p>
-            <p className="text-[10px] text-gray-400 mt-0.5">gemiddeld</p>
+            <p className="text-[11px] text-subtle mt-0.5">gemiddeld</p>
           </div>
         )}
       </div>
 
-      <svg viewBox={`0 0 ${VW} ${VH}`} className="w-full" style={{ overflow: "visible" }}>
+      <svg ref={svgRef} viewBox={`0 0 ${VW} ${VH}`} className="w-full" style={{ overflow: "visible" }}>
         <defs>
           <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%"   stopColor="#e8632a" stopOpacity="0.07" />
@@ -154,13 +153,13 @@ function HerstelTrendLijn({ checkIns }: { checkIns: CheckIn[] }) {
         </defs>
 
         {/* Y-axis grid + labels */}
-        {[1, 2, 3, 4, 5].map((s) => {
+        {(svgScale < 0.8 ? [1, 3, 5] : [1, 2, 3, 4, 5]).map((s) => {
           const y = yPos(s);
           return (
             <g key={s}>
               <line x1={PL} y1={y} x2={VW - PR} y2={y}
                 stroke={s === 3 ? "#ede9e3" : "#f8f6f3"} strokeWidth="0.75" />
-              <text x={PL - 6} y={y + 3.5} textAnchor="end" fontSize="9" fill="#c4bfb9">{s}</text>
+              <text x={PL - 6} y={y + labelSize * 0.35} textAnchor="end" fontSize={labelSize} fill="#9ca3af">{s}</text>
             </g>
           );
         })}
@@ -193,7 +192,7 @@ function HerstelTrendLijn({ checkIns }: { checkIns: CheckIn[] }) {
           const d   = new Date(p.ci.date + "T12:00:00");
           const lbl = d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
           return (
-            <text key={i} x={p.x} y={VH - 2} textAnchor="middle" fontSize="9" fill="#9ca3af">
+            <text key={i} x={p.x} y={VH - 2} textAnchor={i === 0 ? "start" : i === n - 1 ? "end" : "middle"} fontSize={labelSize} fill="#6b7280">
               {lbl}
             </text>
           );
@@ -276,7 +275,7 @@ function WeekOverzichtVertical({
             >
               {/* Day */}
               <div className="shrink-0 w-8 text-center">
-                <p className="text-[10px] font-semibold uppercase tracking-wide leading-tight"
+                <p className="text-[11px] font-semibold uppercase tracking-wide leading-tight"
                   style={{ color: isToday ? "#e8632a" : "#6b7280" }}>
                   {label}
                 </p>
@@ -306,7 +305,7 @@ function WeekOverzichtVertical({
                         style={{ color: scoreColor(score) }}>
                         {dagscoreLabels[score]}
                       </p>
-                      <p className="text-[10px] leading-tight" style={{ color: "#4b5563" }}>
+                      <p className="text-[11px] leading-tight" style={{ color: "#4b5563" }}>
                         {score}/5
                       </p>
                     </div>
@@ -364,7 +363,7 @@ function CheckInEditModal({
           style={{ borderColor: "#f0ede8" }}>
           <div>
             <p className="text-sm font-semibold text-gray-900">Check-in bewerken</p>
-            <p className="text-xs text-gray-400 mt-0.5 capitalize">{dateLabel}</p>
+            <p className="text-xs text-subtle mt-0.5 capitalize">{dateLabel}</p>
           </div>
           <button onClick={onClose}
             className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-gray-100">
@@ -376,7 +375,7 @@ function CheckInEditModal({
           {/* Dagscore */}
           <div>
             <div className="flex justify-between mb-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Dagscore</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-subtle">Dagscore</p>
             </div>
             <div className="flex gap-2">
               {[1, 2, 3, 4, 5].map((v) => (
@@ -388,7 +387,7 @@ function CheckInEditModal({
                   }}>
                   <span className="text-lg">{dagscoreEmoji[v]}</span>
                   <span className="text-xs font-medium"
-                    style={{ color: dagscore === v ? "#ffffff" : "#9ca3af" }}>
+                    style={{ color: dagscore === v ? "#ffffff" : "#6b7280" }}>
                     {dagscoreLabels[v]}
                   </span>
                 </button>
@@ -397,7 +396,7 @@ function CheckInEditModal({
           </div>
 
           <div className="space-y-4 pt-1 border-t" style={{ borderColor: "#f0ede8" }}>
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-1">Details</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-subtle pt-1">Details</p>
             <ScoreSelector label="Pijnniveau"     value={pijn}       max={10} onChange={setPijn}       color="#ef4444" />
             <ScoreSelector label="Mobiliteit"     value={mobiliteit} max={5}  onChange={setMobiliteit} color="#3b82f6" />
             <ScoreSelector label="Energie"        value={energie}    max={5}  onChange={setEnergie}    color="#f59e0b" />
@@ -406,7 +405,7 @@ function CheckInEditModal({
           </div>
 
           <div className="border-t pt-4" style={{ borderColor: "#f0ede8" }}>
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Notitie</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-subtle mb-2">Notitie</p>
             <textarea
               value={notitie}
               onChange={(e) => setNotitie(e.target.value)}
@@ -510,10 +509,10 @@ function CheckInSavedScreen({ selectedDate, dagscore, onReset }: {
         <Check size={24} style={{ color: "#22c55e" }} />
       </div>
       <h3 className="text-base font-semibold text-gray-900 mb-1">Check-in opgeslagen</h3>
-      <p className="text-sm text-gray-400">
+      <p className="text-sm text-subtle">
         {new Date(selectedDate + "T12:00:00").toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" })}
       </p>
-      <p className="text-sm text-gray-400 mt-0.5">
+      <p className="text-sm text-subtle mt-0.5">
         Dagscore {dagscore}/5: {dagscoreLabels[dagscore]}
       </p>
       <Button variant="secondary" size="sm" className="mt-5" onClick={onReset}>
@@ -603,16 +602,16 @@ export default function CheckInPage() {
 
         {/* Datum */}
         <div className="px-6 pt-6 pb-5 border-b" style={{ borderColor: "#f0ede8" }}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Datum</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-subtle mb-3">Datum</p>
           <DatePicker value={selectedDate} onChange={setSelectedDate} />
           {!isToday && (
-            <p className="text-xs text-gray-400 mt-2">Je vult een check-in in voor een eerdere dag</p>
+            <p className="text-xs text-subtle mt-2">Je vult een check-in in voor een eerdere dag</p>
           )}
         </div>
 
         {/* Dagscore */}
         <div className="px-6 pt-5 pb-5 border-b" style={{ borderColor: "#f0ede8" }}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-subtle mb-1">
             {isToday ? "Dagscore van vandaag" : "Dagscore"}
           </p>
           <p className="text-sm text-gray-500 mb-3">
@@ -630,7 +629,7 @@ export default function CheckInPage() {
                 }}>
                 <span className="text-xl">{dagscoreEmoji[v]}</span>
                 <span className="text-xs font-medium"
-                  style={{ color: dagscore === v ? "#ffffff" : "#9ca3af" }}>
+                  style={{ color: dagscore === v ? "#ffffff" : "#6b7280" }}>
                   {dagscoreLabels[v]}
                 </span>
               </button>
@@ -640,7 +639,7 @@ export default function CheckInPage() {
 
         {/* Details */}
         <div className="px-6 pt-5 pb-5 border-b" style={{ borderColor: "#f0ede8" }}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">Details</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-subtle mb-1">Details</p>
           <p className="text-sm text-gray-500 mb-4">
             {fullCheckIn ? "Optioneel: vul in wat relevant is" : "Beschikbaar met Premium"}
           </p>
@@ -667,7 +666,7 @@ export default function CheckInPage() {
 
         {/* Notitie */}
         <div className="px-6 pt-5 pb-6">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">Notitie</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-subtle mb-1">Notitie</p>
           <p className="text-sm text-gray-500 mb-3">Optioneel</p>
           <textarea
             value={notitie}
@@ -708,7 +707,7 @@ export default function CheckInPage() {
               className="flex-1 py-2.5 text-sm font-medium transition-all"
               style={{
                 background: mobileTab === tab ? "#ffffff" : "transparent",
-                color: mobileTab === tab ? "#1a1a1a" : "#9ca3af",
+                color: mobileTab === tab ? "#1a1a1a" : "#6b7280",
                 boxShadow: mobileTab === tab ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
                 margin: mobileTab === tab ? "3px" : "0",
                 borderRadius: mobileTab === tab ? "8px" : "0",
@@ -741,7 +740,7 @@ export default function CheckInPage() {
 
                 {/* Uitleg — matches CheckInModal */}
                 {!editingId && (
-                  <p className="text-xs text-gray-400 leading-relaxed px-1">
+                  <p className="text-xs text-subtle leading-relaxed px-1">
                     Vul in hoe je dag was. Bij alle scores geldt: <strong className="text-gray-500">1 is laag</strong> en de hoogste waarde is het beste, behalve bij pijn, waar lager beter is.
                   </p>
                 )}
@@ -774,7 +773,7 @@ export default function CheckInPage() {
 
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1.5">
-                    Notitie <span className="text-[10px] font-normal text-gray-400 italic">optioneel</span>
+                    Notitie <span className="text-[11px] font-normal text-subtle italic">optioneel</span>
                   </label>
                   <textarea
                     value={notitie}

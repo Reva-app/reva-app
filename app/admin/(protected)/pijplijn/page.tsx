@@ -55,11 +55,11 @@ function LeadCard({ lead, onDragStart, onClick }: {
       style={{ background: "#ffffff", borderColor: "#e8e5df" }}
     >
       <p className="text-sm font-medium text-gray-800 truncate">{lead.companyName}</p>
-      {lead.contactName && <p className="text-xs text-gray-400 mt-0.5 truncate">{lead.contactName}</p>}
+      {lead.contactName && <p className="text-xs text-subtle mt-0.5 truncate">{lead.contactName}</p>}
       <div className="flex items-center justify-between mt-2">
         <span className="text-xs text-gray-500">{formatEuro(lead.estimatedValue)}</span>
         {isActionOverdue(lead) && (
-          <span className="flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: "#fffbeb", color: "#b45309" }}>
+          <span className="flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: "#fffbeb", color: "#b45309" }}>
             <AlertCircle size={10} /> Actie verlopen
           </span>
         )}
@@ -241,7 +241,7 @@ export default function AdminPijplijnPage() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-gray-400">Laden…</p>
+        <p className="text-sm text-subtle">Laden…</p>
       ) : (
         <div className="flex gap-4 overflow-x-auto pb-2">
           {STAGES.map((stageInfo) => {
@@ -261,10 +261,10 @@ export default function AdminPijplijnPage() {
                 <div className="px-3 py-3">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-gray-800">{stageInfo.label}</p>
-                    <span className="text-xs text-gray-400">{stageLeads.length}</span>
+                    <span className="text-xs text-subtle">{stageLeads.length}</span>
                   </div>
                   {isOpenStage && stageValue > 0 && (
-                    <p className="text-[11px] text-gray-400 mt-0.5">{formatEuro(stageValue)}</p>
+                    <p className="text-[11px] text-subtle mt-0.5">{formatEuro(stageValue)}</p>
                   )}
                 </div>
                 <div className="px-2.5 pb-2.5 space-y-2 flex-1 min-h-[60px]">
@@ -281,7 +281,7 @@ export default function AdminPijplijnPage() {
                   type="button"
                   onClick={() => setModal({ mode: "create", stage: stageInfo.key })}
                   className="flex items-center justify-center gap-1 text-xs font-medium py-2 mx-2.5 mb-2.5 rounded-lg transition-colors hover:bg-white/60"
-                  style={{ color: "#9ca3af" }}
+                  style={{ color: "#6b7280" }}
                 >
                   <Plus size={12} /> Toevoegen
                 </button>

@@ -46,7 +46,7 @@ export function ProtocolTrainingView({
 
       {!phase ? (
         <Card>
-          <p className="text-sm text-gray-400">Je fysiotherapeut is nog bezig je volgende fase klaar te zetten.</p>
+          <p className="text-sm text-subtle">Je fysiotherapeut is nog bezig je volgende fase klaar te zetten.</p>
         </Card>
       ) : (
         <>
@@ -77,7 +77,7 @@ export function ProtocolTrainingView({
                     >
                       {m.completed && <Check size={10} className="text-white" />}
                     </span>
-                    <span className={m.completed ? "text-gray-700" : "text-gray-400"}>{m.title}</span>
+                    <span className={m.completed ? "text-gray-700" : "text-subtle"}>{m.title}</span>
                   </div>
                 ))}
               </div>
@@ -184,7 +184,7 @@ function ScheduleLogCard({
                   <div className="flex items-center gap-2 text-sm font-medium text-gray-800 flex-wrap">
                     {ex.title}
                     {(ex.prescribedSets || ex.prescribedReps) && (
-                      <span className="text-xs font-normal text-gray-400">
+                      <span className="text-xs font-normal text-subtle">
                         — doel: {ex.prescribedSets ?? "?"}×{ex.prescribedReps ?? "?"}{ex.prescribedLoadText ? ` · ${ex.prescribedLoadText}` : ""}
                       </span>
                     )}
@@ -195,22 +195,22 @@ function ScheduleLogCard({
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2.5">
                 <div>
-                  <label className="block text-[11px] text-gray-400 mb-1">Sets</label>
+                  <label className="block text-[11px] text-subtle mb-1">Sets</label>
                   <input type="number" min={0} value={values[ex.id].sets} onChange={(e) => update(ex.id, "sets", e.target.value)}
                     className="w-full text-base sm:text-sm rounded-lg border px-2 py-1.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
                 </div>
                 <div>
-                  <label className="block text-[11px] text-gray-400 mb-1">Herh.</label>
+                  <label className="block text-[11px] text-subtle mb-1">Herh.</label>
                   <input type="number" min={0} value={values[ex.id].reps} onChange={(e) => update(ex.id, "reps", e.target.value)}
                     className="w-full text-base sm:text-sm rounded-lg border px-2 py-1.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
                 </div>
                 <div>
-                  <label className="block text-[11px] text-gray-400 mb-1">Gewicht (kg)</label>
+                  <label className="block text-[11px] text-subtle mb-1">Gewicht (kg)</label>
                   <input type="number" min={0} step="0.5" value={values[ex.id].weightKg} onChange={(e) => update(ex.id, "weightKg", e.target.value)}
                     className="w-full text-base sm:text-sm rounded-lg border px-2 py-1.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
                 </div>
                 <div>
-                  <label className="block text-[11px] text-gray-400 mb-1">Pijn (1-10)</label>
+                  <label className="block text-[11px] text-subtle mb-1">Pijn (1-10)</label>
                   <input type="number" min={1} max={10} value={values[ex.id].painScore} onChange={(e) => update(ex.id, "painScore", e.target.value)}
                     className="w-full text-base sm:text-sm rounded-lg border px-2 py-1.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
                 </div>
@@ -220,7 +220,7 @@ function ScheduleLogCard({
         </div>
 
         <div>
-          <label className="block text-[11px] text-gray-400 mb-1">Notitie (optioneel) — ook zichtbaar voor je fysiotherapeut</label>
+          <label className="block text-[11px] text-subtle mb-1">Notitie (optioneel) — ook zichtbaar voor je fysiotherapeut</label>
           <textarea
             value={reflection}
             onChange={(e) => setReflection(e.target.value)}

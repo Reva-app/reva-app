@@ -87,7 +87,7 @@ function DayChip({ appointment }: { appointment: Appointment }) {
   const cfg = TYPE_COLORS[appointment.type];
   const Icon = cfg.icon;
   return (
-    <div className="flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md truncate leading-tight"
+    <div className="flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded-md truncate leading-tight"
       style={{ background: cfg.bg, color: cfg.text, border: `1px solid ${cfg.border}` }} title={appointment.title}>
       <Icon size={9} style={{ color: cfg.dot, flexShrink: 0 }} />
       <span className="truncate">{appointment.time} {appointment.title}</span>
@@ -113,8 +113,8 @@ function DetailItem({ appointment, onDelete, onEdit }: {
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
-          <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: cfg.text }}>{cfg.label}</span>
-          {appointment.time && <span className="flex items-center gap-1 text-[10px] text-gray-400"><Clock size={9} /> {appointment.time}</span>}
+          <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: cfg.text }}>{cfg.label}</span>
+          {appointment.time && <span className="flex items-center gap-1 text-[11px] text-subtle"><Clock size={9} /> {appointment.time}</span>}
           <div className="ml-auto flex items-center gap-1 shrink-0">
             <button onClick={() => onEdit(appointment)}
               className="w-5 h-5 rounded flex items-center justify-center hover:bg-white/60 transition-colors" title="Bewerken">
@@ -129,7 +129,7 @@ function DetailItem({ appointment, onDelete, onEdit }: {
         <p className="text-sm font-medium text-gray-800 leading-snug">{appointment.title}</p>
         <div className="mt-1 space-y-0.5">
           {appointment.location && <p className="flex items-center gap-1 text-xs text-gray-500"><MapPin size={10} /> {appointment.location}</p>}
-          {appointment.behandelaar && <p className="text-xs text-gray-400">{appointment.behandelaar}</p>}
+          {appointment.behandelaar && <p className="text-xs text-subtle">{appointment.behandelaar}</p>}
         </div>
         <button
           onClick={() => downloadAppointmentIcs(appointment)}
@@ -259,7 +259,7 @@ export default function DagboekPage() {
         <div className="px-4 sm:px-6 shrink-0">
           <div className="grid grid-cols-7 border-t border-l" style={{ borderColor: "#e8e5df" }}>
             {DAYS_NL.map((d) => (
-              <div key={d} className="py-1.5 text-center border-r border-b text-[10px] sm:text-xs font-semibold text-gray-400 uppercase tracking-wide"
+              <div key={d} className="py-1.5 text-center border-r border-b text-[11px] sm:text-xs font-semibold text-subtle uppercase tracking-wide"
                 style={{ borderColor: "#e8e5df" }}>{d}</div>
             ))}
           </div>
@@ -289,7 +289,7 @@ export default function DagboekPage() {
                     {/* Chips — hidden on mobile to keep calendar clean */}
                     <div className="hidden sm:block space-y-0.5">
                       {visibleItems.map((a) => <DayChip key={a.id} appointment={a} />)}
-                      {overflow > 0 && <div className="text-[10px] text-gray-400 pl-1">+{overflow} meer</div>}
+                      {overflow > 0 && <div className="text-[11px] text-subtle pl-1">+{overflow} meer</div>}
                     </div>
                     {/* Mobile: just show dot indicators */}
                     {items.length > 0 && (
@@ -325,7 +325,7 @@ export default function DagboekPage() {
               return (
                 <div key={key} className="flex items-center gap-1.5">
                   <Icon size={10} style={{ color: cfg.dot }} />
-                  <span className="text-[11px] text-gray-400">{cfg.label}</span>
+                  <span className="text-[11px] text-subtle">{cfg.label}</span>
                 </div>
               );
             })}
@@ -341,7 +341,7 @@ export default function DagboekPage() {
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="text-sm font-semibold text-gray-900 capitalize">{fmtDisplayDate(selectedDate)}</p>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="text-xs text-subtle mt-0.5">
                   {selectedAppointments.length === 0 ? "Geen afspraken" : `${selectedAppointments.length} ${selectedAppointments.length === 1 ? "afspraak" : "afspraken"}`}
                 </p>
               </div>
@@ -354,11 +354,11 @@ export default function DagboekPage() {
           <div className="flex-1 overflow-y-auto divide-y" style={{ borderColor: "#e8e5df" }}>
             {/* Afspraken — enige sectie die hier volledig beheerbaar is */}
             <div className="p-4">
-              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
+              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-subtle mb-2">
                 <Calendar size={11} /> Afspraken
               </p>
               {selectedAppointments.length === 0 ? (
-                <p className="text-xs text-gray-400">Geen afspraken op deze dag.</p>
+                <p className="text-xs text-subtle">Geen afspraken op deze dag.</p>
               ) : (
                 <div className="space-y-2">
                   {selectedAppointments.map((a) => (
@@ -374,7 +374,7 @@ export default function DagboekPage() {
             {/* Check-in, Trainingen, Medicatie — alleen-lezen recap met doorklik naar de eigen beheerpagina */}
             <div className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-subtle">
                   <TrendingUp size={11} /> Check-in
                 </p>
                 <Link href="/check-in" className="flex items-center gap-1 text-[11px] font-medium shrink-0" style={{ color: "#e8632a" }}>
@@ -392,13 +392,13 @@ export default function DagboekPage() {
                   )}
                 </div>
               ) : (
-                <p className="text-xs text-gray-400">Geen check-in op deze dag.</p>
+                <p className="text-xs text-subtle">Geen check-in op deze dag.</p>
               )}
             </div>
 
             <div className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-subtle">
                   <Dumbbell size={11} /> Trainingen
                 </p>
                 <Link href="/training" className="flex items-center gap-1 text-[11px] font-medium shrink-0" style={{ color: "#e8632a" }}>
@@ -414,7 +414,7 @@ export default function DagboekPage() {
                         {w.completed && <Plus size={8} className="text-white rotate-45" strokeWidth={4} />}
                       </span>
                       <span className="text-sm text-gray-700 truncate">{w.title}</span>
-                      {!w.completed && <span className="text-[10px] text-gray-400 ml-auto shrink-0">Gepland</span>}
+                      {!w.completed && <span className="text-[11px] text-subtle ml-auto shrink-0">Gepland</span>}
                     </div>
                   ))}
                   {selectedActivity.protocolSessions.map((s) => (
@@ -430,13 +430,13 @@ export default function DagboekPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-gray-400">Geen training op deze dag.</p>
+                <p className="text-xs text-subtle">Geen training op deze dag.</p>
               )}
             </div>
 
             <div className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-subtle">
                   <Pill size={11} /> Medicatie
                 </p>
                 <Link href="/medicatie" className="flex items-center gap-1 text-[11px] font-medium shrink-0" style={{ color: "#e8632a" }}>
@@ -449,12 +449,12 @@ export default function DagboekPage() {
                     <div key={m.id} className="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm" style={{ borderColor: "#e8e5df", background: "#ffffff" }}>
                       <Pill size={12} className="text-gray-400 shrink-0" />
                       <span className="text-gray-700 truncate">{m.naam}</span>
-                      <span className="text-[11px] text-gray-400 ml-auto shrink-0">{m.time}</span>
+                      <span className="text-[11px] text-subtle ml-auto shrink-0">{m.time}</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-gray-400">Geen medicatie geregistreerd op deze dag.</p>
+                <p className="text-xs text-subtle">Geen medicatie geregistreerd op deze dag.</p>
               )}
             </div>
           </div>

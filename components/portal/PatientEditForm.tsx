@@ -74,7 +74,7 @@ export function PatientEditForm({ patient, locations, members, onSaved, onClose 
     <Card>
       <div className="flex items-start justify-between">
         <CardHeader title="Patiëntgegevens wijzigen" />
-        <button type="button" onClick={onClose} aria-label="Sluiten" className="relative tap-target text-gray-400 hover:text-gray-600 shrink-0 -mt-1">
+        <button type="button" onClick={onClose} aria-label="Sluiten" className="relative tap-target text-subtle hover:text-gray-600 shrink-0 -mt-1">
           <X size={18} />
         </button>
       </div>

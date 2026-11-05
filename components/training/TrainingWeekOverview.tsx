@@ -76,12 +76,12 @@ export function TrainingWeekOverview({ days, subtitle = "Weekoverzicht van je tr
                       ) : (
                         <div className="w-3 h-3 rounded-full shrink-0" style={{ border: "1.5px solid #d1d5db" }} />
                       )}
-                      <span className="text-[9px] font-medium leading-tight truncate" style={{ color: item.completed ? "#15803d" : "#374151" }}>
+                      <span className="text-[11px] font-medium leading-tight truncate" style={{ color: item.completed ? "#15803d" : "#374151" }}>
                         {item.label}
                       </span>
                     </div>
                   ))}
-                  {overflow > 0 && <p className="text-[9px] font-medium text-center" style={{ color: "#9ca3af" }}>+{overflow} meer</p>}
+                  {overflow > 0 && <p className="text-[11px] font-medium text-center" style={{ color: "#6b7280" }}>+{overflow} meer</p>}
                 </div>
               )}
             </div>
@@ -112,7 +112,7 @@ export function TrainingWeekOverview({ days, subtitle = "Weekoverzicht van je tr
               {items.length === 0 ? (
                 <div className="flex items-center gap-1.5">
                   <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: isToday ? "#e8632a" : "#e8e5df" }} />
-                  <span className="text-[10px]" style={{ color: "#9ca3af" }}>Rust</span>
+                  <span className="text-[11px]" style={{ color: "#6b7280" }}>Rust</span>
                 </div>
               ) : (
                 <div className="flex flex-col gap-1">
@@ -125,12 +125,12 @@ export function TrainingWeekOverview({ days, subtitle = "Weekoverzicht van je tr
                       ) : (
                         <div className="w-3.5 h-3.5 rounded-full shrink-0" style={{ border: "1.5px solid #d1d5db" }} />
                       )}
-                      <span className="text-[10px] font-medium leading-tight line-clamp-2" style={{ color: item.completed ? "#15803d" : "#374151" }}>
+                      <span className="text-[11px] font-medium leading-tight line-clamp-2" style={{ color: item.completed ? "#15803d" : "#374151" }}>
                         {item.label}
                       </span>
                     </div>
                   ))}
-                  {overflow > 0 && <p className="text-[10px]" style={{ color: "#9ca3af" }}>+{overflow}</p>}
+                  {overflow > 0 && <p className="text-[11px]" style={{ color: "#6b7280" }}>+{overflow}</p>}
                 </div>
               )}
             </div>

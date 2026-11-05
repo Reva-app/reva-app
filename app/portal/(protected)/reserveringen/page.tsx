@@ -56,7 +56,7 @@ function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (v: ViewMo
           style={
             value === o.value
               ? { background: "#ffffff", color: "#1a1a1a", boxShadow: "0 1px 2px rgba(0,0,0,0.06)" }
-              : { color: "#9ca3af" }
+              : { color: "#6b7280" }
           }
         >
           {o.label}
@@ -352,7 +352,7 @@ export default function ReserveringenPage() {
         <>
           <Card>
             {weekLoading ? (
-              <p className="text-sm text-gray-400">Laden…</p>
+              <p className="text-sm text-subtle">Laden…</p>
             ) : rooms.length === 0 ? (
               <EmptyState icon={DoorOpen} title="Geen ruimtes" description="Voeg eerst ruimtes toe bij deze locatie, via Locaties → locatiedetail." />
             ) : (
@@ -374,9 +374,9 @@ export default function ReserveringenPage() {
                 : "Fysio-afspraken van patiënten, ter info: nog niet gekoppeld aan een ruimte"}
             />
             {weekLoading ? (
-              <p className="text-sm text-gray-400">Laden…</p>
+              <p className="text-sm text-subtle">Laden…</p>
             ) : weekAppointments.length === 0 ? (
-              <p className="text-sm text-gray-400">Geen afspraken deze week.</p>
+              <p className="text-sm text-subtle">Geen afspraken deze week.</p>
             ) : (
               <div className="space-y-4">
                 {weekDates(weekStart).map((day) => {
@@ -393,7 +393,7 @@ export default function ReserveringenPage() {
                                 {a.patientName ?? "Onbekende patiënt"}
                                 {a.title ? ` · ${a.title}` : a.appointmentType ? ` · ${appointmentTypeLabel(a.appointmentType as AppointmentType)}` : ""}
                               </p>
-                              <p className="text-[11px] text-gray-400 truncate">
+                              <p className="text-[11px] text-subtle truncate">
                                 {a.time ?? "Tijd onbekend"}{a.providerName ? ` · ${a.providerName}` : ""}{a.location ? ` · ${a.location}` : ""}
                               </p>
                             </div>
@@ -421,7 +421,7 @@ export default function ReserveringenPage() {
       )}
 
       {loading ? (
-        <p className="text-sm text-gray-400">Laden…</p>
+        <p className="text-sm text-subtle">Laden…</p>
       ) : rooms.length === 0 ? (
         <EmptyState icon={DoorOpen} title="Geen ruimtes" description="Voeg eerst ruimtes toe bij deze locatie, via Locaties → locatiedetail." />
       ) : locationMembers.length === 0 ? (
@@ -445,14 +445,14 @@ export default function ReserveringenPage() {
                   </button>
                 </div>
                 {roomReservations.length === 0 && roomSuggestions.length === 0 ? (
-                  <p className="text-xs text-gray-400">Geen reserveringen</p>
+                  <p className="text-xs text-subtle">Geen reserveringen</p>
                 ) : (
                   <div className="space-y-1.5">
                     {roomReservations.map((r) => (
                       <div key={r.id} className="flex items-center justify-between gap-2 rounded-lg px-2.5 py-2" style={{ background: "#f8f7f4" }}>
                         <div className="min-w-0">
                           <p className="text-xs font-medium text-gray-800 truncate">{r.membershipName ?? "Onbekend"}</p>
-                          <p className="text-[11px] text-gray-400">{fmtTime(r.startsAt)}–{fmtTime(r.endsAt)}</p>
+                          <p className="text-[11px] text-subtle">{fmtTime(r.startsAt)}–{fmtTime(r.endsAt)}</p>
                         </div>
                         <button type="button" onClick={() => setConfirmDelete(r)} className="shrink-0 p-1 text-gray-300 hover:text-red-400">
                           <Trash2 size={12} />
@@ -466,10 +466,10 @@ export default function ReserveringenPage() {
                             <Badge variant="accent">Suggestie</Badge>
                           </div>
                           <p className="text-xs font-medium text-gray-800 truncate mt-1">{memberName(s.membershipId)}</p>
-                          <p className="text-[11px] text-gray-400">{fmtTime(s.startsAt)}–{fmtTime(s.endsAt)}</p>
+                          <p className="text-[11px] text-subtle">{fmtTime(s.startsAt)}–{fmtTime(s.endsAt)}</p>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
-                          <button type="button" onClick={() => handleAcceptSuggestion(s)} className="p-1 text-gray-400 hover:text-green-600" aria-label="Overnemen">
+                          <button type="button" onClick={() => handleAcceptSuggestion(s)} className="p-1 text-subtle hover:text-green-600" aria-label="Overnemen">
                             <Check size={13} />
                           </button>
                           <button type="button" onClick={() => handleDismissSuggestion(s)} className="p-1 text-gray-300 hover:text-red-400" aria-label="Negeren">

@@ -95,7 +95,7 @@ function VerifyHandler() {
           <p className="text-sm text-gray-500">{error}</p>
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-3 text-gray-400">
+        <div className="flex flex-col items-center gap-3 text-subtle">
           <Loader2 size={22} className="animate-spin" />
           <p className="text-sm">Bezig met inloggen…</p>
         </div>

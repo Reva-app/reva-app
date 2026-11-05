@@ -27,7 +27,7 @@ function UsageRow({ label, used, max, hint }: { label: string; used: number | nu
           <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, ratio * 100)}%`, background: color }} />
         </div>
       )}
-      <p className="text-xs text-gray-400 mt-2">{hint}</p>
+      <p className="text-xs text-subtle mt-2">{hint}</p>
     </div>
   );
 }
@@ -50,7 +50,7 @@ export default function PortalAbonnementPage() {
     return (
       <div className="p-4 sm:p-6 max-w-2xl mx-auto">
         <SectionHeader title="Abonnement" subtitle="Pakket en verbruik van je praktijk" />
-        <p className="text-sm text-gray-400 mt-4">Alleen de Practice Owner kan het abonnement bekijken.</p>
+        <p className="text-sm text-subtle mt-4">Alleen de Practice Owner kan het abonnement bekijken.</p>
       </div>
     );
   }
@@ -73,7 +73,7 @@ export default function PortalAbonnementPage() {
             <p className="text-2xl font-bold text-gray-900 mt-1">
               {plan ? priceLabel(membership.plan, membership.customMonthlyPriceCents, membership.billingInterval) : "Nog geen pakket"}
             </p>
-            {plan && <p className="text-xs text-gray-400 mt-1">{membership.billingInterval === "year" ? "Jaarlijks betaald, 2 maanden gratis" : "Maandelijks betaald"}</p>}
+            {plan && <p className="text-xs text-subtle mt-1">{membership.billingInterval === "year" ? "Jaarlijks betaald, 2 maanden gratis" : "Maandelijks betaald"}</p>}
           </div>
           {trial.kind === "trial" && <Badge variant="warning">Proefperiode · nog {dayLabel(trial.daysLeft)}</Badge>}
           {trial.kind === "grace" && <Badge variant="danger">Proefperiode verlopen</Badge>}

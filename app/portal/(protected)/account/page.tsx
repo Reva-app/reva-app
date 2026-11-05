@@ -32,7 +32,7 @@ export default function PortalAccountPage() {
   const tabParam = searchParams.get("tab");
   const initialTab = (VALID_TABS as readonly string[]).includes(tabParam ?? "") ? (tabParam as TabKey) : undefined;
 
-  if (loading) return <p className="p-6 text-sm text-gray-400">Laden…</p>;
-  if (!ownMembershipId) return <p className="p-6 text-sm text-gray-400">Kon je accountgegevens niet vinden.</p>;
+  if (loading) return <p className="p-6 text-sm text-subtle">Laden…</p>;
+  if (!ownMembershipId) return <p className="p-6 text-sm text-subtle">Kon je accountgegevens niet vinden.</p>;
   return <MedewerkerDetail membershipId={ownMembershipId} hideAccountDangerActions initialTab={initialTab} />;
 }

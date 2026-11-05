@@ -85,7 +85,7 @@ export function LineChart({
       </svg>
       <div className="flex justify-between mt-1 px-1">
         {labelIndices.map((idx) => (
-          <span key={idx} className="text-[9px]" style={{ color: "#c4bfb9" }}>
+          <span key={idx} className="text-[11px]" style={{ color: "#c4bfb9" }}>
             {dates[idx] ? fmt(dates[idx]) : ""}
           </span>
         ))}
@@ -115,7 +115,7 @@ export function Bar({ label, value, max, color = "#e8632a", sublabel, format = r
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-xs text-gray-600">{label}</span>
         <div className="flex items-center gap-1.5">
-          {sublabel && <span className="text-[10px] text-gray-400">{sublabel}</span>}
+          {sublabel && <span className="text-[11px] text-subtle">{sublabel}</span>}
           <span className="text-xs font-semibold text-gray-800">{format(value)}</span>
         </div>
       </div>
@@ -181,7 +181,7 @@ export function PeriodFilter({ value, onChange }: { value: Period; onChange: (p:
           className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
           style={{
             background: value === p ? "#ffffff" : "transparent",
-            color: value === p ? "#1a1a1a" : "#9ca3af",
+            color: value === p ? "#1a1a1a" : "#6b7280",
             boxShadow: value === p ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
           }}
         >

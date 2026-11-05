@@ -69,7 +69,7 @@ export function MfaChallengeScreen({ factorId, onVerified, onSignOut }: MfaChall
             <Button type="submit" size="sm" disabled={verifying || code.length !== 6}>
               {verifying ? "Bevestigen…" : "Bevestigen"}
             </Button>
-            <button type="button" onClick={onSignOut} className="text-xs font-medium hover:opacity-70" style={{ color: "#9ca3af" }}>
+            <button type="button" onClick={onSignOut} className="text-xs font-medium hover:opacity-70" style={{ color: "#6b7280" }}>
               Uitloggen
             </button>
           </div>

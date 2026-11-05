@@ -77,7 +77,7 @@ export function FieldLabel({
       {children}
       {optional && (
         <span
-          className="text-[10px] font-normal px-1.5 py-0.5 rounded-full"
+          className="text-[11px] font-normal px-1.5 py-0.5 rounded-full"
           style={{ background: "#f3f0eb", color: "#a8a29e" }}
         >
           Optioneel

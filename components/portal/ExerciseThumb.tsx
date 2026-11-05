@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Dumbbell } from "lucide-react";
 import { resolveSignedUrl } from "@/lib/services/storageService";
 
@@ -9,6 +9,10 @@ import { resolveSignedUrl } from "@/lib/services/storageService";
  * URL op uit de private `protocol-media`-bucket (geen publieke URL's, zelfde
  * patroon als dossierfoto's). Valt terug op het Dumbbell-icoon zolang er
  * geen media_path is, of terwijl de URL nog wordt opgehaald.
+ *
+ * De URL wordt pas opgehaald als de thumbnail (bijna) in beeld komt, en van
+ * een video laadt alleen het eerste beeld: een lijst met 20 oefeningen
+ * downloadt zo niet 20 video's tegelijk.
  */
 export function ExerciseThumb({
   mediaPath, mediaType, size = 36,
@@ -18,31 +22,46 @@ export function ExerciseThumb({
   size?: number;
 }) {
   const [url, setUrl] = useState<string | null>(null);
+  const [visible, setVisible] = useState(false);
+  const observer = useRef<IntersectionObserver | null>(null);
+  const boxRef = useCallback((el: HTMLDivElement | null) => {
+    observer.current?.disconnect();
+    observer.current = null;
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") { setVisible(true); return; }
+    const io = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { setVisible(true); io.disconnect(); }
+    }, { rootMargin: "200px" });
+    io.observe(el);
+    observer.current = io;
+  }, []);
 
   // Elke aanroepplek rendert dit component binnen een op oefening-id
   // ge-key-te ouder (rij/label/div), dus bij een andere oefening wordt dit
   // component altijd opnieuw gemount i.p.v. hergebruikt met een nieuwe
   // mediaPath-prop — een handmatige reset naar null is dan niet nodig.
   useEffect(() => {
-    if (!mediaPath) return;
+    if (!mediaPath || !visible) return;
     let cancelled = false;
     resolveSignedUrl("protocol-media", mediaPath).then((resolved) => {
       if (!cancelled) setUrl(resolved);
     });
     return () => { cancelled = true; };
-  }, [mediaPath]);
+  }, [mediaPath, visible]);
 
   return (
     <div
+      ref={boxRef}
       className="rounded-lg flex items-center justify-center shrink-0 overflow-hidden"
       style={{ width: size, height: size, background: "#f8f7f4" }}
     >
       {url ? (
         mediaType === "video" ? (
-          <video src={url} muted playsInline className="w-full h-full object-contain" />
+          // "#t=0.1" + metadata: alleen het eerste beeld als stilstaand plaatje (iOS toont anders niets).
+          <video src={`${url}#t=0.1`} preload="metadata" muted playsInline aria-hidden className="w-full h-full object-contain" />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={url} alt="" className="w-full h-full object-contain" />
+          <img src={url} alt="" loading="lazy" decoding="async" className="w-full h-full object-contain" />
         )
       ) : (
         <Dumbbell size={Math.round(size * 0.4)} className="text-gray-400" />

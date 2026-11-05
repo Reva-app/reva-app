@@ -154,7 +154,7 @@ export function WeekScheduleGrid({
                 {DAY_LABELS_SHORT[i]} {day.slice(8, 10)}
               </p>
               {dayLeave.length > 0 && (
-                <p className="text-[10px] text-gray-400 mt-0.5 truncate" title={dayLeave.map((l) => l.membershipName ?? "Onbekend").join(", ")}>
+                <p className="text-[11px] text-subtle mt-0.5 truncate" title={dayLeave.map((l) => l.membershipName ?? "Onbekend").join(", ")}>
                   Op verlof: {dayLeave.map((l) => l.membershipName ?? "Onbekend").join(", ")}
                 </p>
               )}
@@ -168,7 +168,7 @@ export function WeekScheduleGrid({
           {hourMarks.map((m) => (
             <span
               key={m}
-              className="absolute right-2 text-[10px] text-gray-400 -translate-y-1/2"
+              className="absolute right-2 text-[11px] text-subtle -translate-y-1/2"
               style={{ top: (m - startMin) * PX_PER_MINUTE }}
             >
               {String(Math.floor(m / 60)).padStart(2, "0")}:00

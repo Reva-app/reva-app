@@ -44,6 +44,8 @@ export function Avatar({ fullName, email, avatarUrl, size = 36, className = "" }
         <img
           src={avatarUrl as string}
           alt=""
+          loading="lazy"
+          decoding="async"
           className="w-full h-full object-cover"
           onError={() => setFailed(true)}
         />

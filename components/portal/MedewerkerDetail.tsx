@@ -440,9 +440,9 @@ export function MedewerkerDetail({
       )}
 
       {loading ? (
-        <p className="text-sm text-gray-400">Laden…</p>
+        <p className="text-sm text-subtle">Laden…</p>
       ) : notFound || !member ? (
-        <p className="text-sm text-gray-400">Deze medewerker is niet gevonden.</p>
+        <p className="text-sm text-subtle">Deze medewerker is niet gevonden.</p>
       ) : (
         <>
           <div className="flex items-center gap-4 flex-wrap">
@@ -476,7 +476,7 @@ export function MedewerkerDetail({
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <SectionHeader title={member.fullName || member.email || "Onbekend"} />
-                {isSelf && <span className="text-xs text-gray-400">(jij)</span>}
+                {isSelf && <span className="text-xs text-subtle">(jij)</span>}
               </div>
               {isSelf && (
                 <label className="inline-flex items-center gap-1.5 text-xs font-medium mt-1 cursor-pointer hover:opacity-75 transition-opacity" style={{ color: "var(--brand-accent, #e8632a)" }}>
@@ -505,7 +505,7 @@ export function MedewerkerDetail({
                   <Badge variant="muted">{PORTAL_STAFF_STATUS_LABELS.suspended}</Badge>
                 )}
                 {canManage && patientCount !== null && (
-                  <span className="text-xs text-gray-400">{patientCount} patiënten</span>
+                  <span className="text-xs text-subtle">{patientCount} patiënten</span>
                 )}
               </div>
             </div>
@@ -562,7 +562,7 @@ export function MedewerkerDetail({
             <Card>
               <CardHeader title="Werkuren" subtitle={canEditGeneral ? undefined : "Alleen de medewerker zelf of de Practice Owner kan dit bewerken."} />
               {scheduleLocationOptions.length === 0 ? (
-                <p className="text-sm text-gray-400">Ken eerst een locatie toe via het tabblad &quot;Locaties&quot; om een werkrooster in te stellen.</p>
+                <p className="text-sm text-subtle">Ken eerst een locatie toe via het tabblad &quot;Locaties&quot; om een werkrooster in te stellen.</p>
               ) : (
                 <>
                   {scheduleLocationOptions.length > 1 && (
@@ -577,7 +577,7 @@ export function MedewerkerDetail({
                     </div>
                   )}
                   {scheduleLoadedForLocationId !== scheduleLocationId ? (
-                    <p className="text-sm text-gray-400">Laden…</p>
+                    <p className="text-sm text-subtle">Laden…</p>
                   ) : (
                     <div className="space-y-2">
                   {WEEKDAY_ORDER.map((day) => {
@@ -598,12 +598,12 @@ export function MedewerkerDetail({
                           <div className="flex items-center gap-2 w-full sm:w-auto pl-6 sm:pl-0">
                             <TimePicker compact value={d.startTime} disabled={!canEditGeneral} ariaLabel={`${WEEKDAY_LABELS[day]} van`} placeholder="--:--"
                               onChange={(v) => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], startTime: v } }))} />
-                            <span className="text-gray-400 text-sm">tot</span>
+                            <span className="text-subtle text-sm">tot</span>
                             <TimePicker compact value={d.endTime} disabled={!canEditGeneral} ariaLabel={`${WEEKDAY_LABELS[day]} tot`} placeholder="--:--"
                               onChange={(v) => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], endTime: v } }))} />
                           </div>
                         ) : (
-                          <span className="text-sm text-gray-400">Vrij</span>
+                          <span className="text-sm text-subtle">Vrij</span>
                         )}
                       </div>
                     );
@@ -620,13 +620,13 @@ export function MedewerkerDetail({
 
               <div className="mt-6 pt-5" style={{ borderTop: "1px solid #f0eee8" }}>
                 <p className="text-sm font-medium text-gray-800 mb-1">Externe agenda</p>
-                <p className="text-xs text-gray-400 mb-3">
+                <p className="text-xs text-subtle mb-3">
                   Koppel de iCal-link van je persoonlijke agenda (bijv. Google Calendar&apos;s &quot;geheime adres in iCal-indeling&quot;) om drukke tijden hier te zien. Alleen-lezen, er wordt nooit iets teruggeschreven.
                 </p>
                 {!canEditGeneral ? (
-                  <p className="text-sm text-gray-400">De agenda-koppeling is privé: alleen zichtbaar voor de medewerker zelf en de Practice Owner.</p>
+                  <p className="text-sm text-subtle">De agenda-koppeling is privé: alleen zichtbaar voor de medewerker zelf en de Practice Owner.</p>
                 ) : !calendarFeedLoaded ? (
-                  <p className="text-sm text-gray-400">Laden…</p>
+                  <p className="text-sm text-subtle">Laden…</p>
                 ) : (
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-end gap-2">
@@ -652,7 +652,7 @@ export function MedewerkerDetail({
 
                     {calendarFeed && (
                       <div className="space-y-2">
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-subtle">
                           {calendarFeed.lastSyncError
                             ? <span style={{ color: "#dc2626" }}>Synchronisatie mislukt: {calendarFeed.lastSyncError}</span>
                             : calendarFeed.lastSyncedAt
@@ -668,13 +668,13 @@ export function MedewerkerDetail({
                             {busyBlocks.map((b, i) => (
                               <div key={i} className="rounded-lg px-2.5 py-2 text-xs" style={{ background: "#f8f7f4" }}>
                                 <p className="font-medium text-gray-700">{formatDate(b.startsAt)} · {b.startsAt.slice(11, 16)}–{b.endsAt.slice(11, 16)}</p>
-                                {b.summary && <p className="text-gray-400 mt-0.5">{b.summary}</p>}
+                                {b.summary && <p className="text-subtle mt-0.5">{b.summary}</p>}
                               </div>
                             ))}
                           </div>
                         )}
                         {busyBlocks && busyBlocks.length === 0 && !busyBlocksError && (
-                          <p className="text-xs text-gray-400">Geen drukke tijden gevonden in de komende 7 dagen.</p>
+                          <p className="text-xs text-subtle">Geen drukke tijden gevonden in de komende 7 dagen.</p>
                         )}
                       </div>
                     )}
@@ -688,11 +688,11 @@ export function MedewerkerDetail({
             <Card>
               <CardHeader title="Verlof" subtitle={canManage ? undefined : "Alleen de Practice Owner kan verlof beheren."} />
               {!leaveLoaded ? (
-                <p className="text-sm text-gray-400">Laden…</p>
+                <p className="text-sm text-subtle">Laden…</p>
               ) : (
                 <div className="space-y-5">
                   {leaveList.length === 0 ? (
-                    <p className="text-sm text-gray-400">Nog geen verlof geregistreerd.</p>
+                    <p className="text-sm text-subtle">Nog geen verlof geregistreerd.</p>
                   ) : (
                     <div className="space-y-2">
                       {leaveList.map((l) => (
@@ -704,7 +704,7 @@ export function MedewerkerDetail({
                               </span>
                               <Badge variant="default">{LEAVE_TYPE_LABELS[l.leaveType]}</Badge>
                             </div>
-                            {l.note && <p className="text-xs text-gray-400 mt-0.5 truncate">{l.note}</p>}
+                            {l.note && <p className="text-xs text-subtle mt-0.5 truncate">{l.note}</p>}
                           </div>
                           {canManage && (
                             <Button size="sm" variant="secondary" onClick={() => setConfirmDeleteLeaveId(l.id)}>Verwijderen</Button>
@@ -759,7 +759,7 @@ export function MedewerkerDetail({
             <Card>
               <CardHeader title="Locaties" subtitle={canManage ? undefined : "Alleen de Practice Owner kan dit bewerken."} />
               {!locationsLoaded ? (
-                <p className="text-sm text-gray-400">Laden…</p>
+                <p className="text-sm text-subtle">Laden…</p>
               ) : (
                 <div className="space-y-4">
                   <div>
@@ -775,7 +775,7 @@ export function MedewerkerDetail({
                   <div>
                     <FieldLabel>Overige locaties</FieldLabel>
                     {locations.length === 0 ? (
-                      <p className="text-sm text-gray-400">Geen andere locaties beschikbaar.</p>
+                      <p className="text-sm text-subtle">Geen andere locaties beschikbaar.</p>
                     ) : (
                       <div className="space-y-1.5">
                         {locations.map((l) => (
@@ -848,7 +848,7 @@ export function MedewerkerDetail({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-800">Tweestapsverificatie</p>
-                      <p className="text-xs text-gray-400 mt-0.5">Verplicht voor alle medewerkers</p>
+                      <p className="text-xs text-subtle mt-0.5">Verplicht voor alle medewerkers</p>
                     </div>
                     {canShowDangerActions && (
                       <Button size="sm" variant="secondary" disabled={accountBusy} onClick={() => setConfirmMfaReset(true)}>
@@ -900,7 +900,7 @@ export function MedewerkerDetail({
                   <Button size="sm" disabled={fbSending || !fbOnderwerp.trim() || !fbBericht.trim()} onClick={handleFeedback}>
                     {fbSending ? "Versturen..." : "Verstuur feedback"}
                   </Button>
-                  <p className="text-[11px] text-gray-400 mt-2">Wordt verstuurd naar info@reva-app.nl</p>
+                  <p className="text-[11px] text-subtle mt-2">Wordt verstuurd naar info@reva-app.nl</p>
                 </div>
               </div>
             </Card>

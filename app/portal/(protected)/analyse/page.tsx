@@ -79,7 +79,7 @@ export default function PortalAnalysePage() {
     return (
       <div className="p-4 sm:p-6 max-w-2xl mx-auto">
         <SectionHeader title="Analyse" subtitle="Gebruik en activiteit van je praktijk" />
-        <p className="text-sm text-gray-400 mt-4">
+        <p className="text-sm text-subtle mt-4">
           Alleen de praktijkeigenaar kan de analysepagina bekijken.
         </p>
       </div>
@@ -213,7 +213,7 @@ export default function PortalAnalysePage() {
               })}
             </div>
           ) : (
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-subtle">
               Nog geen ruimtes met reserveringen. Voeg ruimtes toe bij een locatie en plan reserveringen in via Reserveringen.
             </p>
           )}
@@ -264,7 +264,7 @@ export default function PortalAnalysePage() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-subtle">
               Nog geen afgesloten behandelingen. Zodra je bij een patiënt een afsluitdatum invult, verschijnt hier de doorlooptijd per blessure.
             </p>
           )}
@@ -284,7 +284,7 @@ export default function PortalAnalysePage() {
         <Card>
           <CardHeader title="Werkdruk per behandelaar" subtitle="Aantal actieve patiënten, puur ter info" />
           {loading ? (
-            <p className="text-sm text-gray-400">Laden…</p>
+            <p className="text-sm text-subtle">Laden…</p>
           ) : workload && workload.rows.length > 0 ? (
             <div className="space-y-3">
               {workload.rows.map((r) => (
@@ -298,10 +298,10 @@ export default function PortalAnalysePage() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-400">Nog geen behandelaars om werkdruk voor te tonen.</p>
+            <p className="text-sm text-subtle">Nog geen behandelaars om werkdruk voor te tonen.</p>
           )}
           {workload && workload.unassignedCount > 0 && (
-            <p className="text-xs text-gray-400 mt-4">
+            <p className="text-xs text-subtle mt-4">
               {workload.unassignedCount} {workload.unassignedCount === 1 ? "patiënt is" : "patiënten zijn"} nog niet toegewezen aan een behandelaar.
             </p>
           )}
@@ -311,14 +311,14 @@ export default function PortalAnalysePage() {
       <Card>
         <CardHeader title="Teamactiviteit" subtitle="Laatste keer ingelogd per medewerker" />
         {loading ? (
-          <p className="text-sm text-gray-400">Laden…</p>
+          <p className="text-sm text-subtle">Laden…</p>
         ) : staff.length > 0 ? (
           <div className="space-y-2.5">
             {staff.map((m) => (
               <div key={m.id} className="flex items-center justify-between gap-3 py-1.5">
                 <span className="text-sm text-gray-700 truncate">{m.fullName ?? m.email ?? "Onbekend"}</span>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-subtle">
                     {m.lastSignInAt ? formatDate(m.lastSignInAt) : "Nog niet ingelogd"}
                   </span>
                   {isDateStale(m.lastSignInAt, STAFF_INACTIVITY_THRESHOLD_DAYS) && (
@@ -329,7 +329,7 @@ export default function PortalAnalysePage() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-gray-400">Nog geen medewerkers.</p>
+          <p className="text-sm text-subtle">Nog geen medewerkers.</p>
         )}
       </Card>
     </div>

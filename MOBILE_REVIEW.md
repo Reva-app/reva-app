@@ -410,10 +410,21 @@ Elke taak is klein genoeg voor één avond van 1–3 uur. Na elke stap volgt een
 23. ✅ De 8 native tijdvelden naar de TimePicker (nu via een portal, meeschuivend bij scrollen, met `compact`- en `disabled`-variant); DatePicker en TimePicker gebruiken `NAV_BREAKPOINT` uit `lib/layout.ts`. *(1–2 u)*
 
 ### Week 8: patiënt-app en afronding (±6 u)
-24. Ruimte onderaan voor de FAB (L11); pijnscore in 2 rijen van 5 op schermen onder 400 px (K7). *(1,5 u)*
-25. Tokens voor tekstkleur (Y1, Y2), en `text-[9px]`/`text-[10px]` naar minimaal 11 of 12 px. *(2 u)*
-26. Performance: `preload="none"` en een poster voor videothumbnails, `loading="lazy"` op afbeeldingen. *(1 u)*
-27. Lighthouse mobiel op een Vercel-preview en een test op een echte iPhone SE en iPad, inclusief toetsenbord, rotatie en de PWA vanaf het beginscherm. *(1,5 u)*
+24. ✅ Ruimte onderaan voor de FAB (`.pb-nav-fab`, L11); scoreknoppen in één component `ScoreScale`, de pijnscore in 2 rijen van 5 op alle telefoons (< 640 px), knoppen 44 px hoog (K7). FAB-actieknoppen hebben nu een toegankelijke naam. *(1,5 u)*
+25. ✅ Token `text-subtle` (#6b7280, 4,8:1) in `@theme`; 411× `text-gray-400` op tekst en 45 inline `#9ca3af`-teksten omgezet (iconen, placeholders en de donkere onderbalk bewust niet). `text-[9px]`/`text-[10px]` naar 11 px (72 regels; uitzonderingen: meldingenbolletje, reserveringsblokjes in de weekagenda, onderbalk < 390 px). Grafieklabels blijven 11 px op elk scherm (`useSvgScale`, HTML-labels bij patiëntdetail). **Y2 (oranje knop 3,4:1) open: merkbeslissing.** *(2 u)*
+26. ✅ Oefening-thumbnails halen hun URL pas op als ze in beeld komen; video's laden alleen het eerste beeld (`preload="metadata"` + `#t=0.1`, er bestaan geen posters). `loading="lazy"` op avatars en fotogalerijen. *(1 u)*
+27. ⏳ Lighthouse mobiel op een Vercel-preview en een test op een echte iPhone SE en iPad, inclusief toetsenbord, rotatie en de PWA vanaf het beginscherm. *(1,5 u)*
+
+#### Checklist echte apparaten (taak 27)
+Op een iPhone (bij voorkeur een kleine, zoals een SE of mini) en een iPad, in Safari:
+1. **Inloggen en MFA**: zoomt iOS niet in bij het tikken in een veld? Vult de code zich automatisch in vanuit de wachtwoordapp?
+2. **Patiëntenlijst**: filters openen als sheet, zoeken met het toetsenbord open, tik op een kaart opent het dossier.
+3. **Modal met formulier** (bv. "Patiënt wijzigen"): staan Opslaan/Annuleren boven de onderbalk, ook met het toetsenbord open? Schuift het actieve veld in beeld?
+4. **Datum- en tijdkiezer** in een modal (locatie toevoegen → openingstijden): opent de kiezer volledig in beeld, ook bij de onderste dag?
+5. **Rotatie** iPad: liggend de smalle zijbalk, staand de onderbalk; niets valt weg of overlapt.
+6. **Patiënt-app**: check-in invullen (pijnscore in 2 rijen), de +-knop bedekt aan het eind van een pagina niets.
+7. **Beginscherm (PWA)**: "Zet op beginscherm", openen vanaf het icoon; valt niets onder de notch of de home-balk (safe area)?
+8. **Daglicht**: zijn grijze labels en kolomkoppen buiten goed leesbaar?
 
 **Later (na de lancering):** de patiënt-app lui laten laden (P1, eerst alleen de laatste 30 dagen) en patiëntdetail opsplitsen in losse tabcomponenten (P4). Het Super Admin-portal heeft geen prioriteit.
 

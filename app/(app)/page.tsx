@@ -102,7 +102,7 @@ type QuickModal = "checkin" | "afspraak" | "training" | "medicatie" | "document"
 
 function StatusPill({ label, color, bg }: { label: string; color: string; bg: string }) {
   return (
-    <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full leading-none"
+    <span className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full leading-none"
       style={{ background: bg, color }}>
       {label}
     </span>
@@ -170,7 +170,7 @@ function PanelHeader({ title, cta, href }: { title: string; cta?: string; href?:
 }
 
 function EmptyHint({ children }: { children: React.ReactNode }) {
-  return <p className="text-xs text-gray-400 px-5 pb-5">{children}</p>;
+  return <p className="text-xs text-subtle px-5 pb-5">{children}</p>;
 }
 
 function FormLabel({ children }: { children: React.ReactNode }) {
@@ -667,7 +667,7 @@ export default function Dashboard() {
             <div className="flex items-start justify-between gap-4 mb-1">
               <div className="min-w-0">
                 {/* Datum */}
-                <p className="text-[11px] font-medium uppercase tracking-widest mb-1 text-gray-400">
+                <p className="text-[11px] font-medium uppercase tracking-widest mb-1 text-subtle">
                   {now.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" })}
                 </p>
 
@@ -685,7 +685,7 @@ export default function Dashboard() {
 
             {/* Context: blessure + fase */}
             <div className="mb-4">
-              <p className="text-xs text-gray-400 leading-none">
+              <p className="text-xs text-subtle leading-none">
                 Herstel van {blessureContext}
                 {" · "}dag {dagsSindsBlessure}
                 {isOchtend && " · Goeie dag gewenst"}
@@ -693,7 +693,7 @@ export default function Dashboard() {
                 {isAvond && " · Tijd om terug te blikken"}
               </p>
               {careContext?.therapistName && (
-                <p className="text-xs text-gray-400 mt-1 leading-none">Behandeld door {careContext.therapistName}</p>
+                <p className="text-xs text-subtle mt-1 leading-none">Behandeld door {careContext.therapistName}</p>
               )}
             </div>
 
@@ -731,12 +731,12 @@ export default function Dashboard() {
             <div className="flex flex-wrap gap-6">
               <div>
                 <p className="text-2xl font-bold leading-none text-gray-900">{dagsSindsBlessure}</p>
-                <p className="text-xs mt-0.5 text-gray-400">dagen herstel</p>
+                <p className="text-xs mt-0.5 text-subtle">dagen herstel</p>
               </div>
               {dagsSindsOperatie > 0 && (
                 <div>
                   <p className="text-2xl font-bold leading-none text-gray-900">{dagsSindsOperatie}</p>
-                  <p className="text-xs mt-0.5 text-gray-400">na operatie</p>
+                  <p className="text-xs mt-0.5 text-subtle">na operatie</p>
                 </div>
               )}
             </div>
@@ -784,13 +784,13 @@ export default function Dashboard() {
                     <span className="text-3xl font-bold leading-none" style={{ color: scoreColor(todayCheckIn.dagscore) }}>
                       {todayCheckIn.dagscore}
                     </span>
-                    <span className="text-xs text-gray-400 mb-0.5">/5</span>
+                    <span className="text-xs text-subtle mb-0.5">/5</span>
                   </div>
                   <p className="text-xs font-medium mb-2" style={{ color: scoreColor(todayCheckIn.dagscore) }}>
                     {SCORE_LABELS[todayCheckIn.dagscore]}
                   </p>
                   {todayCheckIn.notitie && (
-                    <p className="text-[11px] text-gray-400 leading-relaxed italic line-clamp-2 flex-1">
+                    <p className="text-[11px] text-subtle leading-relaxed italic line-clamp-2 flex-1">
                       &ldquo;{todayCheckIn.notitie}&rdquo;
                     </p>
                   )}
@@ -800,7 +800,7 @@ export default function Dashboard() {
                 </>
               ) : (
                 <>
-                  <p className="text-xs text-gray-400 flex-1">Nog niet ingevuld vandaag</p>
+                  <p className="text-xs text-subtle flex-1">Nog niet ingevuld vandaag</p>
                   <button onClick={() => setQuickModal("checkin")} className="mt-3 w-full">
                     <div className="w-full text-center text-xs font-semibold py-2 rounded-xl transition-opacity hover:opacity-90"
                       style={{ background: "#1c1c1e", color: "#ffffff" }}>
@@ -832,21 +832,21 @@ export default function Dashboard() {
               </div>
               {(() => {
                 const show = todayApts[0] ?? upcomingApts[0] ?? null;
-                if (!show) return <p className="text-sm text-gray-400 flex-1">Geen afspraken</p>;
+                if (!show) return <p className="text-sm text-subtle flex-1">Geen afspraken</p>;
                 const isToday = show.date === today;
                 return (
                   <>
                     <p className="text-sm font-semibold text-gray-900 leading-snug mb-1">{show.title}</p>
-                    <p className="text-xs text-gray-400 flex items-center gap-1 mb-0.5">
+                    <p className="text-xs text-subtle flex items-center gap-1 mb-0.5">
                       <Clock size={10} /> {show.time}
                     </p>
                     {show.location && (
-                      <p className="text-xs text-gray-400 flex items-center gap-1">
+                      <p className="text-xs text-subtle flex items-center gap-1">
                         <MapPin size={10} /> <span className="truncate">{show.location}</span>
                       </p>
                     )}
                     {!isToday && (
-                      <p className="text-[10px] mt-1.5" style={{ color: "#b5b0a8" }}>{fmtShort(show.date)}</p>
+                      <p className="text-[11px] mt-1.5" style={{ color: "#b5b0a8" }}>{fmtShort(show.date)}</p>
                     )}
                     <Link href="/dagboek" className="mt-auto pt-3 block">
                       <span className="text-xs font-medium" style={{ color: "#3b82f6" }}>Naar Afspraken →</span>
@@ -889,7 +889,7 @@ export default function Dashboard() {
                         </div>
                       ))}
                       {protocolPhase.schedules.length > 2 && (
-                        <p className="text-[10px] text-gray-400 mb-1">+{protocolPhase.schedules.length - 2} meer</p>
+                        <p className="text-[11px] text-subtle mb-1">+{protocolPhase.schedules.length - 2} meer</p>
                       )}
                       <Link href="/training" className="mt-auto pt-3 block">
                         <span className="text-xs font-medium" style={{ color: "#0ea5e9" }}>Training →</span>
@@ -897,7 +897,7 @@ export default function Dashboard() {
                     </>
                   ) : (
                     <>
-                      <p className="text-xs text-gray-400 flex-1">Geen trainingsschema deze week</p>
+                      <p className="text-xs text-subtle flex-1">Geen trainingsschema deze week</p>
                       <Link href="/training" className="mt-3 block">
                         <span className="text-xs font-medium" style={{ color: "#0ea5e9" }}>Bekijken →</span>
                       </Link>
@@ -937,7 +937,7 @@ export default function Dashboard() {
                         );
                       })}
                       {todayWorkouts.length > 2 && (
-                        <p className="text-[10px] text-gray-400 mb-1">+{todayWorkouts.length - 2} meer</p>
+                        <p className="text-[11px] text-subtle mb-1">+{todayWorkouts.length - 2} meer</p>
                       )}
                       <Link href="/training" className="mt-auto pt-3 block">
                         <span className="text-xs font-medium" style={{ color: "#0ea5e9" }}>Training →</span>
@@ -945,7 +945,7 @@ export default function Dashboard() {
                     </>
                   ) : (
                     <>
-                      <p className="text-xs text-gray-400 flex-1">Geen training vandaag</p>
+                      <p className="text-xs text-subtle flex-1">Geen training vandaag</p>
                       <Link href="/training" className="mt-3 block">
                         <span className="text-xs font-medium" style={{ color: "#0ea5e9" }}>Inplannen →</span>
                       </Link>
@@ -975,11 +975,11 @@ export default function Dashboard() {
                   {medVandaag.slice(0, 2).map((m) => (
                     <div key={m.id} className="mb-1.5">
                       <p className="text-xs font-semibold text-gray-800 leading-tight">{m.naam}</p>
-                      <p className="text-[10px] text-gray-400">{m.dosering} · {m.time}</p>
+                      <p className="text-[11px] text-subtle">{m.dosering} · {m.time}</p>
                     </div>
                   ))}
                   {medVandaag.length > 2 && (
-                    <p className="text-[10px] text-gray-400 mb-1">+{medVandaag.length - 2} meer</p>
+                    <p className="text-[11px] text-subtle mb-1">+{medVandaag.length - 2} meer</p>
                   )}
                   <Link href="/medicatie" className="mt-auto pt-2 block">
                     <span className="text-xs font-medium" style={{ color: "#8b5cf6" }}>Alles →</span>
@@ -987,7 +987,7 @@ export default function Dashboard() {
                 </>
               ) : (
                 <>
-                  <p className="text-xs text-gray-400 flex-1">Geen medicatie gelogd</p>
+                  <p className="text-xs text-subtle flex-1">Geen medicatie gelogd</p>
                   <button onClick={() => setQuickModal("medicatie")} className="mt-3 block text-left">
                     <span className="text-xs font-medium" style={{ color: "#8b5cf6" }}>Loggen →</span>
                   </button>
@@ -1014,7 +1014,7 @@ export default function Dashboard() {
             <ClipboardCheck size={16} style={{ color: "#e8632a" }} />
             <div>
               <p className="text-sm font-semibold" style={{ color: "#1a1a1a" }}>Je check-in van vandaag staat nog open</p>
-              <p className="text-xs text-gray-400 mt-0.5">Hoe kijk je terug op vandaag?</p>
+              <p className="text-xs text-subtle mt-0.5">Hoe kijk je terug op vandaag?</p>
             </div>
           </div>
           <button onClick={() => setQuickModal("checkin")}
@@ -1051,9 +1051,9 @@ export default function Dashboard() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate leading-snug">{item.title}</p>
-                          <p className="text-xs text-gray-400 truncate">{item.sub}</p>
+                          <p className="text-xs text-subtle truncate">{item.sub}</p>
                         </div>
-                        <span className="text-[10px] font-medium shrink-0 ml-2"
+                        <span className="text-[11px] font-medium shrink-0 ml-2"
                           style={{ color: item.date === today ? "#e8632a" : "#b5b0a8" }}>
                           {dateLabel}
                         </span>
@@ -1084,8 +1084,8 @@ export default function Dashboard() {
                             style={{ color: isToday ? "#e8632a" : "#374151" }}>
                             {new Date(apt.date + "T12:00:00").getDate()}
                           </span>
-                          <span className="text-[9px] uppercase"
-                            style={{ color: isToday ? "#e8632a" : "#9ca3af" }}>
+                          <span className="text-[11px] uppercase"
+                            style={{ color: isToday ? "#e8632a" : "#6b7280" }}>
                             {new Date(apt.date + "T12:00:00").toLocaleString("nl-NL", { month: "short" })}
                           </span>
                         </div>
@@ -1093,7 +1093,7 @@ export default function Dashboard() {
                           <div className="flex items-center gap-1.5 mb-0.5">
                             <p className="text-xs font-semibold text-gray-900 truncate">{apt.title}</p>
                           </div>
-                          <p className="text-[11px] text-gray-400 flex items-center gap-1">
+                          <p className="text-[11px] text-subtle flex items-center gap-1">
                             <Clock size={9} /> {apt.time}
                           </p>
                           <div className="flex items-center gap-1.5 mt-1">
@@ -1140,7 +1140,7 @@ export default function Dashboard() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">{doc.title}</p>
-                          <p className="text-xs text-gray-400">
+                          <p className="text-xs text-subtle">
                             {doc.zorgverlener === "Anders" ? doc.zorgverlenerAnders : doc.zorgverlener}
                             {" · "}{fmtShort(doc.date)}
                           </p>
@@ -1177,7 +1177,7 @@ export default function Dashboard() {
                     style={{ background: "#f3f0eb" }}>
                     {latestFoto.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={latestFoto.imageUrl} alt="Laatste foto update"
+                      <img src={latestFoto.imageUrl} alt="Laatste foto update" loading="lazy" decoding="async"
                         className="w-full h-full object-cover" />
                     ) : (
                       <Image size={22} className="text-gray-300" />
@@ -1190,7 +1190,7 @@ export default function Dashboard() {
                         &ldquo;{latestFoto.notitie}&rdquo;
                       </p>
                     ) : (
-                      <p className="text-xs text-gray-400">Geen notitie</p>
+                      <p className="text-xs text-subtle">Geen notitie</p>
                     )}
                     {fotoOud && (
                       <Link href="/dossier?tab=foto-updates" className="mt-2 text-xs font-medium flex items-center gap-1"

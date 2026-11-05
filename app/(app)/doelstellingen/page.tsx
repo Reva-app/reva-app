@@ -39,7 +39,7 @@ function FieldLabel({ children, optional }: { children: React.ReactNode; optiona
     <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500 mb-1.5">
       {children}
       {optional && (
-        <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-full"
+        <span className="text-[11px] font-normal px-1.5 py-0.5 rounded-full"
           style={{ background: "#f3f0eb", color: "#a8a29e" }}>
           Optioneel
         </span>
@@ -350,7 +350,7 @@ function GoalCard({ doel, onToggle, onEdit, onDelete, onPromote }: {
               style={{ color: doel.completed ? "#9ca3af" : "#1a1a1a", textDecoration: doel.completed ? "line-through" : "none" }}>
               {doel.title}
             </p>
-            {doel.description && <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{doel.description}</p>}
+            {doel.description && <p className="text-xs text-subtle mt-0.5 leading-relaxed">{doel.description}</p>}
             {doel.targetDate && (
               <p className="text-[11px] mt-1" style={{ color: "#b5b0a8" }}>
                 <Flag size={9} className="inline mr-0.5 mb-0.5" />{formatDate(doel.targetDate)}
@@ -368,7 +368,7 @@ function GoalCard({ doel, onToggle, onEdit, onDelete, onPromote }: {
               <Pencil size={12} className="text-gray-400" />
             </button>
             <button onClick={() => setMenuOpen((v) => !v)}
-              className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-400 text-lg leading-none"
+              className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors text-subtle text-lg leading-none"
               style={{ paddingBottom: "2px" }}>
               ···
             </button>
@@ -472,7 +472,7 @@ export default function DoelstellingenPage() {
           <div className="flex items-center justify-between mb-3">
             <div>
               <h2 className="text-base font-semibold text-gray-900">Hoofddoelstelling</h2>
-              <p className="text-xs text-gray-400 mt-0.5">Jouw belangrijkste herstelgoal</p>
+              <p className="text-xs text-subtle mt-0.5">Jouw belangrijkste herstelgoal</p>
             </div>
           </div>
 
@@ -498,7 +498,7 @@ export default function DoelstellingenPage() {
           <div className="flex items-center justify-between mb-3">
             <div>
               <h2 className="text-base font-semibold text-gray-900">Overige doelstellingen</h2>
-              <p className="text-xs text-gray-400 mt-0.5">{regularGoals.length} {regularGoals.length === 1 ? "doel" : "doelen"}</p>
+              <p className="text-xs text-subtle mt-0.5">{regularGoals.length} {regularGoals.length === 1 ? "doel" : "doelen"}</p>
             </div>
             <Button
               size="sm"

@@ -52,7 +52,7 @@ export function PortalGate({ children }: { children: React.ReactNode }) {
   if (authLoading || !checked) {
     return (
       <div className="flex h-screen items-center justify-center" style={{ background: "#f8f7f4" }}>
-        <p className="text-sm" style={{ color: "#9ca3af" }}>Laden…</p>
+        <p className="text-sm" style={{ color: "#6b7280" }}>Laden…</p>
       </div>
     );
   }
@@ -62,7 +62,7 @@ export function PortalGate({ children }: { children: React.ReactNode }) {
   if (!membership && blockedOrg === undefined) {
     return (
       <div className="flex h-screen items-center justify-center" style={{ background: "#f8f7f4" }}>
-        <p className="text-sm" style={{ color: "#9ca3af" }}>Laden…</p>
+        <p className="text-sm" style={{ color: "#6b7280" }}>Laden…</p>
       </div>
     );
   }
@@ -79,7 +79,7 @@ export function PortalGate({ children }: { children: React.ReactNode }) {
               ? `${blockedOrg.name} is tijdelijk gepauzeerd`
               : `De proefperiode van ${blockedOrg.name} is afgelopen`}
           </p>
-          <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
+          <p className="text-xs text-subtle mt-1.5 leading-relaxed">
             {blockedOrg.reason === "paused"
               ? "Het REVA-account van je praktijk staat op pauze, daarom kun je de portal nu niet gebruiken."
               : "Wil je REVA blijven gebruiken? Neem contact met ons op, dan zetten we je account weer aan. Alles wat je hebt ingevoerd staat nog klaar."}
@@ -103,7 +103,7 @@ export function PortalGate({ children }: { children: React.ReactNode }) {
             <ShieldAlert size={22} style={{ color: "#ef4444" }} />
           </div>
           <p className="text-sm font-medium text-gray-800">Geen toegang</p>
-          <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
+          <p className="text-xs text-subtle mt-1.5 leading-relaxed">
             Dit gedeelte is alleen toegankelijk voor medewerkers van een aangesloten organisatie.
           </p>
           <div className="flex items-center justify-center gap-2 mt-5">
@@ -122,7 +122,7 @@ export function PortalGate({ children }: { children: React.ReactNode }) {
   if (!mfaChecked) {
     return (
       <div className="flex h-screen items-center justify-center" style={{ background: "#f8f7f4" }}>
-        <p className="text-sm" style={{ color: "#9ca3af" }}>Laden…</p>
+        <p className="text-sm" style={{ color: "#6b7280" }}>Laden…</p>
       </div>
     );
   }

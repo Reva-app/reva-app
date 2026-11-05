@@ -89,7 +89,7 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
           <div className="flex items-center gap-2">
             <span className="w-9 h-9 rounded-xl shrink-0 border" style={{ background: pickerValue, borderColor: "rgba(0,0,0,0.06)" }} />
             <div className="flex items-center flex-1 rounded-xl border px-3 py-2 bg-white" style={{ borderColor: "#e8e5df" }}>
-              <span className="text-sm text-gray-400 mr-1">#</span>
+              <span className="text-sm text-subtle mr-1">#</span>
               <HexColorInput
                 color={pickerValue}
                 onChange={(hex) => onChange(hex.toLowerCase())}

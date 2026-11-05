@@ -151,7 +151,7 @@ export default function AdminDashboardPage() {
             }
           />
           {loading ? (
-            <p className="text-sm text-gray-400 mt-2">Laden…</p>
+            <p className="text-sm text-subtle mt-2">Laden…</p>
           ) : recentOrgs.length === 0 ? (
             <EmptyState
               icon={Building2}
@@ -168,12 +168,12 @@ export default function AdminDashboardPage() {
                 >
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-gray-800 truncate">{org.name}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-xs text-subtle mt-0.5">
                       {org.locationCount} {org.locationCount === 1 ? "locatie" : "locaties"} ·{" "}
                       {org.patientCount} {org.patientCount === 1 ? "patiënt" : "patiënten"}
                     </p>
                   </div>
-                  <span className="text-xs text-gray-400 shrink-0 ml-4">
+                  <span className="text-xs text-subtle shrink-0 ml-4">
                     {formatDate(org.createdAt)}
                   </span>
                 </div>
@@ -198,7 +198,7 @@ export default function AdminDashboardPage() {
             }
           />
           {loading ? (
-            <p className="text-sm text-gray-400 mt-2">Laden…</p>
+            <p className="text-sm text-subtle mt-2">Laden…</p>
           ) : salesSummary.openCount === 0 ? (
             <EmptyState
               icon={TrendingUp}

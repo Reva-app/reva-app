@@ -21,7 +21,7 @@ export function SortableHeader<K extends string>({
   return (
     <th
       onClick={() => onSort(sortKeyValue)}
-      className={`${align === "left" ? "text-left" : "text-right"} font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3 cursor-pointer select-none hover:text-gray-600`}
+      className={`${align === "left" ? "text-left" : "text-right"} font-medium text-subtle text-xs uppercase tracking-wide px-5 py-3 cursor-pointer select-none hover:text-gray-600`}
     >
       <span className={`inline-flex items-center gap-1 ${align === "right" ? "flex-row-reverse" : ""}`}>
         {label}

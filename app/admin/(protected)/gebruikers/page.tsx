@@ -75,7 +75,7 @@ export default function AdminUsersPage() {
         style={{ background: "#ffffff", borderColor: "#e8e5df", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
       >
         {loading ? (
-          <p className="text-sm text-gray-400 p-6">Laden…</p>
+          <p className="text-sm text-subtle p-6">Laden…</p>
         ) : filteredUsers.length === 0 ? (
           <EmptyState
             icon={Users}
@@ -88,11 +88,11 @@ export default function AdminUsersPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr style={{ borderBottom: "1px solid #e8e5df" }}>
-                    <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Naam</th>
-                    <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">E-mail</th>
-                    <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Organisatie</th>
-                    <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Rol</th>
-                    <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Aangemaakt op</th>
+                    <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-5 py-3">Naam</th>
+                    <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-5 py-3">E-mail</th>
+                    <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-5 py-3">Organisatie</th>
+                    <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-5 py-3">Rol</th>
+                    <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-5 py-3">Aangemaakt op</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -110,7 +110,7 @@ export default function AdminUsersPage() {
                           <>
                             {u.organizationName}
                             {u.membershipCount > 1 && (
-                              <span className="text-xs text-gray-400 ml-1.5">+{u.membershipCount - 1} andere</span>
+                              <span className="text-xs text-subtle ml-1.5">+{u.membershipCount - 1} andere</span>
                             )}
                           </>
                         ) : (
@@ -126,7 +126,7 @@ export default function AdminUsersPage() {
                           <Badge variant="muted">Patiënt</Badge>
                         )}
                       </td>
-                      <td className="px-5 py-3.5 text-gray-400">{formatDate(u.createdAt)}</td>
+                      <td className="px-5 py-3.5 text-subtle">{formatDate(u.createdAt)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -134,7 +134,7 @@ export default function AdminUsersPage() {
             </div>
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-5 py-3 flex-wrap gap-2" style={{ borderTop: "1px solid #f8f7f4" }}>
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-subtle">
                   Pagina {safePage} van {totalPages} — {filteredUsers.length} {filteredUsers.length === 1 ? "resultaat" : "resultaten"}
                 </span>
                 <div className="flex gap-2">

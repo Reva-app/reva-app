@@ -203,9 +203,9 @@ export default function PortalProtocolDetailPage() {
       </button>
 
       {loading ? (
-        <p className="text-sm text-gray-400">Laden…</p>
+        <p className="text-sm text-subtle">Laden…</p>
       ) : notFound || !protocol ? (
-        <p className="text-sm text-gray-400">Dit herstelplan is niet gevonden.</p>
+        <p className="text-sm text-subtle">Dit herstelplan is niet gevonden.</p>
       ) : (
         <>
           <div className="flex items-start gap-2 flex-wrap">
@@ -289,11 +289,11 @@ export default function PortalProtocolDetailPage() {
                 <CardHeader title="Gegevens" />
                 <div className="space-y-2 text-sm">
                   <div>
-                    <p className="text-xs text-gray-400">Aangemaakt op</p>
+                    <p className="text-xs text-subtle">Aangemaakt op</p>
                     <p className="text-gray-700">{fmtDate(protocol.createdAt)}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-400">Aangemaakt door</p>
+                    <p className="text-xs text-subtle">Aangemaakt door</p>
                     <p className="text-gray-700">{protocol.createdByName ?? "Onbekend"}</p>
                   </div>
                 </div>
@@ -317,12 +317,12 @@ export default function PortalProtocolDetailPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr style={{ borderBottom: "1px solid #e8e5df" }}>
-                      <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Fase</th>
-                      <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Week</th>
-                      <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Criteria</th>
-                      <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Mijlpalen</th>
-                      <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Schema&apos;s</th>
-                      <th className="text-right font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Actie</th>
+                      <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-5 py-3">Fase</th>
+                      <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-5 py-3">Week</th>
+                      <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-5 py-3">Criteria</th>
+                      <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-5 py-3">Mijlpalen</th>
+                      <th className="text-left font-medium text-subtle text-xs uppercase tracking-wide px-5 py-3">Schema&apos;s</th>
+                      <th className="text-right font-medium text-subtle text-xs uppercase tracking-wide px-5 py-3">Actie</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -349,13 +349,13 @@ export default function PortalProtocolDetailPage() {
                           <div className="flex items-center justify-end gap-1">
                             {canEdit && (
                               <>
-                                <button type="button" onClick={() => handleMovePhase(phase.id, -1)} disabled={index === 0} title="Naar boven verplaatsen" className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 text-gray-400">
+                                <button type="button" onClick={() => handleMovePhase(phase.id, -1)} disabled={index === 0} title="Naar boven verplaatsen" className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 text-subtle">
                                   <ChevronUp size={14} />
                                 </button>
-                                <button type="button" onClick={() => handleMovePhase(phase.id, 1)} disabled={index === protocol.phases.length - 1} title="Naar beneden verplaatsen" className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 text-gray-400">
+                                <button type="button" onClick={() => handleMovePhase(phase.id, 1)} disabled={index === protocol.phases.length - 1} title="Naar beneden verplaatsen" className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 text-subtle">
                                   <ChevronDown size={14} />
                                 </button>
-                                <button type="button" onClick={() => setConfirmDeletePhaseId(phase.id)} title="Fase verwijderen" className="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-gray-50 transition-colors">
+                                <button type="button" onClick={() => setConfirmDeletePhaseId(phase.id)} title="Fase verwijderen" className="w-6 h-6 rounded-md flex items-center justify-center text-subtle hover:text-red-600 hover:bg-gray-50 transition-colors">
                                   <Trash2 size={12} />
                                 </button>
                               </>

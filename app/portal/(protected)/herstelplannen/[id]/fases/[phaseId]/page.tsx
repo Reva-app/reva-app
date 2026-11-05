@@ -241,9 +241,9 @@ export default function PortalProtocolPhaseDetailPage() {
       </button>
 
       {loading ? (
-        <p className="text-sm text-gray-400">Laden…</p>
+        <p className="text-sm text-subtle">Laden…</p>
       ) : notFound || !protocol || !phase ? (
-        <p className="text-sm text-gray-400">Deze fase is niet gevonden.</p>
+        <p className="text-sm text-subtle">Deze fase is niet gevonden.</p>
       ) : (
         <>
           <div className="flex items-start gap-2 flex-wrap">
@@ -297,7 +297,7 @@ export default function PortalProtocolPhaseDetailPage() {
                           {canEdit && <button type="button" onClick={() => setForbidden((prev) => prev.filter((_, idx) => idx !== i))}><X size={11} /></button>}
                         </Badge>
                       ))}
-                      {forbidden.length === 0 && <p className="text-sm text-gray-400">Geen verboden activiteiten.</p>}
+                      {forbidden.length === 0 && <p className="text-sm text-subtle">Geen verboden activiteiten.</p>}
                     </div>
                     {canEdit && (
                       <div className="flex items-center gap-2">
@@ -328,7 +328,7 @@ export default function PortalProtocolPhaseDetailPage() {
                   action={canEdit ? <Button size="sm" onClick={() => { setModalError(""); setModal({ kind: "education" }); }}><Plus size={14} /> Toevoegen</Button> : undefined}
                 />
                 {phase.educationItems.length === 0 ? (
-                  <p className="text-sm text-gray-400">Nog geen educatie toegevoegd.</p>
+                  <p className="text-sm text-subtle">Nog geen educatie toegevoegd.</p>
                 ) : (
                   <div className="space-y-2">
                     {phase.educationItems.map((item) => (
@@ -340,7 +340,7 @@ export default function PortalProtocolPhaseDetailPage() {
                           </p>
                           {canEdit && (
                             <div className="flex items-center gap-2 shrink-0">
-                              <button type="button" onClick={() => { setModalError(""); setModal({ kind: "education", item }); }} className="text-xs text-gray-400 hover:text-gray-600">
+                              <button type="button" onClick={() => { setModalError(""); setModal({ kind: "education", item }); }} className="text-xs text-subtle hover:text-gray-600">
                                 Bewerken
                               </button>
                               <button type="button" onClick={() => { deleteProtocolPhaseEducationItem(item.id).then(({ error }) => { if (error) { showToast(error, "error"); return; } showToast("Educatie verwijderd"); refresh(); }); }} className="text-gray-300 hover:text-red-500">
@@ -362,7 +362,7 @@ export default function PortalProtocolPhaseDetailPage() {
                   action={canEdit ? <Button size="sm" onClick={() => { setModalError(""); setModal({ kind: "linkSchedule" }); }}><Plus size={14} /> Schema koppelen</Button> : undefined}
                 />
                 {phase.schedules.length === 0 ? (
-                  <p className="text-sm text-gray-400">Nog geen trainingsschema&apos;s gekoppeld.</p>
+                  <p className="text-sm text-subtle">Nog geen trainingsschema&apos;s gekoppeld.</p>
                 ) : (
                   <div className="space-y-3">
                     {phase.schedules.map((schedule) => (
@@ -383,10 +383,10 @@ export default function PortalProtocolPhaseDetailPage() {
                             </Link>
                             {canEdit && (
                               <>
-                                <button type="button" onClick={() => { setModalError(""); setModal({ kind: "linkSchedule", link: schedule }); }} title="Frequentie wijzigen" className="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors">
+                                <button type="button" onClick={() => { setModalError(""); setModal({ kind: "linkSchedule", link: schedule }); }} title="Frequentie wijzigen" className="w-6 h-6 rounded-md flex items-center justify-center text-subtle hover:text-gray-700 hover:bg-gray-50 transition-colors">
                                   <Pencil size={12} />
                                 </button>
-                                <button type="button" onClick={() => setConfirmUnlinkId(schedule.id)} title="Loskoppelen" className="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-gray-50 transition-colors">
+                                <button type="button" onClick={() => setConfirmUnlinkId(schedule.id)} title="Loskoppelen" className="w-6 h-6 rounded-md flex items-center justify-center text-subtle hover:text-red-600 hover:bg-gray-50 transition-colors">
                                   <Trash2 size={12} />
                                 </button>
                               </>
@@ -394,7 +394,7 @@ export default function PortalProtocolPhaseDetailPage() {
                           </div>
                         </div>
                         {schedule.exercises.length === 0 ? (
-                          <p className="text-xs text-gray-400">Nog geen oefeningen in dit schema.</p>
+                          <p className="text-xs text-subtle">Nog geen oefeningen in dit schema.</p>
                         ) : (
                           <div className="grid sm:grid-cols-2 gap-1.5">
                             {schedule.exercises.map((ex) => (
@@ -510,7 +510,7 @@ function CriteriaList({ phase, canEdit, onChanged, onError }: { phase: PortalPro
         <ListChecks size={13} style={{ color: "var(--brand-accent, #e8632a)" }} />
         <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Criteria</h4>
       </div>
-      {phase.criteria.length === 0 && !canEdit && <p className="text-xs text-gray-400">Geen criteria.</p>}
+      {phase.criteria.length === 0 && !canEdit && <p className="text-xs text-subtle">Geen criteria.</p>}
       <div className="space-y-1.5">
         {phase.criteria.map((c) => (
           <div key={c.id} className="flex items-center gap-2 rounded-lg pl-2.5 pr-1.5" style={!canEdit ? { background: "#f8f7f4" } : undefined}>
@@ -535,7 +535,7 @@ function CriteriaList({ phase, canEdit, onChanged, onError }: { phase: PortalPro
               placeholder="Nieuw criterium, bijv. volledige extensie"
               className="flex-1 text-base sm:text-sm rounded-lg border px-2.5 py-1.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
             />
-            <button type="button" onClick={handleAdd} className="text-gray-400 hover:text-gray-600 shrink-0"><Plus size={16} /></button>
+            <button type="button" onClick={handleAdd} className="text-subtle hover:text-gray-600 shrink-0"><Plus size={16} /></button>
           </div>
         )}
       </div>
@@ -560,7 +560,7 @@ function MilestoneList({ phase, canEdit, onChanged, onError }: { phase: PortalPr
         <Flag size={13} style={{ color: "var(--brand-accent, #e8632a)" }} />
         <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Mijlpalen</h4>
       </div>
-      {phase.milestones.length === 0 && !canEdit && <p className="text-xs text-gray-400">Geen mijlpalen.</p>}
+      {phase.milestones.length === 0 && !canEdit && <p className="text-xs text-subtle">Geen mijlpalen.</p>}
       <div className="space-y-1.5">
         {phase.milestones.map((m) => (
           <div key={m.id} className="flex items-center gap-2 rounded-lg pl-2.5 pr-1.5" style={!canEdit ? { background: "#f8f7f4" } : undefined}>
@@ -585,7 +585,7 @@ function MilestoneList({ phase, canEdit, onChanged, onError }: { phase: PortalPr
               placeholder="Nieuwe mijlpaal, bijv. brace verwijderen"
               className="flex-1 text-base sm:text-sm rounded-lg border px-2.5 py-1.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
             />
-            <button type="button" onClick={handleAdd} className="text-gray-400 hover:text-gray-600 shrink-0"><Plus size={16} /></button>
+            <button type="button" onClick={handleAdd} className="text-subtle hover:text-gray-600 shrink-0"><Plus size={16} /></button>
           </div>
         )}
       </div>
@@ -713,7 +713,7 @@ function LinkScheduleModal({
               <input type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Bijv. Krachtopbouw week 6-12"
                 className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
             </div>
-            <p className="text-xs text-gray-400">Voeg de oefeningen toe zodra het schema is aangemaakt, via de Schema&apos;s-pagina.</p>
+            <p className="text-xs text-subtle">Voeg de oefeningen toe zodra het schema is aangemaakt, via de Schema&apos;s-pagina.</p>
             <div className="flex justify-end gap-2">
               <Button type="button" size="sm" variant="secondary" onClick={() => setShowNewSchedule(false)}>Terug</Button>
               <Button type="button" size="sm" disabled={creating || !newTitle.trim()} onClick={handleCreateSchedule}>

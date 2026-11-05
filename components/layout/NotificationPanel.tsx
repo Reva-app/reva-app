@@ -109,7 +109,7 @@ function NotificationItem({
             )}
           </div>
 
-          <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
+          <p className="text-xs text-subtle mt-0.5 leading-relaxed">
             {justLogged
               ? `${notification.relatedMedication} · Zojuist gelogd`
               : notification.description}
@@ -119,13 +119,13 @@ function NotificationItem({
           {(notification.scheduledAt || isDue) && (
             <div className="flex items-center gap-1 mt-0.5">
               {notification.scheduledAt && (
-                <span className="flex items-center gap-1 text-[11px] text-gray-400">
+                <span className="flex items-center gap-1 text-[11px] text-subtle">
                   <Clock size={10} />
                   {notification.scheduledAt}
                 </span>
               )}
               {isDue && !done && (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium"
+                <span className="px-1.5 py-0.5 rounded-full text-[11px] font-medium"
                   style={{ background: "#fff3ee", color: "#e8632a" }}>
                   Nu
                 </span>
@@ -151,7 +151,7 @@ function NotificationItem({
                 <button
                   onClick={handleCtaSecondary}
                   className="text-xs font-medium transition-colors hover:text-gray-700"
-                  style={{ color: "#9ca3af" }}
+                  style={{ color: "#6b7280" }}
                 >
                   {notification.ctaSecondary.label}
                 </button>
@@ -283,7 +283,7 @@ export function NotificationPanel({
           <button
             onClick={onMarkAllRead}
             className="flex items-center gap-1.5 text-xs font-medium transition-colors hover:opacity-70"
-            style={{ color: "#9ca3af" }}
+            style={{ color: "#6b7280" }}
           >
             <CheckCheck size={13} />
             Alles negeren
@@ -299,7 +299,7 @@ export function NotificationPanel({
               style={{ background: "#f3f0eb" }}>
               <Bell size={18} style={{ color: "#c4bfb7" }} />
             </div>
-            <p className="text-sm text-gray-400 text-center px-4">
+            <p className="text-sm text-subtle text-center px-4">
               Geen meldingen op dit moment
             </p>
           </div>

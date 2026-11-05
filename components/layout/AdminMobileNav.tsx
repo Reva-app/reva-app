@@ -38,7 +38,7 @@ export function AdminMobileNav() {
           return (
             <Link key={href} href={href} className="flex-1 flex flex-col items-center justify-end gap-1 pb-2 touch-press">
               <Icon size={20} style={{ color: active ? "#e8632a" : "#5a5a6a" }} strokeWidth={active ? 2.2 : 1.8} />
-              <span className="text-[10px] font-medium leading-none" style={{ color: active ? "#ffffff" : "#5a5a6a" }}>
+              <span className="text-[11px] max-[389px]:text-[10px] font-medium leading-none" style={{ color: active ? "#ffffff" : "#5a5a6a" }}>
                 {label}
               </span>
             </Link>
@@ -50,7 +50,7 @@ export function AdminMobileNav() {
           className="flex-1 flex flex-col items-center justify-end gap-1 pb-2 touch-press"
         >
           <LogOut size={20} style={{ color: "#5a5a6a" }} strokeWidth={1.8} />
-          <span className="text-[10px] font-medium leading-none" style={{ color: "#5a5a6a" }}>
+          <span className="text-[11px] max-[389px]:text-[10px] font-medium leading-none" style={{ color: "#5a5a6a" }}>
             Uitloggen
           </span>
         </button>

@@ -55,7 +55,7 @@ const AUDIT_COLUMNS = (onDetails: (entry: AuditLogEntry) => void): ListColumn<Au
         {e.patientName ?? "Onbekende patiënt"}
       </a>
     ) : (
-      <span className="text-gray-400">—</span>
+      <span className="text-subtle">—</span>
     ),
   },
   {
@@ -144,7 +144,7 @@ export default function ActiviteitenlogPage() {
     return (
       <div className="p-4 sm:p-6 max-w-2xl mx-auto">
         <SectionHeader title="Activiteitenlog" subtitle="Wie welk dossier heeft bekeken of gewijzigd" />
-        <p className="text-sm text-gray-400 mt-4">
+        <p className="text-sm text-subtle mt-4">
           Alleen de praktijkeigenaar kan het activiteitenlog bekijken.
         </p>
       </div>
@@ -234,7 +234,7 @@ export default function ActiviteitenlogPage() {
               (() => {
                 const rows = buildAuditFieldRows(detailEntry);
                 if (rows.length === 0) {
-                  return <p className="text-sm text-gray-400">Geen zichtbare wijzigingen — alleen interne velden zijn aangepast.</p>;
+                  return <p className="text-sm text-subtle">Geen zichtbare wijzigingen — alleen interne velden zijn aangepast.</p>;
                 }
                 return (
                   <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#e8e5df" }}>
@@ -247,8 +247,8 @@ export default function ActiviteitenlogPage() {
                         <p className="text-xs font-medium text-gray-500 mb-0.5">{row.label}</p>
                         {row.oldValue !== null ? (
                           <p className="text-gray-800">
-                            <span className="text-gray-400 line-through">{row.oldValue}</span>{" "}
-                            <span className="text-gray-400">→</span> {row.newValue}
+                            <span className="text-subtle line-through">{row.oldValue}</span>{" "}
+                            <span className="text-subtle">→</span> {row.newValue}
                           </p>
                         ) : (
                           <p className="text-gray-800">{row.newValue}</p>

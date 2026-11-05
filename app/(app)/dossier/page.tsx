@@ -82,7 +82,7 @@ function FieldLabel({ children, optional }: { children: React.ReactNode; optiona
   return (
     <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500 mb-1.5">
       {children}
-      {optional && <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-full" style={{ background: "#f3f0eb", color: "#a8a29e" }}>Optioneel</span>}
+      {optional && <span className="text-[11px] font-normal px-1.5 py-0.5 rounded-full" style={{ background: "#f3f0eb", color: "#a8a29e" }}>Optioneel</span>}
     </label>
   );
 }
@@ -252,7 +252,7 @@ function DocumentModal({ userId, initial, onClose, onSave }: {
               style={{ borderColor: "#e8e5df" }}
             >
               <Upload size={15} className="text-gray-400" />
-              <span className="text-sm text-gray-400">PDF, Word, afbeelding uploaden...</span>
+              <span className="text-sm text-subtle">PDF, Word, afbeelding uploaden...</span>
             </button>
           )}
           <input
@@ -517,7 +517,7 @@ function FotoTimeline({ fotos, blessureDatum, onDelete }: {
                 {/* Card header */}
                 <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#e8632a" }}>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "#e8632a" }}>
                       Week {week} herstel
                     </p>
                     <p className="text-sm font-semibold text-gray-800 mt-0.5">{formatDate(f.date)}</p>
@@ -538,14 +538,14 @@ function FotoTimeline({ fotos, blessureDatum, onDelete }: {
                 >
                   {f.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={f.imageUrl} alt="Foto update" className="w-full h-full object-contain" />
+                    <img src={f.imageUrl} alt="Foto update" loading="lazy" decoding="async" className="w-full h-full object-contain" />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center gap-2">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center"
                         style={{ background: "rgba(255,255,255,0.7)" }}>
                         <ImageIcon size={18} className="text-gray-300" />
                       </div>
-                      <p className="text-[10px]" style={{ color: "#c4bfb9" }}>Geen foto</p>
+                      <p className="text-[11px]" style={{ color: "#c4bfb9" }}>Geen foto</p>
                     </div>
                   )}
                 </div>
@@ -672,7 +672,7 @@ export default function DossierPage() {
             <Icon size={14} />
             <span className="hidden sm:inline">{label}</span>
             <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold"
-              style={{ background: tab === key ? "#e8632a" : "#e8e5df", color: tab === key ? "#ffffff" : "#9ca3af" }}>
+              style={{ background: tab === key ? "#e8632a" : "#e8e5df", color: tab === key ? "#ffffff" : "#6b7280" }}>
               {count}
             </span>
           </button>
@@ -684,7 +684,7 @@ export default function DossierPage() {
         {tab === "documenten" && (
           <div className="mb-4">
             <p className="text-base font-semibold text-gray-900 mb-0.5">Documenten</p>
-            <p className="text-xs text-gray-400 mb-3">Sla medische brieven, verslagen en scans op.</p>
+            <p className="text-xs text-subtle mb-3">Sla medische brieven, verslagen en scans op.</p>
             <Button size="sm" onClick={() => setDocModal({ open: true })}>
               <Plus size={15} /> Document toevoegen
             </Button>
@@ -693,7 +693,7 @@ export default function DossierPage() {
         {tab === "foto-updates" && (
           <div className="mb-4">
             <p className="text-base font-semibold text-gray-900 mb-0.5">Foto updates</p>
-            <p className="text-xs text-gray-400 mb-3">Documenteer je visuele voortgang week voor week.</p>
+            <p className="text-xs text-subtle mb-3">Documenteer je visuele voortgang week voor week.</p>
             <Button size="sm" onClick={() => setFotoModal(true)}>
               <Plus size={15} /> Foto toevoegen
             </Button>
@@ -702,7 +702,7 @@ export default function DossierPage() {
         {tab === "contactpersonen" && (
           <div className="mb-4">
             <p className="text-base font-semibold text-gray-900 mb-0.5">Contactpersonen</p>
-            <p className="text-xs text-gray-400 mb-3">Bewaar gegevens van je zorgverleners op één plek.</p>
+            <p className="text-xs text-subtle mb-3">Bewaar gegevens van je zorgverleners op één plek.</p>
             <Button size="sm" onClick={() => setContactModal({ open: true })}>
               <Plus size={15} /> Contactpersoon toevoegen
             </Button>
@@ -737,7 +737,7 @@ export default function DossierPage() {
                       <Badge variant={DOC_TYPE_BADGE[doc.type]}>{documentTypeLabel(doc.type)}</Badge>
                     </div>
                   </div>
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-xs text-subtle mt-0.5">
                     {doc.zorgverlener === "Anders" ? doc.zorgverlenerAnders : doc.zorgverlener}
                     {" · "}{formatDate(doc.date)}
                   </p>
@@ -745,23 +745,23 @@ export default function DossierPage() {
                     <p className="text-sm text-gray-600 mt-2 leading-relaxed">{doc.omschrijving}</p>
                   )}
                   {doc.bestandsnaam && (
-                    <p className="text-xs text-gray-400 mt-1.5 font-mono">{doc.bestandsnaam}</p>
+                    <p className="text-xs text-subtle mt-1.5 font-mono">{doc.bestandsnaam}</p>
                   )}
                   <div className="flex items-center gap-3 mt-3">
                     {doc.fileUrl && (
                       <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors">
+                        className="flex items-center gap-1 text-xs font-medium text-subtle hover:text-gray-600 transition-colors">
                         <Eye size={12} /> Bekijken
                       </a>
                     )}
                     {doc.fileUrl && (
                       <a href={doc.fileUrl} download={doc.bestandsnaam ?? true}
-                        className="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors">
+                        className="flex items-center gap-1 text-xs font-medium text-subtle hover:text-gray-600 transition-colors">
                         <Download size={12} /> Downloaden
                       </a>
                     )}
                     <button onClick={() => setDocModal({ open: true, editing: doc })}
-                      className="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors">
+                      className="flex items-center gap-1 text-xs font-medium text-subtle hover:text-gray-600 transition-colors">
                       <Pencil size={12} /> Bewerken
                     </button>
                     <button onClick={() => setConfirmDel({ type: "doc", id: doc.id })}
@@ -823,10 +823,10 @@ export default function DossierPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="text-sm font-semibold text-gray-900">{c.naam}</p>
-                      {c.functie && <p className="text-xs text-gray-400 mt-0.5">{c.functie}</p>}
+                      {c.functie && <p className="text-xs text-subtle mt-0.5">{c.functie}</p>}
                     </div>
                     {isTherapistContact ? (
-                      <span className="flex items-center gap-1 text-[11px] text-gray-400 shrink-0" title="Automatisch toegevoegd vanuit je fysiopraktijk">
+                      <span className="flex items-center gap-1 text-[11px] text-subtle shrink-0" title="Automatisch toegevoegd vanuit je fysiopraktijk">
                         <Lock size={11} /> Behandelteam
                       </span>
                     ) : (
@@ -860,7 +860,7 @@ export default function DossierPage() {
                     )}
                   </div>
                   {c.notitie && (
-                    <p className="text-xs text-gray-400 mt-2 italic">{c.notitie}</p>
+                    <p className="text-xs text-subtle mt-2 italic">{c.notitie}</p>
                   )}
                 </div>
               </div>

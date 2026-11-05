@@ -193,7 +193,7 @@ export default function PortalLocationsPage() {
             className="px-4 py-2 text-sm font-medium transition-all"
             style={{
               background: filter === f ? "#ffffff" : "transparent",
-              color: filter === f ? "#1a1a1a" : "#9ca3af",
+              color: filter === f ? "#1a1a1a" : "#6b7280",
               borderRadius: "10px",
               margin: "3px",
               boxShadow: filter === f ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
@@ -216,7 +216,7 @@ export default function PortalLocationsPage() {
       )}
 
       {loading ? (
-        <p className="text-sm text-gray-400">Laden…</p>
+        <p className="text-sm text-subtle">Laden…</p>
       ) : visibleCards.length === 0 ? (
         <EmptyState
           icon={MapPin}

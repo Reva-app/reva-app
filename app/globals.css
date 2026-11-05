@@ -41,6 +41,11 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  /* Bijzaak-tekst (labels, kolomkoppen, subtitels, tijdstempels). #6b7280
+     haalt 4,8:1 op wit en 4,6:1 op de achtergrond (WCAG AA). Gebruik dit
+     i.p.v. text-gray-400 (#9ca3af, 2,5:1); gray-400 alleen nog voor
+     iconen, placeholders en uitgeschakelde staten. */
+  --color-subtle: #6b7280;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -108,6 +113,11 @@ body {
 @media (max-width: 1023px) {
   .pb-nav {
     padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 8px);
+  }
+  /* Patiënt-app: ook ruimte voor de zwevende +-knop (56px + 12px marge
+     erboven en eronder), zodat het laatste blok er niet onder blijft. */
+  .pb-nav-fab {
+    padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 80px);
   }
 }
 
