@@ -73,13 +73,14 @@ function FieldLabel({ children, optional }: { children: React.ReactNode; optiona
 }
 
 function TextInput({
-  value, onChange, placeholder, type = "text", disabled,
+  value, onChange, placeholder, type = "text", disabled, autoComplete,
 }: {
-  value: string; onChange: (v: string) => void; placeholder?: string; type?: string; disabled?: boolean;
+  value: string; onChange: (v: string) => void; placeholder?: string; type?: string; disabled?: boolean; autoComplete?: string;
 }) {
   return (
     <input
       type={type}
+      autoComplete={autoComplete}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
@@ -705,6 +706,8 @@ export default function InstellingenPage() {
       const code = (error as { code?: string }).code ?? "";
       if (code.includes("current_password") || code === "invalid_credentials") {
         showToast("Huidig wachtwoord is onjuist", "error");
+      } else if (code === "reauthentication_needed") {
+        showToast("Log voor de veiligheid opnieuw in en probeer het daarna nog eens", "error");
       } else if (code === "weak_password") {
         showToast("Kies een sterker wachtwoord: minimaal 10 tekens, met letters en cijfers", "error");
       } else if (code === "same_password") {
@@ -1102,6 +1105,7 @@ export default function InstellingenPage() {
                   <div className="relative">
                     <input
                       type={showWw ? "text" : "password"}
+                      autoComplete="current-password"
                       value={huidigWw}
                       onChange={(e) => setHuidigWw(e.target.value)}
                       placeholder="••••••••"
@@ -1116,14 +1120,16 @@ export default function InstellingenPage() {
                 </div>
                 <div>
                   <FieldLabel>Nieuw wachtwoord</FieldLabel>
-                  <TextInput value={nieuwWw} onChange={setNieuwWw} type="password" placeholder="Minimaal 10 tekens, letters en cijfers" />
+                  <TextInput value={nieuwWw} onChange={setNieuwWw} type={showWw ? "text" : "password"} autoComplete="new-password" placeholder="Minimaal 10 tekens, letters en cijfers" />
                 </div>
                 <div>
                   <FieldLabel>Herhaal nieuw wachtwoord</FieldLabel>
-                  <TextInput value={herhalingWw} onChange={setHerhalingWw} type="password" placeholder="Herhaal nieuw wachtwoord" />
+                  <TextInput value={herhalingWw} onChange={setHerhalingWw} type={showWw ? "text" : "password"} autoComplete="new-password" placeholder="Herhaal nieuw wachtwoord" />
                 </div>
                 {nieuwWw && herhalingWw && nieuwWw !== herhalingWw && (
-                  <p className="text-[11px]" style={{ color: "#dc2626" }}>Wachtwoorden komen niet overeen</p>
+                  <p className="text-[11px]" style={{ color: "#dc2626" }}>
+                    De twee nieuwe wachtwoorden zijn niet gelijk. Heeft je browser er zelf een ingevuld? Klik op het oogje om ze te bekijken.
+                  </p>
                 )}
                 <div className="flex items-center gap-3">
                   <Button size="sm" variant="secondary" onClick={handleWachtwoord} disabled={wwLoading}>
