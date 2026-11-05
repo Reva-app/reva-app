@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { formatDate } from "@/lib/data";
 import { orgStatusBadge } from "../page";
+import { trialState, isoDatePlusDays, dayLabel, DEFAULT_TRIAL_DAYS, TRIAL_GRACE_DAYS } from "@/lib/trial";
 import {
   loadAdminOrganizationDetail, updateAdminOrganization, uploadOrganizationLogo,
   loadAdminOrgLocations, loadAdminOrgMembers, loadAdminOrgPatientStats, loadAdminOrgUsage,
@@ -270,6 +271,7 @@ function AdminOrganizationDetailContent() {
     const { error } = await updateAdminOrganization(orgId, {
       name: org.name,
       status: org.status,
+      trialEndsAt: org.trialEndsAt,
       kvkNumber: org.kvkNumber,
       btwNumber: org.btwNumber,
       website: org.website,
@@ -335,7 +337,7 @@ function AdminOrganizationDetailContent() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-gray-900">{org.name}</h1>
-          {orgStatusBadge(org.status)}
+          {orgStatusBadge(org.status, org.trialEndsAt)}
         </div>
         <Button onClick={handleSave} disabled={saving} size="sm">
           {saving ? (
@@ -381,7 +383,11 @@ function AdminOrganizationDetailContent() {
               <FieldLabel>Status</FieldLabel>
               <select
                 value={org.status}
-                onChange={(e) => setOrg({ ...org, status: e.target.value })}
+                onChange={(e) => setOrg({
+                  ...org,
+                  status: e.target.value,
+                  trialEndsAt: e.target.value === "trial" && !org.trialEndsAt ? isoDatePlusDays(DEFAULT_TRIAL_DAYS) : org.trialEndsAt,
+                })}
                 className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none"
                 style={inputStyle}
               >
@@ -389,6 +395,7 @@ function AdminOrganizationDetailContent() {
                 <option value="active">Actief</option>
                 <option value="paused">Gepauzeerd</option>
               </select>
+              {org.status === "trial" && <TrialEndEditor value={org.trialEndsAt} onChange={(v) => setOrg({ ...org, trialEndsAt: v })} />}
               {org.status === "paused" && (
                 <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
                   Medewerkers kunnen de portal niet meer gebruiken. Patiënten houden toegang tot hun eigen gegevens.
@@ -686,6 +693,44 @@ function AdminOrganizationDetailContent() {
           </div>
         </div>
       </Card>
+    </div>
+  );
+}
+
+/** Einddatum van de proefperiode, met snelknoppen om te verlengen (migratie 129). */
+function TrialEndEditor({ value, onChange }: { value: string | null; onChange: (v: string) => void }) {
+  const state = trialState("trial", value);
+  const summary =
+    state.kind === "trial" ? (state.daysLeft === 0 ? "Vandaag is de laatste dag." : `Nog ${dayLabel(state.daysLeft)}.`)
+    : state.kind === "grace" ? `Verlopen — nog ${dayLabel(state.graceDaysLeft + 1)} speling, daarna geen toegang meer.`
+    : state.kind === "expired" ? "Verlopen: medewerkers hebben geen toegang meer."
+    : "";
+  return (
+    <div className="mt-3 space-y-2">
+      <FieldLabel>Proefperiode tot en met</FieldLabel>
+      <input
+        type="date"
+        value={value ?? ""}
+        onChange={(e) => e.target.value && onChange(e.target.value)}
+        className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none"
+        style={inputStyle}
+      />
+      <div className="flex flex-wrap gap-1.5">
+        {[7, 14, 30].map((d) => (
+          <button
+            key={d}
+            type="button"
+            onClick={() => onChange(isoDatePlusDays(d, value))}
+            className="text-xs font-medium rounded-lg border px-2.5 py-1 hover:bg-gray-50"
+            style={{ borderColor: "#e8e5df", color: "#4b5563" }}
+          >
+            +{d} dagen
+          </button>
+        ))}
+      </div>
+      <p className="text-xs leading-relaxed" style={{ color: state.kind === "trial" ? "#6b7280" : "#b91c1c" }}>
+        {summary} Na de einddatum nog {TRIAL_GRACE_DAYS} dagen speling, daarna werkt het als &quot;Gepauzeerd&quot;. Vergeet niet op te slaan.
+      </p>
     </div>
   );
 }

@@ -78,6 +78,10 @@ export interface PortalMembership {
   membershipId: string;
   organizationId: string;
   organizationName: string;
+  /** 'trial' | 'active' | 'paused' */
+  organizationStatus: string;
+  /** "YYYY-MM-DD", alleen betekenisvol bij status 'trial' (migratie 129). */
+  trialEndsAt: string | null;
   locationId: string | null;
   locationName: string | null;
   roleKey: string;
@@ -276,12 +280,19 @@ export interface PortalStaffMember {
  * krijgt hier voorlopig alleen de eerste — een org-switcher volgt zodra dat
  * scenario zich echt voordoet (zie docs/REVA-V2-MASTERPLAN.md §16.2).
  */
-/** Naam van de praktijk als die de gebruiker een actief lidmaatschap heeft bij een gepauzeerde praktijk (migratie 128). */
-export async function loadMyPausedOrganization(): Promise<string | null> {
+export interface BlockedOrganization {
+  name: string;
+  reason: "paused" | "trial_expired";
+}
+
+/** Praktijk waar de gebruiker lid van is maar die gepauzeerd of verlopen is (migraties 128/129). */
+export async function loadMyBlockedOrganization(): Promise<BlockedOrganization | null> {
   const supabase = createClient();
-  const { data, error } = await supabase.rpc("my_paused_organization");
-  if (error) { logErr("loadMyPausedOrganization", error); return null; }
-  return (data as string | null) ?? null;
+  const { data, error } = await supabase.rpc("my_blocked_organization");
+  if (error) { logErr("loadMyBlockedOrganization", error); return null; }
+  const row = (data as { name: string; reason: string }[] | null)?.[0];
+  if (!row) return null;
+  return { name: row.name, reason: row.reason === "paused" ? "paused" : "trial_expired" };
 }
 
 export async function loadCurrentMembership(userId: string): Promise<PortalMembership | null> {
@@ -297,7 +308,7 @@ export async function loadCurrentMembership(userId: string): Promise<PortalMembe
   if (!membership) return null;
 
   const [orgRes, locRes, roleRes, profileRes] = await Promise.all([
-    supabase.from("organizations").select("name").eq("id", membership.organization_id).maybeSingle(),
+    supabase.from("organizations").select("name, status, trial_ends_at").eq("id", membership.organization_id).maybeSingle(),
     membership.location_id
       ? supabase.from("locations").select("name").eq("id", membership.location_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
@@ -314,6 +325,8 @@ export async function loadCurrentMembership(userId: string): Promise<PortalMembe
     membershipId: membership.id,
     organizationId: membership.organization_id,
     organizationName: orgRes.data?.name ?? "Onbekende organisatie",
+    organizationStatus: orgRes.data?.status ?? "active",
+    trialEndsAt: orgRes.data?.trial_ends_at ?? null,
     locationId: membership.location_id,
     locationName: locRes.data?.name ?? null,
     roleKey: roleRes.data?.key ?? "",

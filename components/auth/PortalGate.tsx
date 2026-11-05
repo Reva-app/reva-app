@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { PauseCircle, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
-import { loadMyPausedOrganization } from "@/lib/services/portalService";
+import { loadMyBlockedOrganization, type BlockedOrganization } from "@/lib/services/portalService";
 import { useMfaStatus } from "@/lib/hooks/useMfaStatus";
 import { MfaEnrollScreen } from "@/components/auth/MfaEnrollScreen";
 import { MfaChallengeScreen } from "@/components/auth/MfaChallengeScreen";
@@ -17,8 +17,8 @@ import { Button } from "@/components/ui/Button";
  * - Geen sessie: redirect naar /portal/login.
  * - Sessie, maar geen actief lidmaatschap: nette "geen toegang"-melding
  *   (geen redirect — dit account kan legitiem een gewone patiënt zijn).
- *   Is de praktijk van deze medewerker gepauzeerd (migratie 128), dan een
- *   melding met die uitleg.
+ *   Is de praktijk van deze medewerker gepauzeerd (migratie 128) of de
+ *   proefperiode verlopen (migratie 129), dan een melding met die uitleg.
  * - Actief lid, maar tweestapsverificatie nog niet afgerond deze sessie:
  *   blokkerend instel- of verificatiescherm (zie migratie 067 voor de
  *   bijbehorende afdwinging op databaseniveau).
@@ -34,8 +34,8 @@ export function PortalGate({ children }: { children: React.ReactNode }) {
   const { checked: mfaChecked, satisfied: mfaSatisfied, needsEnrollment, factorId, refresh: refreshMfa } = useMfaStatus();
   const router = useRouter();
   // undefined = nog niet opgevraagd; alleen nodig als er geen lidmaatschap is.
-  const [pausedOrg, setPausedOrg] = useState<string | null | undefined>(undefined);
-  const needsPausedCheck = checked && !!user && !membership;
+  const [blockedOrg, setBlockedOrg] = useState<BlockedOrganization | null | undefined>(undefined);
+  const needsBlockedCheck = checked && !!user && !membership;
 
   useEffect(() => {
     if (authLoading) return;
@@ -43,11 +43,11 @@ export function PortalGate({ children }: { children: React.ReactNode }) {
   }, [authLoading, user, router]);
 
   useEffect(() => {
-    if (!needsPausedCheck) return;
+    if (!needsBlockedCheck) return;
     let cancelled = false;
-    loadMyPausedOrganization().then((name) => { if (!cancelled) setPausedOrg(name); });
+    loadMyBlockedOrganization().then((org) => { if (!cancelled) setBlockedOrg(org); });
     return () => { cancelled = true; };
-  }, [needsPausedCheck]);
+  }, [needsBlockedCheck]);
 
   if (authLoading || !checked) {
     return (
@@ -59,7 +59,7 @@ export function PortalGate({ children }: { children: React.ReactNode }) {
 
   if (!user) return null;
 
-  if (!membership && pausedOrg === undefined) {
+  if (!membership && blockedOrg === undefined) {
     return (
       <div className="flex h-screen items-center justify-center" style={{ background: "#f8f7f4" }}>
         <p className="text-sm" style={{ color: "#9ca3af" }}>Laden…</p>
@@ -67,17 +67,23 @@ export function PortalGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!membership && pausedOrg) {
+  if (!membership && blockedOrg) {
     return (
       <div className="flex h-screen items-center justify-center px-6" style={{ background: "#f8f7f4" }}>
         <div className="text-center max-w-sm">
           <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 mx-auto" style={{ background: "#fff7ed" }}>
             <PauseCircle size={22} style={{ color: "#e8632a" }} />
           </div>
-          <p className="text-sm font-medium text-gray-800">{pausedOrg} is tijdelijk gepauzeerd</p>
+          <p className="text-sm font-medium text-gray-800">
+            {blockedOrg.reason === "paused"
+              ? `${blockedOrg.name} is tijdelijk gepauzeerd`
+              : `De proefperiode van ${blockedOrg.name} is afgelopen`}
+          </p>
           <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
-            Het REVA-account van je praktijk staat op pauze, daarom kun je de portal nu niet gebruiken.
-            Je patiënten houden toegang tot hun eigen gegevens. Vragen? Mail naar info@reva-app.nl.
+            {blockedOrg.reason === "paused"
+              ? "Het REVA-account van je praktijk staat op pauze, daarom kun je de portal nu niet gebruiken."
+              : "Wil je REVA blijven gebruiken? Neem contact met ons op, dan zetten we je account weer aan. Alles wat je hebt ingevoerd staat nog klaar."}
+            {" "}Je patiënten houden toegang tot hun eigen gegevens. Vragen? Mail naar info@reva-app.nl.
           </p>
           <div className="flex items-center justify-center gap-2 mt-5">
             <Button variant="ghost" size="sm" onClick={signOut}>

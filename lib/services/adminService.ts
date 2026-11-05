@@ -36,6 +36,7 @@ export interface AdminOrganization {
   id: string;
   name: string;
   status: string;
+  trialEndsAt: string | null;
   createdAt: string;
   locationCount: number;
   patientCount: number;
@@ -137,6 +138,7 @@ interface RawOrgRow {
   id: string;
   name: string;
   status: string;
+  trial_ends_at: string | null;
   created_at: string;
   locations: { count: number }[] | null;
   patients: { count: number }[] | null;
@@ -146,13 +148,14 @@ export async function loadAdminOrganizations(): Promise<AdminOrganization[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("organizations")
-    .select("id, name, status, created_at, locations(count), patients(count)")
+    .select("id, name, status, trial_ends_at, created_at, locations(count), patients(count)")
     .order("created_at", { ascending: false });
   if (error) { logErr("loadAdminOrganizations", error); return []; }
   return ((data ?? []) as unknown as RawOrgRow[]).map((row) => ({
     id: row.id,
     name: row.name,
     status: row.status,
+    trialEndsAt: row.trial_ends_at,
     createdAt: row.created_at,
     locationCount: row.locations?.[0]?.count ?? 0,
     patientCount: row.patients?.[0]?.count ?? 0,
@@ -224,6 +227,7 @@ export interface AdminOrganizationDetail {
   id: string;
   name: string;
   status: string; // 'trial' | 'active' | 'paused'
+  trialEndsAt: string | null; // "YYYY-MM-DD", migratie 129
   logoPath: string | null;
   logoUrl: string | null; // signed URL, ververst per load
   kvkNumber: string | null;
@@ -245,6 +249,7 @@ export interface AdminOrganizationDetail {
 export interface AdminOrganizationPatch {
   name?: string;
   status?: string;
+  trialEndsAt?: string | null;
   kvkNumber?: string | null;
   btwNumber?: string | null;
   website?: string | null;
@@ -295,7 +300,7 @@ export async function loadAdminOrganizationDetail(orgId: string): Promise<AdminO
   const supabase = createClient();
   const { data, error } = await supabase
     .from("organizations")
-    .select("id, name, status, logo_path, kvk_number, btw_number, website, contact_name, contact_email, contact_phone, address_street, address_postal_code, address_city, support_notes, last_contact_at, created_at, max_locations, max_members")
+    .select("id, name, status, trial_ends_at, logo_path, kvk_number, btw_number, website, contact_name, contact_email, contact_phone, address_street, address_postal_code, address_city, support_notes, last_contact_at, created_at, max_locations, max_members")
     .eq("id", orgId)
     .maybeSingle();
   if (error) { logErr("loadAdminOrganizationDetail", error); return null; }
@@ -314,6 +319,7 @@ export async function loadAdminOrganizationDetail(orgId: string): Promise<AdminO
     id: data.id,
     name: data.name,
     status: data.status,
+    trialEndsAt: data.trial_ends_at,
     logoPath: data.logo_path,
     logoUrl,
     kvkNumber: data.kvk_number,
@@ -338,6 +344,7 @@ export async function updateAdminOrganization(orgId: string, patch: AdminOrganiz
   const dbPatch: Record<string, unknown> = {};
   if (patch.name !== undefined) dbPatch.name = patch.name;
   if (patch.status !== undefined) dbPatch.status = patch.status;
+  if (patch.trialEndsAt !== undefined) dbPatch.trial_ends_at = patch.trialEndsAt;
   if (patch.kvkNumber !== undefined) dbPatch.kvk_number = patch.kvkNumber;
   if (patch.btwNumber !== undefined) dbPatch.btw_number = patch.btwNumber;
   if (patch.website !== undefined) dbPatch.website = patch.website;

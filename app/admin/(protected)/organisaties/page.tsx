@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { trialState, dayLabel } from "@/lib/trial";
 import { useRouter } from "next/navigation";
 import { Building2, Plus, Loader2, Search } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
@@ -22,9 +23,15 @@ const inputStyle = {
 
 const PAGE_SIZE = 20;
 
-export function orgStatusBadge(status: string) {
+export function orgStatusBadge(status: string, trialEndsAt?: string | null) {
   if (status === "active") return <Badge variant="success">Actief</Badge>;
-  if (status === "trial") return <Badge variant="warning">Trial</Badge>;
+  if (status === "trial") {
+    const state = trialState(status, trialEndsAt);
+    if (state.kind === "trial") return <Badge variant={state.daysLeft < 7 ? "danger" : "warning"}>Trial · nog {dayLabel(state.daysLeft)}</Badge>;
+    if (state.kind === "grace") return <Badge variant="danger">Trial verlopen · speling</Badge>;
+    if (state.kind === "expired") return <Badge variant="danger">Trial verlopen</Badge>;
+    return <Badge variant="warning">Trial</Badge>;
+  }
   if (status === "paused") return <Badge variant="danger">Gepauzeerd</Badge>;
   return <Badge variant="muted">{status}</Badge>;
 }
@@ -223,7 +230,7 @@ export default function AdminOrganizationsPage() {
                       style={{ borderBottom: "1px solid #f8f7f4" }}
                     >
                       <td className="px-5 py-3.5 font-medium text-gray-800">{org.name}</td>
-                      <td className="px-5 py-3.5">{orgStatusBadge(org.status)}</td>
+                      <td className="px-5 py-3.5">{orgStatusBadge(org.status, org.trialEndsAt)}</td>
                       <td className="px-5 py-3.5 text-gray-600">{org.locationCount}</td>
                       <td className="px-5 py-3.5 text-gray-600">{org.patientCount}</td>
                       <td className="px-5 py-3.5 text-gray-400">{formatDate(org.createdAt)}</td>
