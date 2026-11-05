@@ -25,7 +25,7 @@ export function AdminMobileNav() {
 
   return (
     <nav
-      className="lg:hidden fixed bottom-0 left-0 right-0 z-50"
+      className="lg:hidden fixed bottom-0 left-0 right-0 z-(--z-nav)"
       style={{
         background: "#18181a",
         borderTop: "1px solid rgba(255,255,255,0.07)",

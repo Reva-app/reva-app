@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
-import { Modal } from "@/components/ui/Modal";
+import { Modal, ModalFooter } from "@/components/ui/Modal";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ExerciseThumb } from "@/components/portal/ExerciseThumb";
@@ -182,15 +182,15 @@ export function ExerciseMultiSelectModal({
 
             {resultMessage && <p className="text-xs" style={{ color: "#dc2626" }}>{resultMessage}</p>}
 
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-400">{selectedIds.size} geselecteerd</span>
+            <ModalFooter className="justify-between">
+              <span className="text-xs text-gray-500">{selectedIds.size} geselecteerd</span>
               <div className="flex gap-2">
                 <Button type="button" size="sm" variant="secondary" onClick={onClose}>Annuleren</Button>
                 <Button type="button" size="sm" disabled={adding || selectedIds.size === 0} onClick={handleAdd}>
                   {adding ? "Toevoegen…" : `${selectedIds.size || ""} Toevoegen`.trim()}
                 </Button>
               </div>
-            </div>
+            </ModalFooter>
           </div>
         ) : (
           <div className="space-y-4">

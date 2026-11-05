@@ -16,6 +16,17 @@
   --warning: #d97706;
   --danger: #dc2626;
   --nav-height: 64px;
+
+  /* Lagen (z-index) — gebruik altijd deze schaal, bv. `z-(--z-modal)` of
+     `zIndex: "var(--z-popover)"`, nooit losse getallen. Lokale stapeling
+     binnen een kaart (z-10/z-20) mag wel. */
+  --z-nav-overlay: 30; /* achtergrond + paneel van "Meer" / snelle acties */
+  --z-fab: 35;         /* zwevende +-knop, boven zijn eigen achtergrond */
+  --z-nav: 40;         /* onderbalk, zijbalken */
+  --z-modal: 50;       /* modals en bottom sheets — liggen óver de onderbalk */
+  --z-popover: 60;     /* DatePicker, TimePicker, ActionMenu (ook binnen een modal) */
+  --z-toast: 70;
+  --z-gate: 80;        /* laadscherm, MFA, account-schermen */
 }
 
 @theme inline {
@@ -155,6 +166,27 @@ main,
 
 .bottom-sheet-content {
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+}
+
+/* Gedeelde Modal (components/ui/Modal.tsx): bottom sheet op telefoon,
+   gecentreerd venster vanaf 640px. */
+.reva-modal-panel {
+  animation: sheetUp 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.reva-modal-safe-area {
+  height: env(safe-area-inset-bottom, 0px);
+}
+/* Een ModalFooter regelt de safe area zelf. */
+.reva-modal-panel:has(.reva-modal-footer) .reva-modal-safe-area {
+  display: none;
+}
+@media (min-width: 640px) {
+  .reva-modal-panel {
+    animation: modalIn 0.18s ease;
+  }
+  .reva-modal-safe-area {
+    display: none;
+  }
 }
 
 /* Kleurkiezer (components/ui/ColorPicker.tsx, react-colorful) */

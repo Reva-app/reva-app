@@ -76,7 +76,7 @@ export function LoadingScreen({ done, onExited }: LoadingScreenProps) {
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 100,
+        zIndex: "var(--z-gate)",
         background: "#f8f7f4",
         display: "flex",
         flexDirection: "column",

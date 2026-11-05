@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, X } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { ModalFooter } from "@/components/ui/Modal";
 import {
   inviteStaffMember, ROLE_EXPLANATIONS,
   type PortalRoleOption, type PortalLocationOption, type InviteStaffMemberResult,
@@ -114,9 +115,12 @@ export function StaffInviteForm({ organizationId, roles, locations, onInvited, o
           </div>
         </div>
         {error && <p className="text-xs" style={{ color: "#dc2626" }}>{error}</p>}
-        <Button type="submit" size="sm" disabled={saving}>
-          {saving ? <Loader2 size={13} className="animate-spin" /> : "Uitnodigen"}
-        </Button>
+        <ModalFooter inset="md">
+          <Button type="button" size="sm" variant="secondary" onClick={onClose} disabled={saving}>Annuleren</Button>
+          <Button type="submit" size="sm" disabled={saving}>
+            {saving ? <Loader2 size={13} className="animate-spin" /> : "Uitnodigen"}
+          </Button>
+        </ModalFooter>
       </form>
     </Card>
   );

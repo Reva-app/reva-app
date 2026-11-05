@@ -149,7 +149,7 @@ export function TrainingModal({
 
   return (
     <div
-      className="fixed inset-0 z-50"
+      className="fixed inset-0 z-(--z-modal)"
       style={{ background: "rgba(0,0,0,0.35)", backdropFilter: "blur(2px)" }}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >

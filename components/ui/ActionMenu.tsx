@@ -78,7 +78,7 @@ export function ActionMenu({ items }: ActionMenuProps) {
         bottom: pos.bottom,
         left: pos.left,
         width: MENU_WIDTH,
-        zIndex: 9999,
+        zIndex: "var(--z-popover)",
         background: "#ffffff",
         border: "1px solid #e8e5df",
         borderRadius: "12px",

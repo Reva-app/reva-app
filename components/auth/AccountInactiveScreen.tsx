@@ -29,7 +29,7 @@ export function AccountInactiveScreen({ status, onSignOut }: AccountInactiveScre
   const copy = COPY[status];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)" }}>
+    <div className="fixed inset-0 z-(--z-gate) flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)" }}>
       <div className="relative w-full max-w-md rounded-2xl p-6 sm:p-8 shadow-2xl" style={{ background: "#ffffff" }}>
         <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5" style={{ background: "#fff3ee" }}>
           <Lock size={22} style={{ color: "#e8632a" }} />

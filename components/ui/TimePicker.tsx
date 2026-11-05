@@ -89,7 +89,7 @@ export function TimePicker({
       {/* Dropdown */}
       {open && (
         <div
-          className="absolute top-full left-0 mt-2 z-50 rounded-2xl border overflow-hidden"
+          className="absolute top-full left-0 mt-2 z-(--z-popover) rounded-2xl border overflow-hidden"
           style={{
             background: "#ffffff",
             borderColor: "#e8e5df",

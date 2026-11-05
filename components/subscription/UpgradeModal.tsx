@@ -41,7 +41,7 @@ export function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center"
+      className="fixed inset-0 z-(--z-modal) flex items-end sm:items-center justify-center"
       style={{ background: "rgba(0,0,0,0.55)" }}
       onClick={onClose}
     >

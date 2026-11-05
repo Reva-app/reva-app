@@ -26,7 +26,7 @@ export function Toast({ message, type = "success", onDismiss }: ToastProps) {
 
   return (
     <div
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-lg text-sm font-medium"
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-(--z-toast) flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-lg text-sm font-medium"
       style={{
         background: type === "success" ? "#1c1c1e" : "#dc2626",
         color: "#ffffff",

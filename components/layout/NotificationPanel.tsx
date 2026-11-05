@@ -242,7 +242,7 @@ export function NotificationPanel({
     <>
     {/* Mobile backdrop — tap outside closes panel */}
     <div
-      className="lg:hidden fixed inset-0 z-[55]"
+      className="lg:hidden fixed inset-0 z-(--z-modal)"
       style={{ background: "rgba(0,0,0,0.2)" }}
       onClick={onClose}
     />
@@ -261,7 +261,7 @@ export function NotificationPanel({
         maxHeight: "min(540px, calc(100vh - 80px))",
         display: "flex",
         flexDirection: "column",
-        zIndex: 60,
+        zIndex: "var(--z-modal)",
         animation: "notifSlideIn 0.2s cubic-bezier(0.34,1.2,0.64,1)",
       }}
     >

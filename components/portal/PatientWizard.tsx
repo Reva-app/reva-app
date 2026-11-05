@@ -356,7 +356,7 @@ export function PatientWizard({
           zichtbaar, achter het toetsenbord) te raken was. */}
       {!result && (
         <div
-          className="flex justify-between items-center gap-3 px-5 py-4 sticky bottom-0 rounded-b-2xl"
+          className="reva-modal-footer flex justify-between items-center gap-3 px-5 py-4 sticky bottom-0 rounded-b-2xl"
           style={{
             background: "#ffffff",
             borderTop: "1px solid #e8e5df",

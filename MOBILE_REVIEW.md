@@ -373,9 +373,9 @@ Vrijwel elke bevinding komt terug op meerdere schermen: lagen, veldgrootte, tikd
 Elke taak is klein genoeg voor één avond van 1–3 uur. Na elke stap volgt een controle op 375, 768 en 1024 en daarna een deploy. De volgorde volgt het dagelijks gebruik van een fysio: patiëntenlijst, dan patiëntdetail (check-in, logboek), dan dashboard, dan oefeningen en schema's.
 
 ### Week 1: snelle winst en het fundament (±6 u)
-1. **A1 repareren:** AuthGate wacht op `hydrated`. Testen met een directe link naar `/check-in`. *(1 u)*
-2. Lagenschaal in `globals.css` en Modal, onderbalken, FAB, Toast, DatePicker en ActionMenu daarop zetten. **Lost L1 op.** *(2 u)*
-3. Modal: bottom sheet onder 640 px, `ModalFooter` vast onderin, `dvh`, onderbalk verbergen wanneer open. *(2–3 u)*
+1. ✅ *(13ff41e)* **A1 repareren:** AuthGate wacht op `hydrated`. Testen met een directe link naar `/check-in`. *(1 u)*
+2. ✅ Lagenschaal in `globals.css` en Modal, onderbalken, FAB, Toast, DatePicker en ActionMenu daarop zetten. **Lost L1 op.** *(2 u)*
+3. ✅ Modal: bottom sheet onder 640 px, `ModalFooter` vast onderin, `dvh`, onderbalk verbergen wanneer open. *(2–3 u)*
 
 ### Week 2: formulieren (±7 u)
 4. `Field`, `Input`, `Select` en `Textarea` bouwen (16 px op mobiel, 44 px hoog). *(2–3 u)*

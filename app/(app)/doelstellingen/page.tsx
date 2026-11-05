@@ -96,7 +96,7 @@ function CelebrationToast({ message, onDone }: { message: string; onDone: () => 
 
   return (
     <div
-      className="fixed bottom-6 left-1/2 z-[100] flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-lg"
+      className="fixed bottom-6 left-1/2 z-(--z-toast) flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-lg"
       style={{
         transform: "translateX(-50%)",
         background: "#1c1c1e",
@@ -159,7 +159,7 @@ function GoalFormModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-(--z-modal) flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.35)", backdropFilter: "blur(2px)" }}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >

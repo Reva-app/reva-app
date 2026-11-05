@@ -46,7 +46,7 @@ export function PortalMobileNav() {
   return (
     <>
       <nav
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-50"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-(--z-nav)"
         style={{
           background: "#18181a",
           borderTop: "1px solid rgba(255,255,255,0.07)",
@@ -79,7 +79,7 @@ export function PortalMobileNav() {
 
       {meerOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-40"
+          className="lg:hidden fixed inset-0 z-(--z-nav-overlay)"
           style={{ background: "rgba(0,0,0,0.5)", animation: "fadeIn 0.2s ease" }}
           onClick={() => setMeerOpen(false)}
         />
@@ -87,7 +87,7 @@ export function PortalMobileNav() {
 
       {meerOpen && (
         <div
-          className="lg:hidden fixed left-0 right-0 z-[45]"
+          className="lg:hidden fixed left-0 right-0 z-(--z-nav-overlay)"
           style={{
             bottom: `calc(var(--nav-height) + env(safe-area-inset-bottom, 0px))`,
             background: "#18181a",

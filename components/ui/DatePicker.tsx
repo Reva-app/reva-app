@@ -228,7 +228,7 @@ export function DatePicker({
         bottom: dropdownPos.bottom,
         left: dropdownPos.left,
         width: `${DROPDOWN_WIDTH}px`,
-        zIndex: 9999,
+        zIndex: "var(--z-popover)",
         background: "#ffffff",
         border: "1px solid #e8e5df",
         borderRadius: "16px",

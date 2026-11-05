@@ -54,12 +54,12 @@ function BottomSheet({
   return (
     <>
       <div
-        className="lg:hidden fixed inset-0 z-[60]"
+        className="lg:hidden fixed inset-0 z-(--z-modal)"
         style={{ background: "rgba(0,0,0,0.5)", animation: "fadeIn 0.18s ease" }}
         onClick={onClose}
       />
       <div
-        className="lg:hidden fixed left-0 right-0 bottom-0 z-[60] rounded-t-2xl flex flex-col"
+        className="lg:hidden fixed left-0 right-0 bottom-0 z-(--z-modal) rounded-t-2xl flex flex-col"
         style={{
           background: "#ffffff",
           boxShadow: "0 -12px 48px rgba(0,0,0,0.18)",
@@ -251,12 +251,12 @@ export function QuickActionFAB() {
       {fabOpen && (
         <>
           <div
-            className="lg:hidden fixed inset-0 z-40"
+            className="lg:hidden fixed inset-0 z-(--z-nav-overlay)"
             style={{ background: "rgba(0,0,0,0.4)", animation: "fadeIn 0.15s ease" }}
             onClick={() => setFabOpen(false)}
           />
           <div
-            className="lg:hidden fixed z-50 flex flex-col-reverse gap-3"
+            className="lg:hidden fixed z-(--z-fab) flex flex-col-reverse gap-3"
             style={{
               bottom: `calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 72px)`,
               right: "16px",
@@ -301,7 +301,7 @@ export function QuickActionFAB() {
       {/* Main FAB button */}
       <button
         onClick={() => setFabOpen((v) => !v)}
-        className="lg:hidden fixed z-50 w-14 h-14 rounded-full flex items-center justify-center touch-press"
+        className="lg:hidden fixed z-(--z-fab) w-14 h-14 rounded-full flex items-center justify-center touch-press"
         style={{
           bottom: `calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 12px)`,
           right: "16px",

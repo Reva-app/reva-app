@@ -142,7 +142,7 @@ function AccountVerwijderenModal({ onClose, onConfirm, loading }: {
   const bevestigdCorrect = bevestigTekst.trim().toUpperCase() === "VERWIJDER";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)" }}>
+    <div className="fixed inset-0 z-(--z-modal) flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)" }}>
       <div
         className="relative w-full max-w-md rounded-2xl p-6 sm:p-8 shadow-2xl"
         style={{ background: "#ffffff" }}
@@ -375,7 +375,7 @@ function RequiredHerstelModal({ onSaved }: { onSaved: (values: RequiredHerstelVa
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)" }}>
+    <div className="fixed inset-0 z-(--z-modal) flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)" }}>
       <div className="relative w-full max-w-md rounded-2xl p-6 sm:p-8 shadow-2xl" style={{ background: "#ffffff" }}>
         <h2 className="text-lg font-semibold mb-2" style={{ color: "#1a1a1a" }}>
           Vul je herstelgegevens in
