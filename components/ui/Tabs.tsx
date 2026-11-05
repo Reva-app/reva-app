@@ -73,7 +73,7 @@ export function Tabs<T extends string>({ options, value, onChange, className }: 
             role="tab"
             aria-selected={selected}
             onClick={() => onChange(opt.value)}
-            className={`shrink-0 px-4 py-2.5 sm:py-2 text-sm font-medium transition-all whitespace-nowrap ${selected ? "" : "hover:bg-black/5"} ${opt.className ?? ""}`}
+            className={`shrink-0 px-4 py-2.5 sm:py-2 touch:py-2.5 text-sm font-medium transition-all whitespace-nowrap ${selected ? "" : "hover:bg-black/5"} ${opt.className ?? ""}`}
             style={{
               background: selected ? "#ffffff" : undefined,
               color: selected ? "#1a1a1a" : "#6b7280",

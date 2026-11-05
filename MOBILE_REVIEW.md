@@ -400,9 +400,9 @@ Elke taak is klein genoeg voor één avond van 1–3 uur. Na elke stap volgt een
 17. ✅ Proefperiodebanner op mobiel compact (1 regel) en wegklikbaar per sessie. *(1 u)*
 
 ### Week 6: tablet (±7 u)
-18. `md`-indeling op de belangrijkste schermen: 2 kolommen op dashboard en patiëntdetail, tabel in plaats van kaarten. *(3 u)*
-19. `lg`: sidebar in te klappen tot een strook met iconen (64 px), met de keuze onthouden. *(2–3 u)*
-20. `touch:`-variant: knoppen en tabelrijen op 44 px voor touchapparaten. *(1–2 u)*
+18. ✅ `md`-indeling op de belangrijkste schermen: 2 kolommen op dashboard en patiëntdetail, tabel in plaats van kaarten. *(3 u)*
+19. ✅ `lg`: sidebar in te klappen tot een strook met iconen (64 px), met de keuze onthouden. *(2–3 u)*
+20. ✅ `touch:`-variant: knoppen en tabelrijen op 44 px voor touchapparaten. *(1–2 u)*
 
 ### Week 7: overige lijsten en formulieren (±7 u)
 21. Activiteitenlog naar `ResponsiveList`, met actie, patiënt en tijd op de kaart. **Lost T2 op.** *(1,5 u)*

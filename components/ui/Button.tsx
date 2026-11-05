@@ -10,10 +10,11 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   fullWidth?: boolean;
 }
 
+// Op touchapparaten minimaal 40/44px hoog (tikdoel); met een muis compact.
 const sizes: Record<ButtonSize, string> = {
-  sm: "px-3 py-1.5 text-sm",
-  md: "px-4 py-2 text-sm",
-  lg: "px-5 py-2.5 text-base",
+  sm: "px-3 py-1.5 text-sm touch:min-h-10",
+  md: "px-4 py-2 text-sm touch:min-h-11",
+  lg: "px-5 py-2.5 text-base touch:min-h-11",
 };
 
 export function Button({

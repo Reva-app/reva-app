@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
-import { LayoutDashboard, HeartPulse, MapPin, Users, ClipboardList, ListChecks, Dumbbell, Palette, LogOut, BarChart3, History, CalendarRange, CreditCard } from "lucide-react";
+import { useState } from "react";
+import { LayoutDashboard, HeartPulse, MapPin, Users, ClipboardList, ListChecks, Dumbbell, Palette, LogOut, BarChart3, History, CalendarRange, CreditCard, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { usePortalBranding } from "@/lib/hooks/usePortalBranding";
@@ -46,8 +47,41 @@ export function getPortalNavItems(canManageBranding: boolean, canViewAnalytics: 
   return { primary, secondary };
 }
 
+/**
+ * Breedte van de zijbalk:
+ * - "auto" (standaard): smalle strook met alleen iconen tussen 1024 en
+ *   1280px (iPad liggend, kleine laptop), volledige balk vanaf 1280px;
+ * - "rail" / "full": de keuze van de gebruiker, onthouden in localStorage.
+ */
+type SidebarMode = "auto" | "rail" | "full";
+const SIDEBAR_KEY = "reva-portal-sidebar";
+
+function readSidebarMode(): SidebarMode {
+  try {
+    const v = localStorage.getItem(SIDEBAR_KEY);
+    return v === "rail" || v === "full" ? v : "auto";
+  } catch {
+    return "auto";
+  }
+}
+
 export function PortalSidebar() {
   const pathname = usePathname();
+  // De portal rendert pas na de PortalGate (client-side), dus localStorage is hier veilig.
+  const [mode, setMode] = useState<SidebarMode>(readSidebarMode);
+  /** Klassen per stand. Letterlijk uitgeschreven, zodat Tailwind ze in de broncode vindt. */
+  const pick = (rail: string, full: string, auto: string) => (mode === "rail" ? rail : mode === "full" ? full : auto);
+  const widthClass = pick("w-16", "w-56", "w-16 xl:w-56");
+  const labelClass = pick("hidden", "inline", "hidden xl:inline");
+  const blockClass = pick("hidden", "block", "hidden xl:block");
+  const justifyClass = pick("justify-center", "justify-start", "justify-center xl:justify-start");
+
+  function toggleMode() {
+    const expandedNow = mode === "full" || (mode === "auto" && window.matchMedia("(min-width: 1280px)").matches);
+    const nextMode: SidebarMode = expandedNow ? "rail" : "full";
+    setMode(nextMode);
+    try { localStorage.setItem(SIDEBAR_KEY, nextMode); } catch { /* privémodus: alleen voor nu */ }
+  }
   const { signOut, user } = useAuth();
   const { membership } = usePortalMembership();
   const { branding } = usePortalBranding();
@@ -63,8 +97,11 @@ export function PortalSidebar() {
     return (
       <Link
         href={href}
+        title={label}
+        aria-label={label}
         className={clsx(
           "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium",
+          justifyClass,
           !isActive && "hover:bg-white/5"
         )}
         style={{
@@ -72,21 +109,21 @@ export function PortalSidebar() {
           background: isActive ? "rgba(255,255,255,0.07)" : undefined,
         }}
       >
-        <Icon size={16} style={{ color: isActive ? "var(--brand-accent, #e8632a)" : "#52525e" }} />
-        {label}
+        <Icon size={16} className="shrink-0" style={{ color: isActive ? "var(--brand-accent, #e8632a)" : "#8e8e9a" }} />
+        <span className={labelClass}>{label}</span>
       </Link>
     );
   };
 
   return (
     <aside
-      className="hidden lg:flex flex-col w-56 shrink-0"
+      className={`hidden lg:flex flex-col shrink-0 transition-[width] duration-200 ${widthClass}`}
       style={{ background: "#18181a", borderRight: "1px solid rgba(255,255,255,0.05)" }}
     >
-      <div className="px-5 py-5">
-        <div className="flex items-center gap-2.5">
+      <div className={pick("px-3 py-5", "px-5 py-5", "px-3 py-5 xl:px-5")}>
+        <div className={clsx("flex items-center gap-2.5", justifyClass)}>
           <BrandMark logoUrl={branding?.logoUrl} initial={(membership?.organizationName || "R")[0]} />
-          <div className="leading-none min-w-0">
+          <div className={clsx("leading-none min-w-0", blockClass)}>
             <p className="text-white font-semibold text-sm tracking-tight truncate">
               {membership?.organizationName ?? "REVA"}
             </p>
@@ -110,11 +147,26 @@ export function PortalSidebar() {
         </div>
       )}
 
-      <div className="mx-2.5 mb-3 px-3 py-3 rounded-xl" style={{ background: "rgba(255,255,255,0.04)" }}>
-        <div className="flex items-center gap-2.5">
-          <Link href="/portal/account" className="flex items-center gap-2.5 flex-1 min-w-0 rounded-lg -m-1 p-1 transition-colors hover:bg-white/5">
+      <div className="px-2.5 pb-1">
+        <button
+          type="button"
+          onClick={toggleMode}
+          title="Zijbalk in- of uitklappen"
+          aria-label="Zijbalk in- of uitklappen"
+          className={clsx("w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-colors hover:bg-white/5", justifyClass)}
+          style={{ color: "#8e8e9a" }}
+        >
+          <PanelLeftOpen size={16} className={clsx("shrink-0", pick("inline", "hidden", "inline xl:hidden"))} />
+          <PanelLeftClose size={16} className={clsx("shrink-0", pick("hidden", "inline", "hidden xl:inline"))} />
+          <span className={labelClass}>Inklappen</span>
+        </button>
+      </div>
+
+      <div className={clsx("mx-2.5 mb-3 py-3 rounded-xl", pick("px-1.5", "px-3", "px-1.5 xl:px-3"))} style={{ background: "rgba(255,255,255,0.04)" }}>
+        <div className={clsx("flex items-center gap-2.5", pick("flex-col", "flex-row", "flex-col xl:flex-row"))}>
+          <Link href="/portal/account" title="Account instellingen" className={clsx("flex items-center gap-2.5 min-w-0 rounded-lg -m-1 p-1 transition-colors hover:bg-white/5", pick("justify-center", "flex-1", "justify-center xl:flex-1"))}>
             <Avatar fullName={membership?.userFullName ?? null} email={user?.email} avatarUrl={membership?.avatarUrl ?? null} size={28} />
-            <div className="overflow-hidden min-w-0 flex-1">
+            <div className={clsx("overflow-hidden min-w-0 flex-1", blockClass)}>
               <p className="text-white text-xs font-medium truncate">{membership?.userFullName || user?.email || ""}</p>
               <p className="text-[11px] truncate" style={{ color: "var(--brand-accent, #e8632a)" }}>Account instellingen</p>
             </div>
@@ -123,7 +175,8 @@ export function PortalSidebar() {
             type="button"
             onClick={signOut}
             title="Uitloggen"
-            className="shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10"
+            aria-label="Uitloggen"
+            className="relative tap-target shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10"
             style={{ color: "var(--brand-accent, #e8632a)" }}
           >
             <LogOut size={13} />

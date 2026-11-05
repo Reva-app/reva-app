@@ -29,6 +29,15 @@
   --z-gate: 80;        /* laadscherm, MFA, account-schermen */
 }
 
+/* `touch:` — alleen op apparaten die je met een vinger bedient (telefoon,
+   tablet), ongeacht de schermbreedte. Een iPad liggend krijgt zo tikmaten
+   van 44px, een laptop met muis blijft compact. */
+@custom-variant touch {
+  @media (pointer: coarse) {
+    @slot;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
