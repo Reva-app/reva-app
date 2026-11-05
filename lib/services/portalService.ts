@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabaseClient";
+import { isPlanKey, type PlanKey, type BillingInterval } from "@/lib/plans";
 import { apiUrl } from "@/lib/apiBase";
 import { mondayOfWeek, weekDates } from "@/lib/dateUtils";
 import { normalizeLogo } from "@/lib/logoImage";
@@ -82,6 +83,13 @@ export interface PortalMembership {
   organizationStatus: string;
   /** "YYYY-MM-DD", alleen betekenisvol bij status 'trial' (migratie 129). */
   trialEndsAt: string | null;
+  /** Pakket en limieten (migratie 130). */
+  plan: PlanKey | null;
+  billingInterval: BillingInterval;
+  customMonthlyPriceCents: number | null;
+  maxMembers: number;
+  maxLocations: number;
+  maxPatients: number | null;
   locationId: string | null;
   locationName: string | null;
   roleKey: string;
@@ -295,6 +303,32 @@ export async function loadMyBlockedOrganization(): Promise<BlockedOrganization |
   return { name: row.name, reason: row.reason === "paused" ? "paused" : "trial_expired" };
 }
 
+export interface PortalPlanUsage {
+  /** Zelfde telling als check_member_capacity: niet-geschorste leden + openstaande uitnodigingen. */
+  members: number;
+  locations: number;
+  /** Actieve patiënten: status 'active' en niet uitbehandeld (migratie 130). */
+  activePatients: number;
+}
+
+export async function loadPortalPlanUsage(organizationId: string): Promise<PortalPlanUsage | null> {
+  const supabase = createClient();
+  const [membersRes, invitesRes, locationsRes, patientsRes] = await Promise.all([
+    supabase.from("memberships").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).neq("status", "suspended"),
+    supabase.from("membership_invites").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("status", "pending"),
+    supabase.from("locations").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("archived", false),
+    supabase.from("patients").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("status", "active").is("discharged_at", null),
+  ]);
+  for (const [name, res] of [["members", membersRes], ["invites", invitesRes], ["locations", locationsRes], ["patients", patientsRes]] as const) {
+    if (res.error) { logErr(`loadPortalPlanUsage(${name})`, res.error); return null; }
+  }
+  return {
+    members: (membersRes.count ?? 0) + (invitesRes.count ?? 0),
+    locations: locationsRes.count ?? 0,
+    activePatients: patientsRes.count ?? 0,
+  };
+}
+
 export async function loadCurrentMembership(userId: string): Promise<PortalMembership | null> {
   const supabase = createClient();
   const { data: membership, error } = await supabase
@@ -308,7 +342,7 @@ export async function loadCurrentMembership(userId: string): Promise<PortalMembe
   if (!membership) return null;
 
   const [orgRes, locRes, roleRes, profileRes] = await Promise.all([
-    supabase.from("organizations").select("name, status, trial_ends_at").eq("id", membership.organization_id).maybeSingle(),
+    supabase.from("organizations").select("name, status, trial_ends_at, plan, billing_interval, custom_monthly_price_cents, max_members, max_locations, max_patients").eq("id", membership.organization_id).maybeSingle(),
     membership.location_id
       ? supabase.from("locations").select("name").eq("id", membership.location_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
@@ -327,6 +361,12 @@ export async function loadCurrentMembership(userId: string): Promise<PortalMembe
     organizationName: orgRes.data?.name ?? "Onbekende organisatie",
     organizationStatus: orgRes.data?.status ?? "active",
     trialEndsAt: orgRes.data?.trial_ends_at ?? null,
+    plan: isPlanKey(orgRes.data?.plan) ? orgRes.data.plan : null,
+    billingInterval: orgRes.data?.billing_interval === "year" ? "year" : "month",
+    customMonthlyPriceCents: orgRes.data?.custom_monthly_price_cents ?? null,
+    maxMembers: orgRes.data?.max_members ?? 0,
+    maxLocations: orgRes.data?.max_locations ?? 0,
+    maxPatients: orgRes.data?.max_patients ?? null,
     locationId: membership.location_id,
     locationName: locRes.data?.name ?? null,
     roleKey: roleRes.data?.key ?? "",

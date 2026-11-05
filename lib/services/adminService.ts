@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabaseClient";
+import { isPlanKey, type PlanKey, type BillingInterval } from "@/lib/plans";
 import { apiUrl } from "@/lib/apiBase";
 import { normalizeLogo } from "@/lib/logoImage";
 
@@ -37,6 +38,9 @@ export interface AdminOrganization {
   name: string;
   status: string;
   trialEndsAt: string | null;
+  plan: PlanKey | null;
+  maxPatients: number | null;
+  activePatientCount: number;
   createdAt: string;
   locationCount: number;
   patientCount: number;
@@ -139,16 +143,21 @@ interface RawOrgRow {
   name: string;
   status: string;
   trial_ends_at: string | null;
+  plan: string | null;
+  max_patients: number | null;
   created_at: string;
   locations: { count: number }[] | null;
   patients: { count: number }[] | null;
+  active_patients: { count: number }[] | null;
 }
 
 export async function loadAdminOrganizations(): Promise<AdminOrganization[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("organizations")
-    .select("id, name, status, trial_ends_at, created_at, locations(count), patients(count)")
+    .select("id, name, status, trial_ends_at, plan, max_patients, created_at, locations(count), patients(count), active_patients:patients(count)")
+    .eq("active_patients.status", "active")
+    .is("active_patients.discharged_at", null)
     .order("created_at", { ascending: false });
   if (error) { logErr("loadAdminOrganizations", error); return []; }
   return ((data ?? []) as unknown as RawOrgRow[]).map((row) => ({
@@ -156,6 +165,9 @@ export async function loadAdminOrganizations(): Promise<AdminOrganization[]> {
     name: row.name,
     status: row.status,
     trialEndsAt: row.trial_ends_at,
+    plan: isPlanKey(row.plan) ? row.plan : null,
+    maxPatients: row.max_patients,
+    activePatientCount: row.active_patients?.[0]?.count ?? 0,
     createdAt: row.created_at,
     locationCount: row.locations?.[0]?.count ?? 0,
     patientCount: row.patients?.[0]?.count ?? 0,
@@ -228,6 +240,10 @@ export interface AdminOrganizationDetail {
   name: string;
   status: string; // 'trial' | 'active' | 'paused'
   trialEndsAt: string | null; // "YYYY-MM-DD", migratie 129
+  plan: PlanKey | null; // migratie 130
+  billingInterval: BillingInterval;
+  customMonthlyPriceCents: number | null;
+  maxPatients: number | null; // null = onbeperkt
   logoPath: string | null;
   logoUrl: string | null; // signed URL, ververst per load
   kvkNumber: string | null;
@@ -250,6 +266,10 @@ export interface AdminOrganizationPatch {
   name?: string;
   status?: string;
   trialEndsAt?: string | null;
+  plan?: PlanKey | null;
+  billingInterval?: BillingInterval;
+  customMonthlyPriceCents?: number | null;
+  maxPatients?: number | null;
   kvkNumber?: string | null;
   btwNumber?: string | null;
   website?: string | null;
@@ -300,7 +320,7 @@ export async function loadAdminOrganizationDetail(orgId: string): Promise<AdminO
   const supabase = createClient();
   const { data, error } = await supabase
     .from("organizations")
-    .select("id, name, status, trial_ends_at, logo_path, kvk_number, btw_number, website, contact_name, contact_email, contact_phone, address_street, address_postal_code, address_city, support_notes, last_contact_at, created_at, max_locations, max_members")
+    .select("id, name, status, trial_ends_at, plan, billing_interval, custom_monthly_price_cents, max_patients, logo_path, kvk_number, btw_number, website, contact_name, contact_email, contact_phone, address_street, address_postal_code, address_city, support_notes, last_contact_at, created_at, max_locations, max_members")
     .eq("id", orgId)
     .maybeSingle();
   if (error) { logErr("loadAdminOrganizationDetail", error); return null; }
@@ -320,6 +340,10 @@ export async function loadAdminOrganizationDetail(orgId: string): Promise<AdminO
     name: data.name,
     status: data.status,
     trialEndsAt: data.trial_ends_at,
+    plan: isPlanKey(data.plan) ? data.plan : null,
+    billingInterval: data.billing_interval === "year" ? "year" : "month",
+    customMonthlyPriceCents: data.custom_monthly_price_cents,
+    maxPatients: data.max_patients,
     logoPath: data.logo_path,
     logoUrl,
     kvkNumber: data.kvk_number,
@@ -345,6 +369,10 @@ export async function updateAdminOrganization(orgId: string, patch: AdminOrganiz
   if (patch.name !== undefined) dbPatch.name = patch.name;
   if (patch.status !== undefined) dbPatch.status = patch.status;
   if (patch.trialEndsAt !== undefined) dbPatch.trial_ends_at = patch.trialEndsAt;
+  if (patch.plan !== undefined) dbPatch.plan = patch.plan;
+  if (patch.billingInterval !== undefined) dbPatch.billing_interval = patch.billingInterval;
+  if (patch.customMonthlyPriceCents !== undefined) dbPatch.custom_monthly_price_cents = patch.customMonthlyPriceCents;
+  if (patch.maxPatients !== undefined) dbPatch.max_patients = patch.maxPatients;
   if (patch.kvkNumber !== undefined) dbPatch.kvk_number = patch.kvkNumber;
   if (patch.btwNumber !== undefined) dbPatch.btw_number = patch.btwNumber;
   if (patch.website !== undefined) dbPatch.website = patch.website;
@@ -435,7 +463,7 @@ export async function loadAdminOrgPatientStats(orgId: string): Promise<AdminOrgP
   const supabase = createClient();
   const { data, error } = await supabase
     .from("patients")
-    .select("status, created_at")
+    .select("status, discharged_at, created_at")
     .eq("organization_id", orgId);
   if (error) { logErr("loadAdminOrgPatientStats", error); return { total: 0, active: 0, newThisMonth: 0, lastAddedAt: null }; }
 
@@ -448,7 +476,8 @@ export async function loadAdminOrgPatientStats(orgId: string): Promise<AdminOrgP
 
   return {
     total: rows.length,
-    active: rows.filter((r) => r.status === "active").length,
+    // Zelfde definitie als de patiëntlimiet van het pakket (migratie 130).
+    active: rows.filter((r) => r.status === "active" && !r.discharged_at).length,
     newThisMonth: rows.filter((r) => new Date(r.created_at as string) >= monthStart).length,
     lastAddedAt: sorted[0]?.created_at ?? null,
   };

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { trialState, dayLabel } from "@/lib/trial";
+import { PLANS, PATIENT_WARNING_RATIO } from "@/lib/plans";
 import { useRouter } from "next/navigation";
 import { Building2, Plus, Loader2, Search } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
@@ -216,8 +217,9 @@ export default function AdminOrganizationsPage() {
                   <tr style={{ borderBottom: "1px solid #e8e5df" }}>
                     <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Naam</th>
                     <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Status</th>
+                    <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Pakket</th>
                     <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Locaties</th>
-                    <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Patiënten</th>
+                    <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Actieve patiënten</th>
                     <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Aangemaakt op</th>
                   </tr>
                 </thead>
@@ -231,8 +233,17 @@ export default function AdminOrganizationsPage() {
                     >
                       <td className="px-5 py-3.5 font-medium text-gray-800">{org.name}</td>
                       <td className="px-5 py-3.5">{orgStatusBadge(org.status, org.trialEndsAt)}</td>
+                      <td className="px-5 py-3.5 text-gray-600">{org.plan ? PLANS[org.plan].name : <span className="text-gray-400">—</span>}</td>
                       <td className="px-5 py-3.5 text-gray-600">{org.locationCount}</td>
-                      <td className="px-5 py-3.5 text-gray-600">{org.patientCount}</td>
+                      <td className="px-5 py-3.5 text-gray-600">
+                        {org.activePatientCount}
+                        {org.maxPatients !== null && <span className="text-gray-400"> / {org.maxPatients}</span>}
+                        {org.maxPatients !== null && org.activePatientCount >= org.maxPatients * PATIENT_WARNING_RATIO && (
+                          <Badge variant={org.activePatientCount > org.maxPatients ? "danger" : "warning"} className="ml-2">
+                            {org.activePatientCount > org.maxPatients ? "Boven limiet" : "Bijna vol"}
+                          </Badge>
+                        )}
+                      </td>
                       <td className="px-5 py-3.5 text-gray-400">{formatDate(org.createdAt)}</td>
                     </tr>
                   ))}

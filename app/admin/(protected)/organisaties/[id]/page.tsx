@@ -14,6 +14,10 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { formatDate } from "@/lib/data";
 import { orgStatusBadge } from "../page";
+import {
+  PLANS, PLAN_ORDER, UNLIMITED, YEARLY_MONTHS_CHARGED, PATIENT_WARNING_RATIO,
+  priceLabel, limitLabel, formatEuro, type PlanKey,
+} from "@/lib/plans";
 import { trialState, isoDatePlusDays, dayLabel, DEFAULT_TRIAL_DAYS, TRIAL_GRACE_DAYS } from "@/lib/trial";
 import {
   loadAdminOrganizationDetail, updateAdminOrganization, uploadOrganizationLogo,
@@ -285,6 +289,10 @@ function AdminOrganizationDetailContent() {
       lastContactAt: org.lastContactAt,
       maxLocations: org.maxLocations,
       maxMembers: org.maxMembers,
+      plan: org.plan,
+      billingInterval: org.billingInterval,
+      customMonthlyPriceCents: org.customMonthlyPriceCents,
+      maxPatients: org.maxPatients,
     });
     setSaving(false);
     if (!error) {
@@ -354,6 +362,17 @@ function AdminOrganizationDetailContent() {
         </Button>
       </div>
 
+      {/* ── Pakket (migratie 130) ─────────────────────────────────────────── */}
+      <PlanCard
+        org={org}
+        onChange={setOrg}
+        usage={{
+          members: members.filter((m) => m.membershipStatus !== "suspended").length + invites.length,
+          locations: locations.filter((l) => !l.archived).length,
+          patients: patientStats?.active ?? null,
+        }}
+      />
+
       {/* ── 1. Algemene gegevens ─────────────────────────────────────────── */}
       <Card>
         <CardHeader title="Algemene gegevens" subtitle="Basisinformatie over dit bedrijf" />
@@ -409,28 +428,6 @@ function AdminOrganizationDetailContent() {
           <TextField label="KvK-nummer" value={org.kvkNumber ?? ""} onChange={(v) => setOrg({ ...org, kvkNumber: v })} />
           <TextField label="BTW-nummer" value={org.btwNumber ?? ""} onChange={(v) => setOrg({ ...org, btwNumber: v })} />
           <TextField label="Website" value={org.website ?? ""} onChange={(v) => setOrg({ ...org, website: v })} placeholder="https://" />
-          <div>
-            <FieldLabel>Max. aantal locaties</FieldLabel>
-            <input
-              type="number"
-              min={0}
-              value={org.maxLocations}
-              onChange={(e) => setOrg({ ...org, maxLocations: Math.max(0, Number(e.target.value) || 0) })}
-              className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors"
-              style={inputStyle}
-            />
-          </div>
-          <div>
-            <FieldLabel>Max. aantal medewerkers</FieldLabel>
-            <input
-              type="number"
-              min={0}
-              value={org.maxMembers}
-              onChange={(e) => setOrg({ ...org, maxMembers: Math.max(0, Number(e.target.value) || 0) })}
-              className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors"
-              style={inputStyle}
-            />
-          </div>
           <TextField label="Contactpersoon" value={org.contactName ?? ""} onChange={(v) => setOrg({ ...org, contactName: v })} />
           <TextField label="E-mailadres" value={org.contactEmail ?? ""} onChange={(v) => setOrg({ ...org, contactEmail: v })} type="email" />
           <TextField label="Telefoonnummer" value={org.contactPhone ?? ""} onChange={(v) => setOrg({ ...org, contactPhone: v })} type="tel" />
@@ -726,5 +723,162 @@ function TrialEndEditor({ value, onChange }: { value: string | null; onChange: (
         {summary} Na de einddatum nog {TRIAL_GRACE_DAYS} dagen speling, daarna werkt het als &quot;Gepauzeerd&quot;. Vergeet niet op te slaan.
       </p>
     </div>
+  );
+}
+
+function Pill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-sm font-medium rounded-xl border px-3.5 py-2 transition-colors"
+      style={active
+        ? { background: "#1a1a1a", borderColor: "#1a1a1a", color: "#ffffff" }
+        : { background: "#ffffff", borderColor: "#e8e5df", color: "#4b5563" }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function UsageStat({ label, used, max }: { label: string; used: number | null; max: number | null }) {
+  const unlimited = max === null || max >= UNLIMITED;
+  const ratio = !unlimited && used !== null && max! > 0 ? used / max! : 0;
+  const color = ratio > 1 ? "#b91c1c" : ratio >= PATIENT_WARNING_RATIO ? "#c2410c" : "#1a1a1a";
+  return (
+    <div className="rounded-xl px-4 py-3" style={{ background: "#f8f7f4" }}>
+      <p className="text-xs text-gray-500">{label}</p>
+      <p className="text-lg font-semibold mt-0.5" style={{ color }}>
+        {used ?? "—"} <span className="text-sm font-normal text-gray-400">/ {limitLabel(max)}</span>
+      </p>
+      {!unlimited && (
+        <div className="h-1.5 rounded-full mt-2 overflow-hidden" style={{ background: "#e8e5df" }}>
+          <div className="h-full rounded-full" style={{ width: `${Math.min(100, ratio * 100)}%`, background: color }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LimitInput({ label, value, onChange, allowEmpty }: { label: string; value: number | null; onChange: (v: number | null) => void; allowEmpty?: boolean }) {
+  return (
+    <div>
+      <FieldLabel>{label}</FieldLabel>
+      <input
+        type="number"
+        min={0}
+        value={value === null || value >= UNLIMITED ? "" : value}
+        placeholder="Onbeperkt"
+        onChange={(e) => {
+          const raw = e.target.value.trim();
+          if (raw === "") { onChange(allowEmpty ? null : UNLIMITED); return; }
+          onChange(Math.max(0, Math.floor(Number(raw) || 0)));
+        }}
+        className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors"
+        style={inputStyle}
+      />
+    </div>
+  );
+}
+
+/**
+ * Pakket, betaalperiode en limieten. Solo t/m Praktijk Plus nemen de aantallen
+ * uit lib/plans.ts over; Enterprise en Maatwerk zijn vrij in te vullen.
+ * Medewerkers en vestigingen zijn harde limieten, patiënten een zachte.
+ */
+function PlanCard({
+  org, onChange, usage,
+}: {
+  org: AdminOrganizationDetail;
+  onChange: (org: AdminOrganizationDetail) => void;
+  usage: { members: number; locations: number; patients: number | null };
+}) {
+  const plan = org.plan ? PLANS[org.plan] : null;
+
+  function choosePlan(key: PlanKey) {
+    const def = PLANS[key];
+    onChange({
+      ...org,
+      plan: key,
+      maxMembers: def.maxMembers,
+      maxLocations: def.maxLocations,
+      maxPatients: def.maxPatients,
+      customMonthlyPriceCents: def.customizable && def.monthlyPrice !== null ? def.monthlyPrice * 100 : null,
+    });
+  }
+
+  const priceEuros = org.customMonthlyPriceCents === null ? "" : String(org.customMonthlyPriceCents / 100);
+
+  return (
+    <Card>
+      <CardHeader
+        title="Pakket"
+        subtitle={plan ? `${plan.name} · ${priceLabel(org.plan, org.customMonthlyPriceCents, org.billingInterval)}` : "Nog geen pakket gekozen"}
+      />
+      <div className="space-y-5">
+        <div className="flex flex-wrap gap-2">
+          {PLAN_ORDER.map((key) => (
+            <Pill key={key} active={org.plan === key} onClick={() => choosePlan(key)}>
+              {PLANS[key].name}
+              {PLANS[key].monthlyPrice !== null && (
+                <span className="ml-1.5 font-normal opacity-60">
+                  {PLANS[key].priceIsFrom ? "vanaf " : ""}{formatEuro(PLANS[key].monthlyPrice!)}
+                </span>
+              )}
+            </Pill>
+          ))}
+        </div>
+
+        {plan && (
+          <>
+            <div>
+              <FieldLabel>Betaalperiode</FieldLabel>
+              <div className="flex flex-wrap gap-2">
+                <Pill active={org.billingInterval === "month"} onClick={() => onChange({ ...org, billingInterval: "month" })}>Maandelijks</Pill>
+                <Pill active={org.billingInterval === "year"} onClick={() => onChange({ ...org, billingInterval: "year" })}>
+                  Jaarlijks <span className="ml-1 font-normal opacity-60">{12 - YEARLY_MONTHS_CHARGED} maanden gratis</span>
+                </Pill>
+              </div>
+            </div>
+
+            {plan.customizable && (
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div>
+                  <FieldLabel>Maandprijs (€)</FieldLabel>
+                  <input
+                    type="number"
+                    min={0}
+                    step="1"
+                    value={priceEuros}
+                    placeholder="Volgens afspraak"
+                    onChange={(e) => {
+                      const raw = e.target.value.trim();
+                      onChange({ ...org, customMonthlyPriceCents: raw === "" ? null : Math.round(Math.max(0, Number(raw) || 0) * 100) });
+                    }}
+                    className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors"
+                    style={inputStyle}
+                  />
+                </div>
+                <LimitInput label="Max. medewerkers" value={org.maxMembers} onChange={(v) => onChange({ ...org, maxMembers: v ?? UNLIMITED })} />
+                <LimitInput label="Max. vestigingen" value={org.maxLocations} onChange={(v) => onChange({ ...org, maxLocations: v ?? UNLIMITED })} />
+                <LimitInput label="Max. actieve patiënten" value={org.maxPatients} onChange={(v) => onChange({ ...org, maxPatients: v })} allowEmpty />
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <UsageStat label="Medewerkers (incl. openstaande uitnodigingen)" used={usage.members} max={org.maxMembers} />
+              <UsageStat label="Vestigingen" used={usage.locations} max={org.maxLocations} />
+              <UsageStat label="Actieve patiënten" used={usage.patients} max={org.maxPatients} />
+            </div>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Medewerkers en vestigingen zijn een harde grens: daarboven kan de praktijk niemand meer uitnodigen of toevoegen.
+              Patiënten zijn een zachte grens: de praktijkeigenaar krijgt vanaf {Math.round(PATIENT_WARNING_RATIO * 100)}% een melding, maar er wordt niets geblokkeerd.
+              {!plan.customizable && " Aantallen komen uit het pakket; kies Maatwerk om ze aan te passen."}
+              {" "}Vergeet niet op te slaan.
+            </p>
+          </>
+        )}
+      </div>
+    </Card>
   );
 }

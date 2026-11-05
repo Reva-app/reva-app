@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
-import { LayoutDashboard, HeartPulse, MapPin, Users, ClipboardList, ListChecks, Dumbbell, Palette, LogOut, BarChart3, History, CalendarRange } from "lucide-react";
+import { LayoutDashboard, HeartPulse, MapPin, Users, ClipboardList, ListChecks, Dumbbell, Palette, LogOut, BarChart3, History, CalendarRange, CreditCard } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { usePortalBranding } from "@/lib/hooks/usePortalBranding";
@@ -40,6 +40,7 @@ export function getPortalNavItems(canManageBranding: boolean, canViewAnalytics: 
   const secondary = [
     ...(canViewAnalytics ? [{ href: "/portal/analyse", label: "Analyse", icon: BarChart3 }] : []),
     ...(canViewAuditLog ? [{ href: "/portal/activiteitenlog", label: "Activiteitenlog", icon: History }] : []),
+    ...(canManageBranding ? [{ href: "/portal/abonnement", label: "Abonnement", icon: CreditCard }] : []),
   ];
 
   return { primary, secondary };
