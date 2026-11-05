@@ -276,6 +276,14 @@ export interface PortalStaffMember {
  * krijgt hier voorlopig alleen de eerste — een org-switcher volgt zodra dat
  * scenario zich echt voordoet (zie docs/REVA-V2-MASTERPLAN.md §16.2).
  */
+/** Naam van de praktijk als die de gebruiker een actief lidmaatschap heeft bij een gepauzeerde praktijk (migratie 128). */
+export async function loadMyPausedOrganization(): Promise<string | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("my_paused_organization");
+  if (error) { logErr("loadMyPausedOrganization", error); return null; }
+  return (data as string | null) ?? null;
+}
+
 export async function loadCurrentMembership(userId: string): Promise<PortalMembership | null> {
   const supabase = createClient();
   const { data: membership, error } = await supabase

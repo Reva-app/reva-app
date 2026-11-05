@@ -71,6 +71,16 @@ checks(controle, fouten) as (
          (select case when pg_get_functiondef(p.oid) like '%session_has_aal2%' then null else 'is_platform_admin zonder aal2-check' end
           from pg_proc p join pg_namespace n on n.oid = p.pronamespace
           where n.nspname = 'public' and p.proname = 'is_platform_admin')
+  union all
+  select '11. Gepauzeerde praktijk heeft geen toegang (migratie 128)',
+         (select string_agg(p.proname, ', ')
+          from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+          where n.nspname = 'public'
+            and p.proname in ('is_org_member', 'is_staff_member', 'can_view_clinical_data', 'can_manage_org_patients',
+                              'can_manage_org_staff', 'can_manage_org_protocols', 'can_manage_org_branding',
+                              'can_manage_org_locations', 'can_view_audit_log', 'can_view_org_analytics',
+                              'can_manage_patient_protocol_content')
+            and pg_get_functiondef(p.oid) not like '%org_is_open%')
 )
 select controle,
        case when fouten is null then '✅' else '❌' end as status,

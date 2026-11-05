@@ -389,6 +389,11 @@ function AdminOrganizationDetailContent() {
                 <option value="active">Actief</option>
                 <option value="paused">Gepauzeerd</option>
               </select>
+              {org.status === "paused" && (
+                <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
+                  Medewerkers kunnen de portal niet meer gebruiken. Patiënten houden toegang tot hun eigen gegevens.
+                </p>
+              )}
             </div>
           </div>
         </div>

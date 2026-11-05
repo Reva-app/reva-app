@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldAlert } from "lucide-react";
+import { PauseCircle, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
+import { loadMyPausedOrganization } from "@/lib/services/portalService";
 import { useMfaStatus } from "@/lib/hooks/useMfaStatus";
 import { MfaEnrollScreen } from "@/components/auth/MfaEnrollScreen";
 import { MfaChallengeScreen } from "@/components/auth/MfaChallengeScreen";
@@ -16,6 +17,8 @@ import { Button } from "@/components/ui/Button";
  * - Geen sessie: redirect naar /portal/login.
  * - Sessie, maar geen actief lidmaatschap: nette "geen toegang"-melding
  *   (geen redirect — dit account kan legitiem een gewone patiënt zijn).
+ *   Is de praktijk van deze medewerker gepauzeerd (migratie 128), dan een
+ *   melding met die uitleg.
  * - Actief lid, maar tweestapsverificatie nog niet afgerond deze sessie:
  *   blokkerend instel- of verificatiescherm (zie migratie 067 voor de
  *   bijbehorende afdwinging op databaseniveau).
@@ -30,11 +33,21 @@ export function PortalGate({ children }: { children: React.ReactNode }) {
   const { checked, membership } = usePortalMembership();
   const { checked: mfaChecked, satisfied: mfaSatisfied, needsEnrollment, factorId, refresh: refreshMfa } = useMfaStatus();
   const router = useRouter();
+  // undefined = nog niet opgevraagd; alleen nodig als er geen lidmaatschap is.
+  const [pausedOrg, setPausedOrg] = useState<string | null | undefined>(undefined);
+  const needsPausedCheck = checked && !!user && !membership;
 
   useEffect(() => {
     if (authLoading) return;
     if (!user) router.replace("/portal/login");
   }, [authLoading, user, router]);
+
+  useEffect(() => {
+    if (!needsPausedCheck) return;
+    let cancelled = false;
+    loadMyPausedOrganization().then((name) => { if (!cancelled) setPausedOrg(name); });
+    return () => { cancelled = true; };
+  }, [needsPausedCheck]);
 
   if (authLoading || !checked) {
     return (
@@ -45,6 +58,36 @@ export function PortalGate({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) return null;
+
+  if (!membership && pausedOrg === undefined) {
+    return (
+      <div className="flex h-screen items-center justify-center" style={{ background: "#f8f7f4" }}>
+        <p className="text-sm" style={{ color: "#9ca3af" }}>Laden…</p>
+      </div>
+    );
+  }
+
+  if (!membership && pausedOrg) {
+    return (
+      <div className="flex h-screen items-center justify-center px-6" style={{ background: "#f8f7f4" }}>
+        <div className="text-center max-w-sm">
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 mx-auto" style={{ background: "#fff7ed" }}>
+            <PauseCircle size={22} style={{ color: "#e8632a" }} />
+          </div>
+          <p className="text-sm font-medium text-gray-800">{pausedOrg} is tijdelijk gepauzeerd</p>
+          <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
+            Het REVA-account van je praktijk staat op pauze, daarom kun je de portal nu niet gebruiken.
+            Je patiënten houden toegang tot hun eigen gegevens. Vragen? Mail naar info@reva-app.nl.
+          </p>
+          <div className="flex items-center justify-center gap-2 mt-5">
+            <Button variant="ghost" size="sm" onClick={signOut}>
+              Uitloggen
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!membership) {
     return (
