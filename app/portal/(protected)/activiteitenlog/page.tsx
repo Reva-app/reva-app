@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { History } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Badge } from "@/components/ui/Badge";
@@ -101,15 +102,13 @@ export default function ActiviteitenlogPage() {
       />
 
       <div className="rounded-2xl border p-4 flex flex-wrap gap-3 items-end" style={{ background: "#ffffff", borderColor: "#e8e5df" }}>
-        <div className="w-[calc(50%-0.375rem)] sm:w-36">
+        <div className="w-[calc(50%-0.375rem)] sm:w-44">
           <FieldLabel>Van</FieldLabel>
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-            className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
+          <DatePicker value={dateFrom} onChange={setDateFrom} placeholder="Datum" />
         </div>
-        <div className="w-[calc(50%-0.375rem)] sm:w-36">
+        <div className="w-[calc(50%-0.375rem)] sm:w-44">
           <FieldLabel>Tot</FieldLabel>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-            className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
+          <DatePicker value={dateTo} onChange={setDateTo} placeholder="Datum" />
         </div>
         <div className="w-[calc(50%-0.375rem)] sm:w-52">
           <FieldLabel>Patiënt</FieldLabel>

@@ -708,13 +708,7 @@ function TrialEndEditor({ value, onChange }: { value: string | null; onChange: (
   return (
     <div className="mt-3 space-y-2">
       <FieldLabel>Proefperiode tot en met</FieldLabel>
-      <input
-        type="date"
-        value={value ?? ""}
-        onChange={(e) => e.target.value && onChange(e.target.value)}
-        className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none"
-        style={inputStyle}
-      />
+      <DatePicker value={value ?? ""} onChange={(v) => v && onChange(v)} placeholder="Kies een einddatum" />
       <div className="flex flex-wrap gap-1.5">
         {[7, 14, 30].map((d) => (
           <button

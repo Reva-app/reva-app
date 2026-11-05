@@ -8,6 +8,7 @@ import {
   Trophy, X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { useAppData } from "@/lib/store";
 import {
   appointmentTypeLabel, type AppointmentType,
@@ -268,7 +269,7 @@ function AfspraakQuickModal({ onClose, addAppointment, today }: {
         </FormSelect>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div><FormLabel>Datum</FormLabel><FormInput type="date" value={date} onChange={e => setDate(e.target.value)} /></div>
+        <div><FormLabel>Datum</FormLabel><DatePicker value={date} onChange={setDate} /></div>
         <div><FormLabel>Tijd</FormLabel><FormInput type="time" value={time} onChange={e => setTime(e.target.value)} /></div>
       </div>
       <div>
@@ -315,7 +316,7 @@ function TrainingQuickModal({ onClose, addDagboekWorkout, trainingSchemas, today
       </div>
       <div>
         <FormLabel>Datum</FormLabel>
-        <FormInput type="date" value={date} onChange={e => setDate(e.target.value)} />
+        <DatePicker value={date} onChange={setDate} />
       </div>
       <SaveBtn onClick={save} saved={saved}>Opslaan</SaveBtn>
     </DashModalShell>
@@ -368,7 +369,7 @@ function MedicatieQuickModal({ onClose, addMedicatie, today }: {
         <div><FormLabel>Hoeveelheid</FormLabel><FormInput value={hoeveelheid} onChange={e => setHoeveelheid(e.target.value)} placeholder="1" /></div>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div><FormLabel>Datum</FormLabel><FormInput type="date" value={date} onChange={e => setDate(e.target.value)} /></div>
+        <div><FormLabel>Datum</FormLabel><DatePicker value={date} onChange={setDate} /></div>
         <div><FormLabel>Tijd</FormLabel><FormInput type="time" value={time} onChange={e => setTime(e.target.value)} /></div>
       </div>
       <div>
@@ -419,7 +420,7 @@ function DocumentQuickModal({ onClose, addDossierDocument, today }: {
             {DOC_TYPES.map(t => <option key={t} value={t}>{DOC_TYPE_LABELS[t]}</option>)}
           </FormSelect>
         </div>
-        <div><FormLabel>Datum</FormLabel><FormInput type="date" value={date} onChange={e => setDate(e.target.value)} /></div>
+        <div><FormLabel>Datum</FormLabel><DatePicker value={date} onChange={setDate} /></div>
       </div>
       <div>
         <FormLabel>Zorgverlener</FormLabel>
