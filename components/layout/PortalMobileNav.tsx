@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, HeartPulse, ClipboardList, Users, MoreHorizontal, X, LogOut } from "lucide-react";
+import { LayoutDashboard, HeartPulse, ClipboardList, Users, Dumbbell, CalendarRange, MoreHorizontal, X, LogOut } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { getPortalNavItems } from "./PortalSidebar";
@@ -11,17 +11,25 @@ import { MANAGE_BRANDING_ROLES, VIEW_ANALYTICS_ROLES, canViewClinicalData } from
 import { VIEW_AUDIT_LOG_ROLES } from "@/lib/services/auditService";
 
 /**
- * Vier meest gebruikte pagina's direct in beeld, net als de patiënt-app se
- * bottom-nav — de rest (incl. Huisstijl/Analyse/Activiteitenlog, afhankelijk
- * van rol) zit achter "Meer", zelfde brondata als PortalSidebar/PortalLayout
- * zodat rolgating nooit uit de pas loopt.
+ * Vier meest gebruikte pagina's direct in beeld, per rol — de rest (incl.
+ * Huisstijl/Analyse/Activiteitenlog, afhankelijk van rol) zit achter "Meer",
+ * zelfde brondata als PortalSidebar zodat rolgating nooit uit de pas loopt.
+ *
+ * - Practice Owner: beheert ook het team, dus Medewerkers vast in beeld.
+ * - Behandelaar: werkt tussen behandelingen met oefeningen, niet met het team.
+ * - Overige rollen (o.a. receptie): geen behandelinhoud, wel de agenda.
  */
-const FIXED_NAV = [
-  { href: "/portal", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/portal/patienten", label: "Patiënten", icon: HeartPulse },
-  { href: "/portal/herstelplannen", label: "Herstelplannen", icon: ClipboardList },
-  { href: "/portal/medewerkers", label: "Medewerkers", icon: Users },
-];
+type NavItem = { href: string; label: string; icon: React.ElementType };
+const DASHBOARD: NavItem = { href: "/portal", label: "Dashboard", icon: LayoutDashboard };
+const PATIENTEN: NavItem = { href: "/portal/patienten", label: "Patiënten", icon: HeartPulse };
+const FIXED_NAV_BY_ROLE: Record<"owner" | "clinical" | "other", NavItem[]> = {
+  owner: [DASHBOARD, PATIENTEN, { href: "/portal/herstelplannen", label: "Herstelplannen", icon: ClipboardList }, { href: "/portal/medewerkers", label: "Medewerkers", icon: Users }],
+  clinical: [DASHBOARD, PATIENTEN, { href: "/portal/herstelplannen", label: "Herstelplannen", icon: ClipboardList }, { href: "/portal/oefeningen", label: "Oefeningen", icon: Dumbbell }],
+  other: [DASHBOARD, PATIENTEN, { href: "/portal/reserveringen", label: "Agenda", icon: CalendarRange }, { href: "/portal/medewerkers", label: "Medewerkers", icon: Users }],
+};
+
+const INACTIVE_ICON = "#8e8e9a";
+const INACTIVE_LABEL = "#9a9aa6";
 
 export function PortalMobileNav() {
   const pathname = usePathname();
@@ -34,6 +42,10 @@ export function PortalMobileNav() {
   const canViewAuditLog = !!membership && VIEW_AUDIT_LOG_ROLES.includes(membership.roleKey);
   const { primary, secondary } = getPortalNavItems(canManageBranding, canViewAnalytics, canViewAuditLog, canViewClinicalData(membership?.roleKey));
   const allNav = [...primary, ...secondary];
+  const roleKey = membership?.roleKey;
+  const FIXED_NAV = FIXED_NAV_BY_ROLE[
+    roleKey === "organization_owner" ? "owner" : canViewClinicalData(roleKey) ? "clinical" : "other"
+  ];
 
   useEffect(() => {
     setMeerOpen(false);
@@ -64,12 +76,12 @@ export function PortalMobileNav() {
           >
             <MoreHorizontal
               size={22}
-              style={{ color: isMeerActive || meerOpen ? "var(--brand-accent, #e8632a)" : "#5a5a6a" }}
+              style={{ color: isMeerActive || meerOpen ? "var(--brand-accent, #e8632a)" : INACTIVE_ICON }}
               strokeWidth={1.8}
             />
             <span
-              className="text-[10px] font-medium leading-none"
-              style={{ color: isMeerActive || meerOpen ? "#ffffff" : "#5a5a6a" }}
+              className="text-[11px] max-[389px]:text-[10px] font-medium leading-none"
+              style={{ color: isMeerActive || meerOpen ? "#ffffff" : INACTIVE_LABEL }}
             >
               Meer
             </span>
@@ -189,8 +201,8 @@ function NavItem({
 }) {
   return (
     <Link href={href} className="flex-1 flex flex-col items-center justify-end gap-1 pb-2 touch-press">
-      <Icon size={22} style={{ color: active ? "var(--brand-accent, #e8632a)" : "#5a5a6a" }} strokeWidth={active ? 2.2 : 1.8} />
-      <span className="text-[10px] font-medium leading-none" style={{ color: active ? "#ffffff" : "#5a5a6a" }}>
+      <Icon size={22} style={{ color: active ? "var(--brand-accent, #e8632a)" : INACTIVE_ICON }} strokeWidth={active ? 2.2 : 1.8} />
+      <span className="text-[11px] max-[389px]:text-[10px] font-medium leading-none whitespace-nowrap" style={{ color: active ? "#ffffff" : INACTIVE_LABEL }}>
         {label}
       </span>
     </Link>

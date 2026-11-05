@@ -395,9 +395,9 @@ Elke taak is klein genoeg voor één avond van 1–3 uur. Na elke stap volgt een
 14. ✅ Tabs met een scrollhint (vervaagde rand plus automatisch scrollen naar de actieve tab). **Lost L7 op.** *(1–2 u)*
 
 ### Week 5: dashboard en navigatie (±6 u)
-15. Portal-dashboard: compacte statistiekstrook, "Aandacht nodig" bovenaan als lijst met patiëntkaarten. *(2–3 u)*
-16. Onderbalk per rol: voor behandelaars Dashboard, Patiënten, Oefeningen en Schema's; voor eigenaar en admin zoals nu. Labels 11 px met beter contrast. *(1–2 u)*
-17. Proefperiodebanner op mobiel compact (1 regel) en wegklikbaar per sessie. *(1 u)*
+15. ✅ Portal-dashboard: compacte statistiekstrook, "Aandacht nodig" bovenaan als lijst met patiëntkaarten. *(2–3 u)*
+16. ✅ Onderbalk per rol: voor behandelaars Dashboard, Patiënten, Oefeningen en Schema's; voor eigenaar en admin zoals nu. Labels 11 px met beter contrast. *(1–2 u)*
+17. ✅ Proefperiodebanner op mobiel compact (1 regel) en wegklikbaar per sessie. *(1 u)*
 
 ### Week 6: tablet (±7 u)
 18. `md`-indeling op de belangrijkste schermen: 2 kolommen op dashboard en patiëntdetail, tabel in plaats van kaarten. *(3 u)*

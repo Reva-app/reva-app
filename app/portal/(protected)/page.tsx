@@ -5,6 +5,7 @@ import Link from "next/link";
 import { HeartPulse, Users, AlertTriangle, ChevronRight, CalendarRange } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StatCard } from "@/components/ui/StatCard";
+import { StatStrip } from "@/components/ui/StatStrip";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { WelcomePanel } from "@/components/portal/WelcomePanel";
@@ -120,27 +121,24 @@ export default function PortalDashboardPage() {
             <p className="text-sm text-gray-400">Je hebt momenteel geen patiënten toegewezen.</p>
           ) : (
             <div className="space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <StatCard label="Mijn patiënten" value={myPatients.totalCount} icon={HeartPulse} />
-                <StatCard
-                  label="Aandacht nodig"
-                  value={myPatients.needsAttentionCount}
-                  subtitle="Hoge pijnscore, zwelling of weinig activiteit"
-                  icon={AlertTriangle}
-                  iconColor="#f59e0b"
-                />
-                <StatCard label="Check-ins deze week" value={myPatients.checkinsThisWeekCount} icon={HeartPulse} iconColor="#16a34a" />
-              </div>
+              <StatStrip
+                items={[
+                  { label: "Mijn patiënten", value: myPatients.totalCount, icon: HeartPulse },
+                  { label: "Aandacht nodig", value: myPatients.needsAttentionCount, subtitle: "Hoge pijnscore, zwelling of weinig activiteit", icon: AlertTriangle, iconColor: "#f59e0b" },
+                  { label: "Check-ins deze week", value: myPatients.checkinsThisWeekCount, icon: HeartPulse, iconColor: "#16a34a" },
+                ]}
+              />
               <div className="space-y-1">
                 {myPatients.patients.slice(0, 8).map((p) => (
                   <Link
                     key={p.id}
                     href={`/portal/patienten/${p.id}`}
-                    className="flex items-center justify-between gap-3 py-2 px-2 -mx-2 rounded-lg hover:bg-gray-50 transition-colors"
+                    // Op telefoon naam boven de signalen (anders werd de naam afgekapt tot "Thomas …").
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3 min-h-11 py-2 px-2 -mx-2 rounded-lg hover:bg-gray-50 transition-colors"
                   >
-                    <span className="text-sm text-gray-700 truncate">{p.fullName || "Nog niet ingevuld"}</span>
+                    <span className="text-sm text-gray-700 sm:truncate">{p.fullName || "Nog niet ingevuld"}</span>
                     {p.attentionReasons.length > 0 && (
-                      <div className="flex items-center gap-1.5 flex-wrap justify-end shrink-0">
+                      <div className="flex items-center gap-1.5 flex-wrap sm:justify-end sm:shrink-0">
                         {p.attentionReasons.map((reason) => (
                           <Badge key={reason} variant={ATTENTION_BADGE_VARIANT[reason]}>
                             {reason === "inactief" && !p.lastCheckinDate ? "Nog geen activiteit" : ATTENTION_REASON_LABELS[reason]}
@@ -154,7 +152,7 @@ export default function PortalDashboardPage() {
               {myPatients.totalCount > 8 && (
                 <Link
                   href={`/portal/patienten?therapist=${user?.id ?? ""}`}
-                  className="flex items-center gap-1 text-sm font-medium"
+                  className="inline-flex items-center gap-1 min-h-11 text-sm font-medium"
                   style={{ color: "var(--brand-accent, #e8632a)" }}
                 >
                   Bekijk alle {myPatients.totalCount} patiënten <ChevronRight size={14} />
@@ -191,7 +189,7 @@ export default function PortalDashboardPage() {
               )}
               <Link
                 href="/portal/analyse#werkdruk"
-                className="flex items-center gap-1 text-sm font-medium mt-4"
+                className="inline-flex items-center gap-1 min-h-11 text-sm font-medium mt-2"
                 style={{ color: "var(--brand-accent, #e8632a)" }}
               >
                 Volledig overzicht <ChevronRight size={14} />
@@ -201,16 +199,16 @@ export default function PortalDashboardPage() {
             <Card>
               <CardHeader title="Activiteit" subtitle="Gebruik binnen je praktijk" />
               <div className="space-y-2">
-                <Link href="/portal/patienten?checkin=older" className="block text-sm text-gray-700 hover:text-gray-900">
+                <Link href="/portal/patienten?checkin=older" className="flex items-center min-h-11 sm:min-h-0 sm:py-0.5 text-sm text-gray-700 hover:text-gray-900">
                   {activity ? activity.inactivePatientCount : "…"} patiënten zonder recente activiteit
                 </Link>
-                <Link href="/portal/medewerkers" className="block text-sm text-gray-700 hover:text-gray-900">
+                <Link href="/portal/medewerkers" className="flex items-center min-h-11 sm:min-h-0 sm:py-0.5 text-sm text-gray-700 hover:text-gray-900">
                   {activity ? activity.inactiveStaffCount : "…"} medewerkers niet recent ingelogd
                 </Link>
               </div>
               <Link
                 href="/portal/analyse"
-                className="flex items-center gap-1 text-sm font-medium mt-4"
+                className="inline-flex items-center gap-1 min-h-11 text-sm font-medium mt-2"
                 style={{ color: "var(--brand-accent, #e8632a)" }}
               >
                 Bekijk analyse <ChevronRight size={14} />

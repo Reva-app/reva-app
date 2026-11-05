@@ -5,6 +5,9 @@ export interface StatStripItem {
   label: string;
   value: string | number;
   icon?: LucideIcon;
+  iconColor?: string;
+  /** Toelichting onder het cijfer (alleen op de grote kaart vanaf 768px). */
+  subtitle?: string;
 }
 
 /**
@@ -29,7 +32,7 @@ export function StatStrip({ items }: { items: StatStripItem[] }) {
       </div>
       <div className="hidden md:grid gap-4" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
         {items.map((item) => (
-          <StatCard key={item.label} label={item.label} value={item.value} icon={item.icon} />
+          <StatCard key={item.label} label={item.label} value={item.value} icon={item.icon} iconColor={item.iconColor} subtitle={item.subtitle} />
         ))}
       </div>
     </>
