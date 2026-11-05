@@ -105,6 +105,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   }, [authLoading, hydrated, user, hadAuthFragment, inviteChecked, router]);
 
   useEffect(() => {
+    // Wacht tot profiel/settings én membership geladen zijn: vóór de
+    // hydratatie is setupCompleted nog false, waardoor een directe link
+    // (bv. /check-in uit een herinneringsmail) anders altijd naar
+    // /instellingen werd gestuurd.
+    if (authLoading || !hydrated || !user || !membershipChecked) return;
     if (!inviteChecked) return;
     // Een medewerker-/eigenaaraccount heeft hier altijd ook een eigen
     // persoonlijke patiëntdossier (ensure_personal_organization, migratie
@@ -115,7 +120,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     if (!setupEffectivelyDone && !onInstellingen) {
       router.replace("/instellingen");
     }
-  }, [inviteChecked, setupEffectivelyDone, onInstellingen, router, staffMembership]);
+  }, [authLoading, hydrated, user, membershipChecked, inviteChecked, setupEffectivelyDone, onInstellingen, router, staffMembership]);
 
   // Zet de DB-vlag alsnog op waar (zelfhelend), zodat ook Instellingen'
   // eigen "setup nog niet afgerond"-banner klopt en dit maar één keer
