@@ -320,11 +320,19 @@ export async function loadAdminOrganizationDetail(orgId: string): Promise<AdminO
   const supabase = createClient();
   const { data, error } = await supabase
     .from("organizations")
-    .select("id, name, status, trial_ends_at, plan, billing_interval, custom_monthly_price_cents, max_patients, logo_path, kvk_number, btw_number, website, contact_name, contact_email, contact_phone, address_street, address_postal_code, address_city, support_notes, last_contact_at, created_at, max_locations, max_members")
+    .select("id, name, status, trial_ends_at, plan, billing_interval, custom_monthly_price_cents, max_patients, logo_path, kvk_number, btw_number, website, contact_name, contact_email, contact_phone, address_street, address_postal_code, address_city, created_at, max_locations, max_members")
     .eq("id", orgId)
     .maybeSingle();
   if (error) { logErr("loadAdminOrganizationDetail", error); return null; }
   if (!data) return null;
+
+  // Interne notities staan in een aparte tabel die alleen de platform admin kan lezen (migratie 131).
+  const { data: notes, error: notesError } = await supabase
+    .from("organization_admin_notes")
+    .select("support_notes, last_contact_at")
+    .eq("organization_id", orgId)
+    .maybeSingle();
+  if (notesError) logErr("loadAdminOrganizationDetail(notes)", notesError);
 
   let logoUrl: string | null = null;
   if (data.logo_path) {
@@ -355,8 +363,8 @@ export async function loadAdminOrganizationDetail(orgId: string): Promise<AdminO
     addressStreet: data.address_street,
     addressPostalCode: data.address_postal_code,
     addressCity: data.address_city,
-    supportNotes: data.support_notes,
-    lastContactAt: data.last_contact_at,
+    supportNotes: notes?.support_notes ?? null,
+    lastContactAt: notes?.last_contact_at ?? null,
     createdAt: data.created_at,
     maxLocations: data.max_locations,
     maxMembers: data.max_members,
@@ -382,13 +390,26 @@ export async function updateAdminOrganization(orgId: string, patch: AdminOrganiz
   if (patch.addressStreet !== undefined) dbPatch.address_street = patch.addressStreet;
   if (patch.addressPostalCode !== undefined) dbPatch.address_postal_code = patch.addressPostalCode;
   if (patch.addressCity !== undefined) dbPatch.address_city = patch.addressCity;
-  if (patch.supportNotes !== undefined) dbPatch.support_notes = patch.supportNotes;
-  if (patch.lastContactAt !== undefined) dbPatch.last_contact_at = patch.lastContactAt;
   if (patch.maxLocations !== undefined) dbPatch.max_locations = patch.maxLocations;
   if (patch.maxMembers !== undefined) dbPatch.max_members = patch.maxMembers;
 
   const { error } = await supabase.from("organizations").update(dbPatch).eq("id", orgId);
   if (error) { logErr("updateAdminOrganization", error); return { error: error.message }; }
+
+  if (patch.supportNotes !== undefined || patch.lastContactAt !== undefined) {
+    const { data: userData } = await supabase.auth.getUser();
+    const notesPatch: Record<string, unknown> = {
+      organization_id: orgId,
+      updated_at: new Date().toISOString(),
+      updated_by: userData.user?.id ?? null,
+    };
+    if (patch.supportNotes !== undefined) notesPatch.support_notes = patch.supportNotes;
+    if (patch.lastContactAt !== undefined) notesPatch.last_contact_at = patch.lastContactAt;
+    const { error: notesError } = await supabase
+      .from("organization_admin_notes")
+      .upsert(notesPatch, { onConflict: "organization_id" });
+    if (notesError) { logErr("updateAdminOrganization(notes)", notesError); return { error: notesError.message }; }
+  }
   return { error: null };
 }
 

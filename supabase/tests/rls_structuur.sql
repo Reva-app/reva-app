@@ -81,6 +81,11 @@ checks(controle, fouten) as (
                               'can_manage_org_locations', 'can_view_audit_log', 'can_view_org_analytics',
                               'can_manage_patient_protocol_content')
             and pg_get_functiondef(p.oid) not like '%org_is_open%')
+  union all
+  select '12. Interne notities niet op de organisatie-rij (migratie 131)',
+         (select string_agg(column_name, ', ') from information_schema.columns
+          where table_schema = 'public' and table_name = 'organizations'
+            and column_name in ('support_notes', 'last_contact_at'))
 )
 select controle,
        case when fouten is null then '✅' else '❌' end as status,
