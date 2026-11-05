@@ -197,22 +197,22 @@ function ScheduleLogCard({
                 <div>
                   <label className="block text-[11px] text-gray-400 mb-1">Sets</label>
                   <input type="number" min={0} value={values[ex.id].sets} onChange={(e) => update(ex.id, "sets", e.target.value)}
-                    className="w-full text-sm rounded-lg border px-2 py-1.5 focus:outline-none" style={inputStyle} />
+                    className="w-full text-base sm:text-sm rounded-lg border px-2 py-1.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
                 </div>
                 <div>
                   <label className="block text-[11px] text-gray-400 mb-1">Herh.</label>
                   <input type="number" min={0} value={values[ex.id].reps} onChange={(e) => update(ex.id, "reps", e.target.value)}
-                    className="w-full text-sm rounded-lg border px-2 py-1.5 focus:outline-none" style={inputStyle} />
+                    className="w-full text-base sm:text-sm rounded-lg border px-2 py-1.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
                 </div>
                 <div>
                   <label className="block text-[11px] text-gray-400 mb-1">Gewicht (kg)</label>
                   <input type="number" min={0} step="0.5" value={values[ex.id].weightKg} onChange={(e) => update(ex.id, "weightKg", e.target.value)}
-                    className="w-full text-sm rounded-lg border px-2 py-1.5 focus:outline-none" style={inputStyle} />
+                    className="w-full text-base sm:text-sm rounded-lg border px-2 py-1.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
                 </div>
                 <div>
                   <label className="block text-[11px] text-gray-400 mb-1">Pijn (1-10)</label>
                   <input type="number" min={1} max={10} value={values[ex.id].painScore} onChange={(e) => update(ex.id, "painScore", e.target.value)}
-                    className="w-full text-sm rounded-lg border px-2 py-1.5 focus:outline-none" style={inputStyle} />
+                    className="w-full text-base sm:text-sm rounded-lg border px-2 py-1.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
                 </div>
               </div>
             </div>
@@ -226,7 +226,7 @@ function ScheduleLogCard({
             onChange={(e) => setReflection(e.target.value)}
             placeholder="Bijv. hoe de sessie voelde, pijn of vermoeidheid, vragen voor je fysio..."
             rows={2}
-            className="w-full text-sm rounded-lg border px-2.5 py-2 resize-none focus:outline-none"
+            className="w-full text-base sm:text-sm rounded-lg border px-2.5 py-2 resize-none focus:outline-none"
             style={inputStyle}
           />
         </div>

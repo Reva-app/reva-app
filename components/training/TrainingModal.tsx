@@ -38,7 +38,7 @@ function TrainingFields({
           <select
             value={values.schemaId}
             onChange={(e) => onChange({ schemaId: e.target.value })}
-            className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none appearance-none"
+            className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none appearance-none min-h-11 sm:min-h-0"
             style={{
               borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a",
               backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
@@ -61,7 +61,7 @@ function TrainingFields({
             value={values.vrij}
             onChange={(e) => onChange({ vrij: e.target.value })}
             placeholder="Bijv. looptraining, fietsen..."
-            className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none"
+            className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none min-h-11 sm:min-h-0"
             style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
           />
         </div>

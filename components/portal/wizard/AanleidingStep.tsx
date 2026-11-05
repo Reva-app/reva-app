@@ -189,7 +189,7 @@ export function AanleidingStep({
           {!isKnownSport && (
             <input
               type="text" value={sportType} onChange={(e) => onSportTypeChange(e.target.value)}
-              placeholder="Welke sport?" className="w-full text-sm rounded-xl border px-3 py-2 mt-2.5 focus:outline-none" style={inputStyle}
+              placeholder="Welke sport?" className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 mt-2.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
             />
           )}
         </div>
@@ -222,7 +222,7 @@ export function AanleidingStep({
           <FieldLabel>Blessuretype</FieldLabel>
           <select
             value={injuryType} onChange={(e) => onInjuryTypeChange(e.target.value)}
-            className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+            className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
           >
             <option value="">Kies een blessuretype</option>
             {BLESSURE_TYPEN.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}

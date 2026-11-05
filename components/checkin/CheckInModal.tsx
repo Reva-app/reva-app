@@ -185,7 +185,7 @@ export function CheckInModal({
               onChange={(e) => setNotitie(e.target.value)}
               placeholder="Hoe was je dag?"
               rows={3}
-              className="w-full text-sm rounded-xl border px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-orange-100 transition-all"
+              className="w-full text-base sm:text-sm rounded-xl border px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-orange-100 transition-all"
               style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
             />
           </div>

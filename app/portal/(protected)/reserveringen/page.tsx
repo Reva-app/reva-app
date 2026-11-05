@@ -117,14 +117,14 @@ function ReservationFormModal({
           <div>
             <FieldLabel>Ruimte</FieldLabel>
             <select value={form.roomId} onChange={(e) => setForm((p) => ({ ...p, roomId: e.target.value }))}
-              className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+              className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
               {rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
           </div>
           <div>
             <FieldLabel>Fysio</FieldLabel>
             <select value={form.membershipId} onChange={(e) => setForm((p) => ({ ...p, membershipId: e.target.value }))}
-              className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+              className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
               {members.map((m) => <option key={m.membershipId} value={m.membershipId}>{m.fullName ?? m.email ?? "Onbekend"}</option>)}
             </select>
           </div>
@@ -132,12 +132,12 @@ function ReservationFormModal({
             <div>
               <FieldLabel>Van</FieldLabel>
               <input type="time" value={form.startTime} onChange={(e) => setForm((p) => ({ ...p, startTime: e.target.value }))}
-                className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
+                className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
             </div>
             <div>
               <FieldLabel>Tot</FieldLabel>
               <input type="time" value={form.endTime} onChange={(e) => setForm((p) => ({ ...p, endTime: e.target.value }))}
-                className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
+                className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
             </div>
           </div>
           {error && <p className="text-xs" style={{ color: "#dc2626" }}>{error}</p>}
@@ -307,7 +307,7 @@ export default function ReserveringenPage() {
           <div className="min-w-[200px]">
             <FieldLabel>Locatie</FieldLabel>
             <select value={locationId} onChange={(e) => setLocationId(e.target.value)}
-              className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+              className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
               {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
             </select>
           </div>

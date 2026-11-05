@@ -53,7 +53,7 @@ export function PhaseTransitionModal({ phaseName, loading = false, onCancel, onC
               <input
                 type="number" min={0} max={10} value={painScoreNow ?? ""}
                 onChange={(e) => setPainScoreNow(e.target.value === "" ? null : Number(e.target.value))}
-                placeholder="Bijv. 3" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+                placeholder="Bijv. 3" className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
               />
             </div>
             <div>
@@ -61,7 +61,7 @@ export function PhaseTransitionModal({ phaseName, loading = false, onCancel, onC
               <input
                 type="number" min={0} max={5} value={mobilityScore ?? ""}
                 onChange={(e) => setMobilityScore(e.target.value === "" ? null : Number(e.target.value))}
-                placeholder="Bijv. 4" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+                placeholder="Bijv. 4" className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
               />
             </div>
           </div>
@@ -86,7 +86,7 @@ export function PhaseTransitionModal({ phaseName, loading = false, onCancel, onC
               <input
                 type="number" min={0} max={5} value={satisfactionScore ?? ""}
                 onChange={(e) => setSatisfactionScore(e.target.value === "" ? null : Number(e.target.value))}
-                placeholder="Bijv. 4" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+                placeholder="Bijv. 4" className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
               />
             </div>
           </div>
@@ -96,7 +96,7 @@ export function PhaseTransitionModal({ phaseName, loading = false, onCancel, onC
             <select
               value={progressVsExpected ?? ""}
               onChange={(e) => setProgressVsExpected(e.target.value ? (e.target.value as TransitionProgressVsExpected) : null)}
-              className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none appearance-none"
+              className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none appearance-none min-h-11 sm:min-h-0"
               style={inputStyle}
             >
               <option value="">Niet aangegeven</option>
@@ -109,7 +109,7 @@ export function PhaseTransitionModal({ phaseName, loading = false, onCancel, onC
             <textarea
               value={note} onChange={(e) => setNote(e.target.value)} rows={3}
               placeholder="Bijv. bijzonderheden, terugval, opvallende vooruitgang…"
-              className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none resize-none" style={inputStyle}
+              className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none resize-none" style={inputStyle}
             />
           </div>
         </div>

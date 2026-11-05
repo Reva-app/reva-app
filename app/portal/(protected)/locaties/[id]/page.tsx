@@ -220,7 +220,7 @@ export default function PortalLocationDetailPage() {
                         onChange={(e) => setEditingRoom({ id: room.id, name: e.target.value })}
                         onKeyDown={(e) => e.key === "Enter" && handleSaveRoomName()}
                         onBlur={handleSaveRoomName}
-                        className="flex-1 text-sm rounded-lg border px-2 py-1 focus:outline-none" style={inputStyle}
+                        className="flex-1 text-base sm:text-sm rounded-lg border px-2 py-1 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
                       />
                     ) : (
                       <span className="flex-1 text-sm text-gray-800 truncate">{room.name}</span>
@@ -253,7 +253,7 @@ export default function PortalLocationDetailPage() {
                 <input
                   value={newRoomName} onChange={(e) => setNewRoomName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleAddRoom()}
-                  placeholder="Naam van de ruimte" className="flex-1 text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+                  placeholder="Naam van de ruimte" className="flex-1 text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
                 />
                 <Button size="sm" variant="secondary" disabled={addingRoom || !newRoomName.trim()} onClick={handleAddRoom}>
                   {addingRoom ? <Loader2 size={13} className="animate-spin" /> : <><Plus size={13} /> Toevoegen</>}
@@ -319,14 +319,14 @@ export default function PortalLocationDetailPage() {
                     <FieldLabel>E-mailadres</FieldLabel>
                     <input
                       type="email" value={employeeEmail} onChange={(e) => setEmployeeEmail(e.target.value)}
-                      placeholder="naam@praktijk.nl" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+                      placeholder="naam@praktijk.nl" className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
                     />
                   </div>
                   <div>
                     <FieldLabel>Rol</FieldLabel>
                     <select
                       value={employeeRoleId} onChange={(e) => setEmployeeRoleId(e.target.value)}
-                      className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+                      className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
                     >
                       {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
                     </select>

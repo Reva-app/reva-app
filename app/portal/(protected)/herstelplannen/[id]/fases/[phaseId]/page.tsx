@@ -262,14 +262,14 @@ export default function PortalProtocolPhaseDetailPage() {
                     <FieldLabel>Naam</FieldLabel>
                     <input
                       type="text" value={name} onChange={(e) => setName(e.target.value)} onBlur={handleTitleBlur}
-                      disabled={!canEdit} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60" style={inputStyle}
+                      disabled={!canEdit} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0" style={inputStyle}
                     />
                   </div>
                   <div>
                     <FieldLabel>Week</FieldLabel>
                     <input
                       type="text" value={weekRangeLabel} onChange={(e) => setWeekRangeLabel(e.target.value)} placeholder="Bijv. Week 0-2"
-                      disabled={!canEdit} className="w-full sm:w-32 text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60" style={inputStyle}
+                      disabled={!canEdit} className="w-full sm:w-32 text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0" style={inputStyle}
                     />
                   </div>
                 </div>
@@ -281,12 +281,12 @@ export default function PortalProtocolPhaseDetailPage() {
                   <div>
                     <FieldLabel>Doel van de fase</FieldLabel>
                     <textarea value={description} onChange={(e) => setDescription(e.target.value)} disabled={!canEdit} rows={2}
-                      className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 resize-none" style={inputStyle} />
+                      className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 resize-none" style={inputStyle} />
                   </div>
                   <div>
                     <FieldLabel>Notities fysiotherapeut</FieldLabel>
                     <textarea value={therapistNotes} onChange={(e) => setTherapistNotes(e.target.value)} disabled={!canEdit} rows={2}
-                      className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 resize-none" style={inputStyle} />
+                      className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 resize-none" style={inputStyle} />
                   </div>
                   <div>
                     <FieldLabel>Verboden activiteiten</FieldLabel>
@@ -304,7 +304,7 @@ export default function PortalProtocolPhaseDetailPage() {
                         <input
                           type="text" value={newForbidden} onChange={(e) => setNewForbidden(e.target.value)}
                           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addForbidden(); } }}
-                          placeholder="Bijv. hardlopen" className="flex-1 text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+                          placeholder="Bijv. hardlopen" className="flex-1 text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
                         />
                         <Button type="button" size="sm" variant="secondary" onClick={addForbidden}>Toevoegen</Button>
                       </div>
@@ -518,7 +518,7 @@ function CriteriaList({ phase, canEdit, onChanged, onError }: { phase: PortalPro
             <input
               type="text" defaultValue={c.description} disabled={!canEdit}
               onBlur={(e) => { if (e.target.value.trim() && e.target.value !== c.description) updateProtocolPhaseCriterion(c.id, e.target.value).then(({ error }) => { if (error) { onError(error); return; } onChanged(); }); }}
-              className="flex-1 text-sm rounded-lg border px-2.5 py-1.5 focus:outline-none disabled:opacity-70 disabled:border-transparent disabled:bg-transparent" style={canEdit ? inputStyle : { background: "transparent", borderColor: "transparent" }}
+              className="flex-1 text-base sm:text-sm rounded-lg border px-2.5 py-1.5 focus:outline-none disabled:opacity-70 disabled:border-transparent disabled:bg-transparent min-h-11 sm:min-h-0" style={canEdit ? inputStyle : { background: "transparent", borderColor: "transparent" }}
             />
             {canEdit && (
               <button type="button" onClick={() => deleteProtocolPhaseCriterion(c.id).then(({ error }) => { if (error) { onError(error); return; } onChanged(); })} className="text-gray-300 hover:text-red-500 shrink-0">
@@ -533,7 +533,7 @@ function CriteriaList({ phase, canEdit, onChanged, onError }: { phase: PortalPro
               type="text" value={newText} onChange={(e) => setNewText(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
               placeholder="Nieuw criterium, bijv. volledige extensie"
-              className="flex-1 text-sm rounded-lg border px-2.5 py-1.5 focus:outline-none" style={inputStyle}
+              className="flex-1 text-base sm:text-sm rounded-lg border px-2.5 py-1.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
             />
             <button type="button" onClick={handleAdd} className="text-gray-400 hover:text-gray-600 shrink-0"><Plus size={16} /></button>
           </div>
@@ -568,7 +568,7 @@ function MilestoneList({ phase, canEdit, onChanged, onError }: { phase: PortalPr
             <input
               type="text" defaultValue={m.title} disabled={!canEdit}
               onBlur={(e) => { if (e.target.value.trim() && e.target.value !== m.title) updateProtocolPhaseMilestone(m.id, e.target.value).then(({ error }) => { if (error) { onError(error); return; } onChanged(); }); }}
-              className="flex-1 text-sm rounded-lg border px-2.5 py-1.5 focus:outline-none disabled:opacity-70 disabled:border-transparent disabled:bg-transparent" style={canEdit ? inputStyle : { background: "transparent", borderColor: "transparent" }}
+              className="flex-1 text-base sm:text-sm rounded-lg border px-2.5 py-1.5 focus:outline-none disabled:opacity-70 disabled:border-transparent disabled:bg-transparent min-h-11 sm:min-h-0" style={canEdit ? inputStyle : { background: "transparent", borderColor: "transparent" }}
             />
             {canEdit && (
               <button type="button" onClick={() => deleteProtocolPhaseMilestone(m.id).then(({ error }) => { if (error) { onError(error); return; } onChanged(); })} className="text-gray-300 hover:text-red-500 shrink-0">
@@ -583,7 +583,7 @@ function MilestoneList({ phase, canEdit, onChanged, onError }: { phase: PortalPr
               type="text" value={newText} onChange={(e) => setNewText(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
               placeholder="Nieuwe mijlpaal, bijv. brace verwijderen"
-              className="flex-1 text-sm rounded-lg border px-2.5 py-1.5 focus:outline-none" style={inputStyle}
+              className="flex-1 text-base sm:text-sm rounded-lg border px-2.5 py-1.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
             />
             <button type="button" onClick={handleAdd} className="text-gray-400 hover:text-gray-600 shrink-0"><Plus size={16} /></button>
           </div>
@@ -610,11 +610,11 @@ function EducationModal({
         <form onSubmit={(e) => { e.preventDefault(); onSave(t, b); }} className="space-y-4">
           <div>
             <FieldLabel>Titel</FieldLabel>
-            <input type="text" value={t} onChange={(e) => setT(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
+            <input type="text" value={t} onChange={(e) => setT(e.target.value)} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
           </div>
           <div>
             <FieldLabel>Toelichting</FieldLabel>
-            <textarea value={b} onChange={(e) => setB(e.target.value)} rows={4} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none resize-none" style={inputStyle} />
+            <textarea value={b} onChange={(e) => setB(e.target.value)} rows={4} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none resize-none" style={inputStyle} />
           </div>
           {error && <p className="text-xs" style={{ color: "#dc2626" }}>{error}</p>}
           <div className="flex justify-end gap-2">
@@ -680,7 +680,7 @@ function LinkScheduleModal({
                     + Nieuw schema
                   </button>
                 </div>
-                <select value={scheduleId} onChange={(e) => setScheduleId(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+                <select value={scheduleId} onChange={(e) => setScheduleId(e.target.value)} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
                   <option value="">Kies een schema…</option>
                   {orgSchedules.filter((s) => !s.archived).length > 0 && (
                     <optgroup label="Eigen bibliotheek">
@@ -698,7 +698,7 @@ function LinkScheduleModal({
             <div>
               <FieldLabel>Frequentie in deze fase (keer per week)</FieldLabel>
               <input type="number" min={1} max={21} value={frequency} onChange={(e) => setFrequency(Number(e.target.value))}
-                className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
+                className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
             </div>
             {error && <p className="text-xs" style={{ color: "#dc2626" }}>{error}</p>}
             <div className="flex justify-end gap-2">
@@ -711,7 +711,7 @@ function LinkScheduleModal({
             <div>
               <FieldLabel>Naam van het nieuwe schema</FieldLabel>
               <input type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Bijv. Krachtopbouw week 6-12"
-                className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
+                className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
             </div>
             <p className="text-xs text-gray-400">Voeg de oefeningen toe zodra het schema is aangemaakt, via de Schema&apos;s-pagina.</p>
             <div className="flex justify-end gap-2">

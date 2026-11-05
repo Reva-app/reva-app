@@ -85,7 +85,7 @@ function TextInput({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       disabled={disabled}
-      className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors disabled:opacity-50"
+      className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors disabled:opacity-50 min-h-11 sm:min-h-0"
       style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
     />
   );
@@ -114,7 +114,7 @@ function SelectInput({ value, onChange, children }: { value: string; onChange: (
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none appearance-none"
+      className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none appearance-none min-h-11 sm:min-h-0"
       style={{
         borderColor: "#e8e5df",
         background: "#f8f7f4",
@@ -249,7 +249,7 @@ function AccountVerwijderenModal({ onClose, onConfirm, loading }: {
               placeholder="Type VERWIJDER om te bevestigen"
               autoFocus
               disabled={loading}
-              className="w-full text-sm rounded-xl border px-4 py-2.5 mb-5 focus:outline-none transition-colors font-mono disabled:opacity-50"
+              className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 mb-5 focus:outline-none transition-colors font-mono disabled:opacity-50 min-h-11 sm:min-h-0"
               style={{
                 borderColor: bevestigdCorrect ? "#dc2626" : "#e8e5df",
                 background: "#f8f7f4",
@@ -909,7 +909,7 @@ export default function InstellingenPage() {
               onChange={(e) => setSituatieOmschrijving(e.target.value)}
               placeholder="Beschrijf kort jouw blessure, situatie of hersteltraject..."
               rows={4}
-              className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors resize-none"
+              className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors resize-none"
               style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
             />
           </div>
@@ -1109,11 +1109,12 @@ export default function InstellingenPage() {
                       value={huidigWw}
                       onChange={(e) => setHuidigWw(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full text-sm rounded-xl border px-4 py-2.5 pr-10 focus:outline-none transition-colors"
+                      className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 pr-10 focus:outline-none transition-colors min-h-11 sm:min-h-0"
                       style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
                     />
                     <button type="button" onClick={() => setShowWw((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                      aria-label={showWw ? "Wachtwoorden verbergen" : "Wachtwoorden tonen"}
+                      className="tap-target absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                       {showWw ? <EyeOff size={14} /> : <Eye size={14} />}
                     </button>
                   </div>
@@ -1352,7 +1353,7 @@ export default function InstellingenPage() {
               onChange={(e) => setFbBericht(e.target.value)}
               placeholder="Beschrijf jouw feedback zo duidelijk mogelijk..."
               rows={4}
-              className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors resize-none"
+              className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors resize-none"
               style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
             />
           </div>

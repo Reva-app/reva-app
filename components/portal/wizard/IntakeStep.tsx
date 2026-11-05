@@ -33,7 +33,7 @@ export function IntakeStep({ value, onChange, injuryType }: IntakeStepProps) {
             <input
               type="number" min={50} max={250} value={value.heightCm ?? ""}
               onChange={(e) => onChange("heightCm", e.target.value === "" ? null : Number(e.target.value))}
-              placeholder="Bijv. 178" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+              placeholder="Bijv. 178" className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
             />
           </div>
           <div>
@@ -41,7 +41,7 @@ export function IntakeStep({ value, onChange, injuryType }: IntakeStepProps) {
             <input
               type="number" min={20} max={300} step={0.1} value={value.weightKg ?? ""}
               onChange={(e) => onChange("weightKg", e.target.value === "" ? null : Number(e.target.value))}
-              placeholder="Bijv. 82.5" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+              placeholder="Bijv. 82.5" className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
             />
           </div>
         </div>
@@ -55,14 +55,14 @@ export function IntakeStep({ value, onChange, injuryType }: IntakeStepProps) {
             <input
               type="number" min={0} max={10} value={value.painScoreNow ?? ""}
               onChange={(e) => onChange("painScoreNow", e.target.value === "" ? null : Number(e.target.value))}
-              placeholder="Bijv. 5" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+              placeholder="Bijv. 5" className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
             />
           </div>
           <div>
             <FieldLabel>Zwelling</FieldLabel>
             <select
               value={value.swelling} onChange={(e) => onChange("swelling", e.target.value as IntakeInput["swelling"])}
-              className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+              className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
             >
               <option value="">Niet opgegeven</option>
               <option value="none">Geen</option>
@@ -74,7 +74,7 @@ export function IntakeStep({ value, onChange, injuryType }: IntakeStepProps) {
             <FieldLabel>Pijnlocatie (optioneel)</FieldLabel>
             <input
               type="text" value={value.painLocation} onChange={(e) => onChange("painLocation", e.target.value)}
-              placeholder="Waar zit de pijn precies?" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+              placeholder="Waar zit de pijn precies?" className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
             />
           </div>
         </div>
@@ -87,7 +87,7 @@ export function IntakeStep({ value, onChange, injuryType }: IntakeStepProps) {
             <FieldLabel>Hulpmiddel</FieldLabel>
             <select
               value={value.mobilityAid} onChange={(e) => onChange("mobilityAid", e.target.value as IntakeInput["mobilityAid"])}
-              className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+              className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
             >
               <option value="">Niet opgegeven</option>
               <option value="none">Geen</option>
@@ -104,7 +104,7 @@ export function IntakeStep({ value, onChange, injuryType }: IntakeStepProps) {
             <FieldLabel>Belasting</FieldLabel>
             <select
               value={value.weightBearingStatus} onChange={(e) => onChange("weightBearingStatus", e.target.value as IntakeInput["weightBearingStatus"])}
-              className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+              className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
             >
               <option value="">Niet opgegeven</option>
               <option value="full">Volledig belasten</option>
@@ -118,7 +118,7 @@ export function IntakeStep({ value, onChange, injuryType }: IntakeStepProps) {
               <input
                 type="number" min={0} max={180} value={value.romDegrees ?? ""}
                 onChange={(e) => onChange("romDegrees", e.target.value === "" ? null : Number(e.target.value))}
-                placeholder="Bijv. 80" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+                placeholder="Bijv. 80" className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
               />
             </div>
           )}
@@ -127,7 +127,7 @@ export function IntakeStep({ value, onChange, injuryType }: IntakeStepProps) {
               <FieldLabel>Aanvullende ingreep (optioneel)</FieldLabel>
               <input
                 type="text" value={value.additionalProcedures} onChange={(e) => onChange("additionalProcedures", e.target.value)}
-                placeholder="Bijv. meniscushechting" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+                placeholder="Bijv. meniscushechting" className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
               />
             </div>
           )}
@@ -160,7 +160,7 @@ export function IntakeStep({ value, onChange, injuryType }: IntakeStepProps) {
               <FieldLabel>Sinds wanneer klachten?</FieldLabel>
               <select
                 value={value.symptomOnset} onChange={(e) => onChange("symptomOnset", e.target.value as IntakeInput["symptomOnset"])}
-                className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+                className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
               >
                 <option value="">Niet opgegeven</option>
                 <option value="lt_2_weeks">Minder dan 2 weken</option>
@@ -173,7 +173,7 @@ export function IntakeStep({ value, onChange, injuryType }: IntakeStepProps) {
               <FieldLabel>Beperking dagelijks functioneren</FieldLabel>
               <select
                 value={value.dailyImpact} onChange={(e) => onChange("dailyImpact", e.target.value as IntakeInput["dailyImpact"])}
-                className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+                className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
               >
                 <option value="">Niet opgegeven</option>
                 <option value="none">Geen beperking</option>
@@ -186,7 +186,7 @@ export function IntakeStep({ value, onChange, injuryType }: IntakeStepProps) {
               <FieldLabel>Eerdere behandeling of therapie voor deze klacht? (optioneel)</FieldLabel>
               <input
                 type="text" value={value.previousTreatmentText} onChange={(e) => onChange("previousTreatmentText", e.target.value)}
-                placeholder="Bijv. eerder fysiotherapie gehad in 2024" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+                placeholder="Bijv. eerder fysiotherapie gehad in 2024" className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
               />
             </div>
           </div>
@@ -204,7 +204,7 @@ export function IntakeStep({ value, onChange, injuryType }: IntakeStepProps) {
             {value.returnToSportGoal && (
               <input
                 type="text" value={value.sportType} onChange={(e) => onChange("sportType", e.target.value)}
-                placeholder="Welke sport?" className="text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+                placeholder="Welke sport?" className="text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
               />
             )}
             <label className="flex items-center gap-2 text-sm text-gray-700">
@@ -218,7 +218,7 @@ export function IntakeStep({ value, onChange, injuryType }: IntakeStepProps) {
               <input
                 type="number" min={0} value={value.goalTimeframeMonths ?? ""}
                 onChange={(e) => onChange("goalTimeframeMonths", e.target.value === "" ? null : Number(e.target.value))}
-                placeholder="Bijv. 9" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+                placeholder="Bijv. 9" className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
               />
             </div>
           </div>
@@ -226,14 +226,14 @@ export function IntakeStep({ value, onChange, injuryType }: IntakeStepProps) {
             <FieldLabel>Wat wil de patiënt weer kunnen? (optioneel)</FieldLabel>
             <textarea
               value={value.patientGoalText} onChange={(e) => onChange("patientGoalText", e.target.value)}
-              rows={2} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none resize-none" style={inputStyle}
+              rows={2} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none resize-none" style={inputStyle}
             />
           </div>
           <div>
             <FieldLabel>Observaties therapeut (optioneel)</FieldLabel>
             <textarea
               value={value.therapistObservations} onChange={(e) => onChange("therapistObservations", e.target.value)}
-              rows={2} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none resize-none" style={inputStyle}
+              rows={2} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none resize-none" style={inputStyle}
             />
           </div>
         </div>

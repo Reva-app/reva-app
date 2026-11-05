@@ -45,7 +45,7 @@ function FormInput({ ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className="w-full text-sm rounded-xl border px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-200 transition-colors"
+      className="w-full text-base sm:text-sm rounded-xl border px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-200 transition-colors min-h-11 sm:min-h-0"
       style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
     />
   );
@@ -55,7 +55,7 @@ function FormTextarea({ ...props }: React.TextareaHTMLAttributes<HTMLTextAreaEle
   return (
     <textarea
       {...props}
-      className="w-full text-sm rounded-xl border px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-orange-200 transition-colors"
+      className="w-full text-base sm:text-sm rounded-xl border px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-orange-200 transition-colors"
       style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
     />
   );
@@ -68,7 +68,7 @@ function FormSelect({ value, onChange, children }: {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full text-sm rounded-xl border px-3 py-2.5 focus:outline-none appearance-none"
+      className="w-full text-base sm:text-sm rounded-xl border px-3 py-2.5 focus:outline-none appearance-none min-h-11 sm:min-h-0"
       style={{
         borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a",
         backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,

@@ -85,7 +85,7 @@ function PortalLoginForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="jouw@praktijk.nl"
-              className="w-full text-sm rounded-xl border px-4 py-3 focus:outline-none transition-colors"
+              className="w-full text-base sm:text-sm rounded-xl border px-4 py-3 focus:outline-none transition-colors min-h-11 sm:min-h-0"
               style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
             />
           </div>
@@ -99,13 +99,14 @@ function PortalLoginForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full text-sm rounded-xl border px-4 py-3 pr-11 focus:outline-none transition-colors"
+                className="w-full text-base sm:text-sm rounded-xl border px-4 py-3 pr-11 focus:outline-none transition-colors min-h-11 sm:min-h-0"
                 style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
               />
               <button
                 type="button"
+                aria-label={showPassword ? "Wachtwoord verbergen" : "Wachtwoord tonen"}
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                className="tap-target absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>

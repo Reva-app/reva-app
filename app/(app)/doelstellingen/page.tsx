@@ -57,7 +57,7 @@ function TextInput({ value, onChange, placeholder }: {
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors"
+      className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors min-h-11 sm:min-h-0"
       style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
     />
   );
@@ -72,7 +72,7 @@ function Textarea({ value, onChange, placeholder, rows = 2 }: {
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={rows}
-      className="w-full text-sm rounded-xl border px-4 py-2.5 resize-none focus:outline-none transition-colors"
+      className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 resize-none focus:outline-none transition-colors"
       style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
     />
   );

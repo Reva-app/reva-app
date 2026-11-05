@@ -158,13 +158,13 @@ export default function PortalSchemasPage() {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Naam…" className="w-full text-sm rounded-xl border pl-9 pr-3 py-2 focus:outline-none" style={inputStyle}
+              placeholder="Naam…" className="w-full text-base sm:text-sm rounded-xl border pl-9 pr-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
             />
           </div>
         </div>
         <div className="w-[calc(50%-0.375rem)] sm:w-40">
           <FieldLabel>Status</FieldLabel>
-          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
             <option value="">Alle</option>
             <option value="actief">Actief</option>
             <option value="gearchiveerd">Gearchiveerd</option>
@@ -172,7 +172,7 @@ export default function PortalSchemasPage() {
         </div>
         <div className="w-[calc(50%-0.375rem)] sm:w-44">
           <FieldLabel>Bron</FieldLabel>
-          <select value={sourceFilter} onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+          <select value={sourceFilter} onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
             <option value="">Alle</option>
             <option value="organization">Eigen bibliotheek</option>
             <option value="reva">REVA-bibliotheek</option>
@@ -186,7 +186,7 @@ export default function PortalSchemasPage() {
               if (e.target.value === "nieuwste") setSort("createdAt", "desc");
               else setSort("title", "asc");
             }}
-            className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+            className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
           >
             <option value="naam">Naam (A-Z)</option>
             <option value="nieuwste">Nieuwste eerst</option>

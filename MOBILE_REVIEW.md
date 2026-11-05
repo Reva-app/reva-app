@@ -378,10 +378,10 @@ Elke taak is klein genoeg voor één avond van 1–3 uur. Na elke stap volgt een
 3. ✅ Modal: bottom sheet onder 640 px, `ModalFooter` vast onderin, `dvh`, onderbalk verbergen wanneer open. *(2–3 u)*
 
 ### Week 2: formulieren (±7 u)
-4. `Field`, `Input`, `Select` en `Textarea` bouwen (16 px op mobiel, 44 px hoog). *(2–3 u)*
-5. Migreren: PatientWizard, PatientEditForm, notitie in het Logboek, StaffInviteForm. *(3 u)*
-6. `maximumScale: 1` weghalen en op een echte iPhone controleren dat er niet meer ingezoomd wordt. *(0,5 u)*
-7. `IconButton` (44 px) toepassen op ⋮, het kalendericoon, het wachtwoord-oog en de sluitknoppen. *(1 u)*
+4. ✅ `Field`, `Input`, `Select` en `Textarea` bouwen (16 px op mobiel, 44 px hoog). *(2–3 u)*
+5. ✅ Migreren: PatientWizard, PatientEditForm, notitie in het Logboek, StaffInviteForm. *(3 u)*
+6. ✅ `maximumScale: 1` weghalen en op een echte iPhone controleren dat er niet meer ingezoomd wordt. *(0,5 u)*
+7. ✅ `IconButton` (44 px) toepassen op ⋮, het kalendericoon, het wachtwoord-oog en de sluitknoppen. *(1 u)*
 
 ### Week 3: de patiëntenlijst (±7 u)
 8. `ResponsiveList` bouwen: tabel vanaf `md`, kaarten daaronder, en sorteren via een keuzelijst. *(3 u)*

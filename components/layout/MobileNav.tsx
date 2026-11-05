@@ -162,7 +162,8 @@ export function MobileNav() {
             </p>
             <button
               onClick={() => setMeerOpen(false)}
-              className="w-7 h-7 rounded-full flex items-center justify-center touch-press"
+              aria-label="Sluiten"
+              className="relative tap-target w-7 h-7 rounded-full flex items-center justify-center touch-press"
               style={{ background: "rgba(255,255,255,0.07)" }}
             >
               <X size={14} style={{ color: "#9ca3af" }} />

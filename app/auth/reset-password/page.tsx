@@ -217,13 +217,14 @@ function ResetPasswordForm() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Minimaal 10 tekens, letters en cijfers"
-                    className="w-full text-sm rounded-xl border px-4 py-3 pr-11 focus:outline-none transition-colors"
+                    className="w-full text-base sm:text-sm rounded-xl border px-4 py-3 pr-11 focus:outline-none transition-colors min-h-11 sm:min-h-0"
                     style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    aria-label={showPassword ? "Wachtwoord verbergen" : "Wachtwoord tonen"}
+                onClick={() => setShowPassword((v) => !v)}
+                    className="tap-target absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -240,7 +241,7 @@ function ResetPasswordForm() {
                   value={herhaling}
                   onChange={(e) => setHerhaling(e.target.value)}
                   placeholder="Herhaal nieuw wachtwoord"
-                  className="w-full text-sm rounded-xl border px-4 py-3 focus:outline-none transition-colors"
+                  className="w-full text-base sm:text-sm rounded-xl border px-4 py-3 focus:outline-none transition-colors min-h-11 sm:min-h-0"
                   style={{
                     borderColor: herhaling && herhaling !== password ? "#fca5a5" : "#e8e5df",
                     background: "#f8f7f4",

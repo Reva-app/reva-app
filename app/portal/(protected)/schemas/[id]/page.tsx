@@ -272,7 +272,7 @@ export default function PortalScheduleDetailPage() {
                 <input
                   type="text" value={title} onChange={(e) => setTitle(e.target.value)} onBlur={handleTitleBlur}
                   disabled={!canEdit}
-                  className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60"
+                  className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0"
                   style={inputStyle}
                 />
               </Card>
@@ -283,7 +283,7 @@ export default function PortalScheduleDetailPage() {
                   <div>
                     <FieldLabel>Omschrijving (optioneel)</FieldLabel>
                     <textarea value={description} onChange={(e) => setDescription(e.target.value)} disabled={!canEdit} rows={3}
-                      className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 resize-none" style={inputStyle} />
+                      className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 resize-none" style={inputStyle} />
                   </div>
                   {canEdit && <Button size="sm" disabled={savingDescription} onClick={handleSaveDescription}>{savingDescription ? "Opslaan…" : "Opslaan"}</Button>}
                 </div>
@@ -522,24 +522,24 @@ function ScheduleExerciseEditModal({
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div>
               <FieldLabel>Sets</FieldLabel>
-              <input type="number" min={0} value={sets} onChange={(e) => setSets(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
+              <input type="number" min={0} value={sets} onChange={(e) => setSets(e.target.value)} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
             </div>
             <div>
               <FieldLabel>Herhalingen</FieldLabel>
-              <input type="number" min={0} value={reps} onChange={(e) => setReps(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
+              <input type="number" min={0} value={reps} onChange={(e) => setReps(e.target.value)} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
             </div>
             <div>
               <FieldLabel>Duur (sec)</FieldLabel>
-              <input type="number" min={0} value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
+              <input type="number" min={0} value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
             </div>
           </div>
           <div>
             <FieldLabel>Belasting (bijv. &quot;20 kg&quot; of &quot;lichaamsgewicht&quot;)</FieldLabel>
-            <input type="text" value={loadText} onChange={(e) => setLoadText(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
+            <input type="text" value={loadText} onChange={(e) => setLoadText(e.target.value)} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
           </div>
           <div>
             <FieldLabel>Opmerking (optioneel)</FieldLabel>
-            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none resize-none" style={inputStyle} />
+            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none resize-none" style={inputStyle} />
           </div>
           {error && <p className="text-xs" style={{ color: "#dc2626" }}>{error}</p>}
           <div className="flex justify-end gap-2">

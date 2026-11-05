@@ -81,7 +81,7 @@ export function RevaAnalyseStep({
           <textarea
             value={summary} onChange={(e) => onSummaryChange(e.target.value)} rows={4} autoFocus
             onBlur={() => setEditingSummary(false)}
-            className="w-full text-sm rounded-xl border px-3 py-2.5 focus:outline-none resize-none" style={inputStyle}
+            className="w-full text-base sm:text-sm rounded-xl border px-3 py-2.5 focus:outline-none resize-none" style={inputStyle}
           />
         ) : (
           <button type="button" onClick={() => setEditingSummary(true)} className="w-full text-left rounded-xl p-3.5 text-sm leading-relaxed text-gray-700" style={{ background: "#f8f7f4" }}>
@@ -118,11 +118,11 @@ export function RevaAnalyseStep({
               <div className="flex-1 min-w-0 space-y-1.5">
                 <input
                   type="text" value={goal.title} onChange={(e) => updateGoal(i, { title: e.target.value })}
-                  placeholder="Titel van het doel" className="w-full text-sm font-medium rounded-lg border px-2.5 py-1.5 focus:outline-none" style={inputStyle}
+                  placeholder="Titel van het doel" className="w-full text-base sm:text-sm font-medium rounded-lg border px-2.5 py-1.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
                 />
                 <input
                   type="text" value={goal.description} onChange={(e) => updateGoal(i, { description: e.target.value })}
-                  placeholder="Omschrijving (optioneel)" className="w-full text-xs rounded-lg border px-2.5 py-1.5 focus:outline-none" style={inputStyle}
+                  placeholder="Omschrijving (optioneel)" className="w-full text-base sm:text-xs rounded-lg border px-2.5 py-1.5 focus:outline-none" style={inputStyle}
                 />
                 <DatePicker value={goal.targetDate} onChange={(v) => updateGoal(i, { targetDate: v })} placeholder="Streefdatum (optioneel)" />
               </div>

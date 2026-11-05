@@ -168,13 +168,13 @@ export default function PortalProtocolsPage() {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Naam…" className="w-full text-sm rounded-xl border pl-9 pr-3 py-2 focus:outline-none" style={inputStyle}
+              placeholder="Naam…" className="w-full text-base sm:text-sm rounded-xl border pl-9 pr-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
             />
           </div>
         </div>
         <div className="w-[calc(50%-0.375rem)] sm:w-40">
           <FieldLabel>Status</FieldLabel>
-          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
             <option value="">Alle</option>
             <option value="actief">Actief</option>
             <option value="gearchiveerd">Gearchiveerd</option>
@@ -182,7 +182,7 @@ export default function PortalProtocolsPage() {
         </div>
         <div className="w-[calc(50%-0.375rem)] sm:w-44">
           <FieldLabel>Bron</FieldLabel>
-          <select value={sourceFilter} onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+          <select value={sourceFilter} onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
             <option value="">Alle</option>
             <option value="organization">Eigen bibliotheek</option>
             <option value="reva">REVA-bibliotheek</option>
@@ -190,7 +190,7 @@ export default function PortalProtocolsPage() {
         </div>
         <div className="w-[calc(50%-0.375rem)] sm:w-48">
           <FieldLabel>Blessure / ingreep</FieldLabel>
-          <select value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(1); }} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+          <select value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(1); }} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
             <option value="">Alle</option>
             {categoryOptions.map((key) => <option key={key} value={key}>{INJURY_CATEGORY_LABELS[key] ?? key}</option>)}
           </select>
@@ -198,7 +198,7 @@ export default function PortalProtocolsPage() {
         {creatorOptions.length > 0 && (
           <div className="w-[calc(50%-0.375rem)] sm:w-48">
             <FieldLabel>Aangemaakt door</FieldLabel>
-            <select value={creatorFilter} onChange={(e) => { setCreatorFilter(e.target.value); setPage(1); }} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+            <select value={creatorFilter} onChange={(e) => { setCreatorFilter(e.target.value); setPage(1); }} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
               <option value="">Alle</option>
               {creatorOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
             </select>
@@ -213,7 +213,7 @@ export default function PortalProtocolsPage() {
               else if (e.target.value === "fases") setSort("phaseCount", "desc");
               else setSort("name", "asc");
             }}
-            className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+            className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
           >
             <option value="naam">Naam (A-Z)</option>
             <option value="fases">Meeste fases</option>

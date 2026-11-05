@@ -183,7 +183,7 @@ export default function PortalHuisstijlPage() {
               value={name}
               onChange={(e) => setNameEdit(e.target.value)}
               maxLength={80}
-              className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none"
+              className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none min-h-11 sm:min-h-0"
               style={inputStyle}
             />
             <p className="text-xs text-gray-500 mt-1.5">E-mails komen binnen als “{name.trim() || "Praktijknaam"} via REVA”.</p>

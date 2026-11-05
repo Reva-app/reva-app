@@ -51,11 +51,15 @@ const organizationJsonLd = {
   description: SITE_DESCRIPTION,
 };
 
-// viewportFit=cover enables env(safe-area-inset-*) on iPhone notch / home indicator
+// viewportFit=cover enables env(safe-area-inset-*) on iPhone notch / home indicator.
+// Op het web mag de gebruiker knijp-zoomen (toegankelijkheid, WCAG 1.4.4);
+// inzoomen bij het typen voorkomen we doordat alle invoervelden op telefoon
+// 16px zijn (components/ui/Field.tsx). Alleen in de native app blijft zoomen
+// uit, zoals gebruikelijk voor app-interfaces.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  ...(process.env.NEXT_BUILD_TARGET === "capacitor" ? { maximumScale: 1 } : {}),
   viewportFit: "cover",
   themeColor: "#e8632a",
 };

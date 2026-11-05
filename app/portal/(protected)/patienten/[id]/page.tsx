@@ -7,6 +7,7 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Textarea } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PhaseTransitionModal } from "@/components/portal/PhaseTransitionModal";
@@ -701,13 +702,11 @@ function LogboekTab({
           <Card>
             <CardHeader title="Nieuwe notitie" subtitle="Alleen zichtbaar voor collega's binnen deze praktijk" />
             <div className="space-y-2.5">
-              <textarea
+              <Textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder="Bijv. bijzonderheden over de behandeling, afspraken met de patiënt, aandachtspunten voor collega's..."
-                rows={3}
-                className="w-full text-sm rounded-xl border px-3 py-2.5 resize-none focus:outline-none"
-                style={{ borderColor: "#e8e5df", background: "#ffffff", color: "#1a1a1a" }}
+                aria-label="Nieuwe notitie"
               />
               <div className="flex justify-end">
                 <Button
@@ -769,7 +768,7 @@ function LogboekTab({
                             value={editDraft}
                             onChange={(e) => onEditDraftChange(e.target.value)}
                             rows={3}
-                            className="w-full text-sm rounded-lg border px-2.5 py-2 resize-none focus:outline-none"
+                            className="w-full text-base sm:text-sm rounded-lg border px-2.5 py-2 resize-none focus:outline-none"
                             style={{ borderColor: "#e8e5df", background: "#ffffff", color: "#1a1a1a" }}
                           />
                           <div className="flex justify-end gap-2">
@@ -1432,7 +1431,7 @@ export default function PortalPatientDetailPage() {
                       <select
                         value={dischargeOutcomeInput}
                         onChange={(e) => setDischargeOutcomeInput(e.target.value as DischargeOutcome | "")}
-                        className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none appearance-none"
+                        className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none appearance-none min-h-11 sm:min-h-0"
                         style={{ borderColor: "#e8e5df", background: "#ffffff", color: "#1a1a1a" }}
                       >
                         <option value="">Niet aangegeven</option>
@@ -1852,24 +1851,24 @@ function PatientScheduleExerciseEditModal({
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div>
               <ScheduleExerciseFieldLabel>Sets</ScheduleExerciseFieldLabel>
-              <input type="number" min={0} value={sets} onChange={(e) => setSets(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={scheduleExerciseInputStyle} />
+              <input type="number" min={0} value={sets} onChange={(e) => setSets(e.target.value)} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={scheduleExerciseInputStyle} />
             </div>
             <div>
               <ScheduleExerciseFieldLabel>Herhalingen</ScheduleExerciseFieldLabel>
-              <input type="number" min={0} value={reps} onChange={(e) => setReps(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={scheduleExerciseInputStyle} />
+              <input type="number" min={0} value={reps} onChange={(e) => setReps(e.target.value)} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={scheduleExerciseInputStyle} />
             </div>
             <div>
               <ScheduleExerciseFieldLabel>Duur (sec)</ScheduleExerciseFieldLabel>
-              <input type="number" min={0} value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={scheduleExerciseInputStyle} />
+              <input type="number" min={0} value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={scheduleExerciseInputStyle} />
             </div>
           </div>
           <div>
             <ScheduleExerciseFieldLabel>Belasting (bijv. &quot;20 kg&quot; of &quot;lichaamsgewicht&quot;)</ScheduleExerciseFieldLabel>
-            <input type="text" value={loadText} onChange={(e) => setLoadText(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={scheduleExerciseInputStyle} />
+            <input type="text" value={loadText} onChange={(e) => setLoadText(e.target.value)} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={scheduleExerciseInputStyle} />
           </div>
           <div>
             <ScheduleExerciseFieldLabel>Opmerking voor deze patiënt (optioneel)</ScheduleExerciseFieldLabel>
-            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none resize-none" style={scheduleExerciseInputStyle} />
+            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none resize-none" style={scheduleExerciseInputStyle} />
           </div>
           {error && <p className="text-xs" style={{ color: "#dc2626" }}>{error}</p>}
           <div className="flex justify-end gap-2">

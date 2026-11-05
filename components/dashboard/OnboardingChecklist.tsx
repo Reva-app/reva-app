@@ -83,7 +83,7 @@ export function OnboardingChecklist({
         type="button"
         onClick={handleCollapse}
         aria-label="Inklappen"
-        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+        className="tap-target absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
       >
         <X size={16} />
       </button>

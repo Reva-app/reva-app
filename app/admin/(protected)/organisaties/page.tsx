@@ -147,7 +147,7 @@ export default function AdminOrganizationsPage() {
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="Bijv. Fysiotherapie Voorbeeldpraktijk"
-                className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none"
+                className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none min-h-11 sm:min-h-0"
                 style={inputStyle}
               />
             </div>
@@ -157,15 +157,15 @@ export default function AdminOrganizationsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <input
                   type="text" value={ownerFirstName} onChange={(e) => setOwnerFirstName(e.target.value)}
-                  placeholder="Voornaam" className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none" style={inputStyle}
+                  placeholder="Voornaam" className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
                 />
                 <input
                   type="text" value={ownerLastName} onChange={(e) => setOwnerLastName(e.target.value)}
-                  placeholder="Achternaam" className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none" style={inputStyle}
+                  placeholder="Achternaam" className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
                 />
                 <input
                   type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)}
-                  placeholder="E-mailadres" className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none" style={inputStyle}
+                  placeholder="E-mailadres" className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
                 />
               </div>
               <p className="text-xs text-gray-400 mt-2">
@@ -192,7 +192,7 @@ export default function AdminOrganizationsPage() {
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           placeholder="Zoek op bedrijfsnaam…"
-          className="w-full text-sm rounded-xl border pl-9 pr-4 py-2.5 focus:outline-none"
+          className="w-full text-base sm:text-sm rounded-xl border pl-9 pr-4 py-2.5 focus:outline-none min-h-11 sm:min-h-0"
           style={inputStyle}
         />
       </div>

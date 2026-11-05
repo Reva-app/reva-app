@@ -108,7 +108,7 @@ function SheetInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className="w-full min-w-0 text-sm rounded-xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-100 transition-all"
+      className="w-full min-w-0 text-base sm:text-sm rounded-xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-100 transition-all min-h-11 sm:min-h-0"
       style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a", boxSizing: "border-box", maxWidth: "100%" }}
     />
   );
@@ -127,7 +127,7 @@ function SheetSelect({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full text-sm rounded-xl border px-4 py-3 focus:outline-none appearance-none"
+      className="w-full text-base sm:text-sm rounded-xl border px-4 py-3 focus:outline-none appearance-none min-h-11 sm:min-h-0"
       style={{
         borderColor: "#e8e5df",
         background: "#f8f7f4",

@@ -553,7 +553,7 @@ export default function AnalysePage() {
                 <select
                   value={selectedExerciseId}
                   onChange={(e) => setSelectedExerciseId(e.target.value)}
-                  className="w-full text-sm rounded-xl border px-3 py-2 mb-3 focus:outline-none"
+                  className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 mb-3 focus:outline-none min-h-11 sm:min-h-0"
                   style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
                 >
                   {protocolExercises.map((ex) => <option key={ex.id} value={ex.id}>{ex.title}</option>)}

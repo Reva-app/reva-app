@@ -163,7 +163,7 @@ function SchemaForm({
             value={form.dosering}
             onChange={(e) => set("dosering", e.target.value)}
             placeholder="bijv. 500mg"
-            className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors"
+            className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors min-h-11 sm:min-h-0"
             style={{
               borderColor: doseringError ? "#fca5a5" : "#e8e5df",
               background: doseringError ? "#fef2f2" : "#f8f7f4",
@@ -229,7 +229,7 @@ function SchemaForm({
           onChange={(e) => set("notitie", e.target.value)}
           placeholder="Bijzonderheden of instructies..."
           rows={2}
-          className="w-full text-sm rounded-xl border px-4 py-2.5 resize-none focus:outline-none"
+          className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 resize-none focus:outline-none"
           style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
         />
       </div>

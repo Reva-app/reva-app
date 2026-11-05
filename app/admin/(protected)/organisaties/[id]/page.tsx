@@ -53,7 +53,7 @@ function TextField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors"
+        className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors min-h-11 sm:min-h-0"
         style={inputStyle}
       />
     </div>
@@ -407,7 +407,7 @@ function AdminOrganizationDetailContent() {
                   status: e.target.value,
                   trialEndsAt: e.target.value === "trial" && !org.trialEndsAt ? isoDatePlusDays(DEFAULT_TRIAL_DAYS) : org.trialEndsAt,
                 })}
-                className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none"
+                className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none min-h-11 sm:min-h-0"
                 style={inputStyle}
               >
                 <option value="trial">Trial</option>
@@ -504,11 +504,11 @@ function AdminOrganizationDetailContent() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <input
                     type="text" value={memberFirstName} onChange={(e) => setMemberFirstName(e.target.value)}
-                    placeholder="Voornaam" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={{ ...inputStyle, background: "#ffffff" }}
+                    placeholder="Voornaam" className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={{ ...inputStyle, background: "#ffffff" }}
                   />
                   <input
                     type="text" value={memberLastName} onChange={(e) => setMemberLastName(e.target.value)}
-                    placeholder="Achternaam" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={{ ...inputStyle, background: "#ffffff" }}
+                    placeholder="Achternaam" className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={{ ...inputStyle, background: "#ffffff" }}
                   />
                 </div>
               </>
@@ -522,7 +522,7 @@ function AdminOrganizationDetailContent() {
                   onChange={(e) => setMemberEmail(e.target.value)}
                   placeholder="naam@praktijk.nl"
                   disabled={!!pendingMatch}
-                  className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60"
+                  className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0"
                   style={{ ...inputStyle, background: "#ffffff" }}
                 />
               </div>
@@ -531,7 +531,7 @@ function AdminOrganizationDetailContent() {
                 <select
                   value={memberRoleId}
                   onChange={(e) => setMemberRoleId(e.target.value)}
-                  className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none"
+                  className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0"
                   style={{ ...inputStyle, background: "#ffffff" }}
                 >
                   {roles.map((r) => (
@@ -544,7 +544,7 @@ function AdminOrganizationDetailContent() {
                 <select
                   value={memberLocationId}
                   onChange={(e) => setMemberLocationId(e.target.value)}
-                  className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none"
+                  className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0"
                   style={{ ...inputStyle, background: "#ffffff" }}
                 >
                   <option value="">Heel bedrijf</option>
@@ -684,7 +684,7 @@ function AdminOrganizationDetailContent() {
               onChange={(e) => setOrg({ ...org, supportNotes: e.target.value })}
               placeholder="Bijv. afspraken uit een salesgesprek, openstaande vragen, wensen…"
               rows={4}
-              className="w-full text-sm rounded-xl border px-4 py-3 focus:outline-none transition-colors resize-none"
+              className="w-full text-base sm:text-sm rounded-xl border px-4 py-3 focus:outline-none transition-colors resize-none"
               style={inputStyle}
             />
           </div>
@@ -774,7 +774,7 @@ function LimitInput({ label, value, onChange, allowEmpty }: { label: string; val
           if (raw === "") { onChange(allowEmpty ? null : UNLIMITED); return; }
           onChange(Math.max(0, Math.floor(Number(raw) || 0)));
         }}
-        className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors"
+        className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors min-h-11 sm:min-h-0"
         style={inputStyle}
       />
     </div>
@@ -855,7 +855,7 @@ function PlanCard({
                       const raw = e.target.value.trim();
                       onChange({ ...org, customMonthlyPriceCents: raw === "" ? null : Math.round(Math.max(0, Number(raw) || 0) * 100) });
                     }}
-                    className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors"
+                    className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none transition-colors min-h-11 sm:min-h-0"
                     style={inputStyle}
                   />
                 </div>

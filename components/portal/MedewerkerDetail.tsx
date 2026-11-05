@@ -520,32 +520,32 @@ export function MedewerkerDetail({
                   <div>
                     <FieldLabel>Voornaam</FieldLabel>
                     <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} disabled={!canEditGeneral}
-                      className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60" style={inputStyle} />
+                      className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0" style={inputStyle} />
                   </div>
                   <div>
                     <FieldLabel>Achternaam</FieldLabel>
                     <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} disabled={!canEditGeneral}
-                      className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60" style={inputStyle} />
+                      className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0" style={inputStyle} />
                   </div>
                   <div>
                     <FieldLabel>E-mailadres</FieldLabel>
                     <input type="email" value={member.email ?? ""} disabled
-                      className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none opacity-60" style={inputStyle} />
+                      className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none opacity-60 min-h-11 sm:min-h-0" style={inputStyle} />
                   </div>
                   <div>
                     <FieldLabel>Telefoonnummer</FieldLabel>
                     <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={!canEditGeneral}
-                      className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60" style={inputStyle} />
+                      className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0" style={inputStyle} />
                   </div>
                   <div>
                     <FieldLabel>Functietitel</FieldLabel>
                     <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} disabled={!canEditGeneral}
-                      placeholder="Bijv. Fysiotherapeut" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60" style={inputStyle} />
+                      placeholder="Bijv. Fysiotherapeut" className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0" style={inputStyle} />
                   </div>
                   <div>
                     <FieldLabel>BIG-nummer</FieldLabel>
                     <input type="text" value={bigNumber} onChange={(e) => setBigNumber(e.target.value)} disabled={!canEditGeneral}
-                      className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60" style={inputStyle} />
+                      className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0" style={inputStyle} />
                   </div>
                 </div>
                 {canEditGeneral && (
@@ -569,7 +569,7 @@ export function MedewerkerDetail({
                       <FieldLabel>Werkrooster voor locatie</FieldLabel>
                       <select
                         value={scheduleLocationId} onChange={(e) => setScheduleLocationId(e.target.value)}
-                        className="w-full sm:w-80 text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+                        className="w-full sm:w-80 text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
                       >
                         {scheduleLocationOptions.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
                       </select>
@@ -597,11 +597,11 @@ export function MedewerkerDetail({
                           <div className="flex items-center gap-2 flex-wrap">
                             <input type="time" value={d.startTime} disabled={!canEditGeneral}
                               onChange={(e) => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], startTime: e.target.value } }))}
-                              className="text-sm rounded-lg border px-2 py-1.5 focus:outline-none disabled:opacity-60" style={inputStyle} />
+                              className="text-base sm:text-sm rounded-lg border px-2 py-1.5 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0" style={inputStyle} />
                             <span className="text-gray-400 text-sm">tot</span>
                             <input type="time" value={d.endTime} disabled={!canEditGeneral}
                               onChange={(e) => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], endTime: e.target.value } }))}
-                              className="text-sm rounded-lg border px-2 py-1.5 focus:outline-none disabled:opacity-60" style={inputStyle} />
+                              className="text-base sm:text-sm rounded-lg border px-2 py-1.5 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0" style={inputStyle} />
                           </div>
                         ) : (
                           <span className="text-sm text-gray-400">Vrij</span>
@@ -635,7 +635,7 @@ export function MedewerkerDetail({
                         <FieldLabel>iCal-link</FieldLabel>
                         <input type="url" value={icsUrlInput} onChange={(e) => setIcsUrlInput(e.target.value)} disabled={!canEditGeneral}
                           placeholder="https://calendar.google.com/calendar/ical/.../basic.ics"
-                          className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60" style={inputStyle} />
+                          className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0" style={inputStyle} />
                       </div>
                       {canEditGeneral && (
                         <div className="flex gap-2">
@@ -732,7 +732,7 @@ export function MedewerkerDetail({
                         <FieldLabel>Type</FieldLabel>
                         <select
                           value={leaveType} onChange={(e) => setLeaveType(e.target.value as PortalLeaveType)}
-                          className="w-full sm:w-80 text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+                          className="w-full sm:w-80 text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
                         >
                           {LEAVE_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{LEAVE_TYPE_LABELS[t]}</option>)}
                         </select>
@@ -740,7 +740,7 @@ export function MedewerkerDetail({
                       <div>
                         <FieldLabel>Notitie (optioneel)</FieldLabel>
                         <input type="text" value={leaveNote} onChange={(e) => setLeaveNote(e.target.value)}
-                          className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
+                          className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
                       </div>
                       <Button
                         size="sm"
@@ -767,7 +767,7 @@ export function MedewerkerDetail({
                     <FieldLabel>Hoofdlocatie</FieldLabel>
                     <select
                       value={mainLocationId} onChange={(e) => setMainLocationId(e.target.value)} disabled={!canManage}
-                      className="w-full sm:w-80 text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60" style={inputStyle}
+                      className="w-full sm:w-80 text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0" style={inputStyle}
                     >
                       <option value="">Hele organisatie</option>
                       {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
@@ -812,7 +812,7 @@ export function MedewerkerDetail({
                   <FieldLabel>Rol</FieldLabel>
                   <select
                     value={roleId} onChange={(e) => setRoleId(e.target.value)} disabled={!canManage}
-                    className="w-full sm:w-80 text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60" style={inputStyle}
+                    className="w-full sm:w-80 text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0" style={inputStyle}
                   >
                     {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
                   </select>
@@ -879,7 +879,7 @@ export function MedewerkerDetail({
               <div className="space-y-4">
                 <div>
                   <FieldLabel>Categorie</FieldLabel>
-                  <select value={fbCategorie} onChange={(e) => setFbCategorie(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+                  <select value={fbCategorie} onChange={(e) => setFbCategorie(e.target.value)} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
                     <option value="">Kies een categorie</option>
                     <option value="bug">Bug</option>
                     <option value="idee">Idee</option>
@@ -890,12 +890,12 @@ export function MedewerkerDetail({
                 <div>
                   <FieldLabel>Onderwerp</FieldLabel>
                   <input type="text" value={fbOnderwerp} onChange={(e) => setFbOnderwerp(e.target.value)} placeholder="Waar gaat jouw feedback over?"
-                    className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
+                    className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
                 </div>
                 <div>
                   <FieldLabel>Bericht</FieldLabel>
                   <textarea value={fbBericht} onChange={(e) => setFbBericht(e.target.value)} placeholder="Beschrijf jouw feedback zo duidelijk mogelijk..." rows={4}
-                    className="w-full text-sm rounded-xl border px-3 py-2.5 focus:outline-none resize-none" style={inputStyle} />
+                    className="w-full text-base sm:text-sm rounded-xl border px-3 py-2.5 focus:outline-none resize-none" style={inputStyle} />
                 </div>
                 <div>
                   <Button size="sm" disabled={fbSending || !fbOnderwerp.trim() || !fbBericht.trim()} onClick={handleFeedback}>

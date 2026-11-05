@@ -124,15 +124,15 @@ export function ExerciseMultiSelectModal({
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Zoeken…" className="w-full text-sm rounded-xl border pl-9 pr-3 py-2 focus:outline-none" style={inputStyle}
+                  placeholder="Zoeken…" className="w-full text-base sm:text-sm rounded-xl border pl-9 pr-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
                 />
               </div>
-              <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value as SourceFilter)} className="text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+              <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value as SourceFilter)} className="text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
                 <option value="all">Alles</option>
                 <option value="organization">Eigen bibliotheek</option>
                 <option value="reva">REVA-bibliotheek</option>
               </select>
-              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
                 <option value="">Alle categorieën</option>
                 {Object.entries(EXERCISE_TYPE_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
               </select>
@@ -197,19 +197,19 @@ export function ExerciseMultiSelectModal({
             <div>
               <FieldLabel>Titel</FieldLabel>
               <input type="text" value={newExercise.title} onChange={(e) => setNewExercise((p) => ({ ...p, title: e.target.value }))}
-                className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
+                className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
             </div>
             <div>
               <FieldLabel>Categorie</FieldLabel>
               <select value={newExercise.exerciseType} onChange={(e) => setNewExercise((p) => ({ ...p, exerciseType: e.target.value }))}
-                className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+                className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
                 {Object.entries(EXERCISE_TYPE_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
               </select>
             </div>
             <div>
               <FieldLabel>Instructies (optioneel)</FieldLabel>
               <textarea value={newExercise.instructions} onChange={(e) => setNewExercise((p) => ({ ...p, instructions: e.target.value }))} rows={2}
-                className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none resize-none" style={inputStyle} />
+                className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none resize-none" style={inputStyle} />
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" size="sm" variant="secondary" onClick={() => setShowNewExercise(false)}>Terug</Button>

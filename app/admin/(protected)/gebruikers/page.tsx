@@ -65,7 +65,7 @@ export default function AdminUsersPage() {
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           placeholder="Zoek op naam, e-mail of organisatie…"
-          className="w-full text-sm rounded-xl border pl-9 pr-4 py-2.5 focus:outline-none"
+          className="w-full text-base sm:text-sm rounded-xl border pl-9 pr-4 py-2.5 focus:outline-none min-h-11 sm:min-h-0"
           style={inputStyle}
         />
       </div>

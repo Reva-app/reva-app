@@ -110,7 +110,7 @@ export function ActionMenu({ items }: ActionMenuProps) {
         ref={triggerRef}
         type="button"
         onClick={toggle}
-        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"
+        className="relative tap-target p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"
       >
         <MoreVertical size={16} />
       </button>

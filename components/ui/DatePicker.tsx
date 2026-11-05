@@ -3,11 +3,14 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Calendar } from "lucide-react";
+import { useFieldContext } from "@/components/ui/Field";
 
 interface DatePickerProps {
   value: string; // "YYYY-MM-DD" or ""
   onChange: (val: string) => void;
   placeholder?: string;
+  /** Standaard het id van de omliggende <Field>, zodat het label klikbaar is. */
+  id?: string;
   minYear?: number;
   maxYear?: number;
 }
@@ -107,9 +110,11 @@ export function DatePicker({
   value,
   onChange,
   placeholder = "Kies een datum",
+  id,
   minYear = 1940,
   maxYear = 2030,
 }: DatePickerProps) {
+  const field = useFieldContext();
   const today = new Date();
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
 
@@ -177,7 +182,8 @@ export function DatePicker({
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
       // On mobile, the fixed nav bar covers the bottom — subtract its height
-      const navHeight = window.innerWidth < 640 ? 64 : 0;
+      // De onderbalk is zichtbaar tot de lg-breakpoint (1024px).
+      const navHeight = window.innerWidth < 1024 ? 64 : 0;
       const spaceBelow = window.innerHeight - rect.bottom - navHeight;
       const spaceAbove = rect.top;
 
@@ -244,7 +250,7 @@ export function DatePicker({
         <select
           value={navYear}
           onChange={(e) => setNavYear(Number(e.target.value))}
-          className="text-sm rounded-lg border px-2 py-1.5 focus:outline-none"
+          className="text-base sm:text-sm rounded-lg border px-2 py-1.5 focus:outline-none min-h-11 sm:min-h-0"
           style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#374151" }}
         >
           {years.map((y) => (
@@ -254,7 +260,7 @@ export function DatePicker({
         <select
           value={navMonth}
           onChange={(e) => setNavMonth(Number(e.target.value))}
-          className="text-sm rounded-lg border px-2 py-1.5 focus:outline-none"
+          className="text-base sm:text-sm rounded-lg border px-2 py-1.5 focus:outline-none min-h-11 sm:min-h-0"
           style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#374151" }}
         >
           {MAANDEN.map((m, i) => (
@@ -342,12 +348,15 @@ export function DatePicker({
     <div className="relative" ref={triggerRef}>
       {/* Trigger: typbaar tekstveld (DD-MM-JJJJ) + knop voor de kalender */}
       <div
-        className="w-full flex items-center gap-2 text-sm rounded-xl border pl-4 pr-2 py-2.5 transition-colors focus-within:bg-white"
+        className="w-full flex items-center gap-2 text-base sm:text-sm rounded-xl border pl-4 pr-2 py-2.5 transition-colors focus-within:bg-white"
         style={{ borderColor: "#e8e5df", background: "#f8f7f4" }}
       >
         <input
           type="text"
           inputMode="numeric"
+          id={id ?? field?.id}
+          aria-describedby={field?.describedBy}
+          aria-invalid={field?.invalid || undefined}
           value={typedText}
           onChange={(e) => handleTypedChange(e.target.value)}
           onFocus={() => setTypedFocused(true)}
@@ -360,7 +369,7 @@ export function DatePicker({
           type="button"
           onClick={openPicker}
           aria-label="Kalender openen"
-          className="shrink-0 p-1 -mr-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+          className="shrink-0 -my-2 -mr-1 w-11 h-11 sm:w-8 sm:h-8 sm:my-0 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
         >
           <Calendar size={15} />
         </button>

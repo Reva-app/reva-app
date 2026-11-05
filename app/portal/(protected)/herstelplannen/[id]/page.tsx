@@ -230,7 +230,7 @@ export default function PortalProtocolDetailPage() {
                 <input
                   type="text" value={name} onChange={(e) => setName(e.target.value)} onBlur={handleTitleBlur}
                   disabled={!canEdit}
-                  className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60"
+                  className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0"
                   style={inputStyle}
                 />
               </Card>
@@ -240,14 +240,14 @@ export default function PortalProtocolDetailPage() {
                 <div className="space-y-4">
                   <div>
                     <FieldLabel>Blessure / ingreep</FieldLabel>
-                    <select value={injuryCategory} onChange={(e) => setInjuryCategory(e.target.value)} disabled={!canEdit} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60" style={inputStyle}>
+                    <select value={injuryCategory} onChange={(e) => setInjuryCategory(e.target.value)} disabled={!canEdit} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0" style={inputStyle}>
                       {Object.entries(INJURY_CATEGORY_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
                     </select>
                   </div>
                   <div>
                     <FieldLabel>Omschrijving (optioneel)</FieldLabel>
                     <textarea value={description} onChange={(e) => setDescription(e.target.value)} disabled={!canEdit} rows={3}
-                      className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 resize-none" style={inputStyle} />
+                      className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 resize-none" style={inputStyle} />
                   </div>
                   {canEdit && <Button size="sm" disabled={savingDescription} onClick={handleSaveDescription}>{savingDescription ? "Opslaan…" : "Opslaan"}</Button>}
                 </div>

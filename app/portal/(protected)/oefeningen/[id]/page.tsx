@@ -217,7 +217,7 @@ export default function PortalOefeningDetailPage() {
               <input
                 type="text" value={title} onChange={(e) => setTitle(e.target.value)} onBlur={handleTitleBlur}
                 disabled={!canEdit}
-                className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60"
+                className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0"
                 style={inputStyle}
               />
             </Card>
@@ -227,17 +227,17 @@ export default function PortalOefeningDetailPage() {
               <div className="space-y-4">
                 <div>
                   <FieldLabel>Categorie</FieldLabel>
-                  <select value={exerciseType} onChange={(e) => setExerciseType(e.target.value)} disabled={!canEdit} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60" style={inputStyle}>
+                  <select value={exerciseType} onChange={(e) => setExerciseType(e.target.value)} disabled={!canEdit} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0" style={inputStyle}>
                     {Object.entries(EXERCISE_TYPE_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
                   </select>
                 </div>
                 <div>
                   <FieldLabel>Omschrijving (optioneel)</FieldLabel>
-                  <textarea value={description} onChange={(e) => setDescription(e.target.value)} disabled={!canEdit} rows={3} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 resize-none" style={inputStyle} />
+                  <textarea value={description} onChange={(e) => setDescription(e.target.value)} disabled={!canEdit} rows={3} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 resize-none" style={inputStyle} />
                 </div>
                 <div>
                   <FieldLabel>Instructies (optioneel)</FieldLabel>
-                  <textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} disabled={!canEdit} rows={3} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 resize-none" style={inputStyle} />
+                  <textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} disabled={!canEdit} rows={3} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 resize-none" style={inputStyle} />
                 </div>
                 {canEdit && <Button size="sm" disabled={savingDetails} onClick={handleSaveDetails}>{savingDetails ? "Opslaan…" : "Opslaan"}</Button>}
               </div>
@@ -249,20 +249,20 @@ export default function PortalOefeningDetailPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <div>
                     <FieldLabel>Sets</FieldLabel>
-                    <input type="number" min={0} value={defaultSets} onChange={(e) => setDefaultSets(e.target.value)} disabled={!canEdit} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60" style={inputStyle} />
+                    <input type="number" min={0} value={defaultSets} onChange={(e) => setDefaultSets(e.target.value)} disabled={!canEdit} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0" style={inputStyle} />
                   </div>
                   <div>
                     <FieldLabel>Herhalingen</FieldLabel>
-                    <input type="number" min={0} value={defaultReps} onChange={(e) => setDefaultReps(e.target.value)} disabled={!canEdit} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60" style={inputStyle} />
+                    <input type="number" min={0} value={defaultReps} onChange={(e) => setDefaultReps(e.target.value)} disabled={!canEdit} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0" style={inputStyle} />
                   </div>
                   <div>
                     <FieldLabel>Duur (sec)</FieldLabel>
-                    <input type="number" min={0} value={defaultDurationSeconds} onChange={(e) => setDefaultDurationSeconds(e.target.value)} disabled={!canEdit} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60" style={inputStyle} />
+                    <input type="number" min={0} value={defaultDurationSeconds} onChange={(e) => setDefaultDurationSeconds(e.target.value)} disabled={!canEdit} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0" style={inputStyle} />
                   </div>
                 </div>
                 <div>
                   <FieldLabel>Belasting (optioneel)</FieldLabel>
-                  <input type="text" value={defaultLoadText} onChange={(e) => setDefaultLoadText(e.target.value)} disabled={!canEdit} placeholder="Bijv. 20 kg of lichaamsgewicht" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60" style={inputStyle} />
+                  <input type="text" value={defaultLoadText} onChange={(e) => setDefaultLoadText(e.target.value)} disabled={!canEdit} placeholder="Bijv. 20 kg of lichaamsgewicht" className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0" style={inputStyle} />
                 </div>
                 {canEdit && <Button size="sm" disabled={savingDetails} onClick={handleSaveDetails}>{savingDetails ? "Opslaan…" : "Opslaan"}</Button>}
               </div>
@@ -364,7 +364,7 @@ export default function PortalOefeningDetailPage() {
                       <input
                         type="text" value={newTag} onChange={(e) => setNewTag(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
-                        placeholder="Bijv. knie" className="flex-1 text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}
+                        placeholder="Bijv. knie" className="flex-1 text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
                       />
                       <Button type="button" size="sm" variant="secondary" onClick={addTag} aria-label="Tag toevoegen" title="Tag toevoegen" className="px-2.5 shrink-0">
                         <Plus size={14} />

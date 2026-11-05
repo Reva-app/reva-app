@@ -113,7 +113,7 @@ export default function ActiviteitenlogPage() {
         <div className="w-[calc(50%-0.375rem)] sm:w-52">
           <FieldLabel>Patiënt</FieldLabel>
           <select value={patientFilter} onChange={(e) => setPatientFilter(e.target.value)}
-            className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+            className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
             <option value="">Alle patiënten</option>
             {patients.map((p) => <option key={p.id} value={p.id}>{p.fullName}</option>)}
           </select>
@@ -121,7 +121,7 @@ export default function ActiviteitenlogPage() {
         <div className="w-[calc(50%-0.375rem)] sm:w-44">
           <FieldLabel>Type</FieldLabel>
           <select value={tableFilter} onChange={(e) => setTableFilter(e.target.value)}
-            className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+            className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
             <option value="">Alle types</option>
             {Object.entries(AUDIT_TABLE_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
           </select>
@@ -129,7 +129,7 @@ export default function ActiviteitenlogPage() {
         <div className="w-[calc(50%-0.375rem)] sm:w-40">
           <FieldLabel>Actie</FieldLabel>
           <select value={actionFilter} onChange={(e) => setActionFilter(e.target.value)}
-            className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+            className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
             <option value="">Alle acties</option>
             {Object.entries(AUDIT_ACTION_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
           </select>

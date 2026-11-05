@@ -5,6 +5,7 @@ import { Check, ChevronRight, ChevronLeft, Loader2, X } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { Field, Input, Select } from "@/components/ui/Field";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
   createAndInvitePortalPatient,
@@ -14,7 +15,7 @@ import { assignProtocolToPatient, type PortalProtocolCard } from "@/lib/services
 import { createPatientIntake } from "@/lib/services/intakeService";
 import { generateIntakeAnalysis, emptyIntakeInput, type IntakeInput, type SuggestedGoal, type VisitReason } from "@/lib/intakeAnalysis";
 import { isValidEmail, BLESSURE_TYPEN } from "@/lib/data";
-import { FieldLabel, inputStyle } from "./wizard/shared";
+import { FieldLabel } from "./wizard/shared";
 import { AanleidingStep } from "./wizard/AanleidingStep";
 import { IntakeStep } from "./wizard/IntakeStep";
 import { RevaAnalyseStep } from "./wizard/RevaAnalyseStep";
@@ -177,7 +178,7 @@ export function PatientWizard({
       <div className="p-5">
       <div className="flex items-start justify-between">
         <CardHeader title="Patiënt toevoegen" subtitle={`Stap ${step + 1} van ${STEPS.length}: ${STEPS[step]}`} />
-        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 shrink-0 -mt-1">
+        <button type="button" onClick={onClose} aria-label="Sluiten" className="relative tap-target text-gray-400 hover:text-gray-600 shrink-0 -mt-1">
           <X size={18} />
         </button>
       </div>
@@ -216,56 +217,41 @@ export function PatientWizard({
       {step === 0 && (
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <FieldLabel>Voornaam</FieldLabel>
-              <input type="text" value={input.firstName} onChange={(e) => update("firstName", e.target.value)}
-                placeholder="Jan" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
-            </div>
-            <div>
-              <FieldLabel>Achternaam</FieldLabel>
-              <input type="text" value={input.lastName} onChange={(e) => update("lastName", e.target.value)}
-                placeholder="Jansen" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
-            </div>
-            <div>
-              <FieldLabel>E-mailadres</FieldLabel>
-              <input type="email" value={input.email} onChange={(e) => update("email", e.target.value)}
-                placeholder="jan@voorbeeld.nl" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
-            </div>
-            <div>
-              <FieldLabel>Telefoonnummer (optioneel)</FieldLabel>
-              <input type="tel" value={input.phone} onChange={(e) => update("phone", e.target.value)}
-                placeholder="06 12345678" className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle} />
-            </div>
-            <div>
-              <FieldLabel>Geboortedatum (optioneel)</FieldLabel>
+            <Field label="Voornaam">
+              <Input value={input.firstName} onChange={(e) => update("firstName", e.target.value)} placeholder="Jan" autoComplete="off" />
+            </Field>
+            <Field label="Achternaam">
+              <Input value={input.lastName} onChange={(e) => update("lastName", e.target.value)} placeholder="Jansen" autoComplete="off" />
+            </Field>
+            <Field label="E-mailadres">
+              <Input type="email" value={input.email} onChange={(e) => update("email", e.target.value)} placeholder="jan@voorbeeld.nl" autoComplete="off" />
+            </Field>
+            <Field label="Telefoonnummer" optional>
+              <Input type="tel" value={input.phone} onChange={(e) => update("phone", e.target.value)} placeholder="06 12345678" autoComplete="off" />
+            </Field>
+            <Field label="Geboortedatum" optional>
               <DatePicker value={input.dateOfBirth} onChange={(v) => update("dateOfBirth", v)} placeholder="Kies een datum" />
-            </div>
-            <div>
-              <FieldLabel>Geslacht (optioneel)</FieldLabel>
-              <select value={input.gender} onChange={(e) => update("gender", e.target.value)}
-                className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+            </Field>
+            <Field label="Geslacht" optional>
+              <Select value={input.gender} onChange={(e) => update("gender", e.target.value)}>
                 <option value="">Niet opgegeven</option>
                 <option value="man">Man</option>
                 <option value="vrouw">Vrouw</option>
                 <option value="anders">Anders</option>
-              </select>
-            </div>
-            <div>
-              <FieldLabel>Locatie (optioneel)</FieldLabel>
-              <select value={input.locationId ?? ""} onChange={(e) => update("locationId", e.target.value || null)}
-                className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+              </Select>
+            </Field>
+            <Field label="Locatie" optional>
+              <Select value={input.locationId ?? ""} onChange={(e) => update("locationId", e.target.value || null)}>
                 <option value="">Geen specifieke locatie</option>
                 {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <FieldLabel>Behandelend therapeut (optioneel)</FieldLabel>
-              <select value={input.therapistId ?? ""} onChange={(e) => update("therapistId", e.target.value || null)}
-                className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+              </Select>
+            </Field>
+            <Field label="Behandelend therapeut" optional>
+              <Select value={input.therapistId ?? ""} onChange={(e) => update("therapistId", e.target.value || null)}>
                 <option value="">Nog niet toegewezen</option>
                 {activeMembers.map((m) => <option key={m.userId} value={m.userId}>{m.fullName || m.email}</option>)}
-              </select>
-            </div>
+              </Select>
+            </Field>
           </div>
           {stepError && <p className="text-xs" style={{ color: "#dc2626" }}>{stepError}</p>}
         </div>

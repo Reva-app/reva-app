@@ -68,13 +68,13 @@ export function PatientDirectory({ organizationId }: { organizationId: string })
             <input
               type="text" value={search} onChange={(e) => setSearch(e.target.value)}
               placeholder="Naam, e-mailadres of telefoonnummer…"
-              className="w-full text-sm rounded-xl border pl-9 pr-3 py-2 focus:outline-none" style={inputStyle}
+              className="w-full text-base sm:text-sm rounded-xl border pl-9 pr-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
             />
           </div>
         </div>
         <div className="w-full sm:w-40">
           <label className="block text-xs font-medium text-gray-500 mb-1.5">Status</label>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
             <option value="">Alle</option>
             <option value="active">Actief</option>
             <option value="inactive">Inactief</option>

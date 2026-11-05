@@ -110,19 +110,19 @@ function LeadFormModal({ initial, defaultStage, onClose, onSave, onDelete }: {
             <FieldLabel>Bedrijfsnaam *</FieldLabel>
             <input value={companyName} onChange={(e) => setCompanyName(e.target.value)}
               placeholder="Bijv. Fysiotherapie Voorbeeldpraktijk"
-              className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none" style={inputStyle} />
+              className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
             {submitted && !companyName.trim() && <p className="text-xs text-red-400 mt-1">Vul een bedrijfsnaam in</p>}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <FieldLabel>Contactpersoon</FieldLabel>
               <input value={contactName} onChange={(e) => setContactName(e.target.value)}
-                className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none" style={inputStyle} />
+                className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
             </div>
             <div>
               <FieldLabel>Fase</FieldLabel>
               <select value={stage} onChange={(e) => setStage(e.target.value as SalesLeadStage)}
-                className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none" style={inputStyle}>
+                className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
                 {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
               </select>
             </div>
@@ -131,18 +131,18 @@ function LeadFormModal({ initial, defaultStage, onClose, onSave, onDelete }: {
             <div>
               <FieldLabel>E-mailadres</FieldLabel>
               <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)}
-                className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none" style={inputStyle} />
+                className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
             </div>
             <div>
               <FieldLabel>Telefoonnummer</FieldLabel>
               <input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)}
-                className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none" style={inputStyle} />
+                className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
             </div>
           </div>
           <div>
             <FieldLabel>Geschatte waarde</FieldLabel>
             <input type="number" value={estimatedValue} onChange={(e) => setEstimatedValue(e.target.value)}
-              placeholder="n.v.t." className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none" style={inputStyle} />
+              placeholder="n.v.t." className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -157,7 +157,7 @@ function LeadFormModal({ initial, defaultStage, onClose, onSave, onDelete }: {
           <div>
             <FieldLabel>Notities</FieldLabel>
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3}
-              className="w-full text-sm rounded-xl border px-4 py-2.5 resize-none focus:outline-none" style={inputStyle} />
+              className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 resize-none focus:outline-none" style={inputStyle} />
           </div>
         </div>
         <div className="flex items-center justify-between gap-2 px-6 py-4 border-t" style={{ borderColor: "#f0ede8" }}>

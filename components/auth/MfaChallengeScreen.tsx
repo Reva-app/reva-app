@@ -60,7 +60,7 @@ export function MfaChallengeScreen({ factorId, onVerified, onSignOut }: MfaChall
               onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
               placeholder="123456"
               autoFocus
-              className="w-full text-sm rounded-xl border px-4 py-2.5 focus:outline-none tracking-widest text-center"
+              className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none tracking-widest text-center min-h-11 sm:min-h-0"
               style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
             />
             {error && <p className="text-[11px] mt-1" style={{ color: "#dc2626" }}>{error}</p>}

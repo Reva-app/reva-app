@@ -411,13 +411,13 @@ function ClinicalPatientsPage() {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Naam of e-mailadres…" className="w-full text-sm rounded-xl border pl-9 pr-3 py-2 focus:outline-none" style={inputStyle}
+              placeholder="Naam of e-mailadres…" className="w-full text-base sm:text-sm rounded-xl border pl-9 pr-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
             />
           </div>
         </div>
         <div className="w-[calc(50%-0.375rem)] sm:w-36">
           <label className="block text-xs font-medium text-gray-500 mb-1.5">Dossierstatus</label>
-          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
             <option value="">Alle</option>
             <option value="active">Actief</option>
             <option value="inactive">Inactief</option>
@@ -426,21 +426,21 @@ function ClinicalPatientsPage() {
         </div>
         <div className="w-[calc(50%-0.375rem)] sm:w-44">
           <label className="block text-xs font-medium text-gray-500 mb-1.5">Locatie</label>
-          <select value={locationFilter} onChange={(e) => { setLocationFilter(e.target.value); setPage(1); }} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+          <select value={locationFilter} onChange={(e) => { setLocationFilter(e.target.value); setPage(1); }} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
             <option value="">Alle</option>
             {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
           </select>
         </div>
         <div className="w-[calc(50%-0.375rem)] sm:w-40">
           <label className="block text-xs font-medium text-gray-500 mb-1.5">Behandelaar</label>
-          <select value={therapistFilter} onChange={(e) => { setTherapistFilter(e.target.value); setPage(1); }} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+          <select value={therapistFilter} onChange={(e) => { setTherapistFilter(e.target.value); setPage(1); }} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
             <option value="">Alle</option>
             {activeMembers.map((m) => <option key={m.userId} value={m.userId}>{m.fullName || m.email}</option>)}
           </select>
         </div>
         <div className="w-[calc(50%-0.375rem)] sm:w-40">
           <label className="block text-xs font-medium text-gray-500 mb-1.5">Herstelplan</label>
-          <select value={protocolFilter} onChange={(e) => { setProtocolFilter(e.target.value); setPage(1); }} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+          <select value={protocolFilter} onChange={(e) => { setProtocolFilter(e.target.value); setPage(1); }} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
             <option value="">Alle</option>
             {[...new Set([...orgProtocols, ...revaProtocols].map((p) => p.name))].sort().map((name) => (
               <option key={name} value={name}>{name}</option>
@@ -449,7 +449,7 @@ function ClinicalPatientsPage() {
         </div>
         <div className="w-[calc(50%-0.375rem)] sm:w-44">
           <label className="block text-xs font-medium text-gray-500 mb-1.5">Laatste check-in</label>
-          <select value={checkinFilter} onChange={(e) => { setCheckinFilter(e.target.value); setPage(1); }} className="w-full text-sm rounded-xl border px-3 py-2 focus:outline-none" style={inputStyle}>
+          <select value={checkinFilter} onChange={(e) => { setCheckinFilter(e.target.value); setPage(1); }} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
             {CHECKIN_BUCKETS.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
           </select>
         </div>
