@@ -13,7 +13,7 @@ import type { Breadcrumb, ErrorEvent } from "@sentry/nextjs";
 // Een DSN is geen geheim — hij staat sowieso in de browserbundel.
 export const SENTRY_DSN =
   process.env.NEXT_PUBLIC_SENTRY_DSN ??
-  "https://acbbf4f085bae2170251e8d44d9d0193@o4512375718346752.ingest.de.sentry.io/4512377744130128";
+  "https://805affe3de01ac08660fb2dba0ed6e10@o4512375718346752.ingest.de.sentry.io/4512377745440848";
 
 // Alleen productie-builds melden (lokaal ontwikkelen vervuilt het dashboard niet).
 export const SENTRY_ENABLED = process.env.NODE_ENV === "production";
