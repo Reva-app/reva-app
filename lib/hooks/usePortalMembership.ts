@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { loadCurrentMembership, type PortalMembership } from "@/lib/services/portalService";
+import { loadCurrentMembershipShared, type PortalMembership } from "@/lib/services/portalService";
 
 export interface PortalMembershipResult {
   /** True zodra de check is uitgevoerd (los van het resultaat). */
@@ -25,7 +25,7 @@ export function usePortalMembership(): PortalMembershipResult {
     if (authLoading || !user) return;
 
     let cancelled = false;
-    loadCurrentMembership(user.id).then((result) => {
+    loadCurrentMembershipShared(user.id).then((result) => {
       if (cancelled) return;
       setMembership(result);
       setCheckedUserId(user.id);

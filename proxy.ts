@@ -1,25 +1,51 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { buildCsp } from "@/lib/csp";
 
 const AUTH_ROUTES = new Set(["/login", "/register", "/forgot-password"]);
 
 // Elk los portaal (admin, practice) heeft een eigen inlogscherm, los van het
 // patiënten-inlogscherm — zie docs/REVA-V2-MASTERPLAN.md §16. Voegt een
 // nieuw portaal er later eentje toe? Dan hoeft alleen deze lijst te groeien.
+// Pagina's die zelf hun sessie afhandelen (sessie in de URL): geen
+// inlogcontrole of omleiding hier, wel de CSP met nonce.
+const CSP_ONLY_PREFIXES = ["/auth/callback", "/auth/reset-password", "/auth/verify"];
+
 const PORTALS = [
   { prefix: "/admin", loginRoute: "/admin/login" },
   { prefix: "/portal", loginRoute: "/portal/login" },
 ];
 
 export default async function proxy(request: NextRequest) {
+  // Nieuwe nonce per verzoek (zie lib/csp.ts). Next.js leest hem uit de
+  // CSP-requestheader en zet hem op al zijn eigen scripts.
+  const nonce = btoa(crypto.randomUUID());
+  const csp = buildCsp({ nonce, isDev: process.env.NODE_ENV === "development" });
+  // Bouwt de doorgestuurde request telkens opnieuw op uit request.headers,
+  // zodat ververste sessiecookies (setAll hieronder) ook meegaan.
+  const forward = () => {
+    const headers = new Headers(request.headers);
+    headers.set("x-nonce", nonce);
+    headers.set("content-security-policy", csp);
+    return NextResponse.next({ request: { headers } });
+  };
+  const withCsp = (response: NextResponse) => {
+    response.headers.set("Content-Security-Policy", csp);
+    return response;
+  };
+
+  if (CSP_ONLY_PREFIXES.some((p) => request.nextUrl.pathname.startsWith(p))) {
+    return withCsp(forward());
+  }
+
   // If env vars aren't configured, let all requests through
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
   if (!supabaseUrl.startsWith("http") || !supabaseKey) {
-    return NextResponse.next({ request });
+    return withCsp(forward());
   }
 
-  let supabaseResponse = NextResponse.next({ request });
+  let supabaseResponse = forward();
 
   const supabase = createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
@@ -34,7 +60,7 @@ export default async function proxy(request: NextRequest) {
         );
         // Rebuild the response from the updated request so forwarded headers
         // include the new cookie values
-        supabaseResponse = NextResponse.next({ request });
+        supabaseResponse = forward();
         cookiesToSet.forEach(({ name, value, options }) =>
           supabaseResponse.cookies.set(name, value, options)
         );
@@ -63,7 +89,7 @@ export default async function proxy(request: NextRequest) {
     supabaseResponse.cookies.getAll().forEach(({ name, value, ...opts }) => {
       redirectResponse.cookies.set(name, value, opts);
     });
-    return redirectResponse;
+    return withCsp(redirectResponse);
   };
 
   // Normaliseer trailing slash — anders matcht "/login/" nooit met AUTH_ROUTES
@@ -90,7 +116,7 @@ export default async function proxy(request: NextRequest) {
   // token=...) — fragments bereiken de server nooit, dus een server-side
   // sessiecheck ziet hier altijd "niet ingelogd", ook vlak vóórdat de
   // client de echte sessie alsnog verwerkt. Zelfde uitzondering als
-  // auth/callback en auth/reset-password (zie matcher hieronder) — de
+  // auth/callback en auth/reset-password (zie CSP_ONLY_PREFIXES) — de
   // client-side AuthGate (components/auth/AuthGate.tsx) handelt "/" zelf
   // af, inclusief het wachten op een nog-te-verwerken fragment.
   if (!user && !isAuthRoute && !isPortalLoginRoute && normalizedPath !== "/") {
@@ -110,13 +136,14 @@ export default async function proxy(request: NextRequest) {
   }
 
   // Always return the supabaseResponse — it carries any refreshed session cookies
-  return supabaseResponse;
+  return withCsp(supabaseResponse);
 }
 
 export const config = {
   matcher: [
-    // Run on all paths except Next.js internals, static assets, Supabase auth
-    // callback routes that need to complete without redirection, and API routes.
+    // Run on all paths except Next.js internals, static assets and API routes.
+    // De Supabase-auth-routes (callback, reset, verify) lopen wél door de
+    // proxy, maar alleen voor de CSP-nonce — zie CSP_ONLY_PREFIXES.
     // API routes must never be redirected to an HTML page on an auth failure —
     // each one already checks auth itself and returns a proper JSON error/401
     // (see app/api/delete-account/route.ts). A middleware redirect here turns
@@ -128,6 +155,6 @@ export const config = {
     // /login brak de PWA-installatie en de gedeelde link-previews. De
     // app-iconen zelf zijn statische bestanden (app/icon.svg,
     // apple-icon.png) en vallen al onder de extensieregel.
-    "/((?!_next/static|_next/image|favicon\\.ico|manifest\\.webmanifest|opengraph-image$|twitter-image$|auth/callback|auth/reset-password|auth/verify|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).*)",
+    "/((?!_next/static|_next/image|favicon\\.ico|manifest\\.webmanifest|opengraph-image$|twitter-image$|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).*)",
   ],
 };

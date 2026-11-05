@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { connection } from "next/server";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
@@ -64,11 +65,15 @@ export const viewport: Viewport = {
   themeColor: "#e8632a",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Elke pagina per verzoek renderen, zodat Next.js de CSP-nonce uit
+  // proxy.ts op zijn scripts kan zetten (zie lib/csp.ts). Niet in de
+  // Capacitor-build: die is een statische export zonder server.
+  if (process.env.NEXT_BUILD_TARGET !== "capacitor") await connection();
   return (
     <html lang="nl" className={`${geist.variable} h-full`}>
       <body className="h-full antialiased">

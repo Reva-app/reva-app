@@ -53,6 +53,7 @@ export async function resolveAvatarUrl(
 
 /** Upload van een eigen profielfoto — altijd de ingelogde gebruiker zelf, nooit een collega. */
 export async function uploadOwnAvatar(file: File): Promise<{ avatarUrl: string | null; error: string | null }> {
+  invalidateCurrentMembership();
   const supabase = createClient();
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) return { avatarUrl: null, error: "Niet ingelogd." };
@@ -331,6 +332,33 @@ export async function loadPortalPlanUsage(organizationId: string): Promise<Porta
   };
 }
 
+// ─── Huidige membership: één keer ophalen, overal delen ────────────────────
+// usePortalMembership wordt door ±10 onderdelen per pagina gebruikt (zijbalk,
+// onderbalk, banners, de pagina zelf…). Zonder deling deed elk onderdeel
+// dezelfde 5 vragen opnieuw: ±50 van de ±60 databasevragen per pagina.
+// Gelijktijdige aanroepen delen nu één lopende vraag en het resultaat blijft
+// 30 seconden geldig. Een lege uitkomst wordt niet bewaard (bv. vlak vóór de
+// MFA-stap), en elke wijziging aan profiel, avatar of praktijk wist de cache.
+const MEMBERSHIP_CACHE_MS = 30_000;
+let membershipCache: { userId: string; at: number; promise: Promise<PortalMembership | null> } | null = null;
+
+export function invalidateCurrentMembership() {
+  membershipCache = null;
+}
+
+export function loadCurrentMembershipShared(userId: string): Promise<PortalMembership | null> {
+  const cached = membershipCache;
+  if (cached && cached.userId === userId && Date.now() - cached.at < MEMBERSHIP_CACHE_MS) return cached.promise;
+  const entry = { userId, at: Date.now(), promise: loadCurrentMembership(userId) };
+  membershipCache = entry;
+  entry.promise.then((result) => {
+    if (!result && membershipCache === entry) membershipCache = null;
+  }, () => {
+    if (membershipCache === entry) membershipCache = null;
+  });
+  return entry.promise;
+}
+
 export async function loadCurrentMembership(userId: string): Promise<PortalMembership | null> {
   const supabase = createClient();
   const { data: membership, error } = await supabase
@@ -387,6 +415,7 @@ export async function loadCurrentMembership(userId: string): Promise<PortalMembe
  * welcomed_at niet kunnen zetten.
  */
 export async function markMembershipWelcomed(membershipId: string): Promise<{ error: string | null }> {
+  invalidateCurrentMembership();
   const supabase = createClient();
   const { error } = await supabase.rpc("mark_own_membership_welcomed", { p_membership_id: membershipId });
   if (error) { logErr("markMembershipWelcomed", error); return { error: "Bijwerken is niet gelukt." }; }
@@ -2363,6 +2392,7 @@ export async function updateStaffProfile(
   userId: string,
   patch: { firstName: string; lastName: string; phone: string | null; title: string | null; bigNumber: string | null }
 ): Promise<{ error: string | null }> {
+  invalidateCurrentMembership();
   const supabase = createClient();
   const fullName = `${patch.firstName.trim()} ${patch.lastName.trim()}`.trim();
   const { error } = await supabase
@@ -2736,6 +2766,7 @@ export async function updatePortalBranding(
   organizationId: string,
   patch: { name?: string; primaryColor?: string | null }
 ): Promise<{ error: string | null }> {
+  invalidateCurrentMembership();
   const supabase = createClient();
   const dbPatch: Record<string, unknown> = {};
   if (patch.name !== undefined) dbPatch.name = patch.name;
@@ -2751,6 +2782,7 @@ export async function updatePortalBranding(
 
 /** Verwijdert het praktijklogo; de huisstijl valt terug op de beginletter. */
 export async function removePortalLogo(organizationId: string): Promise<{ error: string | null }> {
+  invalidateCurrentMembership();
   const supabase = createClient();
   const { error } = await supabase.from("organizations").update({ logo_path: null }).eq("id", organizationId);
   if (error) { logErr("removePortalLogo", error); return { error: "Verwijderen van het logo is niet gelukt." }; }
@@ -2761,6 +2793,7 @@ export async function uploadPortalLogo(
   organizationId: string,
   file: File
 ): Promise<{ logoUrl: string | null; error: string | null }> {
+  invalidateCurrentMembership();
   // Altijd als geschaalde PNG opslaan — zie lib/logoImage.ts (e-mail en
   // /api/org-logo werken alleen met PNG).
   const { blob, error: normalizeError } = await normalizeLogo(file);

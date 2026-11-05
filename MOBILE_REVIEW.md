@@ -411,7 +411,7 @@ Elke taak is klein genoeg voor één avond van 1–3 uur. Na elke stap volgt een
 
 ### Week 8: patiënt-app en afronding (±6 u)
 24. ✅ Ruimte onderaan voor de FAB (`.pb-nav-fab`, L11); scoreknoppen in één component `ScoreScale`, de pijnscore in 2 rijen van 5 op alle telefoons (< 640 px), knoppen 44 px hoog (K7). FAB-actieknoppen hebben nu een toegankelijke naam. *(1,5 u)*
-25. ✅ Token `text-subtle` (#6b7280, 4,8:1) in `@theme`; 411× `text-gray-400` op tekst en 45 inline `#9ca3af`-teksten omgezet (iconen, placeholders en de donkere onderbalk bewust niet). `text-[9px]`/`text-[10px]` naar 11 px (72 regels; uitzonderingen: meldingenbolletje, reserveringsblokjes in de weekagenda, onderbalk < 390 px). Grafieklabels blijven 11 px op elk scherm (`useSvgScale`, HTML-labels bij patiëntdetail). **Y2 (oranje knop 3,4:1) open: merkbeslissing.** *(2 u)*
+25. ✅ Token `text-subtle` (#6b7280, 4,8:1) in `@theme`; 411× `text-gray-400` op tekst en 45 inline `#9ca3af`-teksten omgezet (iconen, placeholders en de donkere onderbalk bewust niet). `text-[9px]`/`text-[10px]` naar 11 px (72 regels; uitzonderingen: meldingenbolletje, reserveringsblokjes in de weekagenda, onderbalk < 390 px). Grafieklabels blijven 11 px op elk scherm (`useSvgScale`, HTML-labels bij patiëntdetail). **Y2 (oranje knop 3,4:1): bewust zo gelaten — het REVA-oranje blijft (besluit 5 nov 2026).** *(2 u)*
 26. ✅ Oefening-thumbnails halen hun URL pas op als ze in beeld komen; video's laden alleen het eerste beeld (`preload="metadata"` + `#t=0.1`, er bestaan geen posters). `loading="lazy"` op avatars en fotogalerijen. *(1 u)*
 27. ⏳ Lighthouse mobiel op een Vercel-preview en een test op een echte iPhone SE en iPad, inclusief toetsenbord, rotatie en de PWA vanaf het beginscherm. *(1,5 u)*
 

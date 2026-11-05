@@ -13,16 +13,26 @@
  * Herstel: node scripts/cap-postbuild.mjs
  */
 
-import { existsSync, renameSync, mkdirSync } from "fs";
-import { join, dirname } from "path";
+import { existsSync, renameSync, mkdirSync, readdirSync } from "fs";
+import { join, dirname, relative } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 
+// Alle API-routes (app/api/**/route.ts) — automatisch, zodat een nieuwe
+// route de Capacitor-build niet ongemerkt breekt.
+function apiRoutes(dir = join(root, "app/api")) {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const full = join(dir, e.name);
+    if (e.isDirectory()) return apiRoutes(full);
+    return e.name === "route.ts" ? [relative(root, full)] : [];
+  });
+}
+
 const SERVER_ROUTES = [
-  "app/api/delete-account/route.ts",
-  "app/api/feedback/route.ts",
+  ...apiRoutes(),
   // ImageResponse-routes werken niet met output: 'export'
   // App-iconen worden ingesteld via de native Xcode/Android Studio projecten
   "app/icon.tsx",
@@ -40,7 +50,7 @@ for (const rel of SERVER_ROUTES) {
     renameSync(src, dest);
     console.log(`[cap-prebuild] Opzijgezet: ${rel}`);
   } else {
-    console.warn(`[cap-prebuild] Bestand niet gevonden (overgeslagen): ${rel}`);
+    // icon.tsx/apple-icon.tsx bestaan niet meer (statische iconen); prima.
   }
 }
 

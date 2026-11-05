@@ -7,32 +7,31 @@
  * Gebruik: node scripts/cap-postbuild.mjs
  */
 
-import { existsSync, renameSync } from "fs";
-import { join, dirname } from "path";
+import { existsSync, renameSync, mkdirSync, readdirSync, rmSync } from "fs";
+import { join, dirname, relative } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 
-const SERVER_ROUTES = [
-  "app/api/delete-account/route.ts",
-  "app/api/feedback/route.ts",
-  "app/icon.tsx",
-  "app/apple-icon.tsx",
-];
-
 const BACKUP_DIR = join(root, ".cap-routes-backup");
 
-for (const rel of SERVER_ROUTES) {
-  const src = join(BACKUP_DIR, rel);
-  const dest = join(root, rel);
-
-  if (existsSync(src)) {
-    renameSync(src, dest);
-    console.log(`[cap-postbuild] Hersteld: ${rel}`);
-  } else {
-    console.warn(`[cap-postbuild] Backup niet gevonden (overgeslagen): ${rel}`);
-  }
+// Zet alles terug wat cap-prebuild opzij heeft gezet (de hele backupmap),
+// zodat er nooit een route achterblijft.
+function backedUp(dir = BACKUP_DIR) {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const full = join(dir, e.name);
+    return e.isDirectory() ? backedUp(full) : [relative(BACKUP_DIR, full)];
+  });
 }
+
+for (const rel of backedUp()) {
+  const dest = join(root, rel);
+  mkdirSync(dirname(dest), { recursive: true });
+  renameSync(join(BACKUP_DIR, rel), dest);
+  console.log(`[cap-postbuild] Hersteld: ${rel}`);
+}
+rmSync(BACKUP_DIR, { recursive: true, force: true });
 
 console.log("[cap-postbuild] Klaar — server routes hersteld.");
