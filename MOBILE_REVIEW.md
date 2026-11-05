@@ -415,6 +415,16 @@ Elke taak is klein genoeg voor één avond van 1–3 uur. Na elke stap volgt een
 26. ✅ Oefening-thumbnails halen hun URL pas op als ze in beeld komen; video's laden alleen het eerste beeld (`preload="metadata"` + `#t=0.1`, er bestaan geen posters). `loading="lazy"` op avatars en fotogalerijen. *(1 u)*
 27. ⏳ Lighthouse mobiel op een Vercel-preview en een test op een echte iPhone SE en iPad, inclusief toetsenbord, rotatie en de PWA vanaf het beginscherm. *(1,5 u)*
 
+**Lighthouse mobiel (5 nov 2026, productiebuild lokaal):**
+
+| Pagina | Performance | Toegankelijkheid | Best practices | LCP | TBT | CLS |
+|---|---|---|---|---|---|---|
+| `/login` (patiënt) | 93 | 96 | 100 | 3,2 s | 60 ms | 0 |
+| `/portal/login` | 91 | 100 | 100 | 3,3 s | 120 ms | 0 |
+| `/register` | 98 | 91 → ±96 | 100 | 2,3 s | 90 ms | 0 |
+
+Het enige resterende toegankelijkheidspunt is het contrast van het REVA-oranje (Y2). Het oogje "Wachtwoord tonen" is nu zelf 28 px (was 16 px met alleen een onzichtbaar tikvlak). De pagina's achter inlog + MFA zijn niet met Lighthouse gemeten; die zijn met Playwright getest.
+
 #### Checklist echte apparaten (taak 27)
 Op een iPhone (bij voorkeur een kleine, zoals een SE of mini) en een iPad, in Safari:
 1. **Inloggen en MFA**: zoomt iOS niet in bij het tikken in een veld? Vult de code zich automatisch in vanuit de wachtwoordapp?

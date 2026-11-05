@@ -106,7 +106,7 @@ function PortalLoginForm() {
                 type="button"
                 aria-label={showPassword ? "Wachtwoord verbergen" : "Wachtwoord tonen"}
                 onClick={() => setShowPassword((v) => !v)}
-                className="tap-target absolute right-3.5 top-1/2 -translate-y-1/2 text-subtle hover:text-gray-600 transition-colors"
+                className="tap-target absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-subtle hover:text-gray-600 transition-colors"
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
