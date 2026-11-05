@@ -86,6 +86,12 @@ checks(controle, fouten) as (
          (select string_agg(column_name, ', ') from information_schema.columns
           where table_schema = 'public' and table_name = 'organizations'
             and column_name in ('support_notes', 'last_contact_at'))
+  union all
+  select '13. Geen oude account-gebaseerde regels op schema-koppeltabellen (migratie 133)',
+         (select string_agg(tablename || '.' || policyname, ', ') from pg_policies
+          where schemaname = 'public'
+            and tablename in ('training_schema_exercises', 'medication_schedule_times')
+            and (coalesce(qual, '') || coalesce(with_check, '')) like '%user_id = auth.uid()%')
 )
 select controle,
        case when fouten is null then '✅' else '❌' end as status,
