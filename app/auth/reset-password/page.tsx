@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabaseClient";
 import { validatePassword } from "@/lib/passwordPolicy";
 import { getSafeNextPath } from "@/lib/safeRedirect";
 import { RevaGlyph } from "@/components/brand/RevaGlyph";
+import { MfaChallengeScreen } from "@/components/auth/MfaChallengeScreen";
 
 // ─── Google icon (zelfde SVG als app/(auth)/login/page.tsx) ──────────────────
 function GoogleIcon() {
@@ -44,6 +45,9 @@ function ResetPasswordForm() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  // Account met tweestapsverificatie: Supabase wil eerst de code (aal2)
+  // voordat een wachtwoord gewijzigd mag worden — ook na een herstel-link.
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
 
   const supabase = createClient();
 
@@ -70,17 +74,43 @@ function ResetPasswordForm() {
     if (passwordError) { setError(passwordError); return; }
     if (password !== herhaling) { setError("Wachtwoorden komen niet overeen"); return; }
 
+    await savePassword();
+  }
+
+  async function savePassword() {
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
-    setLoading(false);
 
     if (error) {
-      setError(error.message);
+      const code = (error as { code?: string }).code ?? "";
+      if (code === "insufficient_aal" || /aal2/i.test(error.message)) {
+        const { data: factors } = await supabase.auth.mfa.listFactors();
+        const totp = factors?.totp.find((f) => f.status === "verified") ?? null;
+        setLoading(false);
+        if (totp) { setMfaFactorId(totp.id); return; }
+      }
+      setLoading(false);
+      setError(
+        code === "weak_password" ? "Kies een sterker wachtwoord: minimaal 10 tekens, met letters en cijfers."
+        : code === "same_password" ? "Je nieuwe wachtwoord moet anders zijn dan je huidige."
+        : "Opslaan is niet gelukt. Vraag eventueel een nieuwe link aan en probeer het opnieuw."
+      );
       return;
     }
 
+    setLoading(false);
     setDone(true);
     setTimeout(() => router.push(next), 2500);
+  }
+
+  if (mfaFactorId) {
+    return (
+      <MfaChallengeScreen
+        factorId={mfaFactorId}
+        onVerified={() => { setMfaFactorId(null); void savePassword(); }}
+        onSignOut={async () => { await supabase.auth.signOut(); router.push("/login"); }}
+      />
+    );
   }
 
   /**
