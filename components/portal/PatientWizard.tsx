@@ -356,12 +356,8 @@ export function PatientWizard({
           zichtbaar, achter het toetsenbord) te raken was. */}
       {!result && (
         <div
-          className="reva-modal-footer flex justify-between items-center gap-3 px-5 py-4 sticky bottom-0 rounded-b-2xl"
-          style={{
-            background: "#ffffff",
-            borderTop: "1px solid #e8e5df",
-            paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)",
-          }}
+          className="flex justify-between items-center gap-3 px-5 py-4 sticky bottom-0 sm:rounded-b-2xl"
+          style={{ background: "#ffffff", borderTop: "1px solid #e8e5df" }}
         >
           <Button type="button" size="sm" variant="secondary" onClick={goBack} disabled={step === 0}>
             <ChevronLeft size={14} /> {step === 4 ? "Intake aanpassen" : "Vorige"}

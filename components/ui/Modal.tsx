@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { clsx } from "clsx";
 
 interface ModalProps {
@@ -15,10 +16,14 @@ interface ModalProps {
 
 /**
  * Op telefoon (< 640px) een bottom sheet over de volle breedte, daarboven
- * een gecentreerd venster. Ligt op --z-modal, dus óver de onderbalk: die is
- * niet meer klikbaar zolang de modal open is (anders kon een tik op de
- * onderbalk een half ingevuld formulier wegnavigeren). `dvh` i.p.v. `vh`
- * zodat de dynamische werkbalk van iOS Safari de onderkant niet afsnijdt.
+ * een gecentreerd venster. Zolang er een onderbalk is (< 1024px) eindigt de
+ * modal net bóven die balk; de achtergrond dekt de balk af, zodat een tik
+ * erop geen half ingevuld formulier kan wegnavigeren. `dvh` i.p.v. `vh`
+ * zodat de dynamische werkbalk van iOS Safari niets afsnijdt.
+ *
+ * Wordt via een portal direct in <body> getekend: zo kan geen enkele
+ * stapellaag van een voorouder (bv. de scrollcontainer <main>) de modal
+ * onder de onderbalk of banners opsluiten.
  */
 export function Modal({ children, onClose, maxWidth = "max-w-lg", dismissOnBackdropClick = true }: ModalProps) {
   useEffect(() => {
@@ -30,24 +35,26 @@ export function Modal({ children, onClose, maxWidth = "max-w-lg", dismissOnBackd
     return () => document.removeEventListener("keydown", onKey);
   }, [dismissOnBackdropClick, onClose]);
 
-  return (
+  const modal = (
     <div
-      className="fixed inset-0 z-(--z-modal) flex items-end sm:items-center justify-center sm:p-4"
+      className="reva-modal-backdrop fixed inset-0 z-(--z-modal) flex items-end sm:items-center justify-center"
       style={{ background: "rgba(24,24,26,0.45)", animation: "fadeIn 0.18s ease" }}
       onClick={dismissOnBackdropClick ? onClose : undefined}
     >
       <div
         role="dialog"
         aria-modal="true"
-        className={`reva-modal-panel w-full ${maxWidth} max-h-[92dvh] sm:max-h-[90dvh] overflow-y-auto overscroll-contain rounded-t-2xl sm:rounded-2xl`}
+        className={`reva-modal-panel w-full ${maxWidth} max-h-full overflow-y-auto overscroll-contain rounded-t-2xl sm:rounded-2xl`}
         style={{ background: "#ffffff" }}
         onClick={(e) => e.stopPropagation()}
       >
         {children}
-        <div className="reva-modal-safe-area" aria-hidden />
       </div>
     </div>
   );
+
+  // Modals openen pas na een klik, dus nooit tijdens server-rendering.
+  return typeof document === "undefined" ? modal : createPortal(modal, document.body);
 }
 
 const footerInsets = {
@@ -74,15 +81,11 @@ export function ModalFooter({
   return (
     <div
       className={clsx(
-        "reva-modal-footer sticky bottom-0 flex items-center justify-end gap-2 pt-4 rounded-b-2xl",
+        "sticky bottom-0 flex items-center justify-end gap-2 py-4 sm:rounded-b-2xl",
         footerInsets[inset],
         className
       )}
-      style={{
-        background: "#ffffff",
-        borderTop: "1px solid #f0ede8",
-        paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)",
-      }}
+      style={{ background: "#ffffff", borderTop: "1px solid #f0ede8" }}
     >
       {children}
     </div>

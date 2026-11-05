@@ -57,12 +57,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* iOS momentum scrolling for all scrollable containers */
-main,
-.overflow-y-auto,
-.overflow-y-scroll {
-  -webkit-overflow-scrolling: touch;
-}
+/* Bewust GEEN `-webkit-overflow-scrolling: touch` meer: soepel scrollen is
+   sinds iOS 13 standaard, en de oude eigenschap maakt van <main> een eigen
+   stapellaag in iOS Safari — modals daarbinnen vielen dan ondanks hun
+   z-index ónder de onderbalk en de proefperiodebanner. */
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
@@ -169,23 +167,26 @@ main,
 }
 
 /* Gedeelde Modal (components/ui/Modal.tsx): bottom sheet op telefoon,
-   gecentreerd venster vanaf 640px. */
+   gecentreerd venster vanaf 640px. Zolang er een onderbalk is (< 1024px)
+   blijft de modal daar bóven: de balk zelf blijft zichtbaar maar gedimd
+   en onklikbaar onder de achtergrond. */
+.reva-modal-backdrop {
+  padding: 8dvh 0 calc(var(--nav-height) + env(safe-area-inset-bottom, 0px));
+}
 .reva-modal-panel {
   animation: sheetUp 0.28s cubic-bezier(0.32, 0.72, 0, 1);
 }
-.reva-modal-safe-area {
-  height: env(safe-area-inset-bottom, 0px);
-}
-/* Een ModalFooter regelt de safe area zelf. */
-.reva-modal-panel:has(.reva-modal-footer) .reva-modal-safe-area {
-  display: none;
-}
 @media (min-width: 640px) {
+  .reva-modal-backdrop {
+    padding: 1rem 1rem calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 1rem);
+  }
   .reva-modal-panel {
     animation: modalIn 0.18s ease;
   }
-  .reva-modal-safe-area {
-    display: none;
+}
+@media (min-width: 1024px) {
+  .reva-modal-backdrop {
+    padding: 1rem;
   }
 }
 
