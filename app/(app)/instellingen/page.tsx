@@ -683,31 +683,27 @@ export default function InstellingenPage() {
     const passwordError = validatePassword(nieuwWw);
     if (passwordError) { showToast(passwordError, "error"); return; }
 
-    // Re-authenticate with current password before updating
+    // Het huidige wachtwoord gaat mee naar Supabase, dat het server-side
+    // controleert ("Require current password" in de Auth-instellingen). Zo kan
+    // iemand met alleen een overgenomen sessie het wachtwoord niet wijzigen.
+    // Bewust geen signInWithPassword-controle meer: die is te omzeilen en
+    // verving de sessie (waarbij een tweestapsverificatie-sessie terugviel).
     const supabase = createClient();
     setWwLoading(true);
-
-    // Verify current password by signing in first
-    const { data: sessionData } = await supabase.auth.getSession();
-    const userEmail = sessionData.session?.user?.email;
-
-    if (userEmail) {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: userEmail,
-        password: huidigWw,
-      });
-      if (signInError) {
-        setWwLoading(false);
-        showToast("Huidig wachtwoord is onjuist", "error");
-        return;
-      }
-    }
-
-    const { error } = await supabase.auth.updateUser({ password: nieuwWw });
+    const { error } = await supabase.auth.updateUser({ password: nieuwWw, current_password: huidigWw });
     setWwLoading(false);
 
     if (error) {
-      showToast(error.message, "error");
+      const code = (error as { code?: string }).code ?? "";
+      if (code.includes("current_password") || code === "invalid_credentials") {
+        showToast("Huidig wachtwoord is onjuist", "error");
+      } else if (code === "weak_password") {
+        showToast("Kies een sterker wachtwoord: minimaal 10 tekens, met letters en cijfers", "error");
+      } else if (code === "same_password") {
+        showToast("Je nieuwe wachtwoord moet anders zijn dan je huidige", "error");
+      } else {
+        showToast("Wachtwoord wijzigen is niet gelukt. Probeer het opnieuw.", "error");
+      }
       return;
     }
 

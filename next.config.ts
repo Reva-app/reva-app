@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 // Capacitor vereist een statische export (output: 'export').
 // Draai `npm run build:cap` om de Capacitor-bundel te bouwen.
@@ -95,4 +96,22 @@ const nextConfig: NextConfig = {
   }),
 };
 
-export default nextConfig;
+// Leesbare foutmeldingen in Sentry: uploadt de source maps naar Sentry en
+// verwijdert ze daarna uit de build (ze worden dus niet publiek). Alleen actief
+// als SENTRY_AUTH_TOKEN is ingesteld (Vercel → Environment Variables); zonder
+// token blijft de build exact zoals hij was. Niet voor de Capacitor-export.
+const sentryEnabled = !!process.env.SENTRY_AUTH_TOKEN && !isCapacitor;
+
+export default sentryEnabled
+  ? withSentryConfig(nextConfig, {
+      org: "reva-app",
+      project: "reva-dashboard",
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      telemetry: false,
+      silent: !process.env.CI,
+      widenClientFileUpload: true,
+      sourcemaps: { deleteSourcemapsAfterUpload: true },
+      // Een mislukte upload mag een deploy nooit tegenhouden.
+      errorHandler: (err: Error) => console.warn("[sentry] upload van source maps mislukt:", err.message),
+    })
+  : nextConfig;

@@ -251,12 +251,56 @@ async function sendReminderEmail(resendApiKey: string, to: string, content: Emai
 
 // ─── Main handler ──────────────────────────────────────────────────────────────
 
+// ── Foutmeldingen naar Sentry (EU) ─────────────────────────────────────────
+// Bewust zonder SDK: één fetch naar de ingest-API. Alleen technische info —
+// nooit e-mailadressen, tokens of gezondheidsgegevens.
+const SENTRY_DSN = Deno.env.get("SENTRY_DSN") ??
+  "https://805affe3de01ac08660fb2dba0ed6e10@o4512375718346752.ingest.de.sentry.io/4512377745440848";
+
+async function reportToSentry(message: string, level: "error" | "warning", extra: Record<string, unknown> = {}, err?: unknown) {
+  try {
+    const dsn = new URL(SENTRY_DSN);
+    const projectId = dsn.pathname.replace(/^\//, "");
+    const eventId = crypto.randomUUID().replace(/-/g, "");
+    const event = {
+      event_id: eventId,
+      timestamp: Date.now() / 1000,
+      platform: "javascript",
+      level,
+      environment: "production",
+      server_name: "send-checkin-reminder",
+      tags: { runtime: "supabase-edge", function: "send-checkin-reminder" },
+      extra,
+      ...(err instanceof Error
+        ? { exception: { values: [{ type: err.name, value: err.message, stacktrace: undefined }] } }
+        : { message: { formatted: message } }),
+    };
+    const body = `${JSON.stringify({ event_id: eventId })}\n${JSON.stringify({ type: "event" })}\n${JSON.stringify(event)}`;
+    await fetch(`${dsn.protocol}//${dsn.host}/api/${projectId}/envelope/?sentry_key=${dsn.username}&sentry_version=7`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-sentry-envelope" },
+      body,
+    });
+  } catch { /* monitoring mag de functie nooit laten falen */ }
+}
+
 Deno.serve(async (req: Request) => {
+  try {
+    return await handleRequest(req);
+  } catch (err) {
+    console.error("[send-checkin-reminder] onverwachte fout:", err);
+    await reportToSentry("Onverwachte fout in herinneringsfunctie", "error", {}, err);
+    return new Response("Interne fout", { status: 500 });
+  }
+});
+
+async function handleRequest(req: Request): Promise<Response> {
   // Autorisatiecheck: alleen de cron job mag deze functie triggeren.
   // Een geldige anon-key is op zichzelf al een geldige JWT — dat is dus geen
   // bruikbare autorisatiecheck. Vereis daarom een apart gedeeld geheim.
   const cronSecret = Deno.env.get("CRON_SECRET");
   if (!cronSecret) {
+    await reportToSentry("CRON_SECRET niet ingesteld", "error");
     return new Response("CRON_SECRET niet ingesteld", { status: 500 });
   }
   if (req.headers.get("x-cron-secret") !== cronSecret) {
@@ -277,6 +321,7 @@ Deno.serve(async (req: Request) => {
   } catch { /* geen JSON body — normaal bij cron */ }
 
   if (!saRaw) {
+    await reportToSentry("FIREBASE_SERVICE_ACCOUNT niet ingesteld", "error");
     return new Response("FIREBASE_SERVICE_ACCOUNT niet ingesteld", { status: 500 });
   }
 
@@ -292,6 +337,7 @@ Deno.serve(async (req: Request) => {
   try {
     accessToken = await getFCMAccessToken(sa);
   } catch (err) {
+    await reportToSentry("FCM-authenticatie mislukt", "error", {}, err);
     return new Response(`FCM auth mislukt: ${err}`, { status: 500 });
   }
 
@@ -605,6 +651,15 @@ Deno.serve(async (req: Request) => {
 
   console.info(`[email] sent=${emailsSent} errors=${emailErrors.length} total=${emails.length}`);
 
+  // Alleen aantallen, geen adressen. Mislukte pushberichten niet: verlopen
+  // apparaat-tokens zijn normaal en zouden alleen ruis geven.
+  if (emailErrors.length > 0) {
+    await reportToSentry("Herinneringsmails niet verstuurd", "warning", {
+      mislukt: emailErrors.length, verstuurd: emailsSent, totaal: emails.length,
+      resendKeyOntbreekt: !resendApiKey,
+    });
+  }
+
   return new Response(
     JSON.stringify({
       sent, errors: errors.slice(0, 5),
@@ -612,4 +667,4 @@ Deno.serve(async (req: Request) => {
     }),
     { headers: { "Content-Type": "application/json" } }
   );
-});
+}
