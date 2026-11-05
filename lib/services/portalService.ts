@@ -472,63 +472,39 @@ export interface PortalMyPatientsSummary {
  * heeft, zonder elk dossier apart te hoeven openen.
  */
 export async function loadMyPortalPatientsSummary(organizationId: string, userId: string): Promise<PortalMyPatientsSummary> {
+  // Eén databasevraag (migratie 132): per patiënt alleen de laatste check-in,
+  // i.p.v. alle check-ins ophalen (liep tegen de limiet van 1000 rijen aan).
+  // userId blijft in de signatuur voor de aanroepers; de functie filtert zelf op auth.uid().
+  void userId;
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("patients")
-    .select("id, user_id, first_name, last_name, created_at")
-    .eq("organization_id", organizationId)
-    .eq("assigned_therapist_id", userId)
-    .eq("status", "active")
-    .order("created_at", { ascending: false });
-  if (error) { logErr("loadMyPortalPatientsSummary(patients)", error); return { patients: [], totalCount: 0, needsAttentionCount: 0, checkinsThisWeekCount: 0 }; }
+  const { data, error } = await supabase.rpc("portal_my_patients_summary", { p_organization_id: organizationId });
+  if (error) { logErr("loadMyPortalPatientsSummary", error); return { patients: [], totalCount: 0, needsAttentionCount: 0, checkinsThisWeekCount: 0 }; }
 
-  const rows = data ?? [];
-  const patientIds = rows.map((r) => r.id as string);
-  const userIds = [...new Set(rows.map((r) => r.user_id).filter((v): v is string => !!v))];
-
-  const [profilesRes, checkinsRes, weekCheckinsRes] = await Promise.all([
-    userIds.length > 0
-      ? supabase.from("profiles").select("id, full_name").in("id", userIds)
-      : Promise.resolve({ data: [] as { id: string; full_name: string | null }[], error: null }),
-    patientIds.length > 0
-      ? supabase.from("checkins").select("patient_id, date, pain_score, swelling, day_score").in("patient_id", patientIds).order("date", { ascending: false })
-      : Promise.resolve({ data: [] as { patient_id: string; date: string; pain_score: number | null; swelling: boolean | null; day_score: number | null }[], error: null }),
-    patientIds.length > 0
-      ? supabase.from("checkins").select("id", { count: "exact", head: true }).in("patient_id", patientIds).gte("date", daysAgoStr(6))
-      : Promise.resolve({ count: 0, error: null }),
-  ]);
-  if (profilesRes.error) logErr("loadMyPortalPatientsSummary(profiles)", profilesRes.error);
-  if (checkinsRes.error) logErr("loadMyPortalPatientsSummary(checkins)", checkinsRes.error);
-  if (weekCheckinsRes.error) logErr("loadMyPortalPatientsSummary(week)", weekCheckinsRes.error);
-
-  const profileMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p.full_name]));
-  const lastCheckinMap = new Map<string, { date: string; painScore: number | null; swelling: boolean | null; dayScore: number | null }>();
-  for (const c of checkinsRes.data ?? []) {
-    if (!lastCheckinMap.has(c.patient_id)) {
-      lastCheckinMap.set(c.patient_id, { date: c.date, painScore: c.pain_score, swelling: c.swelling, dayScore: c.day_score });
-    }
-  }
+  const rows = (data ?? []) as {
+    patient_id: string;
+    full_name: string | null;
+    created_at: string;
+    last_checkin_date: string | null;
+    last_pain_score: number | null;
+    last_swelling: boolean | null;
+    last_day_score: number | null;
+    checkins_last_7d: number;
+  }[];
 
   const patients: PortalMyPatientRow[] = rows
     .map((r) => {
-      const dossierName = [r.first_name, r.last_name].filter(Boolean).join(" ") || null;
-      const lastCheckin = lastCheckinMap.get(r.id as string) ?? null;
-      const inactive = isPatientInactive(lastCheckin?.date ?? null, r.created_at as string);
+      const inactive = isPatientInactive(r.last_checkin_date, r.created_at);
 
       const attentionReasons: PatientAttentionReason[] = [];
       if (inactive) attentionReasons.push("inactief");
-      if (lastCheckin?.painScore !== null && lastCheckin?.painScore !== undefined && lastCheckin.painScore >= HIGH_PAIN_SCORE_THRESHOLD) {
-        attentionReasons.push("hoge_pijnscore");
-      }
-      if (lastCheckin?.swelling) attentionReasons.push("zwelling");
-      if (lastCheckin?.dayScore !== null && lastCheckin?.dayScore !== undefined && lastCheckin.dayScore <= LOW_DAY_SCORE_THRESHOLD) {
-        attentionReasons.push("lage_dagscore");
-      }
+      if (r.last_pain_score !== null && r.last_pain_score >= HIGH_PAIN_SCORE_THRESHOLD) attentionReasons.push("hoge_pijnscore");
+      if (r.last_swelling) attentionReasons.push("zwelling");
+      if (r.last_day_score !== null && r.last_day_score <= LOW_DAY_SCORE_THRESHOLD) attentionReasons.push("lage_dagscore");
 
       return {
-        id: r.id as string,
-        fullName: (r.user_id ? profileMap.get(r.user_id) : null) ?? dossierName,
-        lastCheckinDate: lastCheckin?.date ?? null,
+        id: r.patient_id,
+        fullName: r.full_name,
+        lastCheckinDate: r.last_checkin_date,
         inactive,
         attentionReasons,
       };
@@ -542,7 +518,7 @@ export async function loadMyPortalPatientsSummary(organizationId: string, userId
     patients,
     totalCount: patients.length,
     needsAttentionCount: patients.filter((p) => p.attentionReasons.length > 0).length,
-    checkinsThisWeekCount: (weekCheckinsRes as { count: number | null }).count ?? 0,
+    checkinsThisWeekCount: rows.reduce((sum, r) => sum + (r.checkins_last_7d ?? 0), 0),
   };
 }
 
@@ -2443,12 +2419,6 @@ export interface PortalPatientExtras {
 
 function dateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function daysAgoStr(n: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return dateStr(d);
 }
 
 /**
