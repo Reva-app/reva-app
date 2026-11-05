@@ -389,10 +389,10 @@ Elke taak is klein genoeg voor één avond van 1–3 uur. Na elke stap volgt een
 10. ✅ `FilterBar` met een bottom sheet; statistiekkaarten op mobiel als compacte horizontale strook. *(2 u)*
 
 ### Week 4: patiëntdetail (±7 u)
-11. Kopregel van "Check-in status": het filter op een eigen regel onder de titel, als knoppen van 44 px. **Lost L2 op.** *(1 u)*
-12. Mobiele volgorde: eerst de tabinhoud. Status, Afsluiting en Behandelgegevens naar een eigen tab "Dossier" of een inklapbaar blok, en niet meer onder elke tab. *(3 u)*
-13. Labels bij de statusbadges ("Dossier: actief", "Account: actief"). "Archiveren"/"Verwijderen" naar het ⋮-menu in de kop. *(1 u)*
-14. Tabs met een scrollhint (vervaagde rand plus automatisch scrollen naar de actieve tab). **Lost L7 op.** *(1–2 u)*
+11. ✅ Kopregel van "Check-in status": het filter op een eigen regel onder de titel, als knoppen van 44 px. **Lost L2 op.** *(1 u)*
+12. ✅ Mobiele volgorde: eerst de tabinhoud. Status, Afsluiting en Behandelgegevens naar een eigen tab "Dossier" of een inklapbaar blok, en niet meer onder elke tab. *(3 u)*
+13. ✅ Labels bij de statusbadges ("Dossier: actief", "Account: actief"). "Archiveren"/"Verwijderen" naar het ⋮-menu in de kop. *(1 u)*
+14. ✅ Tabs met een scrollhint (vervaagde rand plus automatisch scrollen naar de actieve tab). **Lost L7 op.** *(1–2 u)*
 
 ### Week 5: dashboard en navigatie (±6 u)
 15. Portal-dashboard: compacte statistiekstrook, "Aandacht nodig" bovenaan als lijst met patiëntkaarten. *(2–3 u)*

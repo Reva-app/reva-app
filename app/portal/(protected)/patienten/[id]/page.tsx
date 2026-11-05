@@ -14,6 +14,7 @@ import { PhaseTransitionModal } from "@/components/portal/PhaseTransitionModal";
 import { useToast } from "@/components/ui/Toast";
 import { ScoreBar } from "@/components/ui/ScoreBar";
 import { Tabs } from "@/components/ui/Tabs";
+import { ActionMenu } from "@/components/ui/ActionMenu";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PatientEditForm } from "@/components/portal/PatientEditForm";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -126,13 +127,14 @@ const TREND_RANGES = [
 
 function TrendRangeFilter({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
-    <div className="flex items-center flex-wrap gap-1 rounded-lg p-0.5" style={{ background: "#f3f0eb" }}>
+    <div role="group" aria-label="Periode" className="flex items-center gap-1 rounded-lg p-0.5 ml-auto" style={{ background: "#f3f0eb" }}>
       {TREND_RANGES.map((r) => (
         <button
           key={r.value}
           type="button"
           onClick={() => onChange(r.value)}
-          className="text-xs font-medium px-2.5 py-1 rounded-md transition-colors"
+          aria-pressed={value === r.value}
+          className="text-sm sm:text-xs font-medium px-3 sm:px-2.5 min-h-10 sm:min-h-0 sm:py-1 rounded-md transition-colors"
           style={
             value === r.value
               ? { background: "#ffffff", color: "#1a1a1a", boxShadow: "0 1px 2px rgba(0,0,0,0.06)" }
@@ -796,11 +798,15 @@ function LogboekTab({
   );
 }
 
-type TabKey = "overzicht" | "herstelplan" | "logboek";
-const TAB_OPTIONS: { value: TabKey; label: string }[] = [
+type TabKey = "overzicht" | "herstelplan" | "logboek" | "gegevens";
+const TAB_OPTIONS: { value: TabKey; label: string; className?: string }[] = [
   { value: "overzicht", label: "Overzicht" },
   { value: "herstelplan", label: "Herstelplan" },
   { value: "logboek", label: "Logboek" },
+  // Op desktop staan Status, Afsluiting en Behandelgegevens in de zijkolom
+  // naast elke tab; op telefoon/tablet krijgen ze een eigen tab i.p.v. onder
+  // elke tab herhaald te worden.
+  { value: "gegevens", label: "Gegevens", className: "lg:hidden" },
 ];
 
 export default function PortalPatientDetailPage() {
@@ -1213,10 +1219,12 @@ export default function PortalPatientDetailPage() {
         <p className="text-sm text-gray-400">Dit patiëntdossier is niet gevonden.</p>
       ) : (
         <>
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-start gap-4">
             <Avatar fullName={patient.fullName} email={patient.email} avatarUrl={null} size={48} />
-            <div className="flex items-center gap-3 flex-wrap">
-              <SectionHeader title={patient.fullName || "Naam nog niet ingevuld"} subtitle={patient.email ?? undefined} />
+            <div className="flex items-center gap-x-3 gap-y-1 flex-wrap flex-1 min-w-0">
+              <div className="min-w-0 [&_p]:[overflow-wrap:anywhere]">
+                <SectionHeader title={patient.fullName || "Naam nog niet ingevuld"} subtitle={patient.email ?? undefined} />
+              </div>
               {statusBadge(patient.status)}
               {showMilestone && (
                 <Badge variant="accent" className="flex items-center gap-1">
@@ -1224,13 +1232,31 @@ export default function PortalPatientDetailPage() {
                 </Badge>
               )}
             </div>
+            {canManagePatients && (
+              <div className="shrink-0 pt-1">
+                <ActionMenu
+                  items={[
+                    { label: "Gegevens wijzigen", onClick: () => setEditing(true) },
+                    ...(!patient.hasAccount && patient.email
+                      ? [{ label: "Uitnodiging versturen", onClick: handleInvitePatient }]
+                      : []),
+                    {
+                      label: patient.status === "archived" ? "Dearchiveren" : "Archiveren",
+                      onClick: () => { if (!archivingPatient) handleArchivePatient(); },
+                    },
+                    { label: "Verwijderen", onClick: () => setConfirmDeletePatient(true), danger: true },
+                  ]}
+                />
+              </div>
+            )}
           </div>
 
           <Tabs options={TAB_OPTIONS} value={tab} onChange={setTab} />
 
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
-            <div className="space-y-6 min-w-0">
-              {tab === "overzicht" && (
+            <div className={`space-y-6 min-w-0 ${tab === "gegevens" ? "hidden lg:block" : ""}`}>
+              {/* "Gegevens" bestaat alleen onder lg; wordt het scherm breder, dan valt de hoofdkolom terug op het overzicht. */}
+              {(tab === "overzicht" || tab === "gegevens") && (
               <>
               {extras?.mainGoal && <MainGoalCard goal={extras.mainGoal} />}
 
@@ -1240,15 +1266,21 @@ export default function PortalPatientDetailPage() {
                   title="Check-in status"
                   subtitle={lastCheckin ? `Laatste check-in op ${formatDate(lastCheckin.date)}` : undefined}
                   action={
-                    <div className="flex items-center gap-2 flex-wrap justify-end w-full sm:w-auto">
-                      {lastCheckin?.swelling && <Badge variant="warning" className="flex items-center gap-1"><Droplets size={12} /> Zwelling gemeld</Badge>}
-                      <Button size="sm" variant="secondary" onClick={openCheckinHistory}>
-                        <History size={13} /> Geschiedenis
-                      </Button>
-                      {lastCheckin && <TrendRangeFilter value={trendRange} onChange={setTrendRange} />}
-                    </div>
+                    <Button size="sm" variant="secondary" onClick={openCheckinHistory}>
+                      <History size={13} /> Geschiedenis
+                    </Button>
                   }
                 />
+                {lastCheckin && (
+                  // Eigen regel onder de titel: in de kop paste dit op telefoon
+                  // en tablet niet, waardoor de pagina horizontaal ging scrollen.
+                  <div className="flex items-center justify-between gap-2 flex-wrap -mt-1 mb-4">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {lastCheckin.swelling && <Badge variant="warning" className="flex items-center gap-1"><Droplets size={12} /> Zwelling gemeld</Badge>}
+                    </div>
+                    <TrendRangeFilter value={trendRange} onChange={setTrendRange} />
+                  </div>
+                )}
                 {!lastCheckin ? (
                   <p className="text-sm text-gray-400">Nog geen check-ins ingevuld.</p>
                 ) : (
@@ -1391,26 +1423,24 @@ export default function PortalPatientDetailPage() {
               )}
             </div>
 
-            <div className="space-y-6 min-w-0">
+            <div className={`space-y-6 min-w-0 ${tab === "gegevens" ? "" : "hidden lg:block"}`}>
               <Card>
                 <CardHeader title="Status" />
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {statusBadge(patient.status)}
-                    {accountBadge(patient)}
-                  </div>
-                  {canManagePatients && (
-                    <div className="flex flex-wrap gap-2">
-                      {!patient.hasAccount && patient.email && (
-                        <Button size="sm" variant="secondary" disabled={invitingPatient} onClick={handleInvitePatient}>
-                          {invitingPatient ? "Versturen…" : "Uitnodiging versturen"}
-                        </Button>
-                      )}
-                      <Button size="sm" variant="secondary" disabled={archivingPatient} onClick={handleArchivePatient}>
-                        {archivingPatient ? "Opslaan…" : patient.status === "archived" ? "Dearchiveren" : "Archiveren"}
-                      </Button>
-                      <Button size="sm" variant="secondary" onClick={() => setConfirmDeletePatient(true)}>Verwijderen</Button>
+                  <dl className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-gray-500">Dossier</dt>
+                      <dd>{statusBadge(patient.status)}</dd>
                     </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-gray-500">Patiënt-app</dt>
+                      <dd>{accountBadge(patient)}</dd>
+                    </div>
+                  </dl>
+                  {canManagePatients && !patient.hasAccount && patient.email && (
+                    <Button size="sm" variant="secondary" disabled={invitingPatient} onClick={handleInvitePatient}>
+                      {invitingPatient ? "Versturen…" : "Uitnodiging versturen"}
+                    </Button>
                   )}
                 </div>
               </Card>
