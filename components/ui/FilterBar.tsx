@@ -18,8 +18,9 @@ import { fieldControlClass } from "@/components/ui/Field";
  * ze op desktop een vaste breedte via className, bv. "md:w-40".
  */
 interface FilterBarProps {
-  search: string;
-  onSearchChange: (value: string) => void;
+  /** Laat je search/onSearchChange weg, dan is er geen zoekveld (alleen filters). */
+  search?: string;
+  onSearchChange?: (value: string) => void;
   searchPlaceholder?: string;
   /** Aantal filters dat nu iets anders dan "Alle" heeft. */
   activeCount: number;
@@ -34,13 +35,14 @@ export function FilterBar({
 }: FilterBarProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const searchField = (
+  const hasSearch = onSearchChange !== undefined;
+  const searchField = hasSearch && (
     <div className="relative flex-1 min-w-0 md:min-w-[200px]">
       <Search size={16} aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
       <input
         type="search"
-        value={search}
-        onChange={(e) => onSearchChange(e.target.value)}
+        value={search ?? ""}
+        onChange={(e) => onSearchChange?.(e.target.value)}
         placeholder={searchPlaceholder}
         aria-label="Zoeken"
         className={`${fieldControlClass} pl-9`}
@@ -57,7 +59,7 @@ export function FilterBar({
         <button
           type="button"
           onClick={() => setSheetOpen(true)}
-          className="shrink-0 inline-flex items-center gap-1.5 min-h-11 px-3.5 rounded-xl border text-sm font-medium text-gray-700"
+          className={`${hasSearch ? "shrink-0" : "flex-1 justify-center"} inline-flex items-center gap-1.5 min-h-11 px-3.5 rounded-xl border text-sm font-medium text-gray-700`}
           style={{
             borderColor: activeCount > 0 ? "var(--brand-accent, #e8632a)" : "#e8e5df",
             background: activeCount > 0 ? "var(--accent-light, #fff3ee)" : "#ffffff",
@@ -70,10 +72,12 @@ export function FilterBar({
 
       {/* Tablet en groter: alles op één rij */}
       <div className="hidden md:flex flex-wrap gap-3 items-end">
-        <div className="flex-1 min-w-[200px]">
-          <p className="block text-xs font-medium text-gray-500 mb-1.5">Zoeken</p>
-          {searchField}
-        </div>
+        {hasSearch && (
+          <div className="flex-1 min-w-[200px]">
+            <p className="block text-xs font-medium text-gray-500 mb-1.5">Zoeken</p>
+            {searchField}
+          </div>
+        )}
         {children}
         {activeCount > 0 && (
           <Button type="button" size="sm" variant="ghost" onClick={onReset} className="mb-0.5">

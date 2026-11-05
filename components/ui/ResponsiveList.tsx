@@ -54,6 +54,8 @@ interface ResponsiveListProps<T, K extends string> {
   /** Inhoud van de kaart op telefoon (zonder actiemenu, dat komt er vanzelf bij). */
   card: (row: T) => React.ReactNode;
   onRowClick?: (row: T) => void;
+  /** Welke rijen klikbaar zijn (standaard alle, zodra onRowClick is gezet). */
+  isRowClickable?: (row: T) => boolean;
   /** Toegankelijke naam van een rij/kaart, bv. de naam van de patiënt. */
   rowLabel?: (row: T) => string;
   actions?: (row: T) => ListAction[] | null;
@@ -61,7 +63,7 @@ interface ResponsiveListProps<T, K extends string> {
 }
 
 export function ResponsiveList<T, K extends string>({
-  rows, rowKey, columns, card, onRowClick, rowLabel, actions, sort,
+  rows, rowKey, columns, card, onRowClick: onRowClickProp, isRowClickable, rowLabel, actions, sort,
 }: ResponsiveListProps<T, K>) {
   const hasActions = !!actions;
   const sortId = useId();
@@ -92,6 +94,7 @@ export function ResponsiveList<T, K extends string>({
         <ul>
           {rows.map((row) => {
             const rowActions = actions?.(row) ?? null;
+            const onRowClick = onRowClickProp && (isRowClickable?.(row) ?? true) ? onRowClickProp : undefined;
             return (
               <li key={rowKey(row)} className="flex items-start gap-1 border-b last:border-b-0" style={{ borderColor: "#f0ede8" }}>
                 <div
@@ -132,6 +135,7 @@ export function ResponsiveList<T, K extends string>({
             <tbody>
               {rows.map((row) => {
                 const rowActions = actions?.(row) ?? null;
+                const onRowClick = onRowClickProp && (isRowClickable?.(row) ?? true) ? onRowClickProp : undefined;
                 return (
                   <tr
                     key={rowKey(row)}

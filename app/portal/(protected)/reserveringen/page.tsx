@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { TimePicker } from "@/components/ui/TimePicker";
 import { useToast } from "@/components/ui/Toast";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { mondayOfWeek, weekDates } from "@/lib/dateUtils";
@@ -131,13 +132,11 @@ function ReservationFormModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <FieldLabel>Van</FieldLabel>
-              <input type="time" value={form.startTime} onChange={(e) => setForm((p) => ({ ...p, startTime: e.target.value }))}
-                className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
+              <TimePicker value={form.startTime} onChange={(v) => setForm((p) => ({ ...p, startTime: v }))} ariaLabel="Van" placeholder="Begintijd" />
             </div>
             <div>
               <FieldLabel>Tot</FieldLabel>
-              <input type="time" value={form.endTime} onChange={(e) => setForm((p) => ({ ...p, endTime: e.target.value }))}
-                className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
+              <TimePicker value={form.endTime} onChange={(v) => setForm((p) => ({ ...p, endTime: v }))} ariaLabel="Tot" placeholder="Eindtijd" />
             </div>
           </div>
           {error && <p className="text-xs" style={{ color: "#dc2626" }}>{error}</p>}

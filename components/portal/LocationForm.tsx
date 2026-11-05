@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, X } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { TimePicker } from "@/components/ui/TimePicker";
 import { ModalFooter } from "@/components/ui/Modal";
 import {
   createPortalLocationFull, updatePortalLocationFull,
@@ -159,7 +160,7 @@ export function LocationForm({ organizationId, location, onSaved, onClose }: Loc
             {DAY_ORDER.map((day) => {
               const d = input.openingHours[day];
               return (
-                <div key={day} className="flex items-center gap-3">
+                <div key={day} className="flex items-center gap-3 flex-wrap gap-y-2">
                   <label className="flex items-center gap-2 w-32 shrink-0 text-sm text-gray-700">
                     <input
                       type="checkbox"
@@ -170,12 +171,10 @@ export function LocationForm({ organizationId, location, onSaved, onClose }: Loc
                     {OPENING_HOURS_DAY_LABELS[day]}
                   </label>
                   {d.open ? (
-                    <div className="flex items-center gap-2">
-                      <input type="time" value={d.from} onChange={(e) => updateDay(day, { from: e.target.value })}
-                        className="text-base sm:text-sm rounded-lg border px-2 py-1.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
+                    <div className="flex items-center gap-2 w-full sm:w-auto pl-6 sm:pl-0">
+                      <TimePicker compact value={d.from} onChange={(v) => updateDay(day, { from: v })} ariaLabel={`${OPENING_HOURS_DAY_LABELS[day]} van`} placeholder="--:--" />
                       <span className="text-gray-400 text-sm">tot</span>
-                      <input type="time" value={d.to} onChange={(e) => updateDay(day, { to: e.target.value })}
-                        className="text-base sm:text-sm rounded-lg border px-2 py-1.5 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
+                      <TimePicker compact value={d.to} onChange={(v) => updateDay(day, { to: v })} ariaLabel={`${OPENING_HOURS_DAY_LABELS[day]} tot`} placeholder="--:--" />
                     </div>
                   ) : (
                     <span className="text-sm text-gray-400">Gesloten</span>

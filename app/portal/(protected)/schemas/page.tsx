@@ -2,18 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ListChecks, Plus, Search } from "lucide-react";
+import { ListChecks, Plus } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
-import { ActionMenu } from "@/components/ui/ActionMenu";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { SortableHeader } from "@/components/ui/table/SortableHeader";
 import { Pagination } from "@/components/ui/table/Pagination";
 import { useTableState } from "@/components/ui/table/useTableState";
-import { ScrollHintX } from "@/components/ui/table/ScrollHintX";
+import { ResponsiveList, type ListColumn } from "@/components/ui/ResponsiveList";
+import { FilterBar } from "@/components/ui/FilterBar";
+import { Field, Select } from "@/components/ui/Field";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import {
   loadRevaSchedules, loadOrgSchedules, createScheduleLibraryItem, updateScheduleLibraryArchived, duplicateScheduleLibraryItem,
@@ -21,12 +21,6 @@ import {
   MANAGE_PROTOCOLS_ROLES,
   type PortalScheduleLibraryCard,
 } from "@/lib/services/protocolService";
-
-const inputStyle = { borderColor: "#e8e5df", background: "#ffffff", color: "#1a1a1a" };
-
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="block text-xs font-medium text-gray-500 mb-1.5">{children}</label>;
-}
 
 function compareNullableStrings(a: string | null, b: string | null): number {
   if (!a && !b) return 0;
@@ -39,6 +33,66 @@ type SortKey = "title" | "exerciseCount" | "createdAt";
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" });
+}
+
+const SORT_OPTIONS: { key: SortKey; dir: "asc" | "desc"; label: string }[] = [
+  { key: "title", dir: "asc", label: "Naam (A-Z)" },
+  { key: "title", dir: "desc", label: "Naam (Z-A)" },
+  { key: "exerciseCount", dir: "desc", label: "Meeste oefeningen" },
+  { key: "createdAt", dir: "desc", label: "Nieuwste eerst" },
+];
+
+function sourceBadge(s: PortalScheduleLibraryCard) {
+  return s.scope === "reva" ? <Badge variant="blue">REVA</Badge> : <Badge variant="default">Eigen</Badge>;
+}
+
+function statusBadge(s: PortalScheduleLibraryCard) {
+  return s.archived ? <Badge variant="muted">Gearchiveerd</Badge> : <Badge variant="success">Actief</Badge>;
+}
+
+function ScheduleIcon() {
+  return (
+    <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#f8f7f4" }}>
+      <ListChecks size={15} className="text-gray-400" aria-hidden />
+    </div>
+  );
+}
+
+const SCHEDULE_COLUMNS: ListColumn<PortalScheduleLibraryCard, SortKey>[] = [
+  {
+    key: "title", header: "Schema", sortKey: "title",
+    cell: (s) => (
+      <div className="flex items-center gap-3">
+        <ScheduleIcon />
+        <p className="font-medium text-gray-800 min-w-0 [overflow-wrap:anywhere]">{s.title}</p>
+      </div>
+    ),
+  },
+  { key: "description", header: "Omschrijving", hideBelow: "xl", className: "text-gray-500 max-w-xs truncate", cell: (s) => s.description || "—" },
+  { key: "exerciseCount", header: "Oefeningen", sortKey: "exerciseCount", className: "text-gray-600", cell: (s) => s.exerciseCount },
+  { key: "createdAt", header: "Aangemaakt", sortKey: "createdAt", className: "text-gray-500 whitespace-nowrap", cell: (s) => fmtDate(s.createdAt) },
+  { key: "creator", header: "Aangemaakt door", hideBelow: "lg", className: "text-gray-600", cell: (s) => s.createdByName ?? "—" },
+  { key: "source", header: "Bron", cell: sourceBadge },
+  { key: "status", header: "Status", cell: statusBadge },
+];
+
+/** Kaart op telefoon: volledige naam, aantal oefeningen en herkomst. */
+function ScheduleCard({ schedule: s }: { schedule: PortalScheduleLibraryCard }) {
+  const details = [`${s.exerciseCount} ${s.exerciseCount === 1 ? "oefening" : "oefeningen"}`, s.createdByName].filter(Boolean).join(" · ");
+  return (
+    <div className="flex items-start gap-3">
+      <ScheduleIcon />
+      <div className="min-w-0 flex-1">
+        <p className="font-medium text-gray-900 leading-snug [overflow-wrap:anywhere]">{s.title}</p>
+        {s.description && <p className="text-sm text-gray-600 leading-snug mt-0.5 line-clamp-2">{s.description}</p>}
+        <p className="text-xs text-gray-500 mt-1">{details}</p>
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {sourceBadge(s)}
+          {s.archived && statusBadge(s)}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function PortalSchemasPage() {
@@ -103,6 +157,12 @@ export default function PortalSchemasPage() {
     (key) => (key === "createdAt" ? "desc" : "asc")
   );
 
+  const activeFilterCount = [statusFilter, sourceFilter].filter(Boolean).length;
+  function resetFilters() {
+    setStatusFilter(""); setSourceFilter("");
+    setPage(1);
+  }
+
   async function handleCreateDraft() {
     if (!membership) return;
     setCreatingDraft(true);
@@ -151,52 +211,33 @@ export default function PortalSchemasPage() {
         )}
       </div>
 
-      <div className="rounded-2xl border p-4 flex flex-wrap gap-3 items-end" style={{ background: "#ffffff", borderColor: "#e8e5df" }}>
-        <div className="flex-1 min-w-[200px]">
-          <FieldLabel>Zoeken</FieldLabel>
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Naam…" className="w-full text-base sm:text-sm rounded-xl border pl-9 pr-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
-            />
-          </div>
-        </div>
-        <div className="w-[calc(50%-0.375rem)] sm:w-40">
-          <FieldLabel>Status</FieldLabel>
-          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
+      <FilterBar
+        search={search}
+        onSearchChange={(v) => { setSearch(v); setPage(1); }}
+        searchPlaceholder="Naam…"
+        activeCount={activeFilterCount}
+        onReset={resetFilters}
+        resultCount={filtered.length}
+      >
+        <Field label="Status" className="md:w-40">
+          <Select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
             <option value="">Alle</option>
             <option value="actief">Actief</option>
             <option value="gearchiveerd">Gearchiveerd</option>
-          </select>
-        </div>
-        <div className="w-[calc(50%-0.375rem)] sm:w-44">
-          <FieldLabel>Bron</FieldLabel>
-          <select value={sourceFilter} onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
+          </Select>
+        </Field>
+        <Field label="Bron" className="md:w-44">
+          <Select value={sourceFilter} onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}>
             <option value="">Alle</option>
             <option value="organization">Eigen bibliotheek</option>
             <option value="reva">REVA-bibliotheek</option>
-          </select>
-        </div>
-        <div className="w-[calc(50%-0.375rem)] sm:w-44">
-          <FieldLabel>Sorteren</FieldLabel>
-          <select
-            value={sortKey === "createdAt" && sortDir === "desc" ? "nieuwste" : "naam"}
-            onChange={(e) => {
-              if (e.target.value === "nieuwste") setSort("createdAt", "desc");
-              else setSort("title", "asc");
-            }}
-            className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
-          >
-            <option value="naam">Naam (A-Z)</option>
-            <option value="nieuwste">Nieuwste eerst</option>
-          </select>
-        </div>
-      </div>
+          </Select>
+        </Field>
+      </FilterBar>
 
       <div className="rounded-2xl border overflow-hidden" style={{ background: "#ffffff", borderColor: "#e8e5df", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
         {loading ? (
-          <p className="text-sm text-gray-400 p-6">Laden…</p>
+          <p className="text-sm text-gray-500 p-6">Laden…</p>
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={ListChecks}
@@ -204,62 +245,24 @@ export default function PortalSchemasPage() {
             description={allSchedules.length === 0 ? "Maak je eerste schema aan om te beginnen." : "Pas de filters aan om meer resultaten te zien."}
           />
         ) : (
-          <ScrollHintX>
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ borderBottom: "1px solid #e8e5df" }}>
-                  <SortableHeader label="Schema" sortKeyValue="title" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
-                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Omschrijving</th>
-                  <SortableHeader label="Oefeningen" sortKeyValue="exerciseCount" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
-                  <SortableHeader label="Aangemaakt" sortKeyValue="createdAt" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
-                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Aangemaakt door</th>
-                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Bron</th>
-                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Status</th>
-                  <th className="text-right font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Actie</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paged.map((s) => (
-                  <tr
-                    key={s.id}
-                    onClick={() => router.push(`/portal/schemas/${s.id}`)}
-                    className="cursor-pointer transition-colors hover:bg-gray-50"
-                    style={{ borderBottom: "1px solid #f8f7f4" }}
-                  >
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#f8f7f4" }}>
-                          <ListChecks size={15} className="text-gray-400" />
-                        </div>
-                        <p className="font-medium text-gray-800 truncate min-w-0 max-w-[50vw]">{s.title}</p>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5 text-gray-500 max-w-xs truncate">{s.description || "—"}</td>
-                    <td className="px-5 py-3.5 text-gray-600">{s.exerciseCount}</td>
-                    <td className="px-5 py-3.5 text-gray-500">{fmtDate(s.createdAt)}</td>
-                    <td className="px-5 py-3.5 text-gray-600">{s.createdByName ?? "—"}</td>
-                    <td className="px-5 py-3.5">{s.scope === "reva" ? <Badge variant="blue">REVA</Badge> : <Badge variant="default">Eigen</Badge>}</td>
-                    <td className="px-5 py-3.5">{s.archived ? <Badge variant="muted">Gearchiveerd</Badge> : <Badge variant="success">Actief</Badge>}</td>
-                    <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
-                      {canManage && (
-                        <ActionMenu
-                          items={
-                            s.scope === "organization"
-                              ? [
-                                  { label: "Dupliceren", onClick: () => handleDuplicate(s) },
-                                  { label: s.archived ? "Dearchiveren" : "Archiveren", onClick: () => handleToggleArchived(s) },
-                                  ...(s.archived ? [{ label: "Verwijderen", onClick: () => setConfirmDelete(s), danger: true }] : []),
-                                ]
-                              : [{ label: "Dupliceren", onClick: () => handleDuplicate(s) }]
-                          }
-                        />
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </ScrollHintX>
+          <ResponsiveList
+            rows={paged}
+            rowKey={(s) => s.id}
+            rowLabel={(s) => s.title}
+            onRowClick={(s) => router.push(`/portal/schemas/${s.id}`)}
+            columns={SCHEDULE_COLUMNS}
+            card={(s) => <ScheduleCard schedule={s} />}
+            actions={canManage ? (s) =>
+              s.scope === "organization"
+                ? [
+                    { label: "Dupliceren", onClick: () => handleDuplicate(s) },
+                    { label: s.archived ? "Dearchiveren" : "Archiveren", onClick: () => handleToggleArchived(s) },
+                    ...(s.archived ? [{ label: "Verwijderen", onClick: () => setConfirmDelete(s), danger: true }] : []),
+                  ]
+                : [{ label: "Dupliceren", onClick: () => handleDuplicate(s) }]
+              : undefined}
+            sort={{ key: sortKey, dir: sortDir, onSort: handleSort, onSet: setSort, options: SORT_OPTIONS }}
+          />
         )}
         <Pagination page={page} totalPages={totalPages} totalCount={filtered.length} itemLabel="resultaat" itemLabelPlural="resultaten" onPageChange={setPage} />
       </div>

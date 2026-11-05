@@ -45,14 +45,14 @@ function LocationCard({
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-sm font-semibold text-gray-900 truncate">{card.name}</h3>
+              <h3 className="text-sm font-semibold text-gray-900 [overflow-wrap:anywhere]">{card.name}</h3>
               {card.isMainLocation && (
                 <Badge variant="accent" className="flex items-center gap-1 shrink-0">
                   <Star size={10} /> Hoofdlocatie
                 </Badge>
               )}
             </div>
-            <p className="text-xs text-gray-400 mt-0.5">{formatAddress(card) || "Geen adres ingesteld"}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{formatAddress(card) || "Geen adres ingesteld"}</p>
           </div>
           {canManage && (
             <div onClick={(e) => e.stopPropagation()}>
@@ -72,8 +72,8 @@ function LocationCard({
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4 text-xs text-gray-500">
-            <span className="flex items-center gap-1"><Users size={12} /> {card.employeeCount}</span>
-            <span className="flex items-center gap-1"><HeartPulse size={12} /> {card.patientCount}</span>
+            <span className="flex items-center gap-1" title="Medewerkers"><Users size={12} aria-hidden /> {card.employeeCount}<span className="sr-only"> medewerkers</span></span>
+            <span className="flex items-center gap-1" title="Patiënten"><HeartPulse size={12} aria-hidden /> {card.patientCount}<span className="sr-only"> patiënten</span></span>
           </div>
           {card.archived ? <Badge variant="muted">Gearchiveerd</Badge> : <Badge variant="success">Actief</Badge>}
         </div>

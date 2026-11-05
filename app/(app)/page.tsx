@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { TimePicker } from "@/components/ui/TimePicker";
 import { useAppData } from "@/lib/store";
 import {
   appointmentTypeLabel, type AppointmentType,
@@ -270,7 +271,7 @@ function AfspraakQuickModal({ onClose, addAppointment, today }: {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div><FormLabel>Datum</FormLabel><DatePicker value={date} onChange={setDate} /></div>
-        <div><FormLabel>Tijd</FormLabel><FormInput type="time" value={time} onChange={e => setTime(e.target.value)} /></div>
+        <div><FormLabel>Tijd</FormLabel><TimePicker value={time} onChange={setTime} ariaLabel="Tijd" /></div>
       </div>
       <div>
         <FormLabel>Locatie</FormLabel>
@@ -370,7 +371,7 @@ function MedicatieQuickModal({ onClose, addMedicatie, today }: {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div><FormLabel>Datum</FormLabel><DatePicker value={date} onChange={setDate} /></div>
-        <div><FormLabel>Tijd</FormLabel><FormInput type="time" value={time} onChange={e => setTime(e.target.value)} /></div>
+        <div><FormLabel>Tijd</FormLabel><TimePicker value={time} onChange={setTime} ariaLabel="Tijd" /></div>
       </div>
       <div>
         <FormLabel>Reden</FormLabel>

@@ -405,9 +405,9 @@ Elke taak is klein genoeg voor één avond van 1–3 uur. Na elke stap volgt een
 20. ✅ `touch:`-variant: knoppen en tabelrijen op 44 px voor touchapparaten. *(1–2 u)*
 
 ### Week 7: overige lijsten en formulieren (±7 u)
-21. Activiteitenlog naar `ResponsiveList`, met actie, patiënt en tijd op de kaart. **Lost T2 op.** *(1,5 u)*
-22. Herstelplannen, Oefeningen, Schema's, Medewerkers en Locaties naar `ResponsiveList`. De namen breken af in plaats van afgekapt te worden (L6). *(3–4 u)*
-23. De 8 native tijdvelden naar de TimePicker; de DatePicker gebruikt `NAV_BREAKPOINT`. *(1–2 u)*
+21. ✅ Activiteitenlog naar `ResponsiveList`, met actie, patiënt en tijd op de kaart. **Lost T2 op.** *(1,5 u)*
+22. ✅ Herstelplannen, Oefeningen, Schema's en Medewerkers naar `ResponsiveList` (+ `FilterBar`, Oefeningen ook `StatStrip`); Locaties was al een kaartenraster. De namen breken af in plaats van afgekapt te worden (L6). *(3–4 u)*
+23. ✅ De 8 native tijdvelden naar de TimePicker (nu via een portal, meeschuivend bij scrollen, met `compact`- en `disabled`-variant); DatePicker en TimePicker gebruiken `NAV_BREAKPOINT` uit `lib/layout.ts`. *(1–2 u)*
 
 ### Week 8: patiënt-app en afronding (±6 u)
 24. Ruimte onderaan voor de FAB (L11); pijnscore in 2 rijen van 5 op schermen onder 400 px (K7). *(1,5 u)*

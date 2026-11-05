@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Calendar } from "lucide-react";
 import { useFieldContext } from "@/components/ui/Field";
+import { bottomNavOffset } from "@/lib/layout";
 
 interface DatePickerProps {
   value: string; // "YYYY-MM-DD" or ""
@@ -181,10 +182,8 @@ export function DatePicker({
 
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
-      // On mobile, the fixed nav bar covers the bottom — subtract its height
-      // De onderbalk is zichtbaar tot de lg-breakpoint (1024px).
-      const navHeight = window.innerWidth < 1024 ? 64 : 0;
-      const spaceBelow = window.innerHeight - rect.bottom - navHeight;
+      // Zolang de onderbalk zichtbaar is, telt die ruimte niet mee.
+      const spaceBelow = window.innerHeight - rect.bottom - bottomNavOffset();
       const spaceAbove = rect.top;
 
       // Clamp left so the dropdown never overflows the right edge

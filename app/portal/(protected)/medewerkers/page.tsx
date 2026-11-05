@@ -10,10 +10,9 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
-import { ActionMenu } from "@/components/ui/ActionMenu";
 import { StaffInviteForm } from "@/components/portal/StaffInviteForm";
 import { Avatar } from "@/components/ui/Avatar";
-import { ScrollHintX } from "@/components/ui/table/ScrollHintX";
+import { ResponsiveList, type ListColumn } from "@/components/ui/ResponsiveList";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
@@ -33,6 +32,64 @@ function statusBadge(status: PortalStaffMember["status"]) {
   if (status === "active") return <Badge variant="success">{PORTAL_STAFF_STATUS_LABELS.active}</Badge>;
   if (status === "invited") return <Badge variant="warning">{PORTAL_STAFF_STATUS_LABELS.invited}</Badge>;
   return <Badge variant="muted">{PORTAL_STAFF_STATUS_LABELS.suspended}</Badge>;
+}
+
+function staffName(member: PortalStaffMember, isSelf: boolean) {
+  return (
+    <>
+      {member.fullName || member.email || "Onbekend"}
+      {isSelf && <span className="text-xs text-gray-500 font-normal ml-2">(jij)</span>}
+    </>
+  );
+}
+
+function staffStatusBadges(member: PortalStaffMember) {
+  return (
+    <>
+      {statusBadge(member.status)}
+      {member.kind === "member" && member.status === "active" && isDateStale(member.lastSignInAt, STAFF_INACTIVITY_THRESHOLD_DAYS) && (
+        <Badge variant="warning">Niet recent ingelogd</Badge>
+      )}
+    </>
+  );
+}
+
+function staffColumns(selfId: string | undefined): ListColumn<PortalStaffMember, never>[] {
+  return [
+    {
+      key: "name", header: "Naam",
+      cell: (m) => (
+        <div className="flex items-center gap-3">
+          <Avatar fullName={m.fullName} email={m.email} avatarUrl={m.avatarUrl} size={36} />
+          <div className="min-w-0">
+            <p className="font-medium text-gray-800 [overflow-wrap:anywhere]">{staffName(m, !!selfId && m.userId === selfId)}</p>
+            <p className="text-xs text-gray-500 [overflow-wrap:anywhere]">{m.email}</p>
+          </div>
+        </div>
+      ),
+    },
+    { key: "role", header: "Rol", cell: (m) => <Badge variant={roleBadgeVariant(m.roleKey)}>{m.roleName}</Badge> },
+    { key: "location", header: "Hoofdlocatie", className: "text-gray-600", cell: (m) => m.locationName || "Hele organisatie" },
+    { key: "status", header: "Status", cell: (m) => <div className="flex items-center gap-1.5 flex-wrap">{staffStatusBadges(m)}</div> },
+  ];
+}
+
+/** Kaart op telefoon: wie, welke rol, waar en of er iets aandacht vraagt. */
+function StaffCard({ member: m, isSelf }: { member: PortalStaffMember; isSelf: boolean }) {
+  return (
+    <div className="flex items-start gap-3">
+      <Avatar fullName={m.fullName} email={m.email} avatarUrl={m.avatarUrl} size={40} />
+      <div className="min-w-0 flex-1">
+        <p className="font-medium text-gray-900 leading-snug [overflow-wrap:anywhere]">{staffName(m, isSelf)}</p>
+        {m.fullName && m.email && <p className="text-xs text-gray-500 mt-0.5 [overflow-wrap:anywhere]">{m.email}</p>}
+        <p className="text-xs text-gray-500 mt-1">{m.locationName || "Hele organisatie"}</p>
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          <Badge variant={roleBadgeVariant(m.roleKey)}>{m.roleName}</Badge>
+          {staffStatusBadges(m)}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function PortalStaffPage() {
@@ -161,77 +218,27 @@ export default function PortalStaffPage() {
         style={{ background: "#ffffff", borderColor: "#e8e5df", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
       >
         {loading ? (
-          <p className="text-sm text-gray-400 p-6">Laden…</p>
+          <p className="text-sm text-gray-500 p-6">Laden…</p>
         ) : staff.length === 0 ? (
           <EmptyState icon={Users} title="Nog geen medewerkers" description="Nodig je eerste medewerker uit om te beginnen." />
         ) : (
-          <ScrollHintX>
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ borderBottom: "1px solid #e8e5df" }}>
-                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Naam</th>
-                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Rol</th>
-                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Hoofdlocatie</th>
-                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Status</th>
-                  {canManage && <th className="text-right font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Actie</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {staff.map((member) => {
-                  const isSelf = !!user && member.userId === user.id;
-                  return (
-                    <tr
-                      key={member.id}
-                      style={{ borderBottom: "1px solid #f8f7f4" }}
-                      className={member.kind === "member" ? "cursor-pointer hover:bg-gray-50" : undefined}
-                      onClick={() => { if (member.kind === "member") router.push(`/portal/medewerkers/${member.id}`); }}
-                    >
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-3">
-                          <Avatar fullName={member.fullName} email={member.email} avatarUrl={member.avatarUrl} size={36} />
-                          <div className="min-w-0 max-w-[50vw]">
-                            <p className="font-medium text-gray-800 truncate">
-                              {member.fullName || member.email || "Onbekend"}
-                              {isSelf && <span className="text-xs text-gray-400 font-normal ml-2">(jij)</span>}
-                            </p>
-                            <p className="text-xs text-gray-400 truncate">{member.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <Badge variant={roleBadgeVariant(member.roleKey)}>{member.roleName}</Badge>
-                      </td>
-                      <td className="px-5 py-3.5 text-gray-600">{member.locationName || "Hele organisatie"}</td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {statusBadge(member.status)}
-                          {member.kind === "member" && member.status === "active" && isDateStale(member.lastSignInAt, STAFF_INACTIVITY_THRESHOLD_DAYS) && (
-                            <Badge variant="warning">Niet recent ingelogd</Badge>
-                          )}
-                        </div>
-                      </td>
-                      {canManage && (
-                        <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
-                          {isSelf ? (
-                            <span className="text-xs text-gray-400">—</span>
-                          ) : (
-                            <ActionMenu
-                              items={[
-                                ...(member.kind === "member" ? [{ label: "Bewerken", onClick: () => router.push(`/portal/medewerkers/${member.id}`) }] : []),
-                                ...(member.status === "invited" ? [{ label: "Opnieuw uitnodigen", onClick: () => handleResend(member) }] : []),
-                                ...(member.kind === "member" ? [{ label: member.status === "active" ? "Blokkeren" : "Deblokkeren", onClick: () => handleToggleBlocked(member) }] : []),
-                                { label: "Verwijderen", onClick: () => setConfirmDelete(member), danger: true },
-                              ]}
-                            />
-                          )}
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </ScrollHintX>
+          <ResponsiveList
+            rows={staff}
+            rowKey={(m) => m.id}
+            rowLabel={(m) => m.fullName || m.email || "Medewerker"}
+            onRowClick={(m) => router.push(`/portal/medewerkers/${m.id}`)}
+            isRowClickable={(m) => m.kind === "member"}
+            columns={staffColumns(user?.id)}
+            card={(m) => <StaffCard member={m} isSelf={!!user && m.userId === user.id} />}
+            actions={canManage ? (member) =>
+              user && member.userId === user.id ? null : [
+                ...(member.kind === "member" ? [{ label: "Bewerken", onClick: () => router.push(`/portal/medewerkers/${member.id}`) }] : []),
+                ...(member.status === "invited" ? [{ label: "Opnieuw uitnodigen", onClick: () => handleResend(member) }] : []),
+                ...(member.kind === "member" ? [{ label: member.status === "active" ? "Blokkeren" : "Deblokkeren", onClick: () => handleToggleBlocked(member) }] : []),
+                { label: "Verwijderen", onClick: () => setConfirmDelete(member), danger: true },
+              ]
+              : undefined}
+          />
         )}
       </div>
 

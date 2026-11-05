@@ -2,19 +2,20 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Dumbbell, Plus, Search } from "lucide-react";
+import { Dumbbell, Plus } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
-import { ActionMenu } from "@/components/ui/ActionMenu";
-import { StatCard } from "@/components/ui/StatCard";
-import { SortableHeader } from "@/components/ui/table/SortableHeader";
+import { StatStrip } from "@/components/ui/StatStrip";
 import { Pagination } from "@/components/ui/table/Pagination";
 import { useTableState } from "@/components/ui/table/useTableState";
-import { ScrollHintX } from "@/components/ui/table/ScrollHintX";
+import { ResponsiveList, type ListColumn } from "@/components/ui/ResponsiveList";
+import { FilterBar } from "@/components/ui/FilterBar";
+import { Field, Select } from "@/components/ui/Field";
+import { formatDate } from "@/lib/data";
 import { ExerciseThumb } from "@/components/portal/ExerciseThumb";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import {
@@ -22,12 +23,6 @@ import {
   MANAGE_PROTOCOLS_ROLES, EXERCISE_TYPE_LABELS,
   type PortalExerciseLibraryItem,
 } from "@/lib/services/protocolService";
-
-const inputStyle = { borderColor: "#e8e5df", background: "#ffffff", color: "#1a1a1a" };
-
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="block text-xs font-medium text-gray-500 mb-1.5">{children}</label>;
-}
 
 function compareNullableStrings(a: string | null, b: string | null): number {
   if (!a && !b) return 0;
@@ -37,6 +32,70 @@ function compareNullableStrings(a: string | null, b: string | null): number {
 }
 
 type SortKey = "title" | "exerciseType" | "createdAt";
+
+const SORT_OPTIONS: { key: SortKey; dir: "asc" | "desc"; label: string }[] = [
+  { key: "title", dir: "asc", label: "Naam (A-Z)" },
+  { key: "title", dir: "desc", label: "Naam (Z-A)" },
+  { key: "exerciseType", dir: "asc", label: "Categorie" },
+  { key: "createdAt", dir: "desc", label: "Nieuwste eerst" },
+];
+
+function typeLabel(ex: PortalExerciseLibraryItem) {
+  return EXERCISE_TYPE_LABELS[ex.exerciseType] ?? ex.exerciseType;
+}
+
+function sourceBadge(ex: PortalExerciseLibraryItem) {
+  return ex.scope === "reva" ? <Badge variant="blue">REVA</Badge> : <Badge variant="default">Eigen</Badge>;
+}
+
+function statusBadge(ex: PortalExerciseLibraryItem) {
+  return ex.archived ? <Badge variant="muted">Gearchiveerd</Badge> : <Badge variant="success">Actief</Badge>;
+}
+
+function tagBadges(ex: PortalExerciseLibraryItem) {
+  return (
+    <>
+      {ex.tags.slice(0, 3).map((t) => <Badge key={t} variant="muted">{t}</Badge>)}
+      {ex.tags.length > 3 && <Badge variant="muted">+{ex.tags.length - 3}</Badge>}
+    </>
+  );
+}
+
+const EXERCISE_COLUMNS: ListColumn<PortalExerciseLibraryItem, SortKey>[] = [
+  {
+    key: "title", header: "Oefening", sortKey: "title",
+    cell: (ex) => (
+      <div className="flex items-center gap-3">
+        <ExerciseThumb mediaPath={ex.mediaPath} mediaType={ex.mediaType} size={36} />
+        <p className="font-medium text-gray-800 min-w-0 [overflow-wrap:anywhere]">{ex.title}</p>
+      </div>
+    ),
+  },
+  { key: "exerciseType", header: "Categorie", sortKey: "exerciseType", className: "text-gray-600", cell: typeLabel },
+  { key: "tags", header: "Tags", hideBelow: "lg", cell: (ex) => <div className="flex flex-wrap gap-1">{tagBadges(ex)}</div> },
+  { key: "source", header: "Bron", cell: sourceBadge },
+  { key: "status", header: "Status", cell: statusBadge },
+  { key: "creator", header: "Aangemaakt door", hideBelow: "xl", className: "text-gray-600", cell: (ex) => ex.createdByName ?? "—" },
+  { key: "createdAt", header: "Aangemaakt", sortKey: "createdAt", hideBelow: "xl", className: "text-gray-500 whitespace-nowrap", cell: (ex) => formatDate(ex.createdAt) },
+];
+
+/** Kaart op telefoon: beeld, volledige naam, categorie en herkomst. */
+function ExerciseCard({ exercise: ex }: { exercise: PortalExerciseLibraryItem }) {
+  return (
+    <div className="flex items-start gap-3">
+      <ExerciseThumb mediaPath={ex.mediaPath} mediaType={ex.mediaType} size={44} />
+      <div className="min-w-0 flex-1">
+        <p className="font-medium text-gray-900 leading-snug [overflow-wrap:anywhere]">{ex.title}</p>
+        <p className="text-xs text-gray-500 mt-1">{[typeLabel(ex), ex.createdByName].filter(Boolean).join(" · ")}</p>
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {sourceBadge(ex)}
+          {ex.archived && statusBadge(ex)}
+          {tagBadges(ex)}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function PortalOefeningenPage() {
   const router = useRouter();
@@ -105,6 +164,12 @@ export default function PortalOefeningenPage() {
   const revaCount = exercises.filter((e) => e.scope === "reva").length;
   const archivedCount = exercises.filter((e) => e.archived).length;
 
+  const activeFilterCount = [statusFilter, categoryFilter, sourceFilter, tagFilter].filter(Boolean).length;
+  function resetFilters() {
+    setStatusFilter(""); setCategoryFilter(""); setSourceFilter(""); setTagFilter("");
+    setPage(1);
+  }
+
   async function handleCreateDraft() {
     if (!membership) return;
     setCreatingDraft(true);
@@ -158,77 +223,56 @@ export default function PortalOefeningenPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard label="Totaal" value={exercises.length} icon={Dumbbell} />
-        <StatCard label="Eigen bibliotheek" value={ownCount} icon={Dumbbell} />
-        <StatCard label="REVA-bibliotheek" value={revaCount} icon={Dumbbell} />
-        <StatCard label="Gearchiveerd" value={archivedCount} icon={Dumbbell} />
-      </div>
+      <StatStrip
+        items={[
+          { label: "Totaal", value: exercises.length, icon: Dumbbell },
+          { label: "Eigen bibliotheek", value: ownCount, icon: Dumbbell },
+          { label: "REVA-bibliotheek", value: revaCount, icon: Dumbbell },
+          { label: "Gearchiveerd", value: archivedCount, icon: Dumbbell },
+        ]}
+      />
 
-      <div className="rounded-2xl border p-4 flex flex-wrap gap-3 items-end" style={{ background: "#ffffff", borderColor: "#e8e5df" }}>
-        <div className="flex-1 min-w-[200px]">
-          <FieldLabel>Zoeken</FieldLabel>
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Naam…" className="w-full text-base sm:text-sm rounded-xl border pl-9 pr-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
-            />
-          </div>
-        </div>
-        <div className="w-[calc(50%-0.375rem)] sm:w-36">
-          <FieldLabel>Status</FieldLabel>
-          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
+      <FilterBar
+        search={search}
+        onSearchChange={(v) => { setSearch(v); setPage(1); }}
+        searchPlaceholder="Naam…"
+        activeCount={activeFilterCount}
+        onReset={resetFilters}
+        resultCount={filtered.length}
+      >
+        <Field label="Status" className="md:w-36">
+          <Select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
             <option value="">Alle</option>
             <option value="actief">Actief</option>
             <option value="gearchiveerd">Gearchiveerd</option>
-          </select>
-        </div>
-        <div className="w-[calc(50%-0.375rem)] sm:w-40">
-          <FieldLabel>Categorie</FieldLabel>
-          <select value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(1); }} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
+          </Select>
+        </Field>
+        <Field label="Categorie" className="md:w-40">
+          <Select value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(1); }}>
             <option value="">Alle</option>
             {Object.entries(EXERCISE_TYPE_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </div>
-        <div className="w-[calc(50%-0.375rem)] sm:w-40">
-          <FieldLabel>Bron</FieldLabel>
-          <select value={sourceFilter} onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
+          </Select>
+        </Field>
+        <Field label="Bron" className="md:w-40">
+          <Select value={sourceFilter} onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}>
             <option value="">Alle</option>
             <option value="organization">Eigen bibliotheek</option>
             <option value="reva">REVA-bibliotheek</option>
-          </select>
-        </div>
+          </Select>
+        </Field>
         {allTags.length > 0 && (
-          <div className="w-[calc(50%-0.375rem)] sm:w-40">
-            <FieldLabel>Tag</FieldLabel>
-            <select value={tagFilter} onChange={(e) => { setTagFilter(e.target.value); setPage(1); }} className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
+          <Field label="Tag" className="md:w-40">
+            <Select value={tagFilter} onChange={(e) => { setTagFilter(e.target.value); setPage(1); }}>
               <option value="">Alle</option>
               {allTags.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
+            </Select>
+          </Field>
         )}
-        <div className="w-[calc(50%-0.375rem)] sm:w-44">
-          <FieldLabel>Sorteren</FieldLabel>
-          <select
-            value={sortKey === "createdAt" && sortDir === "desc" ? "nieuwste" : sortKey === "exerciseType" ? "categorie" : "naam"}
-            onChange={(e) => {
-              if (e.target.value === "nieuwste") setSort("createdAt", "desc");
-              else if (e.target.value === "categorie") setSort("exerciseType", "asc");
-              else setSort("title", "asc");
-            }}
-            className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
-          >
-            <option value="naam">Naam (A-Z)</option>
-            <option value="categorie">Categorie</option>
-            <option value="nieuwste">Nieuwste eerst</option>
-          </select>
-        </div>
-      </div>
+      </FilterBar>
 
       <div className="rounded-2xl border overflow-hidden" style={{ background: "#ffffff", borderColor: "#e8e5df", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
         {loading ? (
-          <p className="text-sm text-gray-400 p-6">Laden…</p>
+          <p className="text-sm text-gray-500 p-6">Laden…</p>
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={Dumbbell}
@@ -236,65 +280,23 @@ export default function PortalOefeningenPage() {
             description={exercises.length === 0 ? "Voeg je eerste oefening toe om te beginnen." : "Pas de filters aan om meer resultaten te zien."}
           />
         ) : (
-          <ScrollHintX>
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ borderBottom: "1px solid #e8e5df" }}>
-                  <SortableHeader label="Oefening" sortKeyValue="title" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
-                  <SortableHeader label="Categorie" sortKeyValue="exerciseType" activeKey={sortKey} direction={sortDir} onSort={handleSort} />
-                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Tags</th>
-                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Bron</th>
-                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Status</th>
-                  <th className="text-left font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Aangemaakt door</th>
-                  <th className="text-right font-medium text-gray-400 text-xs uppercase tracking-wide px-5 py-3">Actie</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paged.map((ex) => {
-                  const editable = canManage;
-                  return (
-                    <tr
-                      key={ex.id}
-                      onClick={() => { if (editable) router.push(`/portal/oefeningen/${ex.id}`); }}
-                      className={`transition-colors ${editable ? "cursor-pointer hover:bg-gray-50" : ""}`}
-                      style={{ borderBottom: "1px solid #f8f7f4" }}
-                    >
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-3">
-                          <ExerciseThumb mediaPath={ex.mediaPath} mediaType={ex.mediaType} size={36} />
-                          <p className="font-medium text-gray-800 truncate min-w-0 max-w-[50vw]">{ex.title}</p>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5 text-gray-600">{EXERCISE_TYPE_LABELS[ex.exerciseType] ?? ex.exerciseType}</td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex flex-wrap gap-1">
-                          {ex.tags.slice(0, 3).map((t) => <Badge key={t} variant="muted">{t}</Badge>)}
-                          {ex.tags.length > 3 && <Badge variant="muted">+{ex.tags.length - 3}</Badge>}
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5">{ex.scope === "reva" ? <Badge variant="blue">REVA</Badge> : <Badge variant="default">Eigen</Badge>}</td>
-                      <td className="px-5 py-3.5">{ex.archived ? <Badge variant="muted">Gearchiveerd</Badge> : <Badge variant="success">Actief</Badge>}</td>
-                      <td className="px-5 py-3.5 text-gray-600">{ex.createdByName ?? "—"}</td>
-                      <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
-                        {canManage && (
-                          <ActionMenu
-                            items={
-                              ex.scope === "organization"
-                                ? [
-                                    { label: ex.archived ? "Dearchiveren" : "Archiveren", onClick: () => handleToggleArchived(ex) },
-                                    { label: "Verwijderen", onClick: () => setConfirmDelete(ex), danger: true },
-                                  ]
-                                : [{ label: "Dupliceren", onClick: () => handleDuplicate(ex) }]
-                            }
-                          />
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </ScrollHintX>
+          <ResponsiveList
+            rows={paged}
+            rowKey={(ex) => ex.id}
+            rowLabel={(ex) => ex.title}
+            onRowClick={canManage ? (ex) => router.push(`/portal/oefeningen/${ex.id}`) : undefined}
+            columns={EXERCISE_COLUMNS}
+            card={(ex) => <ExerciseCard exercise={ex} />}
+            actions={canManage ? (ex) =>
+              ex.scope === "organization"
+                ? [
+                    { label: ex.archived ? "Dearchiveren" : "Archiveren", onClick: () => handleToggleArchived(ex) },
+                    { label: "Verwijderen", onClick: () => setConfirmDelete(ex), danger: true },
+                  ]
+                : [{ label: "Dupliceren", onClick: () => handleDuplicate(ex) }]
+              : undefined}
+            sort={{ key: sortKey, dir: sortDir, onSort: handleSort, onSet: setSort, options: SORT_OPTIONS }}
+          />
         )}
         <Pagination page={page} totalPages={totalPages} totalCount={filtered.length} itemLabel="resultaat" itemLabelPlural="resultaten" onPageChange={setPage} />
       </div>

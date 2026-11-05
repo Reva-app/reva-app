@@ -13,6 +13,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Avatar } from "@/components/ui/Avatar";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { TimePicker } from "@/components/ui/TimePicker";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { formatDate } from "@/lib/data";
@@ -594,14 +595,12 @@ export function MedewerkerDetail({
                           {WEEKDAY_LABELS[day]}
                         </label>
                         {!d.isOff ? (
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <input type="time" value={d.startTime} disabled={!canEditGeneral}
-                              onChange={(e) => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], startTime: e.target.value } }))}
-                              className="text-base sm:text-sm rounded-lg border px-2 py-1.5 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0" style={inputStyle} />
+                          <div className="flex items-center gap-2 w-full sm:w-auto pl-6 sm:pl-0">
+                            <TimePicker compact value={d.startTime} disabled={!canEditGeneral} ariaLabel={`${WEEKDAY_LABELS[day]} van`} placeholder="--:--"
+                              onChange={(v) => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], startTime: v } }))} />
                             <span className="text-gray-400 text-sm">tot</span>
-                            <input type="time" value={d.endTime} disabled={!canEditGeneral}
-                              onChange={(e) => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], endTime: e.target.value } }))}
-                              className="text-base sm:text-sm rounded-lg border px-2 py-1.5 focus:outline-none disabled:opacity-60 min-h-11 sm:min-h-0" style={inputStyle} />
+                            <TimePicker compact value={d.endTime} disabled={!canEditGeneral} ariaLabel={`${WEEKDAY_LABELS[day]} tot`} placeholder="--:--"
+                              onChange={(v) => setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], endTime: v } }))} />
                           </div>
                         ) : (
                           <span className="text-sm text-gray-400">Vrij</span>
