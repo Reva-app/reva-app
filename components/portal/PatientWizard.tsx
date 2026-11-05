@@ -164,7 +164,7 @@ export function PatientWizard({
     }
     setSending(false);
     if (res.outcome === "linked") {
-      setResult({ ok: true, text: "Dossier aangemaakt en direct gekoppeld aan een bestaand account." });
+      setResult({ ok: true, text: "Dossier aangemaakt en gekoppeld aan het bestaande REVA-account van deze patiënt. We hebben een e-mail gestuurd dat het dossier klaarstaat." });
     } else if (res.outcome === "invited") {
       setResult({ ok: true, text: "Dossier aangemaakt en uitnodiging verstuurd." });
     } else {

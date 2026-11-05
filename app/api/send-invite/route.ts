@@ -7,6 +7,7 @@ import {
   activationReminderEmail,
   ownerInviteEmail,
   patientInviteEmail,
+  patientAccessGrantedEmail,
   staffAccessGrantedEmail,
   staffInviteEmail,
 } from "@/lib/email/messages";
@@ -28,7 +29,9 @@ type Body =
   | { context: "portal-staff"; inviteId: string }
   | { context: "portal-staff-linked"; organizationId: string; email: string; firstName: string; roleId: string }
   | { context: "admin-relink"; organizationId: string; targetUserId: string; email: string; firstName: string }
-  | { context: "portal-patient"; organizationId: string; patientId: string; linkType?: "invite" | "recovery" };
+  // linkType "notify": het dossier is al aan een bestaand account gekoppeld —
+  // alleen een melding met een inloglink, geen activatie- of wachtwoordlink.
+  | { context: "portal-patient"; organizationId: string; patientId: string; linkType?: "invite" | "recovery" | "notify" };
 
 export async function POST(request: Request) {
   try {
@@ -224,7 +227,7 @@ export async function POST(request: Request) {
 
       const { data: patient, error: patientError } = await supabase
         .from("patients")
-        .select("organization_id, email, first_name")
+        .select("organization_id, email, first_name, user_id")
         .eq("id", body.patientId)
         .eq("organization_id", body.organizationId)
         .maybeSingle();
@@ -234,6 +237,9 @@ export async function POST(request: Request) {
       }
       if (!patient || !patient.email) {
         return NextResponse.json({ error: "Patiëntdossier niet gevonden of heeft geen e-mailadres" }, { status: 404 });
+      }
+      if (body.linkType === "notify" && !patient.user_id) {
+        return NextResponse.json({ error: "Dit dossier is nog niet aan een account gekoppeld" }, { status: 400 });
       }
       organizationId = patient.organization_id;
       email = patient.email;
@@ -273,22 +279,26 @@ export async function POST(request: Request) {
     // werkt voor elk bestaand account, ongeacht of er ooit een wachtwoord is
     // gezet, en laat de ontvanger op dezelfde /auth/reset-password-pagina
     // alsnog een (nieuw) wachtwoord instellen.
+    const notifyOnly = body.context === "portal-patient" && body.linkType === "notify";
     const linkType: "invite" | "recovery" =
-      body.context === "portal-patient" ? (body.linkType ?? "invite")
+      body.context === "portal-patient" ? (body.linkType === "recovery" ? "recovery" : "invite")
       : body.context === "portal-staff-linked" || body.context === "admin-relink" ? "recovery"
       : "invite";
 
     const admin = createSupabaseClient(supabaseUrl, serviceRoleKey);
-    const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-      type: linkType,
-      email,
-      options: { redirectTo: origin },
-    });
-    if (linkError || !linkData) {
-      console.error("[send-invite] generateLink:", linkError?.message);
-      return NextResponse.json({ error: "Aanmaken van de uitnodigingslink is niet gelukt" }, { status: 500 });
+    let tokenHash = "";
+    if (!notifyOnly) {
+      const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+        type: linkType,
+        email,
+        options: { redirectTo: origin },
+      });
+      if (linkError || !linkData) {
+        console.error("[send-invite] generateLink:", linkError?.message);
+        return NextResponse.json({ error: "Aanmaken van de uitnodigingslink is niet gelukt" }, { status: 500 });
+      }
+      tokenHash = linkData.properties.hashed_token;
     }
-    const tokenHash = linkData.properties.hashed_token;
 
     // Iedereen stelt eerst een wachtwoord in voordat ze het dashboard zien —
     // ook patiënten (voorheen wachtwoordloos, maar dat liet ze zonder
@@ -309,7 +319,9 @@ export async function POST(request: Request) {
     // Eigenaren krijgen REVA-branding (zij richten de praktijk nog in);
     // patiënten en medewerkers zien de huisstijl van hun praktijk.
     const content =
-      body.context === "portal-patient"
+      notifyOnly
+        ? patientAccessGrantedEmail({ practice, firstName, url: `${origin}/login` })
+        : body.context === "portal-patient"
         ? patientInviteEmail({ practice, firstName, url: actionLink })
         : body.context === "admin-relink"
           ? activationReminderEmail({

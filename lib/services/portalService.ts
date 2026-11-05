@@ -1011,6 +1011,17 @@ export async function invitePortalPatient(
     const { error: copyGoalsError } = await supabase.rpc("copy_intake_goals_to_patient", { p_patient_id: patientId });
     if (copyGoalsError) logErr("invitePortalPatient(copyGoals)", copyGoalsError);
     if (!isResend) {
+      // Geen activatielink nodig (account bestaat al), maar de patiënt moet
+      // wel weten dat het dossier klaarstaat. Mislukt de mail, dan blijft de
+      // koppeling gewoon staan.
+      const { error: notifyError } = await callSendInviteApi({
+        context: "portal-patient", organizationId, patientId, linkType: "notify",
+      });
+      if (notifyError) {
+        logErr("invitePortalPatient(notify)", { message: notifyError });
+      } else {
+        await supabase.from("patients").update({ invited_at: new Date().toISOString() }).eq("id", patientId);
+      }
       return { outcome: "linked", error: null, patientId };
     }
     // isResend: het account bestaat al, maar de gebruiker vroeg expliciet om

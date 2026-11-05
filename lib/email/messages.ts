@@ -49,6 +49,25 @@ export function patientInviteEmail(p: { practice: PracticeInfo; firstName: strin
   };
 }
 
+/** Patiënt die al een REVA-account had: het dossier is direct gekoppeld, dus geen activatielink. */
+export function patientAccessGrantedEmail(p: { practice: PracticeInfo; firstName: string; url: string }): EmailContent {
+  return {
+    brand: practiceBrand(p.practice),
+    subject: `${p.practice.name} heeft je hersteldashboard klaargezet`,
+    preheader: "Log in met je bestaande REVA-account om je afspraken, oefeningen en voortgang te zien.",
+    heading: p.firstName ? `Welkom, ${p.firstName}` : "Welkom bij je hersteldashboard",
+    paragraphs: [
+      [{ bold: p.practice.name }, " begeleidt je herstel met REVA. Je hebt nu een eigen hersteldashboard met je afspraken, oefeningen en voortgang op één plek."],
+      "Je had al een REVA-account met dit e-mailadres, dus je hoeft niets te activeren: log in zoals je gewend bent.",
+    ],
+    button: { label: "Inloggen", url: p.url },
+    notes: [
+      "Wachtwoord kwijt? Kies dan op het inlogscherm voor “Wachtwoord vergeten”.",
+    ],
+    footerReason: { text: `Je ontvangt deze e-mail omdat ${p.practice.name} een dossier voor je heeft aangemaakt in REVA.` },
+  };
+}
+
 export function staffInviteEmail(p: { practice: PracticeInfo; firstName: string; roleName: string | null; url: string }): EmailContent {
   return {
     brand: practiceBrand(p.practice),

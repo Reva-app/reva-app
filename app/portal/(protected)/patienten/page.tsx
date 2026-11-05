@@ -313,7 +313,7 @@ function ClinicalPatientsPage() {
     if (result.outcome === "failed") {
       showToast(result.error, "error");
     } else {
-      showToast(result.outcome === "linked" ? "Direct gekoppeld." : "Uitnodiging verstuurd.");
+      showToast(result.outcome === "linked" ? "Gekoppeld aan bestaand account, e-mail verstuurd." : "Uitnodiging verstuurd.");
       if (membership) refresh(membership.organizationId);
     }
   }
