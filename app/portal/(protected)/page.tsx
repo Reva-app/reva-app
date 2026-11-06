@@ -59,11 +59,14 @@ export default function PortalDashboardPage() {
     };
   }, [checked, membership, user]);
 
+  // Voornaam uit het profiel ("Sanne de Vries" → "Sanne"), niet de rolnaam.
+  const firstName = membership?.userFullName?.trim().split(/\s+/)[0] ?? null;
+
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-8">
       <SectionHeader
         title={membership ? membership.organizationName : "Dashboard"}
-        subtitle={membership ? `Welkom terug, ${membership.roleName}` : undefined}
+        subtitle={membership ? (firstName ? `Welkom terug, ${firstName}` : "Welkom terug") : undefined}
       />
 
       {membership && stats && (
