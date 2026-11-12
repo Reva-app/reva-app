@@ -12,12 +12,13 @@ import { SUBSCRIPTIONS_ENABLED } from "@/lib/subscription";
 import { useAppBranding } from "@/lib/hooks/useAppBranding";
 import { NavigationBlockerProvider } from "@/lib/hooks/useNavigationBlocker";
 import { brandPalette } from "@/lib/brand";
-import { useBrandCssVars, useEffectiveBrandColor } from "@/lib/hooks/useBrandCssVars";
+import { useBrandCssVars, useEffectiveBrandColor, useRememberBrand } from "@/lib/hooks/useBrandCssVars";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const branding = useAppBranding();
   const brandColor = useEffectiveBrandColor(branding?.primaryColor);
   useBrandCssVars(brandColor);
+  useRememberBrand(branding);
   return (
     <AppDataProvider>
       <AppLoadingGate>

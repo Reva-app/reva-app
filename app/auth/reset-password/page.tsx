@@ -6,7 +6,7 @@ import { Eye, EyeOff, AlertCircle, Loader2, Check } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
 import { validatePassword } from "@/lib/passwordPolicy";
 import { getSafeNextPath } from "@/lib/safeRedirect";
-import { RevaGlyph } from "@/components/brand/RevaGlyph";
+import { AuthBrandHeader } from "@/components/brand/AuthBrandHeader";
 import { MfaChallengeScreen } from "@/components/auth/MfaChallengeScreen";
 
 // ─── Google icon (zelfde SVG als app/(auth)/login/page.tsx) ──────────────────
@@ -140,15 +140,7 @@ function ResetPasswordForm() {
     <div className="min-h-screen flex flex-col justify-center px-5 py-10" style={{ background: "#f8f7f4" }}>
       {/* Logo */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-2 mb-6">
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: "var(--brand-accent, #e8632a)" }}
-          >
-            <RevaGlyph className="h-[18px] text-white" />
-          </div>
-          <span className="font-bold text-lg" style={{ color: "#1a1a1a" }}>REVA</span>
-        </div>
+        <AuthBrandHeader className="mb-6" />
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
           {isInvite ? "Welkom bij REVA App" : "Nieuw wachtwoord instellen"}
         </h1>

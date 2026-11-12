@@ -8,12 +8,13 @@ import { TrialBanner } from "@/components/portal/TrialBanner";
 import { PlanUsageBanner } from "@/components/portal/PlanUsageBanner";
 import { PortalBrandingProvider, usePortalBranding } from "@/lib/hooks/usePortalBranding";
 import { brandPalette } from "@/lib/brand";
-import { useBrandCssVars, useEffectiveBrandColor } from "@/lib/hooks/useBrandCssVars";
+import { useBrandCssVars, useEffectiveBrandColor, useRememberBrand } from "@/lib/hooks/useBrandCssVars";
 
 function PortalLayoutInner({ children }: { children: React.ReactNode }) {
   const { branding } = usePortalBranding();
   const brandColor = useEffectiveBrandColor(branding?.primaryColor);
   useBrandCssVars(brandColor);
+  useRememberBrand(branding);
   return (
     <div className="flex h-full" style={brandPalette(brandColor) as React.CSSProperties}>
       <PortalSidebar />

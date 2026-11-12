@@ -508,6 +508,8 @@ export interface PortalMyPatientRow {
   attentionReasons: PatientAttentionReason[];
   /** De patiënt vulde de intake zelf in; de fysio moet nog een herstelplan kiezen (migratie 137). */
   intakeSubmitted: boolean;
+  /** Huidig herstelplan en fase (migratie 143); undefined zolang die migratie nog niet draait. */
+  plan?: { name: string; phaseName: string | null; phaseNumber: number | null; phaseCount: number } | null;
 }
 
 export interface PortalMyPatientsSummary {
@@ -543,6 +545,10 @@ export async function loadMyPortalPatientsSummary(organizationId: string, userId
     last_swelling: boolean | null;
     last_day_score: number | null;
     checkins_last_7d: number;
+    plan_name?: string | null;
+    phase_name?: string | null;
+    phase_number?: number | null;
+    phase_count?: number | null;
   }[];
 
   const { data: submitted, error: intakeError } = await supabase
@@ -569,6 +575,8 @@ export async function loadMyPortalPatientsSummary(organizationId: string, userId
         inactive,
         attentionReasons,
         intakeSubmitted: submittedIds.has(r.patient_id),
+        plan: r.plan_name === undefined ? undefined
+          : r.plan_name ? { name: r.plan_name, phaseName: r.phase_name ?? null, phaseNumber: r.phase_number ?? null, phaseCount: r.phase_count ?? 0 } : null,
       };
     })
     .sort((a, b) => {

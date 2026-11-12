@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { brandPalette } from "@/lib/brand";
+import { applyBrandVars, readBrandCache, writeBrandCache } from "@/lib/brandCache";
 
 const CACHE_KEY = "reva-brand-color";
 
@@ -27,14 +27,21 @@ export function useEffectiveBrandColor(color: string | null | undefined): string
 /**
  * Zet de kleurfamilie van de praktijk op <html>, zodat ook alles wat via een
  * portal buiten de layout rendert (vensters, menu's, datumkiezers) de
- * praktijkkleur volgt. Bij het verlaten (bv. naar het beheerportaal) gaan
- * de standaardwaarden uit globals.css weer gelden.
+ * praktijkkleur volgt. Bij het verlaten (bv. uitloggen naar het
+ * inlogscherm) blijft de laatst bekende praktijkkleur staan.
  */
 export function useBrandCssVars(color: string | null | undefined) {
   useEffect(() => {
-    const root = document.documentElement;
-    const palette = brandPalette(color);
-    for (const [k, v] of Object.entries(palette)) root.style.setProperty(k, v);
-    return () => { for (const k of Object.keys(palette)) root.style.removeProperty(k); };
+    applyBrandVars(color);
+    return () => applyBrandVars(readBrandCache()?.color);
   }, [color]);
+}
+
+/** Onthoud de volledige huisstijl (naam, kleur, logo) voor de schermen vóór het inloggen. */
+export function useRememberBrand(branding: { name: string; primaryColor: string | null; logoPath: string | null } | null | undefined) {
+  const name = branding?.name, color = branding?.primaryColor ?? null, logo = branding?.logoPath ?? null;
+  useEffect(() => {
+    if (name === undefined) return; // nog aan het laden
+    writeBrandCache({ name, primaryColor: color, logoPath: logo });
+  }, [name, color, logo]);
 }

@@ -1,4 +1,5 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { loadPushBrands } from "@/lib/push/practiceBrand";
 import { NextResponse } from "next/server";
 import webpush from "web-push";
 import { checkRateLimit, rateLimitedResponse } from "@/lib/rateLimit";
@@ -32,6 +33,8 @@ export async function POST(request: Request) {
     : { title: "REVA", body: "Pushmeldingen staan aan. Zo zie je straks je herinneringen.", url: "/instellingen", tag: "test" };
 
   const admin = createSupabaseClient(url, service);
+  const brand = (await loadPushBrands(admin, [user.id], new URL(request.url).origin)).get(user.id);
+  const branded = brand ? { ...payload, title: brand.name, icon: brand.icon ?? undefined } : payload;
   const { data: subs } = await admin.from("web_push_subscriptions").select("id, endpoint, p256dh, auth").eq("user_id", user.id);
   if (!subs?.length) return NextResponse.json({ error: "Er is nog geen apparaat aangemeld." }, { status: 400 });
 
@@ -41,7 +44,7 @@ export async function POST(request: Request) {
     try {
       await webpush.sendNotification(
         { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-        JSON.stringify(payload),
+        JSON.stringify(branded),
         { TTL: 60 }
       );
       sent++;

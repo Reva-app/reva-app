@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import { BrandBoot } from "@/components/brand/BrandBoot";
 
 const geist = Geist({
   variable: "--font-geist-sans",
@@ -81,6 +82,7 @@ export default async function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
+        <BrandBoot />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

@@ -2,6 +2,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import webpush from "web-push";
 import { timingSafeEqual } from "node:crypto";
+import { loadPushBrands, brandedPayload } from "@/lib/push/practiceBrand";
 
 interface PushItem { userId: string; title: string; body: string; url?: string; tag?: string }
 
@@ -28,6 +29,8 @@ export async function POST(request: Request) {
   const userIds = [...new Set(pushes.map((p) => p.userId))];
   const { data: subs } = await admin.from("web_push_subscriptions").select("id, user_id, endpoint, p256dh, auth").in("user_id", userIds);
   webpush.setVapidDetails(process.env.VAPID_SUBJECT ?? "mailto:info@reva-app.nl", publicKey, privateKey);
+  // In de stijl van de praktijk: praktijknaam als titel, praktijklogo als icoon.
+  const brands = await loadPushBrands(admin, userIds, new URL(request.url).origin);
 
   let sent = 0, failed = 0;
   const stale: string[] = [];
@@ -36,7 +39,7 @@ export async function POST(request: Request) {
       try {
         await webpush.sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-          JSON.stringify({ title: p.title, body: p.body, url: p.url ?? "/", tag: p.tag }),
+          JSON.stringify(brandedPayload(p, brands.get(p.userId))),
           { TTL: 60 * 60 * 6 }
         );
         sent++;

@@ -7,7 +7,7 @@ import { Eye, EyeOff, AlertCircle, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { getSafeNextPath } from "@/lib/safeRedirect";
-import { RevaGlyph } from "@/components/brand/RevaGlyph";
+import { AuthBrandHeader, PoweredByReva } from "@/components/brand/AuthBrandHeader";
 
 // ─── Google icon ──────────────────────────────────────────────────────────────
 function GoogleIcon() {
@@ -161,19 +161,7 @@ function LoginForm() {
     <div className="min-h-screen flex flex-col justify-center px-5 py-10" style={{ background: "#f8f7f4" }}>
       {/* Logo */}
       <div className="text-center mb-8">
-        <div
-          className="inline-flex items-center gap-2 mb-6"
-        >
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: "var(--brand-accent, #e8632a)" }}
-          >
-            <RevaGlyph className="h-[18px] text-white" />
-          </div>
-          <span className="font-bold text-lg" style={{ color: "#1a1a1a" }}>
-            REVA
-          </span>
-        </div>
+        <AuthBrandHeader className="mb-6" />
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
           Welkom terug
         </h1>
@@ -314,6 +302,7 @@ function LoginForm() {
           </Link>
         </p>
       </div>
+      <PoweredByReva />
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
 import { getSafeNextPath } from "@/lib/safeRedirect";
 import type { EmailOtpType } from "@supabase/supabase-js";
-import { RevaGlyph } from "@/components/brand/RevaGlyph";
+import { AuthBrandHeader } from "@/components/brand/AuthBrandHeader";
 
 /**
  * Verifieert een uitnodigings-/magic-linktoken zelf, client-side, in plaats
@@ -70,15 +70,7 @@ function VerifyHandler() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-5 py-10" style={{ background: "#f8f7f4" }}>
-      <div className="inline-flex items-center gap-2 mb-8">
-        <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: "var(--brand-accent, #e8632a)" }}
-        >
-          <RevaGlyph className="h-[18px] text-white" />
-        </div>
-        <span className="font-bold text-lg" style={{ color: "#1a1a1a" }}>REVA</span>
-      </div>
+      <AuthBrandHeader className="mb-8" />
 
       {error ? (
         <div

@@ -142,6 +142,16 @@ export default function PortalDashboardPage() {
                       <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-3">
                         <div className="min-w-0 sm:flex-1">
                           <p className="text-sm font-medium text-gray-900 truncate">{p.fullName || "Nog niet ingevuld"}</p>
+                          {p.plan !== undefined && (
+                            <p className="text-xs mt-0.5 flex min-w-0 text-gray-500" title={p.plan?.phaseName ? `${p.plan.name} · ${p.plan.phaseName}` : p.plan?.name}>
+                              {p.plan ? (
+                                <>
+                                  <span className="truncate">{p.plan.name}</span>
+                                  {p.plan.phaseNumber && p.plan.phaseCount > 0 && <span className="shrink-0">&nbsp;· fase {p.plan.phaseNumber} van {p.plan.phaseCount}</span>}
+                                </>
+                              ) : !p.intakeSubmitted && <span className="text-subtle">Nog geen herstelplan</span>}
+                            </p>
+                          )}
                           <p className="text-xs mt-0.5"><CheckinIndicator date={p.lastCheckinDate} /></p>
                         </div>
                         {(p.intakeSubmitted || p.attentionReasons.length > 0) && (

@@ -4,7 +4,7 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, AlertCircle, Loader2, Building2 } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
-import { RevaGlyph } from "@/components/brand/RevaGlyph";
+import { AuthBrandHeader, PoweredByReva } from "@/components/brand/AuthBrandHeader";
 
 /**
  * Los inlogscherm voor de Practice Portal — net als /admin/login bewust apart
@@ -49,12 +49,7 @@ function PortalLoginForm() {
   return (
     <div className="min-h-screen flex flex-col justify-center px-5 py-10" style={{ background: "#f8f7f4" }}>
       <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-2 mb-6">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "#18181a" }}>
-            <RevaGlyph className="h-[18px] text-white" />
-          </div>
-          <span className="font-bold text-lg" style={{ color: "#1a1a1a" }}>REVA</span>
-        </div>
+        <AuthBrandHeader className="mb-6" fallbackDark />
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">Practice Portal</h1>
         <p className="text-sm text-gray-500 mt-2 flex items-center justify-center gap-1.5">
           <Building2 size={14} style={{ color: "#9ca3af" }} />
@@ -130,6 +125,7 @@ function PortalLoginForm() {
           </button>
         </form>
       </div>
+      <PoweredByReva />
     </div>
   );
 }
