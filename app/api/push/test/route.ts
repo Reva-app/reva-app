@@ -25,6 +25,12 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
   if (!(await checkRateLimit(`push-test:${user.id}`, 5, 60 * 10))) return rateLimitedResponse();
 
+  // Vanuit het portaal: tik op de testmelding opent het portaal, niet de patiëntenapp.
+  const fromPortal = (await request.json().catch(() => ({})))?.portal === true;
+  const payload = fromPortal
+    ? { title: "REVA", body: "Pushmeldingen staan aan. Elke werkdag om 08:00 krijg je hier je overzicht.", url: "/portal", tag: "test" }
+    : { title: "REVA", body: "Pushmeldingen staan aan. Zo zie je straks je herinneringen.", url: "/instellingen", tag: "test" };
+
   const admin = createSupabaseClient(url, service);
   const { data: subs } = await admin.from("web_push_subscriptions").select("id, endpoint, p256dh, auth").eq("user_id", user.id);
   if (!subs?.length) return NextResponse.json({ error: "Er is nog geen apparaat aangemeld." }, { status: 400 });
@@ -35,7 +41,7 @@ export async function POST(request: Request) {
     try {
       await webpush.sendNotification(
         { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-        JSON.stringify({ title: "REVA", body: "Pushmeldingen staan aan. Zo zie je straks je herinneringen.", url: "/instellingen", tag: "test" }),
+        JSON.stringify(payload),
         { TTL: 60 }
       );
       sent++;

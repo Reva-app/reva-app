@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Tabs } from "@/components/ui/Tabs";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
+import { PushSettings } from "@/components/notifications/PushSettings";
 import { Avatar } from "@/components/ui/Avatar";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -510,6 +511,8 @@ export function MedewerkerDetail({
                     )}
                   </div>
                 </div>
+
+                {isSelf && <PushSettings variant="staff" notify={(msg, type) => showToast(msg, type)} />}
 
                 {canShowDangerActions && (
                   <div className="flex flex-wrap gap-2">

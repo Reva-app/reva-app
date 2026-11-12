@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import { Building2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { isStandalone } from "@/lib/webPush";
 
 interface StaffAccountScreenProps {
   organizationName: string;
@@ -18,6 +20,12 @@ interface StaffAccountScreenProps {
  */
 export function StaffAccountScreen({ organizationName, onSignOut }: StaffAccountScreenProps) {
   const router = useRouter();
+
+  // Vanaf het beginscherm start REVA op "/": een medewerker wil dan meteen
+  // het portaal zien, niet eerst dit tussenscherm.
+  useEffect(() => {
+    if (isStandalone()) router.replace("/portal");
+  }, [router]);
 
   return (
     <div className="fixed inset-0 z-(--z-gate) flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)" }}>

@@ -609,6 +609,24 @@ async function handleRequest(req: Request): Promise<Response> {
     }
   }
 
+  // ── 6. Dagoverzicht voor behandelaars (werkdagen 08:00, migratie 142) ───
+  // Eén rustige melding per dag i.p.v. een melding per check-in. Alleen
+  // aantallen (geen namen) en alleen als er iets is. Maandag telt het
+  // weekend mee.
+  if (dayOfWeek >= 1 && dayOfWeek <= 5 && localHour === 8 && localMinuteBucket === 0) {
+    const since = new Date(`${today}T12:00:00Z`);
+    since.setUTCDate(since.getUTCDate() - (dayOfWeek === 1 ? 3 : 1));
+    const { data: digest, error: digestError } = await supabase.rpc("staff_daily_digest", { p_since: since.toISOString().slice(0, 10) });
+    if (digestError) console.error("[digest] ophalen mislukt:", digestError.message);
+    (digest ?? []).forEach((d: { user_id: string; intakes_submitted: number; signal_patients: number }) => {
+      const parts: string[] = [];
+      if (d.signal_patients > 0) parts.push(d.signal_patients === 1 ? "1 patiënt met een signaal uit de check-in" : `${d.signal_patients} patiënten met een signaal uit de check-in`);
+      if (d.intakes_submitted > 0) parts.push(d.intakes_submitted === 1 ? "1 ingevulde intake wacht op een herstelplan" : `${d.intakes_submitted} ingevulde intakes wachten op een herstelplan`);
+      if (parts.length === 0) return;
+      webPushes.push({ userId: d.user_id, title: "Je overzicht voor vandaag", body: parts.join(" · "), url: "/portal", tag: "dagoverzicht" });
+    });
+  }
+
   // ── Testmodus: stuur naar alle tokens in de DB ──────────────────────────
   if (testMode) {
     const { data: allTokens } = await supabase

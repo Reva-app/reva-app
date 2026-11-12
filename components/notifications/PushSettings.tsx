@@ -12,21 +12,37 @@ function usePushState() {
   return [state, setState] as const;
 }
 
-function InstallSteps() {
+function InstallSteps({ staff }: { staff?: boolean }) {
   return (
     <ol className="mt-3 space-y-2 text-sm text-gray-600">
       <li className="flex items-center gap-2"><span className="w-6 h-6 rounded-full bg-white border flex items-center justify-center text-xs font-semibold" style={{ borderColor: "#e8e5df" }}>1</span>Tik in Safari op <Share size={15} className="inline text-gray-500" /> <span className="font-medium text-gray-800">Deel</span></li>
       <li className="flex items-center gap-2"><span className="w-6 h-6 rounded-full bg-white border flex items-center justify-center text-xs font-semibold" style={{ borderColor: "#e8e5df" }}>2</span>Kies <PlusSquare size={15} className="inline text-gray-500" /> <span className="font-medium text-gray-800">Zet op beginscherm</span></li>
-      <li className="flex items-center gap-2"><span className="w-6 h-6 rounded-full bg-white border flex items-center justify-center text-xs font-semibold" style={{ borderColor: "#e8e5df" }}>3</span>Open REVA vanaf je beginscherm en zet meldingen hier aan</li>
+      <li className="flex items-center gap-2"><span className="w-6 h-6 rounded-full bg-white border flex items-center justify-center text-xs font-semibold" style={{ borderColor: "#e8e5df" }}>3</span>{staff ? "Open REVA vanaf je beginscherm, log in en zet meldingen aan onder Account" : "Open REVA vanaf je beginscherm en zet meldingen hier aan"}</li>
     </ol>
   );
 }
 
+const COPY = {
+  patient: {
+    title: "Pushmeldingen op dit apparaat",
+    on: "Aan. Je herinneringen komen ook als melding op dit apparaat binnen.",
+    off: "Krijg je herinneringen als melding op je telefoon, naast de e-mail.",
+  },
+  staff: {
+    title: "Dagoverzicht als pushmelding",
+    on: "Aan. Elke werkdag om 08:00 krijg je op dit apparaat een kort overzicht van wat aandacht nodig heeft. Alleen als er iets is, en zonder patiëntnamen.",
+    off: "Elke werkdag om 08:00 een kort overzicht: patiënten met een signaal uit hun check-in en ingevulde intakes. Alleen als er iets is, en zonder patiëntnamen.",
+  },
+} as const;
+
 /**
- * Pushmeldingen op dit apparaat (Instellingen → Meldingen). Herinneringen
- * komen dan ook als melding binnen, naast de e-mail.
+ * Pushmeldingen op dit apparaat. Patiënt (Instellingen → Meldingen):
+ * herinneringen komen ook als melding binnen, naast de e-mail. Medewerker
+ * (portaal → Account): het dagoverzicht van werkdagen 08:00 (migratie 142).
  */
-export function PushSettings({ notify }: { notify: (msg: string, type?: "success" | "error") => void }) {
+export function PushSettings({ notify, variant = "patient" }: { notify: (msg: string, type?: "success" | "error") => void; variant?: "patient" | "staff" }) {
+  const copy = COPY[variant];
+  const staff = variant === "staff";
   const [state, setState] = usePushState();
   const [busy, setBusy] = useState(false);
 
@@ -47,7 +63,7 @@ export function PushSettings({ notify }: { notify: (msg: string, type?: "success
   }
   async function test() {
     setBusy(true);
-    const { error } = await sendTestPush();
+    const { error } = await sendTestPush({ portal: staff });
     setBusy(false);
     notify(error ?? "Testmelding verstuurd", error ? "error" : "success");
   }
@@ -61,14 +77,14 @@ export function PushSettings({ notify }: { notify: (msg: string, type?: "success
           <BellRing size={17} style={{ color: "var(--brand-accent, #e8632a)" }} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-gray-900">Pushmeldingen op dit apparaat</p>
+          <p className="text-sm font-semibold text-gray-900">{copy.title}</p>
           <p className="text-xs text-gray-600 mt-0.5">
-            {state === "on" && "Aan. Je herinneringen komen ook als melding op dit apparaat binnen."}
-            {state === "off" && "Krijg je herinneringen als melding op je telefoon, naast de e-mail."}
+            {state === "on" && copy.on}
+            {state === "off" && copy.off}
             {state === "denied" && "Meldingen zijn geblokkeerd. Sta ze toe in de instellingen van je telefoon of browser en kom dan terug."}
             {state === "needs-install" && "Op een iPhone werken meldingen als je REVA op je beginscherm zet."}
           </p>
-          {state === "needs-install" && <InstallSteps />}
+          {state === "needs-install" && <InstallSteps staff={staff} />}
           <div className="flex flex-wrap gap-2 mt-3">
             {state === "off" && <Button size="sm" onClick={turnOn} disabled={busy}>{busy ? <Loader2 size={13} className="animate-spin" /> : "Meldingen aanzetten"}</Button>}
             {state === "on" && (

@@ -98,11 +98,11 @@ export async function disablePush(): Promise<void> {
 }
 
 /** Testmelding naar alle aangemelde apparaten van de ingelogde gebruiker. */
-export async function sendTestPush(): Promise<{ error: string | null }> {
+export async function sendTestPush(opts: { portal?: boolean } = {}): Promise<{ error: string | null }> {
   const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return { error: "Niet ingelogd." };
-  const res = await fetch(apiUrl("/api/push/test"), { method: "POST", headers: { Authorization: `Bearer ${session.access_token}` } });
+  const res = await fetch(apiUrl("/api/push/test"), { method: "POST", headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" }, body: JSON.stringify({ portal: !!opts.portal }) });
   const json = await res.json().catch(() => ({}));
   return { error: res.ok ? null : json.error ?? "Versturen is niet gelukt." };
 }
