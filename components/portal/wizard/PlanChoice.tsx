@@ -66,7 +66,7 @@ function OptionCard({ selected, onSelect, children }: { selected: boolean; onSel
       onClick={onSelect}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(); } }}
       className="w-full text-left rounded-xl border p-3 transition-colors cursor-pointer"
-      style={{ borderColor: selected ? "var(--brand-accent, #e8632a)" : "#e8e5df", background: selected ? "#fff3ee" : "#ffffff" }}
+      style={{ borderColor: selected ? "var(--brand-accent, #e8632a)" : "#e8e5df", background: selected ? "var(--brand-accent-soft, #fff3ee)" : "#ffffff" }}
     >
       {children}
     </div>

@@ -20,7 +20,7 @@ function ScoreRow({
   value,
   max,
   onChange,
-  color = "#e8632a",
+  color = "var(--brand-accent, #e8632a)",
 }: {
   label: string;
   value: number;
@@ -146,7 +146,7 @@ export function CheckInModal({
             <DatePicker value={date} onChange={setDate} />
           </div>
 
-          <ScoreRow label="Dagscore"   value={dagscore}   max={5}  onChange={setDagscore}   color="#e8632a" />
+          <ScoreRow label="Dagscore"   value={dagscore}   max={5}  onChange={setDagscore}   color="var(--brand-accent, #e8632a)" />
 
           <div>
             <ScoreRow label="Pijnscore" value={pijn} max={10} onChange={setPijn} color="#ef4444" />
@@ -181,7 +181,7 @@ export function CheckInModal({
             onClick={handleSave}
             className="w-full py-4 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 transition-all touch-press"
             style={{
-              background: saved ? "#16a34a" : "#e8632a",
+              background: saved ? "#16a34a" : "var(--brand-accent, #e8632a)",
               color: "#ffffff",
               animation: saved ? "successPop 0.3s ease" : undefined,
               pointerEvents: saved ? "none" : undefined,

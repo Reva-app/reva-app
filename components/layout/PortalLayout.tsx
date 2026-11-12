@@ -7,12 +7,15 @@ import { PortalGate } from "@/components/auth/PortalGate";
 import { TrialBanner } from "@/components/portal/TrialBanner";
 import { PlanUsageBanner } from "@/components/portal/PlanUsageBanner";
 import { PortalBrandingProvider, usePortalBranding } from "@/lib/hooks/usePortalBranding";
-import { accessibleAccent } from "@/lib/brand";
+import { brandPalette } from "@/lib/brand";
+import { useBrandCssVars, useEffectiveBrandColor } from "@/lib/hooks/useBrandCssVars";
 
 function PortalLayoutInner({ children }: { children: React.ReactNode }) {
   const { branding } = usePortalBranding();
+  const brandColor = useEffectiveBrandColor(branding?.primaryColor);
+  useBrandCssVars(brandColor);
   return (
-    <div className="flex h-full" style={{ ["--brand-accent" as string]: accessibleAccent(branding?.primaryColor) }}>
+    <div className="flex h-full" style={brandPalette(brandColor) as React.CSSProperties}>
       <PortalSidebar />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <TrialBanner />

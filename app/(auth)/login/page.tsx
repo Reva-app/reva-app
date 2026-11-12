@@ -166,7 +166,7 @@ function LoginForm() {
         >
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: "#e8632a" }}
+            style={{ background: "var(--brand-accent, #e8632a)" }}
           >
             <RevaGlyph className="h-[18px] text-white" />
           </div>
@@ -235,7 +235,7 @@ function LoginForm() {
               <Link
                 href="/forgot-password"
                 className="text-xs font-medium hover:opacity-70 transition-opacity"
-                style={{ color: "#e8632a" }}
+                style={{ color: "var(--brand-accent, #e8632a)" }}
               >
                 Vergeten?
               </Link>
@@ -266,7 +266,7 @@ function LoginForm() {
             type="submit"
             disabled={loading}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-60"
-            style={{ background: "#e8632a", color: "#ffffff" }}
+            style={{ background: "var(--brand-accent, #e8632a)", color: "#ffffff" }}
           >
             {loading ? (
               <>
@@ -308,7 +308,7 @@ function LoginForm() {
           <Link
             href="/register"
             className="font-semibold hover:opacity-70 transition-opacity"
-            style={{ color: "#e8632a" }}
+            style={{ color: "var(--brand-accent, #e8632a)" }}
           >
             Account aanmaken
           </Link>

@@ -321,7 +321,7 @@ function OefeningFormModal({
         <button
           onClick={handleSave}
           className="w-full py-4 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 touch-press"
-          style={{ background: "#e8632a", color: "#ffffff" }}
+          style={{ background: "var(--brand-accent, #e8632a)", color: "#ffffff" }}
         >
           Opslaan
         </button>
@@ -436,7 +436,7 @@ function SchemaFormModal({
                       onClick={() => setTypeFilter(t)}
                       className="text-[11px] font-medium px-2.5 py-1 rounded-full transition-all"
                       style={{
-                        background: isActive ? "#e8632a" : "#f3f0eb",
+                        background: isActive ? "var(--brand-accent, #e8632a)" : "#f3f0eb",
                         color: isActive ? "#ffffff" : "#6b7280",
                       }}
                     >
@@ -463,12 +463,12 @@ function SchemaFormModal({
                         className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
                         style={{
                           borderTop: i > 0 ? "1px solid #f0ede8" : undefined,
-                          background: checked ? "#fff8f5" : "#ffffff",
+                          background: checked ? "var(--brand-accent-softer, #fff8f5)" : "#ffffff",
                         }}
                       >
                         <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                          style={{ background: checked ? "#fff3ee" : "#f8f7f4" }}>
-                          <Icon size={13} style={{ color: checked ? "#e8632a" : "#9ca3af" }} />
+                          style={{ background: checked ? "var(--brand-accent-soft, #fff3ee)" : "#f8f7f4" }}>
+                          <Icon size={13} style={{ color: checked ? "var(--brand-accent, #e8632a)" : "#9ca3af" }} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-800 truncate">{oe.title}</p>
@@ -477,8 +477,8 @@ function SchemaFormModal({
                         <div
                           className="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all"
                           style={{
-                            borderColor: checked ? "#e8632a" : "#d1d5db",
-                            background: checked ? "#e8632a" : "transparent",
+                            borderColor: checked ? "var(--brand-accent, #e8632a)" : "#d1d5db",
+                            background: checked ? "var(--brand-accent, #e8632a)" : "transparent",
                           }}
                         >
                           {checked && <Check size={11} className="text-white" strokeWidth={3} />}
@@ -507,7 +507,7 @@ function SchemaFormModal({
         <button
           onClick={handleSave}
           className="w-full py-4 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 touch-press"
-          style={{ background: "#e8632a", color: "#ffffff" }}
+          style={{ background: "var(--brand-accent, #e8632a)", color: "#ffffff" }}
         >
           Opslaan
         </button>
@@ -599,8 +599,8 @@ function SchemaCard({
                     style={{ borderTop: i > 0 ? "1px solid #f8f7f4" : undefined }}
                   >
                     <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ background: "#fff3ee" }}>
-                      <Icon size={11} style={{ color: "#e8632a" }} />
+                      style={{ background: "var(--brand-accent-soft, #fff3ee)" }}>
+                      <Icon size={11} style={{ color: "var(--brand-accent, #e8632a)" }} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-gray-700 truncate">{oe.title}</p>
@@ -659,8 +659,8 @@ function OefeningCard({
     >
       <div className="flex items-start gap-3">
         <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: "#fff3ee" }}>
-          <Icon size={15} style={{ color: "#e8632a" }} />
+          style={{ background: "var(--brand-accent-soft, #fff3ee)" }}>
+          <Icon size={15} style={{ color: "var(--brand-accent, #e8632a)" }} />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
@@ -693,7 +693,7 @@ function OefeningCard({
             )}
             {usedInCount > 0 && (
               <span className="text-[11px] px-2 py-0.5 rounded-full"
-                style={{ background: "#fff3ee", color: "#e8632a" }}>
+                style={{ background: "var(--brand-accent-soft, #fff3ee)", color: "var(--brand-accent, #e8632a)" }}>
                 {usedInCount} schema{usedInCount !== 1 ? "'s" : ""}
               </span>
             )}
@@ -967,7 +967,7 @@ export function TrainingSchemasSection({ variant }: TrainingSchemasSectionProps)
                         onClick={() => setSchemaStatusFilter(f)}
                         className="text-xs font-medium px-3 py-1.5 rounded-full transition-all shrink-0 touch-press"
                         style={{
-                          background: isActive ? "#e8632a" : "#f3f0eb",
+                          background: isActive ? "var(--brand-accent, #e8632a)" : "#f3f0eb",
                           color: isActive ? "#ffffff" : "#6b7280",
                         }}
                       >
@@ -1061,7 +1061,7 @@ export function TrainingSchemasSection({ variant }: TrainingSchemasSectionProps)
                         onClick={() => setOefeningTypeFilter(t)}
                         className="text-xs font-medium px-3 py-1.5 rounded-full transition-all shrink-0 touch-press"
                         style={{
-                          background: isActive ? "#e8632a" : "#f3f0eb",
+                          background: isActive ? "var(--brand-accent, #e8632a)" : "#f3f0eb",
                           color: isActive ? "#ffffff" : "#6b7280",
                         }}
                       >

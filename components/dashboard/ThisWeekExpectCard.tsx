@@ -31,7 +31,7 @@ export function ThisWeekExpectCard({ expectation }: ThisWeekExpectCardProps) {
       <div className="space-y-2 mb-4">
         {expectation.normale.map((n) => (
           <div key={n} className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "#e8632a" }} />
+            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--brand-accent, #e8632a)" }} />
             <p className="text-xs text-gray-600 leading-snug">{n}</p>
           </div>
         ))}

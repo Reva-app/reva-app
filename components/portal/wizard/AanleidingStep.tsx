@@ -115,7 +115,7 @@ function OptionCard({ label, selected, onClick }: { label: string; selected: boo
       className="text-left rounded-xl border px-3.5 py-3 text-sm font-medium transition-colors"
       style={{
         borderColor: selected ? "var(--brand-accent, #e8632a)" : "#e8e5df",
-        background: selected ? "#fff3ee" : "#ffffff",
+        background: selected ? "var(--brand-accent-soft, #fff3ee)" : "#ffffff",
         color: selected ? "#1a1a1a" : "#374151",
       }}
     >
@@ -133,7 +133,7 @@ function ReasonCard({ reason, selected, onClick }: { reason: VisitReason; select
       className="flex items-center gap-3 text-left rounded-xl border px-4 py-3.5 transition-colors"
       style={{
         borderColor: selected ? "var(--brand-accent, #e8632a)" : "#e8e5df",
-        background: selected ? "#fff3ee" : "#ffffff",
+        background: selected ? "var(--brand-accent-soft, #fff3ee)" : "#ffffff",
       }}
     >
       <div

@@ -123,7 +123,7 @@ export default function PortalAnalysePage() {
             <LineChart
               data={stats.trend.map((p) => p.checkins)}
               dates={stats.trend.map((p) => p.date)}
-              color="#e8632a"
+              color="var(--brand-accent, #e8632a)"
               max={maxTrendCheckins}
               height={100}
             />
@@ -154,7 +154,7 @@ export default function PortalAnalysePage() {
             value={quality ? formatMinutes(estimatedMinutesSaved) : "…"}
             subtitle={`~${MINUTES_SAVED_PER_AI_INTAKE} min per AI-intakeanalyse`}
             icon={Clock}
-            iconColor="#e8632a"
+            iconColor="var(--brand-accent, #e8632a)"
           />
           <StatCard
             label="AI-intakeanalyses"
@@ -194,7 +194,7 @@ export default function PortalAnalysePage() {
               value={recovery?.avgDurationDays != null ? `${Math.round(recovery.avgDurationDays)} dagen` : "n.v.t."}
               subtitle="Vanaf start herstelplan tot afsluiting"
               icon={Timer}
-              iconColor="#e8632a"
+              iconColor="var(--brand-accent, #e8632a)"
             />
             <StatCard
               label={`Afgesloten in ${currentYear}`}

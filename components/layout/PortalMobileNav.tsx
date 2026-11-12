@@ -142,8 +142,8 @@ export function PortalMobileNav() {
                   href={href}
                   className="flex flex-col items-center gap-2 py-4 px-2 rounded-2xl touch-press"
                   style={{
-                    background: active ? "rgba(232,99,42,0.15)" : "rgba(255,255,255,0.05)",
-                    border: active ? "1px solid rgba(232,99,42,0.35)" : "1px solid rgba(255,255,255,0.07)",
+                    background: active ? "rgba(var(--brand-accent-rgb, 232, 99, 42),0.15)" : "rgba(255,255,255,0.05)",
+                    border: active ? "1px solid rgba(var(--brand-accent-rgb, 232, 99, 42),0.35)" : "1px solid rgba(255,255,255,0.07)",
                   }}
                 >
                   <Icon size={22} style={{ color: active ? "var(--brand-accent, #e8632a)" : "#9ca3af" }} strokeWidth={active ? 2.2 : 1.8} />

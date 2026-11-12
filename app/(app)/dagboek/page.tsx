@@ -242,15 +242,15 @@ export default function DagboekPage() {
                 </button>
               </div>
               <button onClick={goToday}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-                style={{ background: "#e8632a", color: "#ffffff" }}>
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg border bg-white transition-colors hover:bg-gray-50"
+                style={{ borderColor: "#e8e5df", color: "#374151" }}>
                 Vandaag
               </button>
             </div>
             <button onClick={() => setAptModal({ open: true, date: selectedDate ?? today })}
-              className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors"
-              style={{ borderColor: "#93c5fd", color: "#1d4ed8", background: "#eff6ff" }}>
-              <Plus size={11} /> Afspraak
+              className="flex items-center gap-1.5 text-sm font-medium px-3.5 py-2 rounded-lg text-white transition-colors hover:brightness-95"
+              style={{ background: "var(--brand-accent, #e8632a)" }}>
+              <Plus size={14} /> Afspraak
             </button>
           </div>
         </div>
@@ -279,10 +279,10 @@ export default function DagboekPage() {
                 <div key={cell.date}
                   onClick={() => setSelectedDate(cell.date)}
                   className="border-r border-b cursor-pointer transition-colors min-h-[72px] sm:min-h-[90px] lg:min-h-[110px]"
-                  style={{ borderColor: "#e8e5df", background: isSelected ? "#fff8f5" : cell.isToday ? "#fafaf9" : "#ffffff" }}>
+                  style={{ borderColor: "#e8e5df", background: isSelected ? "var(--brand-accent-softer, #fff8f5)" : cell.isToday ? "#fafaf9" : "#ffffff" }}>
                   <div className="p-1 sm:p-1.5 lg:p-2">
                     <span className="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full text-[11px] sm:text-xs font-semibold mb-0.5 sm:mb-1"
-                      style={{ background: cell.isToday ? "#e8632a" : "transparent", color: cell.isToday ? "#ffffff" : cell.isCurrentMonth ? "#1a1a1a" : "#c4bfb9" }}>
+                      style={{ background: cell.isToday ? "var(--brand-accent, #e8632a)" : "transparent", color: cell.isToday ? "#ffffff" : cell.isCurrentMonth ? "#1a1a1a" : "#c4bfb9" }}>
                       {cell.day}
                     </span>
 
@@ -296,7 +296,7 @@ export default function DagboekPage() {
                       <div className="flex flex-wrap gap-0.5 sm:hidden mt-0.5">
                         {items.slice(0, 3).map((a) => (
                           <span key={a.id} className="w-1.5 h-1.5 rounded-full shrink-0"
-                            style={{ background: TYPE_COLORS[a.type]?.dot ?? "#e8632a" }} />
+                            style={{ background: TYPE_COLORS[a.type]?.dot ?? "var(--brand-accent, #e8632a)" }} />
                         ))}
                       </div>
                     )}
@@ -377,7 +377,7 @@ export default function DagboekPage() {
                 <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-subtle">
                   <TrendingUp size={11} /> Check-in
                 </p>
-                <Link href="/check-in" className="flex items-center gap-1 text-[11px] font-medium shrink-0" style={{ color: "#e8632a" }}>
+                <Link href="/check-in" className="flex items-center gap-1 text-[11px] font-medium shrink-0" style={{ color: "var(--brand-accent, #e8632a)" }}>
                   Bekijk <ArrowRight size={10} />
                 </Link>
               </div>
@@ -401,7 +401,7 @@ export default function DagboekPage() {
                 <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-subtle">
                   <Dumbbell size={11} /> Trainingen
                 </p>
-                <Link href="/training" className="flex items-center gap-1 text-[11px] font-medium shrink-0" style={{ color: "#e8632a" }}>
+                <Link href="/training" className="flex items-center gap-1 text-[11px] font-medium shrink-0" style={{ color: "var(--brand-accent, #e8632a)" }}>
                   Bekijk <ArrowRight size={10} />
                 </Link>
               </div>
@@ -439,7 +439,7 @@ export default function DagboekPage() {
                 <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-subtle">
                   <Pill size={11} /> Medicatie
                 </p>
-                <Link href="/medicatie" className="flex items-center gap-1 text-[11px] font-medium shrink-0" style={{ color: "#e8632a" }}>
+                <Link href="/medicatie" className="flex items-center gap-1 text-[11px] font-medium shrink-0" style={{ color: "var(--brand-accent, #e8632a)" }}>
                   Bekijk <ArrowRight size={10} />
                 </Link>
               </div>
@@ -462,7 +462,7 @@ export default function DagboekPage() {
           <div className="hidden sm:flex px-4 py-4 border-t shrink-0 gap-2" style={{ borderColor: "#e8e5df", background: "#ffffff" }}>
             <button onClick={() => setAptModal({ open: true, date: selectedDate })}
               className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-2 rounded-xl transition-colors"
-              style={{ background: "#e8632a", color: "#ffffff" }}>
+              style={{ background: "var(--brand-accent, #e8632a)", color: "#ffffff" }}>
               <Plus size={12} /> Afspraak
             </button>
           </div>

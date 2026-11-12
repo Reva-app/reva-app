@@ -14,8 +14,8 @@ const TYPE_CONFIG: Record<NotificationType, {
   color: string;
   bg: string;
 }> = {
-  medicatie: { icon: Pill,          color: "#e8632a", bg: "#fff3ee" },
-  checkin:   { icon: ClipboardCheck, color: "#e8632a", bg: "#fff3ee" },
+  medicatie: { icon: Pill,          color: "var(--brand-accent, #e8632a)", bg: "var(--brand-accent-soft, #fff3ee)" },
+  checkin:   { icon: ClipboardCheck, color: "var(--brand-accent, #e8632a)", bg: "var(--brand-accent-soft, #fff3ee)" },
   afspraak:  { icon: Calendar,       color: "#3b82f6", bg: "#eff6ff" },
   foto:      { icon: Image,          color: "#6b7280", bg: "#f3f4f6" },
 };
@@ -82,7 +82,7 @@ function NotificationItem({
         {/* Icon */}
         <div
           className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-          style={{ background: justLogged ? "#f0fdf4" : isMotivatie ? "#fff3ee" : cfg.bg }}
+          style={{ background: justLogged ? "#f0fdf4" : isMotivatie ? "var(--brand-accent-soft, #fff3ee)" : cfg.bg }}
         >
           {justLogged
             ? <Check size={14} style={{ color: "#22c55e" }} />
@@ -126,7 +126,7 @@ function NotificationItem({
               )}
               {isDue && !done && (
                 <span className="px-1.5 py-0.5 rounded-full text-[11px] font-medium"
-                  style={{ background: "#fff3ee", color: "#e8632a" }}>
+                  style={{ background: "var(--brand-accent-soft, #fff3ee)", color: "var(--brand-accent, #e8632a)" }}>
                   Nu
                 </span>
               )}
@@ -274,7 +274,7 @@ export function NotificationPanel({
           <p className="text-sm font-semibold text-gray-900">Meldingen</p>
           {hasUnread && (
             <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full"
-              style={{ background: "#e8632a", color: "#ffffff" }}>
+              style={{ background: "var(--brand-accent, #e8632a)", color: "#ffffff" }}>
               {unreadCount}
             </span>
           )}

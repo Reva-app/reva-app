@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandLockup } from "@/components/brand/BrandLockup";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell } from "lucide-react";
@@ -15,7 +16,6 @@ import dynamic from "next/dynamic";
 import type { InnameFormFields } from "@/components/medicatie/InnameModal";
 import { nowTimeStr, todayStr } from "@/lib/dateUtils";
 import type { MedicatieLog } from "@/lib/data";
-import { BrandMark } from "@/components/brand/BrandMark";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const InnameModal = dynamic<any>(
@@ -209,10 +209,12 @@ export function TopBar() {
 
         {/* Logo center (mobile only) */}
         <div className="lg:hidden flex-1 flex justify-center">
-          <div className="flex items-center gap-2">
-            <BrandMark logoUrl={hasOwnBranding ? branding?.logoUrl : null} initial={hasOwnBranding ? branding!.name[0] : null} />
-            <span className="font-bold text-base" style={{ color: "#1a1a1a" }}>{hasOwnBranding ? branding!.name : "REVA"}</span>
-          </div>
+          <BrandLockup
+            logoUrl={hasOwnBranding ? branding?.logoUrl : null}
+            initial={hasOwnBranding ? branding!.name[0] : null}
+            name={hasOwnBranding ? branding!.name : "REVA"}
+            tone="light"
+          />
         </div>
 
         {/* Desktop avatar */}

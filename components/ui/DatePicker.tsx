@@ -303,16 +303,16 @@ export function DatePicker({
                 className="h-8 w-full flex items-center justify-center rounded-lg text-xs font-medium transition-all"
                 style={{
                   background: isSelected
-                    ? "#e8632a"
+                    ? "var(--brand-accent, #e8632a)"
                     : isToday && !isSelected
-                    ? "#fff3ee"
+                    ? "var(--brand-accent-soft, #fff3ee)"
                     : "transparent",
                   color: isSelected
                     ? "#ffffff"
                     : isOther
                     ? "#d4cfc9"
                     : isToday
-                    ? "#e8632a"
+                    ? "var(--brand-accent, #e8632a)"
                     : "#374151",
                 }}
               >

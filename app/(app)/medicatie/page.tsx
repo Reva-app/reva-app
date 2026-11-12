@@ -56,7 +56,7 @@ function Toggle({
       type="button"
       onClick={() => onChange(!enabled)}
       className="relative shrink-0 w-10 h-6 rounded-full transition-colors"
-      style={{ background: enabled ? "#e8632a" : "#e2e0db" }}
+      style={{ background: enabled ? "var(--brand-accent, #e8632a)" : "#e2e0db" }}
     >
       <span
         className="absolute top-1 w-4 h-4 rounded-full bg-white transition-all"
@@ -194,7 +194,7 @@ function SchemaForm({
                 className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full"
                 style={{ background: "#f3f0eb", color: "#374151" }}
               >
-                <Clock size={11} style={{ color: "#e8632a" }} />
+                <Clock size={11} style={{ color: "var(--brand-accent, #e8632a)" }} />
                 {t}
                 <button type="button" onClick={() => removeTijd(t)} className="ml-0.5 hover:text-red-500 transition-colors">
                   <X size={11} />
@@ -214,7 +214,7 @@ function SchemaForm({
             type="button"
             onClick={addTijd}
             className="flex items-center gap-1.5 text-xs font-medium px-3 py-2.5 rounded-xl border transition-colors hover:bg-gray-50"
-            style={{ borderColor: "#e8e5df", color: "#e8632a" }}
+            style={{ borderColor: "#e8e5df", color: "var(--brand-accent, #e8632a)" }}
           >
             <Plus size={13} />
             Toevoegen
@@ -290,7 +290,7 @@ function SchemaCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${color}14` }}>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: `color-mix(in srgb, ${color} 8%, transparent)` }}>
             <Pill size={15} style={{ color }} />
           </div>
           <div className="min-w-0">
@@ -310,7 +310,7 @@ function SchemaCard({
             className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full"
             style={{ background: "#f3f0eb", color: "#374151" }}
           >
-            <Clock size={10} style={{ color: "#e8632a" }} /> {t}
+            <Clock size={10} style={{ color: "var(--brand-accent, #e8632a)" }} /> {t}
           </span>
         ))}
       </div>
@@ -366,7 +366,7 @@ function LogItem({
       <div className="flex items-start gap-3">
         <div
           className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: `${color}14` }}
+          style={{ background: `color-mix(in srgb, ${color} 8%, transparent)` }}
         >
           <Pill size={16} style={{ color }} />
         </div>
@@ -631,15 +631,15 @@ export default function MedicatiePage() {
         <div className="rounded-2xl border p-4" style={{ background: "#ffffff", borderColor: "#e8e5df" }}>
           {/* Mobile: icon left of value */}
           <div className="flex items-center gap-2 mb-1 sm:hidden">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#fff3ee" }}>
-              <Pill size={13} style={{ color: "#e8632a" }} />
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: "var(--brand-accent-soft, #fff3ee)" }}>
+              <Pill size={13} style={{ color: "var(--brand-accent, #e8632a)" }} />
             </div>
             <p className="text-2xl font-bold text-gray-900 leading-none">{innamesVandaag}</p>
           </div>
           {/* Desktop: icon above value */}
           <div className="hidden sm:block">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-3" style={{ background: "#fff3ee" }}>
-              <Pill size={15} style={{ color: "#e8632a" }} />
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-3" style={{ background: "var(--brand-accent-soft, #fff3ee)" }}>
+              <Pill size={15} style={{ color: "var(--brand-accent, #e8632a)" }} />
             </div>
             <p className="text-2xl font-bold text-gray-900">{innamesVandaag}</p>
           </div>
@@ -785,7 +785,7 @@ export default function MedicatiePage() {
                   className="flex items-center gap-2.5 px-5 py-3 border-b text-xs"
                   style={{ borderColor: "rgba(255,255,255,0.07)", color: "#7c7c8a" }}
                 >
-                  <Bell size={12} style={{ color: "#e8632a" }} />
+                  <Bell size={12} style={{ color: "var(--brand-accent, #e8632a)" }} />
                   Herinneringen volgen op basis van jouw schema
                 </div>
               )}

@@ -178,7 +178,7 @@ function SaveBtn({
 // ─── Action config ─────────────────────────────────────────────────────────────
 
 const ACTIONS = [
-  { id: "checkin"   as const, label: "Check-in", icon: ClipboardCheck, color: "#e8632a", bg: "#fff3ee" },
+  { id: "checkin"   as const, label: "Check-in", icon: ClipboardCheck, color: "var(--brand-accent, #e8632a)", bg: "var(--brand-accent-soft, #fff3ee)" },
   { id: "training"  as const, label: "Training",  icon: Dumbbell,      color: "#0ea5e9", bg: "#f0f9ff" },
   { id: "medicatie" as const, label: "Medicatie", icon: Pill,          color: "#8b5cf6", bg: "#f5f3ff" },
   { id: "afspraak"  as const, label: "Afspraak",  icon: Calendar,      color: "#3b82f6", bg: "#eff6ff" },
@@ -288,7 +288,7 @@ export function QuickActionFAB() {
                     className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 touch-press"
                     style={{
                       background: action.bg,
-                      border: `1.5px solid ${action.color}30`,
+                      border: `1.5px solid color-mix(in srgb, ${action.color} 19%, transparent)`,
                       boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
                     }}
                   >
@@ -311,7 +311,7 @@ export function QuickActionFAB() {
           background: fabOpen ? "#1c1c1e" : "var(--brand-accent, #e8632a)",
           boxShadow: fabOpen
             ? "0 6px 24px rgba(0,0,0,0.25)"
-            : "0 6px 24px rgba(232,99,42,0.45)",
+            : "0 6px 24px rgba(var(--brand-accent-rgb, 232, 99, 42),0.45)",
           transform: fabOpen ? "rotate(45deg)" : "rotate(0deg)",
           transition: "background 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease",
           animation: "fabIn 0.3s cubic-bezier(0.34,1.56,0.64,1)",

@@ -99,3 +99,31 @@ export function revaIconSvg({
     `</svg>\n`
   );
 }
+
+// ─── Kleurfamilie van de praktijk ────────────────────────────────────────────
+
+function mixHex(a: string, b: string, weightA: number): string {
+  const ca = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16));
+  const cb = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16));
+  return "#" + ca.map((v, i) => Math.round(v * weightA + cb[i] * (1 - weightA)).toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Alle tinten die de interface van één accentkleur afleidt — lichte
+ * achtergrond, rand, gloed, donkere tekst op lichte achtergrond en een
+ * lichte variant voor op donker. Als CSS-variabelen op de pagina gezet
+ * (useBrandCssVars), zodat ook pop-ups en vensters de praktijkkleur volgen.
+ */
+export function brandPalette(color: string | null | undefined): Record<string, string> {
+  const accent = accessibleAccent(color);
+  const rgb = [1, 3, 5].map((i) => parseInt(accent.slice(i, i + 2), 16)).join(", ");
+  return {
+    "--brand-accent": accent,
+    "--brand-accent-rgb": rgb,
+    "--brand-accent-soft": mixHex(accent, "#ffffff", 0.1),
+    "--brand-accent-softer": mixHex(accent, "#ffffff", 0.05),
+    "--brand-accent-border": mixHex(accent, "#ffffff", 0.3),
+    "--brand-accent-ink": mixHex(accent, "#000000", 0.62),
+    "--brand-accent-on-dark": mixHex(accent, "#ffffff", 0.55),
+  };
+}

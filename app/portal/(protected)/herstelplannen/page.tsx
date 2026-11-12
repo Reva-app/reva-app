@@ -14,7 +14,6 @@ import { useTableState } from "@/components/ui/table/useTableState";
 import { ResponsiveList, type ListColumn } from "@/components/ui/ResponsiveList";
 import { FilterBar } from "@/components/ui/FilterBar";
 import { Field, Select } from "@/components/ui/Field";
-import { formatDate } from "@/lib/data";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import {
   loadRevaProtocols, loadOrgProtocols, createProtocol, duplicateProtocol, updateProtocolArchived, deleteProtocol,
@@ -67,17 +66,25 @@ const PROTOCOL_COLUMNS: ListColumn<PortalProtocolCard, SortKey>[] = [
   {
     key: "name", header: "Herstelplan", sortKey: "name",
     cell: (c) => (
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 min-w-[260px]">
         <ProtocolIcon />
-        <p className="font-medium text-gray-800 min-w-0 [overflow-wrap:anywhere]">{c.name}</p>
+        <div className="min-w-0">
+          <p className="font-medium text-gray-900 [overflow-wrap:anywhere]">{c.name}</p>
+          <p className="text-xs text-gray-500 mt-0.5">{categoryLabel(c)}</p>
+        </div>
       </div>
     ),
   },
-  { key: "category", header: "Blessure / ingreep", className: "text-gray-500", cell: categoryLabel },
   { key: "phaseCount", header: "Fases", sortKey: "phaseCount", className: "text-gray-600", cell: (c) => c.phaseCount },
-  { key: "creator", header: "Aangemaakt door", hideBelow: "lg", className: "text-gray-600", cell: (c) => c.createdByName ?? "—" },
-  { key: "createdAt", header: "Aangemaakt", sortKey: "createdAt", hideBelow: "xl", className: "text-gray-500 whitespace-nowrap", cell: (c) => formatDate(c.createdAt) },
-  { key: "source", header: "Bron", cell: (c) => <div className="flex items-center gap-1.5 flex-wrap">{sourceBadges(c)}</div> },
+  {
+    key: "source", header: "Bron",
+    cell: (c) => (
+      <div className="whitespace-nowrap">
+        {c.scope === "reva" ? <Badge variant="blue">REVA</Badge> : <Badge variant="default">Eigen</Badge>}
+        {c.scope !== "reva" && c.createdByName && <p className="text-xs text-gray-400 mt-1">{c.createdByName}</p>}
+      </div>
+    ),
+  },
   { key: "status", header: "Status", cell: statusBadge },
 ];
 

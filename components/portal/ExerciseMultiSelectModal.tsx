@@ -134,7 +134,7 @@ export function ExerciseMultiSelectModal({
               <input
                 type="text" value={search} onChange={(e) => setSearch(e.target.value)} autoFocus
                 placeholder="Zoek een oefening, bijv. squat, kuit, schouder…"
-                className="w-full text-base rounded-2xl border pl-10 pr-3 py-3 focus:outline-none focus:border-[#e8632a]" style={inputStyle}
+                className="w-full text-base rounded-2xl border pl-10 pr-3 py-3 focus:outline-none focus:border-(--brand-accent)" style={inputStyle}
               />
             </div>
 
@@ -167,7 +167,7 @@ export function ExerciseMultiSelectModal({
                       <button
                         key={ex.id} type="button" onClick={() => toggle(ex.id)} aria-pressed={selected}
                         className="flex items-center gap-3 text-left rounded-2xl border p-2.5 transition-colors"
-                        style={{ borderColor: selected ? "var(--brand-accent, #e8632a)" : "#e8e5df", background: selected ? "#fff6f1" : "#ffffff" }}
+                        style={{ borderColor: selected ? "var(--brand-accent, #e8632a)" : "#e8e5df", background: selected ? "var(--brand-accent-softer, #fff6f1)" : "#ffffff" }}
                       >
                         <ExerciseThumb mediaPath={ex.mediaPath} mediaType={ex.mediaType} size={48} />
                         <span className="flex-1 min-w-0">
@@ -191,7 +191,7 @@ export function ExerciseMultiSelectModal({
                 {[...selectedIds].map((id) => {
                   const ex = exercises.find((e) => e.id === id);
                   return ex ? (
-                    <span key={id} className="inline-flex items-center gap-1 rounded-full pl-3 pr-1 py-1 text-xs font-medium" style={{ background: "#fff3ee", color: "#9a3f17" }}>
+                    <span key={id} className="inline-flex items-center gap-1 rounded-full pl-3 pr-1 py-1 text-xs font-medium" style={{ background: "var(--brand-accent-soft, #fff3ee)", color: "var(--brand-accent-ink, #9a3f17)" }}>
                       {ex.title}
                       <button type="button" onClick={() => toggle(id)} aria-label={`${ex.title} weghalen`} className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-white/60"><X size={12} /></button>
                     </span>

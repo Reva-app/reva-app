@@ -125,6 +125,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     const { cleanupPushNotifications } = await import("@/lib/services/pushService");
     cleanupPushNotifications();
+    // Pushmeldingen in de webapp: dit apparaat afmelden, zodat een volgende
+    // gebruiker van hetzelfde apparaat geen meldingen van dit account krijgt.
+    const { disablePush } = await import("@/lib/webPush");
+    await disablePush().catch(() => {});
     await supabase.auth.signOut();
     // Praktijkmedewerkers moeten na uitloggen op hun eigen inlogpagina
     // landen, niet op de patiënten-inlogpagina.

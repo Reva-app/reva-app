@@ -41,8 +41,8 @@ export function MfaChallengeScreen({ factorId, onVerified, onSignOut }: MfaChall
     <div className="fixed inset-0 z-(--z-gate) flex items-center justify-center p-4 overflow-y-auto" style={{ background: "rgba(0,0,0,0.55)" }}>
       <div className="relative w-full max-w-[420px] my-auto rounded-3xl px-6 py-8 sm:px-9 sm:py-10 shadow-2xl" style={{ background: "#ffffff" }}>
         <div className="flex flex-col items-center text-center">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4" style={{ background: "#fff3ee" }}>
-            <ShieldCheck size={22} style={{ color: "#e8632a" }} />
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4" style={{ background: "var(--brand-accent-soft, #fff3ee)" }}>
+            <ShieldCheck size={22} style={{ color: "var(--brand-accent, #e8632a)" }} />
           </div>
           <h2 className="text-xl font-semibold tracking-tight mb-2" style={{ color: "#1a1a1a" }}>
             Voer je verificatiecode in

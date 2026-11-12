@@ -62,7 +62,7 @@ export function FilterBar({
           className={`${hasSearch ? "shrink-0" : "flex-1 justify-center"} inline-flex items-center gap-1.5 min-h-11 px-3.5 rounded-xl border text-sm font-medium text-gray-700`}
           style={{
             borderColor: activeCount > 0 ? "var(--brand-accent, #e8632a)" : "#e8e5df",
-            background: activeCount > 0 ? "var(--accent-light, #fff3ee)" : "#ffffff",
+            background: activeCount > 0 ? "var(--accent-light, var(--brand-accent-soft, #fff3ee))" : "#ffffff",
           }}
         >
           <SlidersHorizontal size={16} aria-hidden />

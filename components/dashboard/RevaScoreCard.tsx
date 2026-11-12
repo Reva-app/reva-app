@@ -78,7 +78,7 @@ export function RevaScoreCard({ result }: RevaScoreCardProps) {
             </button>
 
             {showDetails && (
-              <div className="rounded-xl px-4 py-3 mb-3 space-y-3" style={{ background: cfg.bg, border: `1px solid ${cfg.color}22` }}>
+              <div className="rounded-xl px-4 py-3 mb-3 space-y-3" style={{ background: cfg.bg, border: `1px solid color-mix(in srgb, ${cfg.color} 13%, transparent)` }}>
                 {result.factors.map((f) => (
                   <div key={f.label}>
                     <div className="flex items-center justify-between mb-1">

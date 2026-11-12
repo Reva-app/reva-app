@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useId } from "react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { useAppData } from "@/lib/store";
@@ -13,7 +13,8 @@ import {
   CheckCircle2, Circle,
 } from "lucide-react";
 import { usePatientProtocol } from "@/lib/hooks/usePatientProtocol";
-import { loadExerciseProgressHistory, type ExerciseProgressPoint } from "@/lib/services/patientProtocolService";
+import type { TrainingLog } from "@/lib/data";
+import { loadExerciseProgressHistory, loadSessionLogsInRange, type ExerciseProgressPoint } from "@/lib/services/patientProtocolService";
 import { LineChart as ProtocolLineChart, Bar as ProtocolBar } from "@/components/ui/Charts";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -76,6 +77,9 @@ function LineChart({
   max: number;
   height?: number;
 }) {
+  // Eigen id per grafiek: de kleur kan een CSS-variabele zijn (praktijkkleur),
+  // en die bevat tekens die in een id/url(#…) niet geldig zijn.
+  const gradId = `line-grad-${useId().replace(/:/g, "")}`;
   if (data.length < 2) return (
     <div className="flex items-center justify-center text-xs text-gray-300" style={{ height }}>
       Onvoldoende data
@@ -103,7 +107,6 @@ function LineChart({
     return [0, step, step * 2, step * 3, data.length - 1];
   })();
 
-  const gradId = `line-grad-${color.replace("#", "")}`;
 
   return (
     <div style={{ position: "relative" }}>
@@ -164,11 +167,15 @@ function Sparkline({ data, color, max }: { data: number[]; color: string; max: n
 
 // ─── Trend icon ───────────────────────────────────────────────────────────────
 
-function TrendIcon({ trend, size = 14 }: { trend: Trend; size?: number }) {
-  if (trend === "stijgend") return <TrendingUp size={size} style={{ color: "#16a34a" }} />;
-  if (trend === "dalend")   return <TrendingDown size={size} style={{ color: "#ef4444" }} />;
-  return <Minus size={size} style={{ color: "#9ca3af" }} />;
+function TrendIcon({ trend, size = 14, color }: { trend: Trend; size?: number; color?: string }) {
+  if (trend === "stijgend") return <TrendingUp size={size} style={{ color: color ?? "#16a34a" }} />;
+  if (trend === "dalend")   return <TrendingDown size={size} style={{ color: color ?? "#ef4444" }} />;
+  return <Minus size={size} style={{ color: color ?? "#9ca3af" }} />;
 }
+
+/** Pijn: pijnTrend is omgekeerd berekend ("stijgend" = minder pijn), dus eigen taal. */
+const PAIN_TREND_LABEL: Record<Trend, string> = { stijgend: "Neemt af", dalend: "Neemt toe", stabiel: "Stabiel" };
+const PAIN_TREND_ICON: Record<Trend, Trend> = { stijgend: "dalend", dalend: "stijgend", stabiel: "stabiel" };
 
 function trendColor(trend: Trend): string {
   if (trend === "stijgend") return "#16a34a";
@@ -178,7 +185,7 @@ function trendColor(trend: Trend): string {
 
 // ─── Progress bar ─────────────────────────────────────────────────────────────
 
-function Bar({ label, value, max, color = "#e8632a", sublabel }: {
+function Bar({ label, value, max, color = "var(--brand-accent, #e8632a)", sublabel }: {
   label: string; value: number; max: number; color?: string; sublabel?: string;
 }) {
   const pct = Math.min(100, (value / max) * 100);
@@ -247,7 +254,22 @@ export default function AnalysePage() {
     appointments, mijlpalen, fotoUpdates,
   } = useAppData();
   const planInfo = useUserPlan();
-  const { checked: protocolChecked, hasActiveProtocol, protocol } = usePatientProtocol();
+  const { checked: protocolChecked, hasActiveProtocol, protocol, patientId } = usePatientProtocol();
+
+  // Trainingen uit het herstelplan (protocolsessies) tellen net zo goed mee
+  // als eigen trainingen; voorheen telde Analyse alleen de eigen schema's.
+  const [protocolSessions, setProtocolSessions] = useState<TrainingLog[]>([]);
+  useEffect(() => {
+    if (!patientId) return;
+    let cancelled = false;
+    const from = new Date(); from.setDate(from.getDate() - 400);
+    loadSessionLogsInRange(patientId, localDateStr(from), localDateStr(new Date())).then((logs) => {
+      if (cancelled) return;
+      setProtocolSessions(logs.map((l) => ({ id: l.id, date: l.date, title: "Training herstelplan", completed: true, createdAt: l.date })));
+    });
+    return () => { cancelled = true; };
+  }, [patientId]);
+  const allTrainingLogs = useMemo(() => [...trainingLogs, ...protocolSessions], [trainingLogs, protocolSessions]);
 
   const [period, setPeriod] = useState<Period>(14);
   const [selectedExerciseId, setSelectedExerciseId] = useState<string>("");
@@ -287,16 +309,16 @@ export default function AnalysePage() {
     const curMed  = medicatie.filter(m => m.date >= curStart);
     const prevMed = medicatie.filter(m => m.date >= prevStart && m.date < curStart);
 
-    const curTrain  = trainingLogs.filter(t => t.date >= curStart);
-    const prevTrain = trainingLogs.filter(t => t.date >= prevStart && t.date < curStart);
+    const curTrain  = allTrainingLogs.filter(t => t.date >= curStart);
+    const prevTrain = allTrainingLogs.filter(t => t.date >= prevStart && t.date < curStart);
 
     // ── Week slices (always 7-day) ──────────────────────────────────────────
     const thisWeekStart = daysAgo(7);
     const lastWeekStart = daysAgo(14);
     const thisWeekCI  = checkIns.filter(c => c.date >= thisWeekStart);
     const lastWeekCI  = checkIns.filter(c => c.date >= lastWeekStart && c.date < thisWeekStart);
-    const thisWeekTr  = trainingLogs.filter(t => t.date >= thisWeekStart);
-    const lastWeekTr  = trainingLogs.filter(t => t.date >= lastWeekStart && t.date < thisWeekStart);
+    const thisWeekTr  = allTrainingLogs.filter(t => t.date >= thisWeekStart);
+    const lastWeekTr  = allTrainingLogs.filter(t => t.date >= lastWeekStart && t.date < thisWeekStart);
     const thisWeekMed = medicatie.filter(m => m.date >= thisWeekStart);
     const lastWeekMed = medicatie.filter(m => m.date >= lastWeekStart && m.date < thisWeekStart);
 
@@ -323,7 +345,7 @@ export default function AnalysePage() {
 
     // ── Training insight ────────────────────────────────────────────────────
     const trainingDates = new Set([
-      ...trainingLogs.map(t => t.date),
+      ...allTrainingLogs.map(t => t.date),
       ...checkIns.filter(c => c.trainingGedaan).map(c => c.date),
     ]);
     const avgScoreOnTrain    = avg(curCI.filter(c => trainingDates.has(c.date)).map(c => c.dagscore));
@@ -440,7 +462,7 @@ export default function AnalysePage() {
       summary, obs,
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, checkIns, medicatie, trainingLogs, appointments, mijlpalen, fotoUpdates, period]);
+  }, [hydrated, checkIns, medicatie, allTrainingLogs, appointments, mijlpalen, fotoUpdates, period]);
 
   const noData = !s || s.ciCount === 0;
 
@@ -484,7 +506,7 @@ export default function AnalysePage() {
             <div className="space-y-3 mt-3">
               {s.obs.slice(0, 5).map((obs, i) => (
                 <div key={i} className="flex items-start gap-3">
-                  <div className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "#e8632a" }} />
+                  <div className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "var(--brand-accent, #e8632a)" }} />
                   <p className="text-sm text-gray-600 leading-relaxed">{obs}</p>
                 </div>
               ))}
@@ -564,7 +586,7 @@ export default function AnalysePage() {
                   <ProtocolLineChart
                     data={exerciseProgress.map((p) => p.weightKg ?? p.reps ?? 0)}
                     dates={exerciseProgress.map((p) => p.date)}
-                    color="#e8632a"
+                    color="var(--brand-accent, #e8632a)"
                     max={Math.max(1, ...exerciseProgress.map((p) => p.weightKg ?? p.reps ?? 0))}
                     height={100}
                   />
@@ -587,13 +609,13 @@ export default function AnalysePage() {
                 {s ? round1(s.avgScore) : "n.v.t."}<span className="text-sm font-normal text-subtle">/5</span>
               </p>
             </div>
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#fff5f0" }}>
-              <Activity size={15} style={{ color: "#e8632a" }} />
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--brand-accent-softer, #fff5f0)" }}>
+              <Activity size={15} style={{ color: "var(--brand-accent, #e8632a)" }} />
             </div>
           </div>
           {s && (
             <>
-              <Sparkline data={s.scoreSeries.slice(-10)} color="#e8632a" max={5} />
+              <Sparkline data={s.scoreSeries.slice(-10)} color="var(--brand-accent, #e8632a)" max={5} />
               <div className="flex items-center gap-1.5 mt-2">
                 <TrendIcon trend={s.scoreTrend} size={13} />
                 <span className="text-xs font-medium capitalize" style={{ color: trendColor(s.scoreTrend) }}>
@@ -623,7 +645,7 @@ export default function AnalysePage() {
               <div className="space-y-2 mt-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-gray-500">Pijn</span>
-                  <div className="flex items-center gap-1"><TrendIcon trend={s.pijnTrend} size={11} /><span style={{ color: trendColor(s.pijnTrend) }} className="font-medium capitalize">{s.pijnTrend}</span></div>
+                  <div className="flex items-center gap-1"><TrendIcon trend={PAIN_TREND_ICON[s.pijnTrend]} size={11} color={trendColor(s.pijnTrend)} /><span style={{ color: trendColor(s.pijnTrend) }} className="font-medium">{PAIN_TREND_LABEL[s.pijnTrend]}</span></div>
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-gray-500">Mobiliteit</span>
@@ -682,7 +704,7 @@ export default function AnalysePage() {
           ) : (
             <>
               <div className="mt-3">
-                <LineChart data={s!.scoreSeries} dates={s!.chartDates} color="#e8632a" max={5} height={88} />
+                <LineChart data={s!.scoreSeries} dates={s!.chartDates} color="var(--brand-accent, #e8632a)" max={5} height={88} />
               </div>
               <div className="flex justify-between items-center mt-2 pt-2" style={{ borderTop: "1px solid #f3f0eb" }}>
                 <span className="text-xs text-subtle">Gem. {round1(s!.avgScore)}/5</span>
@@ -707,8 +729,8 @@ export default function AnalysePage() {
               <div className="flex justify-between items-center mt-2 pt-2" style={{ borderTop: "1px solid #f3f0eb" }}>
                 <span className="text-xs text-subtle">Gem. {round1(s!.avgPijn)}/10</span>
                 <div className="flex items-center gap-1">
-                  <TrendIcon trend={s!.pijnTrend} size={12} />
-                  <span className="text-xs font-medium capitalize" style={{ color: trendColor(s!.pijnTrend) }}>{s!.pijnTrend}</span>
+                  <TrendIcon trend={PAIN_TREND_ICON[s!.pijnTrend]} size={12} color={trendColor(s!.pijnTrend)} />
+                  <span className="text-xs font-medium" style={{ color: trendColor(s!.pijnTrend) }}>{PAIN_TREND_LABEL[s!.pijnTrend]}</span>
                 </div>
               </div>
             </>
@@ -726,7 +748,7 @@ export default function AnalysePage() {
             <p className="text-sm text-subtle mt-2">Geen data beschikbaar.</p>
           ) : (
             <div className="space-y-4 mt-3">
-              <Bar label="Pijn (omgekeerd)" value={10 - s!.avgPijn} max={10} color="#e8632a" sublabel="/10, lager is beter" />
+              <Bar label="Pijn (omgekeerd)" value={10 - s!.avgPijn} max={10} color="var(--brand-accent, #e8632a)" sublabel="/10, lager is beter" />
               <Bar label="Mobiliteit" value={s!.avgMob} max={5} color="#3b82f6" sublabel="/5" />
               <Bar label="Energie" value={s!.avgEnergie} max={5} color="#8b5cf6" sublabel="/5" />
               <Bar label="Slaapkwaliteit" value={s!.avgSlaap} max={5} color="#0ea5e9" sublabel="/5" />
@@ -894,7 +916,7 @@ export default function AnalysePage() {
               </div>
               <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "#f3f0eb" }}>
                 <div className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${s.progress * 100}%`, background: "#e8632a" }} />
+                  style={{ width: `${s.progress * 100}%`, background: "var(--brand-accent, #e8632a)" }} />
               </div>
               <p className="text-[11px] text-subtle mt-1">{Math.round(s.progress * 100)}% van de mijlpalen bereikt</p>
             </div>
@@ -906,7 +928,7 @@ export default function AnalysePage() {
                 <div className="space-y-1.5">
                   {s.recentDone.map((m) => (
                     <div key={m.id} className="flex items-center gap-2.5">
-                      <CheckCircle2 size={14} style={{ color: "#e8632a", flexShrink: 0 }} />
+                      <CheckCircle2 size={14} style={{ color: "var(--brand-accent, #e8632a)", flexShrink: 0 }} />
                       <span className="text-sm text-gray-700 flex-1">{m.title}</span>
                       {m.completedAt && (
                         <span className="text-[11px] text-subtle">{fmt(m.completedAt)}</span>
@@ -946,7 +968,7 @@ export default function AnalysePage() {
           <div className="space-y-3 mt-3">
             {s.obs.slice(0, 5).map((obs, i) => (
               <div key={i} className="flex items-start gap-3">
-                <div className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "#e8632a" }} />
+                <div className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "var(--brand-accent, #e8632a)" }} />
                 <p className="text-sm text-gray-600 leading-relaxed">{obs}</p>
               </div>
             ))}

@@ -95,7 +95,7 @@ export function PatientScheduleBoard({
             {[["Thuisoefeningen", 5], ["Training in de praktijk", 1], ["Krachtschema", 3], ["Mobiliteit dagelijks", 7]].map(([name, f]) => (
               <button key={name as string} type="button" onClick={() => setAdding({ title: name as string, freq: f as number })}
                 className="rounded-full border px-3 py-1.5 text-sm"
-                style={{ borderColor: adding.title === name ? "var(--brand-accent, #e8632a)" : "#e8e5df", background: adding.title === name ? "#fff3ee" : "#fff" }}>
+                style={{ borderColor: adding.title === name ? "var(--brand-accent, #e8632a)" : "#e8e5df", background: adding.title === name ? "var(--brand-accent-soft, #fff3ee)" : "#fff" }}>
                 {name}
               </button>
             ))}
@@ -312,7 +312,7 @@ function ExerciseRow({
           onClick={canManage ? onToggle : undefined}
           disabled={!canManage}
           className="shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium tabular-nums transition-colors"
-          style={{ background: open ? "var(--brand-accent, #e8632a)" : "#fff3ee", color: open ? "#fff" : "#9a3f17" }}
+          style={{ background: open ? "var(--brand-accent, #e8632a)" : "var(--brand-accent-soft, #fff3ee)", color: open ? "#fff" : "var(--brand-accent-ink, #9a3f17)" }}
           title={canManage ? "Dosering aanpassen" : undefined}
         >
           {timed ? <Timer size={13} /> : <Dumbbell size={13} />} {dosage || "Dosering"}
@@ -329,7 +329,7 @@ function ExerciseRow({
           <div className="flex gap-2 pt-3">
             {(["reps", "time"] as const).map((k) => (
               <button key={k} type="button" onClick={() => setKind(k)} className="rounded-full border px-3 py-1.5 text-sm"
-                style={{ borderColor: kind === k ? "var(--brand-accent, #e8632a)" : "#e8e5df", background: kind === k ? "#fff3ee" : "#fff" }}>
+                style={{ borderColor: kind === k ? "var(--brand-accent, #e8632a)" : "#e8e5df", background: kind === k ? "var(--brand-accent-soft, #fff3ee)" : "#fff" }}>
                 {k === "reps" ? "Herhalingen" : "Op tijd"}
               </button>
             ))}

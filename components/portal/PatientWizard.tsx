@@ -290,7 +290,7 @@ export function PatientWizard({
                     type="button"
                     onClick={() => { setIntakeMode(mode); setMaxStepReached(0); }}
                     className="flex items-start gap-3 text-left rounded-xl border px-4 py-3.5 transition-colors"
-                    style={{ borderColor: selected ? "var(--brand-accent, #e8632a)" : "#e8e5df", background: selected ? "#fff3ee" : "#ffffff" }}
+                    style={{ borderColor: selected ? "var(--brand-accent, #e8632a)" : "#e8e5df", background: selected ? "var(--brand-accent-soft, #fff3ee)" : "#ffffff" }}
                   >
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: selected ? "var(--brand-accent, #e8632a)" : "#f8f7f4" }}>
                       <Icon size={15} style={{ color: selected ? "#ffffff" : "#6b7280" }} />

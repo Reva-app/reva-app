@@ -13,7 +13,7 @@ import {
 type ActionId = "patient" | "oefening" | "schema" | "herstelplan";
 
 const ACTIONS: { id: ActionId; label: string; icon: typeof Plus; color: string; bg: string }[] = [
-  { id: "patient",     label: "Patiënt toevoegen",  icon: UserPlus,      color: "#e8632a", bg: "#fff3ee" },
+  { id: "patient",     label: "Patiënt toevoegen",  icon: UserPlus,      color: "var(--brand-accent, #e8632a)", bg: "var(--brand-accent-soft, #fff3ee)" },
   { id: "oefening",    label: "Oefening toevoegen", icon: Dumbbell,      color: "#0ea5e9", bg: "#f0f9ff" },
   { id: "schema",      label: "Schema maken",       icon: ListChecks,    color: "#8b5cf6", bg: "#f5f3ff" },
   { id: "herstelplan", label: "Herstelplan maken",  icon: ClipboardList, color: "#16a34a", bg: "#f0fdf4" },
@@ -97,7 +97,7 @@ export function PortalQuickActionFAB() {
                   </span>
                   <span
                     className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
-                    style={{ background: action.bg, border: `1.5px solid ${action.color}30`, boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}
+                    style={{ background: action.bg, border: `1.5px solid color-mix(in srgb, ${action.color} 19%, transparent)`, boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}
                   >
                     {busy === action.id
                       ? <Loader2 size={20} className="animate-spin" style={{ color: action.color }} />
@@ -120,7 +120,7 @@ export function PortalQuickActionFAB() {
           bottom: "calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 16px)",
           right: "16px",
           background: open ? "#1c1c1e" : "var(--brand-accent, #e8632a)",
-          boxShadow: open ? "0 6px 24px rgba(0,0,0,0.25)" : "0 6px 24px rgba(232,99,42,0.45)",
+          boxShadow: open ? "0 6px 24px rgba(0,0,0,0.25)" : "0 6px 24px rgba(var(--brand-accent-rgb, 232, 99, 42),0.45)",
           transform: open ? "rotate(45deg)" : "rotate(0deg)",
           transition: "background 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease",
           animation: "fabIn 0.3s cubic-bezier(0.34,1.56,0.64,1)",

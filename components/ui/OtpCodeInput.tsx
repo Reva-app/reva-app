@@ -118,8 +118,8 @@ export function OtpCodeInput({
             setDigitsFrom(i, e.clipboardData.getData("text"));
           }}
           className={clsx(
-            "w-full min-w-0 aspect-[4/5] max-w-14 rounded-xl border text-center text-2xl font-semibold tabular-nums text-[#1a1a1a] caret-[#e8632a] transition-all duration-150",
-            "focus:outline-none focus:border-[#e8632a] focus:bg-white focus:ring-4 focus:ring-[#e8632a]/15 disabled:opacity-60",
+            "w-full min-w-0 aspect-[4/5] max-w-14 rounded-xl border text-center text-2xl font-semibold tabular-nums text-[#1a1a1a] caret-(--brand-accent) transition-all duration-150",
+            "focus:outline-none focus:border-(--brand-accent) focus:bg-white focus:ring-4 focus:ring-(--brand-accent)/15 disabled:opacity-60",
             error ? "border-[#dc2626] bg-[#fef2f2]" : d ? "border-[#cfc9c0] bg-white" : "border-[#e8e5df] bg-[#f8f7f4]"
           )}
         />

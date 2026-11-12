@@ -31,10 +31,6 @@ function compareNullableStrings(a: string | null, b: string | null): number {
 
 type SortKey = "title" | "exerciseCount" | "createdAt";
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" });
-}
-
 const SORT_OPTIONS: { key: SortKey; dir: "asc" | "desc"; label: string }[] = [
   { key: "title", dir: "asc", label: "Naam (A-Z)" },
   { key: "title", dir: "desc", label: "Naam (Z-A)" },
@@ -62,17 +58,25 @@ const SCHEDULE_COLUMNS: ListColumn<PortalScheduleLibraryCard, SortKey>[] = [
   {
     key: "title", header: "Schema", sortKey: "title",
     cell: (s) => (
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 min-w-[260px]">
         <ScheduleIcon />
-        <p className="font-medium text-gray-800 min-w-0 [overflow-wrap:anywhere]">{s.title}</p>
+        <div className="min-w-0">
+          <p className="font-medium text-gray-900 [overflow-wrap:anywhere]">{s.title}</p>
+          {s.description && <p className="text-xs text-gray-500 mt-0.5 truncate max-w-md">{s.description}</p>}
+        </div>
       </div>
     ),
   },
-  { key: "description", header: "Omschrijving", hideBelow: "xl", className: "text-gray-500 max-w-xs truncate", cell: (s) => s.description || "—" },
   { key: "exerciseCount", header: "Oefeningen", sortKey: "exerciseCount", className: "text-gray-600", cell: (s) => s.exerciseCount },
-  { key: "createdAt", header: "Aangemaakt", sortKey: "createdAt", className: "text-gray-500 whitespace-nowrap", cell: (s) => fmtDate(s.createdAt) },
-  { key: "creator", header: "Aangemaakt door", hideBelow: "lg", className: "text-gray-600", cell: (s) => s.createdByName ?? "—" },
-  { key: "source", header: "Bron", cell: sourceBadge },
+  {
+    key: "source", header: "Bron",
+    cell: (s) => (
+      <div className="whitespace-nowrap">
+        {sourceBadge(s)}
+        {s.scope !== "reva" && s.createdByName && <p className="text-xs text-gray-400 mt-1">{s.createdByName}</p>}
+      </div>
+    ),
+  },
   { key: "status", header: "Status", cell: statusBadge },
 ];
 

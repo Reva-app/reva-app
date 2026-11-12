@@ -80,12 +80,13 @@ export function MobileNav() {
               <div
                 className="w-14 h-14 rounded-full flex items-center justify-center"
                 style={{
+                  // Verloop in de praktijkkleur: licht → iets donkerder.
                   background: isCheckIn
-                    ? "linear-gradient(135deg, #f0703a 0%, #d4541e 100%)"
-                    : "linear-gradient(135deg, #e8632a 0%, #cc4e18 100%)",
+                    ? "linear-gradient(135deg, color-mix(in srgb, var(--brand-accent, #e8632a) 85%, white) 0%, color-mix(in srgb, var(--brand-accent, #e8632a) 85%, black) 100%)"
+                    : "linear-gradient(135deg, var(--brand-accent, #e8632a) 0%, color-mix(in srgb, var(--brand-accent, #e8632a) 80%, black) 100%)",
                   boxShadow: isCheckIn
-                    ? "0 6px 20px rgba(232,99,42,0.55)"
-                    : "0 4px 16px rgba(232,99,42,0.4)",
+                    ? "0 6px 20px rgba(var(--brand-accent-rgb, 232, 99, 42),0.55)"
+                    : "0 4px 16px rgba(var(--brand-accent-rgb, 232, 99, 42),0.4)",
                   border: "3px solid #1c1c1e",
                 }}
               >
@@ -180,8 +181,8 @@ export function MobileNav() {
                   href={href}
                   className="flex flex-col items-center gap-2 py-4 px-2 rounded-2xl touch-press"
                   style={{
-                    background: active ? "rgba(232,99,42,0.15)" : "rgba(255,255,255,0.05)",
-                    border: active ? "1px solid rgba(232,99,42,0.35)" : "1px solid rgba(255,255,255,0.07)",
+                    background: active ? "rgba(var(--brand-accent-rgb, 232, 99, 42),0.15)" : "rgba(255,255,255,0.05)",
+                    border: active ? "1px solid rgba(var(--brand-accent-rgb, 232, 99, 42),0.35)" : "1px solid rgba(255,255,255,0.07)",
                   }}
                 >
                   <Icon size={22} style={{ color: active ? "var(--brand-accent, #e8632a)" : "#9ca3af" }} strokeWidth={active ? 2.2 : 1.8} />

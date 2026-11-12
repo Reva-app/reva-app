@@ -49,18 +49,18 @@ export function TrainingWeekOverview({ days, subtitle = "Weekoverzicht van je tr
             <div key={date}
               className="flex-1 flex flex-col gap-1.5 py-3 px-2 rounded-xl transition-all"
               style={{
-                background: isToday ? "#fff5f0" : "#ffffff",
-                border: isToday ? "1.5px solid #e8632a" : "1.5px solid #e8e5df",
-                boxShadow: isToday ? "0 0 0 3px rgba(232,99,42,0.08)" : "0 1px 4px rgba(0,0,0,0.05)",
+                background: isToday ? "var(--brand-accent-softer, #fff5f0)" : "#ffffff",
+                border: isToday ? "1.5px solid var(--brand-accent, #e8632a)" : "1.5px solid #e8e5df",
+                boxShadow: isToday ? "0 0 0 3px rgba(var(--brand-accent-rgb, 232, 99, 42),0.08)" : "0 1px 4px rgba(0,0,0,0.05)",
                 minWidth: 0,
               }}
             >
-              <span className="text-xs font-semibold text-center" style={{ color: isToday ? "#e8632a" : "#1a1a1a" }}>
+              <span className="text-xs font-semibold text-center" style={{ color: isToday ? "var(--brand-accent, #e8632a)" : "#1a1a1a" }}>
                 {label}
               </span>
               {items.length === 0 ? (
                 <div className="flex justify-center">
-                  <div className="w-1.5 h-1.5 rounded-full mt-0.5" style={{ background: isToday ? "#e8632a" : "#e8e5df" }} />
+                  <div className="w-1.5 h-1.5 rounded-full mt-0.5" style={{ background: isToday ? "var(--brand-accent, #e8632a)" : "#e8e5df" }} />
                 </div>
               ) : (
                 <div className="flex flex-col gap-1">
@@ -101,17 +101,17 @@ export function TrainingWeekOverview({ days, subtitle = "Weekoverzicht van je tr
               className="flex flex-col gap-2 py-3 px-3 rounded-xl shrink-0"
               style={{
                 width: "120px",
-                background: isToday ? "#fff5f0" : "#ffffff",
-                border: isToday ? "1.5px solid #e8632a" : "1.5px solid #e8e5df",
-                boxShadow: isToday ? "0 0 0 3px rgba(232,99,42,0.08)" : "0 1px 4px rgba(0,0,0,0.05)",
+                background: isToday ? "var(--brand-accent-softer, #fff5f0)" : "#ffffff",
+                border: isToday ? "1.5px solid var(--brand-accent, #e8632a)" : "1.5px solid #e8e5df",
+                boxShadow: isToday ? "0 0 0 3px rgba(var(--brand-accent-rgb, 232, 99, 42),0.08)" : "0 1px 4px rgba(0,0,0,0.05)",
               }}
             >
-              <span className="text-xs font-bold" style={{ color: isToday ? "#e8632a" : "#1a1a1a" }}>
+              <span className="text-xs font-bold" style={{ color: isToday ? "var(--brand-accent, #e8632a)" : "#1a1a1a" }}>
                 {label}
               </span>
               {items.length === 0 ? (
                 <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: isToday ? "#e8632a" : "#e8e5df" }} />
+                  <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: isToday ? "var(--brand-accent, #e8632a)" : "#e8e5df" }} />
                   <span className="text-[11px]" style={{ color: "#6b7280" }}>Rust</span>
                 </div>
               ) : (

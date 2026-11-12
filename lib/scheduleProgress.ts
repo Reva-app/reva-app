@@ -38,17 +38,19 @@ export function estimatePhaseTiming(weekRangeLabel: string | null, startedAt: st
 
   const weeksInPhase = Math.floor((now.getTime() - started.getTime()) / (7 * 24 * 60 * 60 * 1000));
 
-  if (weeksInPhase < range.min) {
-    const diff = range.min - weeksInPhase;
+  // Weeklabels ("Week 6-12", "Week 12+") tellen vanaf het begin van het
+  // traject; de verwachte duur van déze fase is dus het verschil.
+  if (range.max === null) {
     return {
-      status: "ahead",
+      status: "on_track",
       weeksInPhase,
-      weeksRemaining: range.max !== null ? Math.max(0, range.max - weeksInPhase) : null,
-      message: `Je loopt ongeveer ${diff} ${diff === 1 ? "week" : "weken"} voor op het gebruikelijke tempo van deze fase.`,
+      weeksRemaining: null,
+      message: "Dit is de laatste fase: je bouwt verder op wat je hebt opgebouwd, in je eigen tempo.",
     };
   }
 
-  if (range.max !== null && weeksInPhase > range.max) {
+  const duration = Math.max(1, range.max - range.min);
+  if (weeksInPhase > duration + 1) {
     return {
       status: "extra_tijd",
       weeksInPhase,
@@ -57,10 +59,13 @@ export function estimatePhaseTiming(weekRangeLabel: string | null, startedAt: st
     };
   }
 
+  const remaining = Math.max(0, duration - weeksInPhase);
   return {
     status: "on_track",
     weeksInPhase,
-    weeksRemaining: range.max !== null ? Math.max(0, range.max - weeksInPhase) : null,
-    message: "Je zit op het gebruikelijke tempo voor deze fase.",
+    weeksRemaining: remaining,
+    message: remaining > 0
+      ? `Deze fase duurt meestal nog ongeveer ${remaining} ${remaining === 1 ? "week" : "weken"}.`
+      : "Je zit op het gebruikelijke tempo voor deze fase.",
   };
 }

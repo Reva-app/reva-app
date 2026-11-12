@@ -424,7 +424,7 @@ export function WorkoutPlayer({ title, subtitle, exercises: initialExercises, mo
               const total = states[e.id].sets.length;
               return (
                 <li key={e.id} className="flex items-center gap-3 px-4 py-3" style={{ borderColor: "#f0ede8" }}>
-                  <span className="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style={{ background: d === total ? "#16a34a" : d > 0 ? "#fde7d6" : "#efece6" }}>
+                  <span className="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style={{ background: d === total ? "#16a34a" : d > 0 ? "var(--brand-accent-border, #fde7d6)" : "#efece6" }}>
                     {d === total ? <Check size={13} color="#fff" /> : <span className="text-[11px] font-semibold text-gray-500">{i + 1}</span>}
                   </span>
                   <span className="flex-1 min-w-0 text-sm text-gray-800 truncate">{e.title}</span>
@@ -476,7 +476,7 @@ export function WorkoutPlayer({ title, subtitle, exercises: initialExercises, mo
             <button
               key={e.id} type="button" onClick={() => go(i)} aria-label={`Naar oefening ${i + 1}: ${e.title}`}
               className="h-1.5 flex-1 rounded-full transition-colors"
-              style={{ background: exerciseDone(e.id) ? "#16a34a" : i === index ? "var(--brand-accent, #e8632a)" : doneCount(e.id) > 0 ? "#f6c3a9" : "#e2ddd5" }}
+              style={{ background: exerciseDone(e.id) ? "#16a34a" : i === index ? "var(--brand-accent, #e8632a)" : doneCount(e.id) > 0 ? "var(--brand-accent-border, #f6c3a9)" : "#e2ddd5" }}
             />
           ))}
         </div>
@@ -484,7 +484,7 @@ export function WorkoutPlayer({ title, subtitle, exercises: initialExercises, mo
     >
       <div className="max-w-2xl mx-auto px-4 pt-5 pb-48">
         {showResumeNote && (
-          <div className="flex items-center justify-between gap-3 rounded-2xl px-4 py-3 mb-4 text-sm" style={{ background: "#fff8f2", border: "1px solid #f6d3c2" }}>
+          <div className="flex items-center justify-between gap-3 rounded-2xl px-4 py-3 mb-4 text-sm" style={{ background: "var(--brand-accent-softer, #fff8f2)", border: "1px solid var(--brand-accent-border, #f6d3c2)" }}>
             <span className="text-gray-700">Je training is hervat waar je gebleven was.</span>
             <button type="button" onClick={restart} className="inline-flex items-center gap-1 font-medium shrink-0" style={{ color: "var(--brand-accent, #e8632a)" }}>
               <RotateCcw size={13} /> Opnieuw
@@ -499,7 +499,7 @@ export function WorkoutPlayer({ title, subtitle, exercises: initialExercises, mo
         <h2 className="text-2xl sm:text-[32px] font-bold tracking-tight text-gray-900 leading-tight mt-4">{ex.title}</h2>
         <div className="flex items-center gap-2 flex-wrap mt-3">
           {dosage && (
-            <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold" style={{ background: "#fff3ee", color: "#9a3f17" }}>
+            <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold" style={{ background: "var(--brand-accent-soft, #fff3ee)", color: "var(--brand-accent-ink, #9a3f17)" }}>
               {timed ? <Timer size={14} /> : null}{dosage}
             </span>
           )}
@@ -537,7 +537,7 @@ export function WorkoutPlayer({ title, subtitle, exercises: initialExercises, mo
                 {(["reps", "time"] as const).map((k) => (
                   <button key={k} type="button" onClick={() => setDose((d) => ({ ...d, kind: k }))}
                     className="rounded-full border px-3 py-1.5 text-sm"
-                    style={{ borderColor: dose.kind === k ? "var(--brand-accent, #e8632a)" : "#e8e5df", background: dose.kind === k ? "#fff3ee" : "#fff" }}>
+                    style={{ borderColor: dose.kind === k ? "var(--brand-accent, #e8632a)" : "#e8e5df", background: dose.kind === k ? "var(--brand-accent-soft, #fff3ee)" : "#fff" }}>
                     {k === "reps" ? "Herhalingen" : "Op tijd"}
                   </button>
                 ))}
@@ -573,7 +573,7 @@ export function WorkoutPlayer({ title, subtitle, exercises: initialExercises, mo
                 style={{
                   borderColor: s.done ? "#bfe5cc" : i === currentSet ? "var(--brand-accent, #e8632a)" : "#e8e5df",
                   background: s.done ? "#f0fbf4" : "#ffffff",
-                  boxShadow: i === currentSet ? "0 0 0 3px rgba(232,99,42,0.12)" : undefined,
+                  boxShadow: i === currentSet ? "0 0 0 3px rgba(var(--brand-accent-rgb, 232, 99, 42),0.12)" : undefined,
                 }}
               >
                 <span className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0" style={{ background: s.done ? "#16a34a" : i === currentSet ? "var(--brand-accent, #e8632a)" : "#f3f0eb", color: s.done || i === currentSet ? "#fff" : "#6b6560" }}>
@@ -719,7 +719,7 @@ export function WorkoutPlayer({ title, subtitle, exercises: initialExercises, mo
                   <li key={e.id}>
                     <button type="button" onClick={() => { setShowOverview(false); go(i); }}
                       className="w-full flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left border"
-                      style={{ borderColor: isCur ? "var(--brand-accent, #e8632a)" : "transparent", background: isCur ? "#fff8f4" : "#faf9f7" }}>
+                      style={{ borderColor: isCur ? "var(--brand-accent, #e8632a)" : "transparent", background: isCur ? "var(--brand-accent-softer, #fff8f4)" : "#faf9f7" }}>
                       <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
                         style={{ background: d === total ? "#16a34a" : isCur ? "var(--brand-accent, #e8632a)" : "#ebe7e0", color: d === total || isCur ? "#fff" : "#6b6560" }}>
                         {d === total ? <Check size={14} /> : i + 1}
@@ -797,7 +797,7 @@ function InlineNumber({ value, onChange, suffix, disabled, placeholder, step = 1
       <input
         type="number" inputMode="decimal" min={0} step={step} value={value} placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)} disabled={disabled} aria-label={ariaLabel}
-        className="w-16 text-xl font-semibold tabular-nums text-center rounded-xl border px-1 py-1.5 focus:outline-none focus:border-[#e8632a] disabled:bg-transparent disabled:border-transparent"
+        className="w-16 text-xl font-semibold tabular-nums text-center rounded-xl border px-1 py-1.5 focus:outline-none focus:border-(--brand-accent) disabled:bg-transparent disabled:border-transparent"
         style={{ borderColor: "#e8e5df" }}
       />
       <span className="text-sm text-gray-500">{suffix}</span>

@@ -20,7 +20,7 @@ export function ScoreBar({ label, value, max = 5, colorClass }: ScoreBarProps) {
             width: `${pct}%`,
             height: "100%",
             borderRadius: "9999px",
-            background: colorClass ? undefined : "#e8632a",
+            background: colorClass ? undefined : "var(--brand-accent, #e8632a)",
             transition: "width 0.4s ease",
           }}
         />

@@ -109,7 +109,7 @@ export default function AuthCallbackPage() {
     >
       <div
         className="w-10 h-10 rounded-xl flex items-center justify-center"
-        style={{ background: "#e8632a" }}
+        style={{ background: "var(--brand-accent, #e8632a)" }}
       >
         <RevaGlyph className="h-5 text-white" />
       </div>

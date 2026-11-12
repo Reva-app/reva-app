@@ -36,6 +36,8 @@ export function buildCsp({ nonce, isDev }: { nonce?: string; isDev: boolean }): 
     img-src 'self' blob: data: https://*.googleusercontent.com${supabase};
     font-src 'self';
     connect-src 'self'${supabase} https://*.ingest.de.sentry.io;
+    worker-src 'self';
+    manifest-src 'self';
     object-src 'none';
     base-uri 'self';
     form-action 'self';

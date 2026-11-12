@@ -66,7 +66,9 @@ export function OnboardingChecklist({
 
   if (allRequiredDone) return null;
 
-  if (hasCollapsedBefore && !sessionExpanded) {
+  // Nog maar één stap te gaan: compact tonen, zodat het dashboard begint met
+  // wat er vandaag toe doet in plaats van een bijna afgevinkte lijst.
+  if ((hasCollapsedBefore || requiredDone >= required.length - 1) && !sessionExpanded) {
     return (
       <OnboardingProgressPill
         label="Aan de slag met REVA"

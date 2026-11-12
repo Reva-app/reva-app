@@ -58,7 +58,7 @@ export function ProtocolTrainingView({
     <div className="space-y-8">
       {/* 1. Waar sta je */}
       <div className="rounded-3xl p-5 sm:p-7 text-white relative overflow-hidden" style={{ background: "linear-gradient(135deg, #1c1c1e 0%, #2d2a27 100%)" }}>
-        <p className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: "#f6b08c" }}>Jouw herstelplan · {protocol.name}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--brand-accent-on-dark, #f6b08c)" }}>Jouw herstelplan · {protocol.name}</p>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mt-2">{phase?.name ?? "Volgende fase wordt klaargezet"}</h1>
         {phase?.description && <p className="text-sm sm:text-base text-white/75 mt-2 max-w-2xl leading-relaxed">{phase.description}</p>}
         {phase && (

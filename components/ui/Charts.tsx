@@ -1,5 +1,7 @@
 "use client";
 
+import { useId } from "react";
+
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 export type Period = 7 | 14 | 30;
@@ -26,6 +28,9 @@ export function LineChart({
   max: number;
   height?: number;
 }) {
+  // Eigen id per grafiek: de kleur kan een CSS-variabele zijn (praktijkkleur),
+  // en die bevat tekens die in een id/url(#…) niet geldig zijn.
+  const gradId = `line-grad-${useId().replace(/:/g, "")}`;
   if (data.length < 2) return (
     <div className="flex items-center justify-center text-xs text-gray-300" style={{ height }}>
       Onvoldoende data
@@ -53,7 +58,6 @@ export function LineChart({
     return [0, step, step * 2, step * 3, data.length - 1];
   })();
 
-  const gradId = `line-grad-${color.replace("#", "")}`;
 
   return (
     <div style={{ position: "relative" }}>
@@ -106,7 +110,7 @@ export function trendColor(trend: Trend): string {
   return "#9ca3af";
 }
 
-export function Bar({ label, value, max, color = "#e8632a", sublabel, format = round1 }: {
+export function Bar({ label, value, max, color = "var(--brand-accent, #e8632a)", sublabel, format = round1 }: {
   label: string; value: number; max: number; color?: string; sublabel?: string; format?: (value: number) => string;
 }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
@@ -154,7 +158,7 @@ export function DayActivityDots({ hasCheckIn, hasTraining, hasMedicatie }: {
   hasMedicatie: boolean;
 }) {
   const dots = [
-    hasCheckIn && { key: "checkin", color: "#e8632a" },
+    hasCheckIn && { key: "checkin", color: "var(--brand-accent, #e8632a)" },
     hasTraining && { key: "training", color: "#16a34a" },
     hasMedicatie && { key: "medicatie", color: "#7c3aed" },
   ].filter(Boolean) as { key: string; color: string }[];

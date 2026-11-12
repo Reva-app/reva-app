@@ -21,6 +21,8 @@ export interface RevaScoreFactor {
   label: string;
   ratio: number; // 0-1
   detail: string;
+  /** Weging in het gemiddelde (standaard 1). */
+  weight?: number;
 }
 
 export interface RevaScoreResult {
@@ -87,12 +89,15 @@ export function generateRevaScore(input: RevaScoreInput): RevaScoreResult {
 
   // 3. Trainingen afgerond — protocol-schema's of zelfgerapporteerde trainingGedaan-vlag
   if (input.hasActiveProtocol && input.protocolPhase && input.protocolPhase.schedules.length > 0) {
-    const prescribed = input.protocolPhase.schedules.reduce((s, sc) => s + sc.frequencyPerWeek, 0);
+    const prescribed = input.protocolPhase.schedules.reduce((s, sc) => s + Math.min(sc.frequencyPerWeek, 7), 0);
     const completed = input.protocolPhase.schedules.reduce((s, sc) => s + sc.completedThisWeek, 0);
     if (prescribed > 0) {
+      // Naar rato van de week: op maandagochtend sta je niet meteen op 0.
+      const dayOfWeek = (input.now.getDay() + 6) % 7; // ma=0 … zo=6
+      const expectedSoFar = Math.max(1, Math.round((prescribed * (dayOfWeek + 1)) / 7));
       factors.push({
         label: "Trainingen afgerond",
-        ratio: Math.min(1, completed / prescribed),
+        ratio: Math.min(1, completed / expectedSoFar),
         detail: `${completed} van de ${prescribed} trainingen deze week`,
       });
     }
@@ -105,8 +110,13 @@ export function generateRevaScore(input: RevaScoreInput): RevaScoreResult {
     });
   }
 
-  // 4. Medicatie bijgehouden — alleen relevant als de patiënt sowieso medicatie logt
-  if (input.medicatie.length > 0) {
+  // 4. Medicatie bijgehouden — alleen zolang de patiënt nog medicatie gebruikt
+  // (iets gelogd in de afgelopen 4 weken). Wie gestopt is met pijnstilling,
+  // mag daar niet op afgerekend worden: dat is juist vooruitgang.
+  const fourWeeksAgo = new Date(input.now);
+  fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+  const fourWeeksAgoStr = dateStr(fourWeeksAgo);
+  if (input.medicatie.some((m) => m.date >= fourWeeksAgoStr)) {
     const daysWithMed = new Set(input.medicatie.filter((m) => m.date >= periodStartStr).map((m) => m.date)).size;
     factors.push({
       label: "Medicatie bijgehouden",
@@ -115,23 +125,13 @@ export function generateRevaScore(input: RevaScoreInput): RevaScoreResult {
     });
   }
 
-  // 5. Afspraken bij de fysio — mate van terugkoppeling (uitkomst ingevuld) op fysio-afspraken deze periode
-  const periodFysioApts = input.appointments.filter((a) => a.type === "fysio" && a.date >= periodStartStr && a.date <= todayStr);
-  if (periodFysioApts.length > 0) {
-    const withOutcome = periodFysioApts.filter((a) => a.uitkomst && a.uitkomst.trim().length > 0).length;
-    factors.push({
-      label: "Afspraken bij de fysio",
-      ratio: withOutcome / periodFysioApts.length,
-      detail: `${withOutcome} van de ${periodFysioApts.length} afspraken teruggekoppeld`,
-    });
-  }
-
   // 6. Doelstellingen
   if (input.hasActiveProtocol && input.protocolPhase) {
     const total = input.protocolPhase.milestones.length;
     if (total > 0) {
       const completed = input.protocolPhase.milestones.filter((m) => m.completed).length;
-      factors.push({ label: "Doelstellingen", ratio: completed / total, detail: `${completed} van de ${total} mijlpalen deze fase` });
+      // Halve weging: aan het begin van een fase staan mijlpalen logischerwijs nog open.
+      factors.push({ label: "Doelstellingen", ratio: completed / total, detail: `${completed} van de ${total} mijlpalen deze fase`, weight: 0.5 });
     }
   } else {
     const regularGoals = input.doelen.filter((d) => d.type === "regular");
@@ -141,7 +141,8 @@ export function generateRevaScore(input: RevaScoreInput): RevaScoreResult {
     }
   }
 
-  const avgRatio = factors.reduce((s, f) => s + f.ratio, 0) / factors.length;
+  const totalWeight = factors.reduce((s, f) => s + (f.weight ?? 1), 0);
+  const avgRatio = factors.reduce((s, f) => s + f.ratio * (f.weight ?? 1), 0) / totalWeight;
   const score = Math.max(1, Math.min(10, Math.round(avgRatio * 100) / 10));
 
   const tier: RevaScoreTier = score >= 7 ? "op_schema" : score >= 4.5 ? "aandacht" : "extra_aandacht";

@@ -240,7 +240,7 @@ function MainGoalCard({ goal }: { goal: PortalMainGoal }) {
       <div className="flex items-start gap-4">
         <div
           className="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl shrink-0"
-          style={{ background: isDone ? "rgba(34,197,94,0.15)" : "rgba(232,99,42,0.15)" }}
+          style={{ background: isDone ? "rgba(34,197,94,0.15)" : "rgba(var(--brand-accent-rgb, 232, 99, 42),0.15)" }}
         >
           {goal.icon}
         </div>
@@ -340,7 +340,7 @@ function ProtocolTab({
                   type="button"
                   onClick={() => { setExpandedPhaseIds((cur) => new Set(cur).add(ph.id)); document.getElementById(`fase-${ph.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
                   className="flex items-center gap-2 rounded-xl px-3 py-2 text-left transition-colors hover:bg-[#faf9f7]"
-                  style={{ background: active ? "#fff3ee" : undefined }}
+                  style={{ background: active ? "var(--brand-accent-soft, #fff3ee)" : undefined }}
                 >
                   <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
                     style={{ background: done ? "#16a34a" : active ? "var(--brand-accent, #e8632a)" : "#efece6", color: done || active ? "#fff" : "#8a847b" }}>
@@ -1360,7 +1360,7 @@ export default function PortalPatientDetailPage() {
               {(tab === "overzicht" || tab === "gegevens") && (
               <>
               {intake?.status === "submitted" && canAssignProtocol && (
-                <div className="rounded-2xl p-5 flex items-start gap-4 flex-wrap" style={{ background: "#fff3ee", border: "1px solid #f6d3c2" }}>
+                <div className="rounded-2xl p-5 flex items-start gap-4 flex-wrap" style={{ background: "var(--brand-accent-soft, #fff3ee)", border: "1px solid var(--brand-accent-border, #f6d3c2)" }}>
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--brand-accent, #e8632a)" }}>
                     <ClipboardList size={18} color="#ffffff" />
                   </div>

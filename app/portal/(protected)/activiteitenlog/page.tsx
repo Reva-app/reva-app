@@ -50,7 +50,7 @@ const AUDIT_COLUMNS = (onDetails: (entry: AuditLogEntry) => void): ListColumn<Au
       <a
         href={`/portal/patienten/${e.patientId}`}
         onClick={(ev) => ev.stopPropagation()}
-        className="font-medium hover:underline" style={{ color: "#e8632a" }}
+        className="font-medium hover:underline" style={{ color: "var(--brand-accent, #e8632a)" }}
       >
         {e.patientName ?? "Onbekende patiënt"}
       </a>
@@ -62,7 +62,7 @@ const AUDIT_COLUMNS = (onDetails: (entry: AuditLogEntry) => void): ListColumn<Au
     key: "details", header: "Details", align: "right",
     cell: (e) => (e.oldData || e.newData) && (
       <button type="button" onClick={(ev) => { ev.stopPropagation(); onDetails(e); }}
-        className="text-xs font-medium hover:opacity-70" style={{ color: "#e8632a" }}>
+        className="text-xs font-medium hover:opacity-70" style={{ color: "var(--brand-accent, #e8632a)" }}>
         Bekijken
       </button>
     ),

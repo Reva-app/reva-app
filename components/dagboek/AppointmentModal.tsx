@@ -273,7 +273,7 @@ export function AppointmentModal({
           <button
             onClick={handleSave}
             className="w-full py-4 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 touch-press"
-            style={{ background: "#e8632a", color: "#ffffff" }}
+            style={{ background: "var(--brand-accent, #e8632a)", color: "#ffffff" }}
           >
             Opslaan
           </button>

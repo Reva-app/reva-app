@@ -42,7 +42,7 @@ export default function ForgotPasswordPage() {
         <div className="inline-flex items-center gap-2 mb-6">
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: "#e8632a" }}
+            style={{ background: "var(--brand-accent, #e8632a)" }}
           >
             <RevaGlyph className="h-[18px] text-white" />
           </div>
@@ -85,7 +85,7 @@ export default function ForgotPasswordPage() {
               type="button"
               onClick={() => { setSent(false); setEmail(""); }}
               className="text-sm font-medium hover:opacity-70 transition-opacity"
-              style={{ color: "#e8632a" }}
+              style={{ color: "var(--brand-accent, #e8632a)" }}
             >
               Opnieuw proberen
             </button>
@@ -123,7 +123,7 @@ export default function ForgotPasswordPage() {
                 type="submit"
                 disabled={loading}
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-60"
-                style={{ background: "#e8632a", color: "#ffffff" }}
+                style={{ background: "var(--brand-accent, #e8632a)", color: "#ffffff" }}
               >
                 {loading ? (
                   <>

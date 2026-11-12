@@ -184,7 +184,7 @@ export function TrainingModal({
               <button
                 onClick={handleSave}
                 className="text-sm px-4 py-2 rounded-xl font-semibold text-white"
-                style={{ background: "#e8632a" }}
+                style={{ background: "var(--brand-accent, #e8632a)" }}
               >
                 Opslaan
               </button>
@@ -221,7 +221,7 @@ export function TrainingModal({
               <button
                 onClick={handleSave}
                 className="w-full py-4 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 transition-all touch-press"
-                style={{ background: "#e8632a", color: "#ffffff" }}
+                style={{ background: "var(--brand-accent, #e8632a)", color: "#ffffff" }}
               >
                 Training opslaan
               </button>

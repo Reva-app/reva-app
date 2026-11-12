@@ -181,7 +181,7 @@ function GoalFormModal({
               {ICON_OPTIONS.map((ic) => (
                 <button key={ic} type="button" onClick={() => set("icon", ic)}
                   className="w-9 h-9 rounded-xl flex items-center justify-center text-lg transition-all"
-                  style={{ background: form.icon === ic ? "#fff3ee" : "#f8f7f4", border: `1.5px solid ${form.icon === ic ? "#e8632a" : "#e8e5df"}` }}>
+                  style={{ background: form.icon === ic ? "var(--brand-accent-soft, #fff3ee)" : "#f8f7f4", border: `1.5px solid ${form.icon === ic ? "var(--brand-accent, #e8632a)" : "#e8e5df"}` }}>
                   {ic}
                 </button>
               ))}
@@ -258,7 +258,7 @@ function MainGoalCard({ doel, onToggle, onEdit }: { doel: Doel; onToggle: () => 
       <div className="flex items-start gap-4">
         <div
           className="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl shrink-0"
-          style={{ background: isDone ? "rgba(34,197,94,0.15)" : "rgba(232,99,42,0.15)" }}
+          style={{ background: isDone ? "rgba(34,197,94,0.15)" : "rgba(var(--brand-accent-rgb, 232, 99, 42),0.15)" }}
         >
           {doel.icon}
         </div>
@@ -267,8 +267,8 @@ function MainGoalCard({ doel, onToggle, onEdit }: { doel: Doel; onToggle: () => 
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-1.5 mb-0.5">
-                <Star size={11} style={{ color: "#e8632a" }} />
-                <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "#e8632a" }}>Hoofddoel</span>
+                <Star size={11} style={{ color: "var(--brand-accent, #e8632a)" }} />
+                <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--brand-accent, #e8632a)" }}>Hoofddoel</span>
               </div>
               <h2
                 className="text-sm font-semibold leading-snug"
@@ -339,7 +339,7 @@ function GoalCard({ doel, onToggle, onEdit, onDelete, onPromote }: {
       style={{ background: doel.completed ? "#f9fafb" : "#ffffff", borderColor: "#e8e5df", opacity: doel.completed ? 0.75 : 1 }}
     >
       <div className="w-8 h-8 rounded-xl flex items-center justify-center text-base shrink-0 mt-0.5"
-        style={{ background: doel.completed ? "#f3f4f6" : "#fff3ee" }}>
+        style={{ background: doel.completed ? "#f3f4f6" : "var(--brand-accent-soft, #fff3ee)" }}>
         {doel.icon}
       </div>
 
@@ -377,7 +377,7 @@ function GoalCard({ doel, onToggle, onEdit, onDelete, onPromote }: {
                 style={{ background: "#ffffff", borderColor: "#e8e5df", boxShadow: "0 8px 24px rgba(0,0,0,0.10)", minWidth: "160px" }}>
                 <button onClick={() => { onPromote(); setMenuOpen(false); }}
                   className="w-full text-left text-sm px-4 py-2.5 hover:bg-gray-50 transition-colors flex items-center gap-2"
-                  style={{ color: "#e8632a" }}>
+                  style={{ color: "var(--brand-accent, #e8632a)" }}>
                   <Star size={13} /> Maak hoofddoel
                 </button>
                 <button onClick={() => { onDelete(); setMenuOpen(false); }}

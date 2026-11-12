@@ -56,7 +56,7 @@ const dagscoreEmoji  = ["", "😞", "😕", "😐", "🙂", "😊"];
 
 // ─── Score selector ───────────────────────────────────────────────────────────
 
-function ScoreSelector({ label, value, max, onChange, color = "#e8632a" }: {
+function ScoreSelector({ label, value, max, onChange, color = "var(--brand-accent, #e8632a)" }: {
   label: string; value: number; max: number; onChange: (v: number) => void; color?: string;
 }) {
   return (
@@ -138,7 +138,7 @@ function HerstelTrendLijn({ checkIns }: { checkIns: CheckIn[] }) {
         </div>
         {avg !== null && (
           <div className="text-right">
-            <p className="text-2xl font-bold leading-none" style={{ color: "#e8632a" }}>{avg}</p>
+            <p className="text-2xl font-bold leading-none" style={{ color: "var(--brand-accent, #e8632a)" }}>{avg}</p>
             <p className="text-[11px] text-subtle mt-0.5">gemiddeld</p>
           </div>
         )}
@@ -147,8 +147,8 @@ function HerstelTrendLijn({ checkIns }: { checkIns: CheckIn[] }) {
       <svg ref={svgRef} viewBox={`0 0 ${VW} ${VH}`} className="w-full" style={{ overflow: "visible" }}>
         <defs>
           <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"   stopColor="#e8632a" stopOpacity="0.07" />
-            <stop offset="100%" stopColor="#e8632a" stopOpacity="0" />
+            <stop offset="0%"   stopColor="var(--brand-accent, #e8632a)" stopOpacity="0.07" />
+            <stop offset="100%" stopColor="var(--brand-accent, #e8632a)" stopOpacity="0" />
           </linearGradient>
         </defs>
 
@@ -168,7 +168,7 @@ function HerstelTrendLijn({ checkIns }: { checkIns: CheckIn[] }) {
         <path d={areaPath} fill="url(#trendGrad)" />
 
         {/* Line */}
-        <path d={linePath} fill="none" stroke="#e8632a" strokeWidth="1.5"
+        <path d={linePath} fill="none" stroke="var(--brand-accent, #e8632a)" strokeWidth="1.5"
           strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
 
         {/* Dots */}
@@ -176,10 +176,10 @@ function HerstelTrendLijn({ checkIns }: { checkIns: CheckIn[] }) {
           const isLast = i === n - 1;
           return (
             <g key={i}>
-              {isLast && <circle cx={p.x} cy={p.y} r={7} fill="#e8632a" opacity="0.08" />}
+              {isLast && <circle cx={p.x} cy={p.y} r={7} fill="var(--brand-accent, #e8632a)" opacity="0.08" />}
               <circle cx={p.x} cy={p.y} r={isLast ? 3.5 : 2}
-                fill={isLast ? "#e8632a" : "#ffffff"}
-                stroke="#e8632a"
+                fill={isLast ? "var(--brand-accent, #e8632a)" : "#ffffff"}
+                stroke="var(--brand-accent, #e8632a)"
                 strokeWidth={isLast ? 0 : 1.5}
                 opacity={isLast ? 1 : 0.7} />
             </g>
@@ -237,7 +237,7 @@ function WeekOverzichtVertical({
                   background: ci
                     ? scoreColor(ci.dagscore)
                     : d.date === today
-                    ? "rgba(232,99,42,0.4)"
+                    ? "rgba(var(--brand-accent-rgb, 232, 99, 42),0.4)"
                     : "rgba(255,255,255,0.1)",
                 }}
               />
@@ -266,7 +266,7 @@ function WeekOverzichtVertical({
                   ? "rgba(255,255,255,0.92)"
                   : "rgba(255,255,255,0.07)",
                 border: isToday
-                  ? "1.5px solid #e8632a"
+                  ? "1.5px solid var(--brand-accent, #e8632a)"
                   : ci
                   ? "1px solid rgba(255,255,255,0.15)"
                   : "1px solid rgba(255,255,255,0.05)",
@@ -276,11 +276,11 @@ function WeekOverzichtVertical({
               {/* Day */}
               <div className="shrink-0 w-8 text-center">
                 <p className="text-[11px] font-semibold uppercase tracking-wide leading-tight"
-                  style={{ color: isToday ? "#e8632a" : "#6b7280" }}>
+                  style={{ color: isToday ? "var(--brand-accent, #e8632a)" : "#6b7280" }}>
                   {label}
                 </p>
                 <p className="text-xs font-medium leading-tight"
-                  style={{ color: isToday ? "#e8632a" : "#4b5563" }}>
+                  style={{ color: isToday ? "var(--brand-accent, #e8632a)" : "#4b5563" }}>
                   {dayNum}
                 </p>
               </div>
@@ -383,7 +383,7 @@ function CheckInEditModal({
                   className="flex-1 py-3 rounded-xl flex flex-col items-center gap-1 transition-all"
                   style={{
                     background: dagscore === v ? "#1c1c1e" : "#f8f7f4",
-                    border: dagscore === v ? "2px solid #e8632a" : "2px solid transparent",
+                    border: dagscore === v ? "2px solid var(--brand-accent, #e8632a)" : "2px solid transparent",
                   }}>
                   <span className="text-lg">{dagscoreEmoji[v]}</span>
                   <span className="text-xs font-medium"
@@ -625,7 +625,7 @@ export default function CheckInPage() {
                 className="flex-1 py-4 rounded-xl flex flex-col items-center gap-1.5 transition-all"
                 style={{
                   background: dagscore === v ? "#1c1c1e" : "#f8f7f4",
-                  border: dagscore === v ? "2px solid #e8632a" : "2px solid transparent",
+                  border: dagscore === v ? "2px solid var(--brand-accent, #e8632a)" : "2px solid transparent",
                 }}>
                 <span className="text-xl">{dagscoreEmoji[v]}</span>
                 <span className="text-xs font-medium"
@@ -644,7 +644,7 @@ export default function CheckInPage() {
             {fullCheckIn ? "Optioneel: vul in wat relevant is" : "Beschikbaar met Premium"}
           </p>
           <div className="space-y-5">
-            <ScoreSelector label="Dagscore" value={dagscore} max={5} onChange={setDagscore} color="#e8632a" />
+            <ScoreSelector label="Dagscore" value={dagscore} max={5} onChange={setDagscore} color="var(--brand-accent, #e8632a)" />
             {fullCheckIn ? (
               <>
                 <div>
@@ -727,12 +727,12 @@ export default function CheckInPage() {
                 {/* Context banner when editing a past check-in */}
                 {editingId && (
                   <div className="flex items-center justify-between rounded-xl px-4 py-3"
-                    style={{ background: "#fff8f5", border: "1px solid #fcd9c8" }}>
-                    <p className="text-xs font-medium" style={{ color: "#e8632a" }}>
+                    style={{ background: "var(--brand-accent-softer, #fff8f5)", border: "1px solid #fcd9c8" }}>
+                    <p className="text-xs font-medium" style={{ color: "var(--brand-accent, #e8632a)" }}>
                       Check-in bewerken voor{" "}
                       {new Date(selectedDate + "T12:00:00").toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" })}
                     </p>
-                    <button onClick={reset} className="text-xs underline underline-offset-2" style={{ color: "#e8632a" }}>
+                    <button onClick={reset} className="text-xs underline underline-offset-2" style={{ color: "var(--brand-accent, #e8632a)" }}>
                       Annuleren
                     </button>
                   </div>
@@ -753,7 +753,7 @@ export default function CheckInPage() {
                 </div>
                 )}
 
-                <ScoreSelector label="Dagscore" value={dagscore} max={5} onChange={setDagscore} color="#e8632a" />
+                <ScoreSelector label="Dagscore" value={dagscore} max={5} onChange={setDagscore} color="var(--brand-accent, #e8632a)" />
                 {fullCheckIn ? (
                   <>
                     <div>
@@ -788,7 +788,7 @@ export default function CheckInPage() {
                 <button
                   onClick={handleSubmit}
                   className="w-full py-4 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 touch-press"
-                  style={{ background: "#e8632a", color: "#ffffff" }}
+                  style={{ background: "var(--brand-accent, #e8632a)", color: "#ffffff" }}
                 >
                   {editingId ? "Wijzigingen opslaan" : "Check-in opslaan"}
                 </button>

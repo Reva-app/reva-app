@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandLockup } from "@/components/brand/BrandLockup";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import { BlockableLink as Link } from "./BlockableLink";
@@ -18,7 +19,6 @@ import {
 import { useAppData } from "@/lib/store";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAppBranding } from "@/lib/hooks/useAppBranding";
-import { BrandMark } from "@/components/brand/BrandMark";
 
 const primaryNav = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -89,13 +89,12 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div className="px-5 py-5">
-        <div className="flex items-center gap-2.5">
-          <BrandMark logoUrl={hasOwnBranding ? branding?.logoUrl : null} initial={hasOwnBranding ? branding!.name[0] : null} />
-          <div className="leading-none">
-            <p className="text-white font-semibold text-sm tracking-tight">{hasOwnBranding ? branding!.name : "REVA"}</p>
-            <p className="text-[11px] mt-0.5" style={{ color: "#52525e" }}>Herstel Dashboard</p>
-          </div>
-        </div>
+        <BrandLockup
+          logoUrl={hasOwnBranding ? branding?.logoUrl : null}
+          initial={hasOwnBranding ? branding!.name[0] : null}
+          name={hasOwnBranding ? branding!.name : "REVA"}
+          subtitle="Herstel Dashboard"
+        />
       </div>
 
       {/* Primary nav */}

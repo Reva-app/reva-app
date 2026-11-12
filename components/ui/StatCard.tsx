@@ -67,7 +67,7 @@ export function StatCard({
             style={{
               background: accent
                 ? "rgba(255,255,255,0.08)"
-                : `${iconColor}14`,
+                : `color-mix(in srgb, ${iconColor} 8%, transparent)`,
             }}
           >
             <Icon

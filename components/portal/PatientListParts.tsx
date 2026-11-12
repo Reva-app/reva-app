@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/ui/Badge";
 import type { ListColumn } from "@/components/ui/ResponsiveList";
-import { formatDate } from "@/lib/data";
+import { formatDate, BLESSURE_TYPEN } from "@/lib/data";
 import {
   isPatientInactive, ATTENTION_REASON_LABELS, ATTENTION_BADGE_VARIANT, PATIENT_INACTIVITY_THRESHOLD_DAYS,
   type PortalPatient,
@@ -85,18 +85,24 @@ export function patientNeedsAttention(p: PortalPatient): boolean {
 }
 
 /** Klinische signalen + weinig activiteit, alleen bij actieve dossiers. */
-function AttentionBadges({ patient: p }: { patient: PortalPatient }) {
-  if (p.status !== "active") return null;
+function AttentionBadges({ patient: p, max, withAccount }: { patient: PortalPatient; max?: number; withAccount?: boolean }) {
+  const account = withAccount ? accountLabel(p) : null;
+  if (p.status !== "active") return account ? <Badge variant="muted">{account}</Badge> : null;
   // Wie nog op de eigen intake wacht, is niet "inactief" — dat is verwacht.
   const inactive = p.intakeStatus !== "requested" && isPatientInactive(p.lastCheckinDate, p.createdAt);
+  const badges: React.ReactNode[] = [
+    ...(p.intakeStatus === "submitted" ? [<Badge key="intake" variant="accent">Intake ingevuld · kies herstelplan</Badge>] : []),
+    ...(p.intakeStatus === "requested" ? [<Badge key="wacht" variant="muted">Wacht op intake</Badge>] : []),
+    ...p.checkinSignals.map((reason) => <Badge key={reason} variant={ATTENTION_BADGE_VARIANT[reason]}>{ATTENTION_REASON_LABELS[reason]}</Badge>),
+    ...(inactive ? [<Badge key="inactief" variant="warning">{p.lastCheckinDate ? "Weinig activiteit" : "Nog geen activiteit"}</Badge>] : []),
+    ...(account ? [<Badge key="account" variant="muted">{account}</Badge>] : []),
+  ];
+  const shown = max ? badges.slice(0, max) : badges;
+  const hidden = badges.length - shown.length;
   return (
     <>
-      {p.intakeStatus === "submitted" && <Badge variant="accent">Intake ingevuld · kies herstelplan</Badge>}
-      {p.intakeStatus === "requested" && <Badge variant="muted">Wacht op intake</Badge>}
-      {p.checkinSignals.map((reason) => (
-        <Badge key={reason} variant={ATTENTION_BADGE_VARIANT[reason]}>{ATTENTION_REASON_LABELS[reason]}</Badge>
-      ))}
-      {inactive && <Badge variant="warning">{p.lastCheckinDate ? "Weinig activiteit" : "Nog geen activiteit"}</Badge>}
+      {shown}
+      {hidden > 0 && <Badge variant="muted">+{hidden}</Badge>}
     </>
   );
 }
@@ -116,44 +122,43 @@ function accountLabel(p: PortalPatient): string | null {
 
 function planLabel(p: PortalPatient): string {
   if (p.intakeStatus === "requested" && !p.protocolName) return "Vult de intake zelf in";
-  return p.protocolName || p.injuryType || "Nog geen herstelplan";
+  const injury = p.injuryType ? BLESSURE_TYPEN.find((b) => b.value === p.injuryType)?.label ?? p.injuryType : null;
+  return p.protocolName || (injury && injury !== "Anders" ? injury : null) || "Nog geen herstelplan";
 }
 
 export const PATIENT_COLUMNS: ListColumn<PortalPatient, PatientSortKey>[] = [
   {
     key: "name", header: "Patiënt", sortKey: "name",
     cell: (p) => (
-      <div className="flex items-center gap-3 min-w-[220px]">
+      <div className="flex items-center gap-3 min-w-[220px] max-w-[380px]">
         <PatientAvatar patient={p} />
         <div className="min-w-0">
-          <p className="font-medium text-gray-900 truncate">{p.fullName || "Nog niet ingevuld"}</p>
-          <p className={`text-xs truncate mt-0.5 ${p.protocolName || p.injuryType ? "text-gray-500" : "text-gray-400"}`}>{planLabel(p)}</p>
+          <div className="flex items-center gap-2">
+            <p className="font-medium text-gray-900 truncate">{p.fullName || "Nog niet ingevuld"}</p>
+            {p.status !== "active" && statusBadge(p.status)}
+          </div>
+          <p className={`text-xs truncate mt-0.5 ${p.protocolName || p.injuryType ? "text-gray-500" : "text-gray-400"}`} title={planLabel(p)}>{planLabel(p)}</p>
         </div>
       </div>
     ),
   },
-  { key: "therapist", header: "Behandelaar", sortKey: "therapist", hideBelow: "lg", className: "text-gray-600 whitespace-nowrap", cell: (p) => p.therapistName || "—" },
+  {
+    key: "therapist", header: "Behandelaar", sortKey: "therapist", hideBelow: "lg",
+    cell: (p) => (
+      <div className="whitespace-nowrap">
+        <p className="text-gray-700">{p.therapistName || "—"}</p>
+        {p.locationName && <p className="text-xs text-gray-400 mt-0.5">{p.locationName}</p>}
+      </div>
+    ),
+  },
   { key: "lastCheckin", header: "Laatste check-in", sortKey: "lastCheckin", cell: (p) => <CheckinIndicator date={p.lastCheckinDate} /> },
   {
     key: "attention", header: "Aandacht",
     cell: (p) => (
       <div className="flex items-center gap-1.5 flex-wrap">
-        {patientNeedsAttention(p) || p.intakeStatus ? <AttentionBadges patient={p} /> : <span className="text-gray-300">—</span>}
+        {patientNeedsAttention(p) || p.intakeStatus || accountLabel(p) ? <AttentionBadges patient={p} max={2} withAccount /> : <span className="text-gray-300">—</span>}
       </div>
     ),
-  },
-  { key: "location", header: "Locatie", sortKey: "location", hideBelow: "xl", className: "text-gray-600 whitespace-nowrap", cell: (p) => p.locationName || "—" },
-  {
-    key: "status", header: "Status", sortKey: "status",
-    cell: (p) => {
-      const account = accountLabel(p);
-      return (
-        <div className="flex flex-col items-start gap-1">
-          {statusBadge(p.status)}
-          {account && <span className="text-[11px] text-gray-400 whitespace-nowrap">{account}</span>}
-        </div>
-      );
-    },
   },
 ];
 

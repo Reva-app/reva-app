@@ -1,6 +1,15 @@
 @import "tailwindcss";
 
 :root {
+  /* Kleurfamilie van de praktijk (REVA-oranje als standaard); per praktijk
+     overschreven door useBrandCssVars (lib/brand.ts → brandPalette). */
+  --brand-accent: #e8632a;
+  --brand-accent-rgb: 232, 99, 42;
+  --brand-accent-soft: #fdefea;
+  --brand-accent-softer: #fef7f4;
+  --brand-accent-border: #f8d0bf;
+  --brand-accent-ink: #903d1a;
+  --brand-accent-on-dark: #f5b9a0;
   --background: #f8f7f4;
   --foreground: #1a1a1a;
   --sidebar-bg: #1c1c1e;

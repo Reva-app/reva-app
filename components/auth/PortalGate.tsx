@@ -72,7 +72,7 @@ export function PortalGate({ children }: { children: React.ReactNode }) {
       <div className="flex h-screen items-center justify-center px-6" style={{ background: "#f8f7f4" }}>
         <div className="text-center max-w-sm">
           <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 mx-auto" style={{ background: "#fff7ed" }}>
-            <PauseCircle size={22} style={{ color: "#e8632a" }} />
+            <PauseCircle size={22} style={{ color: "var(--brand-accent, #e8632a)" }} />
           </div>
           <p className="text-sm font-medium text-gray-800">
             {blockedOrg.reason === "paused"

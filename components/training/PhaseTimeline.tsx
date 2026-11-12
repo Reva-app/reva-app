@@ -71,7 +71,7 @@ export function PhaseTimeline({ patientId }: { patientId: string }) {
                   background: isCompleted || isActive ? dotColor : "#ffffff",
                   border: `2.5px solid ${dotColor}`,
                   color: isCompleted || isActive ? "#ffffff" : "#6b7280",
-                  boxShadow: isActive ? `0 0 0 4px ${dotColor}22` : "none",
+                  boxShadow: isActive ? `0 0 0 4px color-mix(in srgb, ${dotColor} 13%, transparent)` : "none",
                 }}
               >
                 {isCompleted ? <Check size={15} /> : i + 1}

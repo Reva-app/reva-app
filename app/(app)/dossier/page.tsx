@@ -349,7 +349,7 @@ function FotoModal({ userId, onClose, onSave }: {
                 className="flex flex-col items-center gap-2 py-4 rounded-xl transition-colors hover:bg-gray-50"
                 style={{ border: "1px solid #e8e5df" }}
               >
-                <Camera size={20} style={{ color: "#e8632a" }} />
+                <Camera size={20} style={{ color: "var(--brand-accent, #e8632a)" }} />
                 <span className="text-xs font-medium text-gray-600">Camera</span>
               </button>
               <button
@@ -486,7 +486,7 @@ function FotoTimeline({ fotos, blessureDatum, onDelete }: {
       {/* Vertical line */}
       <div
         className="absolute top-0 bottom-0 left-[19px] w-px"
-        style={{ background: "linear-gradient(to bottom, #e8632a33, #e8632a22, transparent)" }}
+        style={{ background: "linear-gradient(to bottom, rgba(var(--brand-accent-rgb, 232, 99, 42), 0.2), rgba(var(--brand-accent-rgb, 232, 99, 42), 0.13), transparent)" }}
       />
 
       <div className="space-y-6">
@@ -500,7 +500,7 @@ function FotoTimeline({ fotos, blessureDatum, onDelete }: {
                 style={{ width: "40px", height: "40px" }}>
                 <div
                   className="w-3 h-3 rounded-full border-2"
-                  style={{ borderColor: "#e8632a", background: "#fff5f0" }}
+                  style={{ borderColor: "var(--brand-accent, #e8632a)", background: "var(--brand-accent-softer, #fff5f0)" }}
                 />
               </div>
 
@@ -517,7 +517,7 @@ function FotoTimeline({ fotos, blessureDatum, onDelete }: {
                 {/* Card header */}
                 <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "#e8632a" }}>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--brand-accent, #e8632a)" }}>
                       Week {week} herstel
                     </p>
                     <p className="text-sm font-semibold text-gray-800 mt-0.5">{formatDate(f.date)}</p>
@@ -672,7 +672,7 @@ export default function DossierPage() {
             <Icon size={14} />
             <span className="hidden sm:inline">{label}</span>
             <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold"
-              style={{ background: tab === key ? "#e8632a" : "#e8e5df", color: tab === key ? "#ffffff" : "#6b7280" }}>
+              style={{ background: tab === key ? "var(--brand-accent, #e8632a)" : "#e8e5df", color: tab === key ? "#ffffff" : "#6b7280" }}>
               {count}
             </span>
           </button>
@@ -727,8 +727,8 @@ export default function DossierPage() {
               <div key={doc.id} className="rounded-2xl border bg-white p-4 flex items-start gap-4"
                 style={{ borderColor: "#e8e5df", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: "#fff3ee" }}>
-                  <FileText size={18} style={{ color: "#e8632a" }} />
+                  style={{ background: "var(--brand-accent-soft, #fff3ee)" }}>
+                  <FileText size={18} style={{ color: "var(--brand-accent, #e8632a)" }} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2 flex-wrap">

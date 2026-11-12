@@ -100,7 +100,7 @@ export default function PortalDashboardPage() {
               <Link key={item.href} href={item.href} className="block">
                 <Card className="h-full transition-colors hover:bg-gray-50">
                   <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "#fff3ee" }}>
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--brand-accent-soft, #fff3ee)" }}>
                       <item.icon size={18} style={{ color: "var(--brand-accent, #e8632a)" }} />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -127,7 +127,7 @@ export default function PortalDashboardPage() {
               <StatStrip
                 items={[
                   { label: "Mijn patiënten", value: myPatients.totalCount, icon: HeartPulse },
-                  { label: "Aandacht nodig", value: myPatients.needsAttentionCount, subtitle: "Hoge pijnscore, zwelling of weinig activiteit", icon: AlertTriangle, iconColor: "#f59e0b" },
+                  { label: "Aandacht nodig", value: myPatients.needsAttentionCount, subtitle: "Signalen uit check-ins, weinig activiteit of een ingevulde intake", icon: AlertTriangle, iconColor: "#f59e0b" },
                   { label: "Check-ins deze week", value: myPatients.checkinsThisWeekCount, icon: HeartPulse, iconColor: "#16a34a" },
                 ]}
               />

@@ -1,5 +1,6 @@
 "use client";
 
+import { PushSettings } from "@/components/notifications/PushSettings";
 import { useState, useEffect, useRef } from "react";
 import { BLESSURE_TYPEN, formatDate } from "@/lib/data";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -40,7 +41,7 @@ function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean
       type="button"
       onClick={() => onChange(!enabled)}
       className="relative shrink-0 w-10 h-6 rounded-full transition-colors"
-      style={{ background: enabled ? "#e8632a" : "#e2e0db" }}
+      style={{ background: enabled ? "var(--brand-accent, #e8632a)" : "#e2e0db" }}
     >
       <span
         className="absolute top-1 w-4 h-4 rounded-full bg-white transition-all"
@@ -196,9 +197,9 @@ function AccountVerwijderenModal({ onClose, onConfirm, loading }: {
 
             <div
               className="rounded-xl p-3.5 flex gap-2.5 items-start mb-6"
-              style={{ background: "#fff8f5", border: "1px solid #fcd9c8" }}
+              style={{ background: "var(--brand-accent-softer, #fff8f5)", border: "1px solid #fcd9c8" }}
             >
-              <AlertCircle size={15} className="shrink-0 mt-0.5" style={{ color: "#e8632a" }} />
+              <AlertCircle size={15} className="shrink-0 mt-0.5" style={{ color: "var(--brand-accent, #e8632a)" }} />
               <p className="text-xs leading-relaxed" style={{ color: "#6b6560" }}>
                 <strong style={{ color: "#1a1a1a" }}>Dit kan niet ongedaan worden gemaakt.</strong> Alle data wordt permanent en onomkeerbaar verwijderd uit onze systemen.
               </p>
@@ -839,7 +840,7 @@ export default function InstellingenPage() {
                   {operatieDatum ? (
                     <button type="button" onClick={() => setOperatieDatum("")}
                       className="mt-1.5 text-[11px] font-semibold hover:opacity-75 transition-opacity cursor-pointer"
-                      style={{ color: "#e8632a" }}>
+                      style={{ color: "var(--brand-accent, #e8632a)" }}>
                       Datum wissen
                     </button>
                   ) : (
@@ -960,7 +961,7 @@ export default function InstellingenPage() {
             </div>
             <button type="button" onClick={addVerzekering}
               className="mt-2 flex items-center gap-1.5 text-xs font-medium transition-colors hover:opacity-70"
-              style={{ color: "#e8632a" }}>
+              style={{ color: "var(--brand-accent, #e8632a)" }}>
               <Plus size={13} /> Verzekering toevoegen
             </button>
           </div>
@@ -975,7 +976,7 @@ export default function InstellingenPage() {
             <Button
               size="sm"
               onClick={handleSaveHerstel}
-              style={isHerstelDirty ? { background: "#e8632a", color: "#ffffff", boxShadow: "0 0 0 3px rgba(232,99,42,0.15)" } : undefined}
+              style={isHerstelDirty ? { background: "var(--brand-accent, #e8632a)", color: "#ffffff", boxShadow: "0 0 0 3px rgba(var(--brand-accent-rgb, 232, 99, 42),0.15)" } : undefined}
             >
               Opslaan
             </Button>
@@ -1000,7 +1001,7 @@ export default function InstellingenPage() {
               {/* Avatar preview */}
               <div
                 className="w-16 h-16 rounded-full flex items-center justify-center shrink-0 overflow-hidden"
-                style={{ background: profile.profielfoto ? "transparent" : "#e8632a" }}
+                style={{ background: profile.profielfoto ? "transparent" : "var(--brand-accent, #e8632a)" }}
               >
                 {hydrated && profile.profielfoto ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -1031,7 +1032,7 @@ export default function InstellingenPage() {
                     type="button"
                     onClick={handleVerwijderFoto}
                     className="text-xs font-medium transition-opacity hover:opacity-70 text-left"
-                    style={{ color: "#e8632a" }}
+                    style={{ color: "var(--brand-accent, #e8632a)" }}
                   >
                     Foto verwijderen
                   </button>
@@ -1077,7 +1078,7 @@ export default function InstellingenPage() {
             <Button
               size="sm"
               onClick={handleSaveAccount}
-              style={isAccountDirty ? { background: "#e8632a", color: "#ffffff", boxShadow: "0 0 0 3px rgba(232,99,42,0.15)" } : undefined}
+              style={isAccountDirty ? { background: "var(--brand-accent, #e8632a)", color: "#ffffff", boxShadow: "0 0 0 3px rgba(var(--brand-accent-rgb, 232, 99, 42),0.15)" } : undefined}
             >
               Opslaan
             </Button>
@@ -1261,15 +1262,16 @@ export default function InstellingenPage() {
       <Card>
         <CardHeader
           title="Meldingen"
-          subtitle="Kies welke meldingen je wilt ontvangen"
+          subtitle="Kies welke herinneringen je wilt ontvangen"
           action={<Bell size={16} className="text-gray-400" />}
         />
         <div className="space-y-5">
+          <PushSettings notify={(m, t) => showToast(m, t ?? "success")} />
           {[
-            { key: "checkin" as const,   label: "Check-in herinnering",      desc: "Dagelijkse e-mail om jouw check-in in te vullen" },
-            { key: "afspraken" as const, label: "Afspraken",                 desc: "E-mail 4 uur voor iedere geplande afspraak, met de details" },
-            { key: "medicatie" as const, label: "Medicatie",                 desc: "E-mail op ingestelde tijden van jouw medicatieschema" },
-            { key: "foto" as const,      label: "Foto updates",              desc: "E-mail elke zondagavond om 20:00 uur" },
+            { key: "checkin" as const,   label: "Check-in herinnering",      desc: "Dagelijks, als je je check-in nog niet hebt ingevuld" },
+            { key: "afspraken" as const, label: "Afspraken",                 desc: "4 uur voor iedere geplande afspraak" },
+            { key: "medicatie" as const, label: "Medicatie",                 desc: "Op de tijden van je medicatieschema" },
+            { key: "foto" as const,      label: "Foto updates",              desc: "Elke zondagavond om 20:00 uur" },
           ].map(({ key, label, desc }) => (
             <div key={key} className="flex items-center justify-between gap-4">
               <div className="min-w-0">
@@ -1317,7 +1319,7 @@ export default function InstellingenPage() {
                 )}
               </div>
               <p className="text-[11px] text-subtle">
-                Je ontvangt elke dag een e-mail op dit tijdstip als je je check-in nog niet hebt ingevuld.
+                Je krijgt elke dag op dit tijdstip een herinnering (e-mail, en een pushmelding als die aan staat) als je je check-in nog niet hebt ingevuld.
               </p>
             </div>
           )}

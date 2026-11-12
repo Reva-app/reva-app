@@ -28,6 +28,8 @@
  *                              en app/api/feedback/route.ts al gebruiken).
  *   NEXT_PUBLIC_SITE_URL     — volledige productie-URL (bv. https://dashboard.reva-app.nl),
  *                              voor de deep links in de e-mails. Zelfde naam als lib/apiBase.ts.
+ *   PUSH_DISPATCH_SECRET     — zelfde waarde als in Vercel; hiermee bezorgt de app
+ *                              (/api/push/send) de pushmeldingen voor de webapp.
  *   CRON_SECRET              — willekeurige lange string. Moet als "x-cron-secret" header
  *                              worden meegestuurd door de caller (de cron job), anders 401.
  *                              Dit is nodig omdat de publieke anon-key op zichzelf al een
@@ -384,6 +386,9 @@ async function handleRequest(req: Request): Promise<Response> {
 
   const notifications: { token: string; title: string; body: string; route: string }[] = [];
   const emails: PendingEmail[] = [];
+  // Pushmeldingen voor de webapp (migratie 141), bezorgd via /api/push/send.
+  // Altijd algemene tekst: een melding staat op het vergrendelscherm.
+  const webPushes: { userId: string; title: string; body: string; url: string; tag: string }[] = [];
 
   // ── 1. Check-in herinneringen ────────────────────────────────────────────
   const { data: settings } = await supabase
@@ -419,6 +424,7 @@ async function handleRequest(req: Request): Promise<Response> {
         (profiles ?? []).forEach(({ id, email }) => {
           if (!email) return;
           emails.push({ userId: id as string, to: email, build: (brand) => checkinReminderEmail({ brand, siteUrl }) });
+          webPushes.push({ userId: id as string, title: "Hoe gaat het vandaag?", body: "Vul je check-in in, het duurt maar even.", url: "/check-in", tag: "checkin" });
         });
       }
     }
@@ -472,6 +478,7 @@ async function handleRequest(req: Request): Promise<Response> {
         (profiles ?? []).forEach(({ id, email }) => {
           if (!email) return;
           emails.push({ userId: id as string, to: email, build: (brand) => medicationReminderEmail({ brand, siteUrl }) });
+          webPushes.push({ userId: id as string, title: "Herinnering medicatie", body: "Het is tijd voor je volgende inname volgens je schema.", url: "/medicatie", tag: "medicatie" });
         });
       }
     }
@@ -499,6 +506,7 @@ async function handleRequest(req: Request): Promise<Response> {
       (profiles ?? []).forEach(({ id, email }) => {
         if (!email) return;
         emails.push({ userId: id as string, to: email, build: (brand) => photoReminderEmail({ brand, siteUrl }) });
+        webPushes.push({ userId: id as string, title: "Tijd voor je foto-update", body: "Leg je voortgang van deze week vast.", url: "/dossier?tab=foto-updates", tag: "foto" });
       });
     }
   }
@@ -566,6 +574,7 @@ async function handleRequest(req: Request): Promise<Response> {
             to: email,
             build: (brand) => appointmentReminderEmail({ brand, siteUrl, day, time }),
           });
+          webPushes.push({ userId: appt.user_id as string, title: "Afspraak " + day, body: time ? `Je hebt ${day} om ${time} een afspraak.` : `Je hebt ${day} een afspraak.`, url: "/dagboek", tag: "afspraak" });
         }
       }
     }
@@ -581,6 +590,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
     if (expiredGoals && expiredGoals.length > 0) {
       const goalUserIds = [...new Set(expiredGoals.map((g) => g.user_id as string))];
+      goalUserIds.forEach((userId) => webPushes.push({ userId, title: "Je deadline nadert", body: "Een van je doelen loopt morgen af.", url: "/doelstellingen", tag: "doel" }));
       const { data: tokens } = await supabase
         .from("push_tokens")
         .select("token")
@@ -630,6 +640,27 @@ async function handleRequest(req: Request): Promise<Response> {
 
   console.info(`[push] sent=${sent} errors=${errors.length} total=${notifications.length}`);
 
+  // ── Pushmeldingen webapp via /api/push/send ───────────────────────────────
+  let webPushSent = 0;
+  const pushSecret = Deno.env.get("PUSH_DISPATCH_SECRET");
+  if (webPushes.length > 0 && pushSecret) {
+    try {
+      const res = await fetch(`${siteUrl}/api/push/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-push-secret": pushSecret },
+        body: JSON.stringify({ pushes: webPushes }),
+      });
+      const json = await res.json().catch(() => ({}));
+      webPushSent = json.sent ?? 0;
+      if (!res.ok) console.error("[webpush] dispatch mislukt:", res.status);
+    } catch (err) {
+      console.error("[webpush] dispatch fout:", err);
+    }
+  } else if (webPushes.length > 0) {
+    console.info("[webpush] PUSH_DISPATCH_SECRET niet ingesteld — webpush overgeslagen");
+  }
+  console.info(`[webpush] sent=${webPushSent} total=${webPushes.length}`);
+
   // ── Verstuur alle e-mails via Resend ──────────────────────────────────────
   let emailsSent = 0;
   const emailErrors: string[] = [];
@@ -664,6 +695,7 @@ async function handleRequest(req: Request): Promise<Response> {
     JSON.stringify({
       sent, errors: errors.slice(0, 5),
       emailsSent, emailErrors: emailErrors.slice(0, 5),
+      webPushSent,
     }),
     { headers: { "Content-Type": "application/json" } }
   );

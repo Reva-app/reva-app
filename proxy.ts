@@ -154,7 +154,8 @@ export const config = {
     // link-previews halen die op zónder inlogcookies, dus een redirect naar
     // /login brak de PWA-installatie en de gedeelde link-previews. De
     // app-iconen zelf zijn statische bestanden (app/icon.svg,
-    // apple-icon.png) en vallen al onder de extensieregel.
-    "/((?!_next/static|_next/image|favicon\\.ico|manifest\\.webmanifest|opengraph-image$|twitter-image$|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).*)",
+    // apple-icon.png) en vallen al onder de extensieregel. sw.js (service
+    // worker voor pushmeldingen) ook: de browser vernieuwt hem zonder sessie.
+    "/((?!_next/static|_next/image|favicon\\.ico|manifest\\.webmanifest|opengraph-image$|twitter-image$|api|sw\\.js$|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).*)",
   ],
 };

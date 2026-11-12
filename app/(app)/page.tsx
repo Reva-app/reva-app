@@ -1,5 +1,6 @@
 "use client";
 
+import { PushPrompt } from "@/components/notifications/PushSettings";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
@@ -161,7 +162,7 @@ function PanelHeader({ title, cta, href }: { title: string; cta?: string; href?:
     <div className="flex items-center justify-between px-5 pt-5 pb-4">
       <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
       {cta && href && (
-        <Link href={href} className="text-xs font-medium flex items-center gap-1" style={{ color: "#e8632a" }}>
+        <Link href={href} className="text-xs font-medium flex items-center gap-1" style={{ color: "var(--brand-accent, #e8632a)" }}>
           {cta} <ArrowRight size={11} />
         </Link>
       )}
@@ -515,7 +516,7 @@ export default function Dashboard() {
 
   checkIns.slice(0, 5).forEach(c => activity.push({
     id: `ci-${c.id}`, date: c.date, sortKey: c.date + "T23:59",
-    icon: ClipboardCheck, iconColor: "#e8632a", iconBg: "#fff3ee",
+    icon: ClipboardCheck, iconColor: "var(--brand-accent, #e8632a)", iconBg: "var(--brand-accent-soft, #fff3ee)",
     title: "Check-in", sub: `Dagscore ${c.dagscore}/5: ${SCORE_LABELS[c.dagscore] ?? ""}`, href: "/check-in",
   }));
   appointments.slice(0, 5).forEach(a => activity.push({
@@ -539,7 +540,7 @@ export default function Dashboard() {
   if (hasActiveProtocol && protocolPhase) {
     protocolPhase.milestones.filter(m => m.completed && m.completedAt).slice(0, 3).forEach(m => activity.push({
       id: `pmij-${m.id}`, date: m.completedAt!, sortKey: m.completedAt! + "T12:00",
-      icon: Trophy, iconColor: "#e8632a", iconBg: "#fff3ee",
+      icon: Trophy, iconColor: "var(--brand-accent, #e8632a)", iconBg: "var(--brand-accent-soft, #fff3ee)",
       title: m.title, sub: `Mijlpaal behaald · ${fmtShort(m.completedAt!)}`, href: "/doelstellingen",
     }));
   }
@@ -642,6 +643,8 @@ export default function Dashboard() {
         />
       )}
 
+      <PushPrompt />
+
       <OnboardingChecklist
         hasActiveProtocol={hasActiveProtocol}
         protocol={protocol}
@@ -699,7 +702,7 @@ export default function Dashboard() {
 
             {/* Quote van de dag — zelfde zin voor iedereen, wisselt dagelijks */}
             <p className="text-sm leading-relaxed mb-5 max-w-sm pl-3"
-              style={{ color: "#4a4a52", borderLeft: "2px solid #e8632a" }}>
+              style={{ color: "#4a4a52", borderLeft: "2px solid var(--brand-accent, #e8632a)" }}>
               {dailyQuote}
             </p>
 
@@ -708,8 +711,8 @@ export default function Dashboard() {
             <div className="flex flex-wrap gap-2 mb-5">
               {!hasActiveProtocol && (
                 <span className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full"
-                  style={{ background: "#fff3ee", color: "#e8632a", border: "1px solid rgba(232,99,42,0.2)" }}>
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#e8632a" }} />
+                  style={{ background: "var(--brand-accent-soft, #fff3ee)", color: "var(--brand-accent, #e8632a)", border: "1px solid rgba(var(--brand-accent-rgb, 232, 99, 42),0.2)" }}>
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--brand-accent, #e8632a)" }} />
                   {fase}
                 </span>
               )}
@@ -770,11 +773,11 @@ export default function Dashboard() {
               <div className="mb-2.5">
                 {todayCheckIn
                   ? <StatusPill label="Afgerond" color="#16a34a" bg="#f0fdf4" />
-                  : <StatusPill label="Open" color="#e8632a" bg="#fff3ee" />}
+                  : <StatusPill label="Open" color="var(--brand-accent, #e8632a)" bg="var(--brand-accent-soft, #fff3ee)" />}
               </div>
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#fff3ee" }}>
-                  <ClipboardCheck size={13} style={{ color: "#e8632a" }} />
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "var(--brand-accent-soft, #fff3ee)" }}>
+                  <ClipboardCheck size={13} style={{ color: "var(--brand-accent, #e8632a)" }} />
                 </div>
                 <span className="text-xs font-semibold text-gray-500">Check-in</span>
               </div>
@@ -795,7 +798,7 @@ export default function Dashboard() {
                     </p>
                   )}
                   <Link href="/check-in" className="mt-auto pt-3 block">
-                    <span className="text-xs font-medium" style={{ color: "#e8632a" }}>Bewerken →</span>
+                    <span className="text-xs font-medium" style={{ color: "var(--brand-accent, #e8632a)" }}>Bewerken →</span>
                   </Link>
                 </>
               ) : (
@@ -1009,9 +1012,9 @@ export default function Dashboard() {
       {/* Avond check-in reminder — alleen tonen als avond + check-in nog open */}
       {toonAvondReminder && (
         <div className="flex items-center justify-between gap-4 px-5 py-4 rounded-2xl"
-          style={{ background: "#fff3ee", border: "1px solid rgba(232,99,42,0.2)" }}>
+          style={{ background: "var(--brand-accent-soft, #fff3ee)", border: "1px solid rgba(var(--brand-accent-rgb, 232, 99, 42),0.2)" }}>
           <div className="flex items-center gap-3">
-            <ClipboardCheck size={16} style={{ color: "#e8632a" }} />
+            <ClipboardCheck size={16} style={{ color: "var(--brand-accent, #e8632a)" }} />
             <div>
               <p className="text-sm font-semibold" style={{ color: "#1a1a1a" }}>Je check-in van vandaag staat nog open</p>
               <p className="text-xs text-subtle mt-0.5">Hoe kijk je terug op vandaag?</p>
@@ -1019,7 +1022,7 @@ export default function Dashboard() {
           </div>
           <button onClick={() => setQuickModal("checkin")}
             className="shrink-0 px-4 py-2 rounded-xl text-xs font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ background: "#e8632a" }}>
+            style={{ background: "var(--brand-accent, #e8632a)" }}>
             Nu invullen
           </button>
         </div>
@@ -1054,7 +1057,7 @@ export default function Dashboard() {
                           <p className="text-xs text-subtle truncate">{item.sub}</p>
                         </div>
                         <span className="text-[11px] font-medium shrink-0 ml-2"
-                          style={{ color: item.date === today ? "#e8632a" : "#b5b0a8" }}>
+                          style={{ color: item.date === today ? "var(--brand-accent, #e8632a)" : "#b5b0a8" }}>
                           {dateLabel}
                         </span>
                       </div>
@@ -1079,13 +1082,13 @@ export default function Dashboard() {
                     <div key={apt.id} style={{ borderTop: i > 0 ? "1px solid #f5f3f0" : undefined }}>
                       <div className="flex items-start gap-3 px-4 py-3">
                         <div className="w-9 h-9 rounded-xl flex flex-col items-center justify-center shrink-0"
-                          style={{ background: isToday ? "#fff3ee" : "#f3f0eb" }}>
+                          style={{ background: isToday ? "var(--brand-accent-soft, #fff3ee)" : "#f3f0eb" }}>
                           <span className="text-xs font-bold leading-none"
-                            style={{ color: isToday ? "#e8632a" : "#374151" }}>
+                            style={{ color: isToday ? "var(--brand-accent, #e8632a)" : "#374151" }}>
                             {new Date(apt.date + "T12:00:00").getDate()}
                           </span>
                           <span className="text-[11px] uppercase"
-                            style={{ color: isToday ? "#e8632a" : "#6b7280" }}>
+                            style={{ color: isToday ? "var(--brand-accent, #e8632a)" : "#6b7280" }}>
                             {new Date(apt.date + "T12:00:00").toLocaleString("nl-NL", { month: "short" })}
                           </span>
                         </div>
@@ -1098,7 +1101,7 @@ export default function Dashboard() {
                           </p>
                           <div className="flex items-center gap-1.5 mt-1">
                             <Badge variant={APT_BADGE[apt.type]}>{appointmentTypeLabel(apt.type)}</Badge>
-                            {isToday && <StatusPill label="Vandaag" color="#e8632a" bg="#fff3ee" />}
+                            {isToday && <StatusPill label="Vandaag" color="var(--brand-accent, #e8632a)" bg="var(--brand-accent-soft, #fff3ee)" />}
                             {isTomorrow && <StatusPill label="Morgen" color="#6b7280" bg="#f3f4f6" />}
                           </div>
                         </div>
@@ -1125,7 +1128,7 @@ export default function Dashboard() {
               <Panel>
                 <div className="flex items-center justify-between px-5 pt-5 pb-4">
                   <h3 className="text-sm font-semibold text-gray-900">Recente documenten</h3>
-                  <Link href="/dossier?tab=documenten" className="text-xs font-medium flex items-center gap-1" style={{ color: "#e8632a" }}>
+                  <Link href="/dossier?tab=documenten" className="text-xs font-medium flex items-center gap-1" style={{ color: "var(--brand-accent, #e8632a)" }}>
                     Alles <ArrowRight size={11} />
                   </Link>
                 </div>
@@ -1135,8 +1138,8 @@ export default function Dashboard() {
                       <div className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors"
                         style={{ borderTop: i > 0 ? "1px solid #f5f3f0" : undefined }}>
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                          style={{ background: "#fff3ee" }}>
-                          <FileText size={13} style={{ color: "#e8632a" }} />
+                          style={{ background: "var(--brand-accent-soft, #fff3ee)" }}>
+                          <FileText size={13} style={{ color: "var(--brand-accent, #e8632a)" }} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">{doc.title}</p>
@@ -1152,7 +1155,7 @@ export default function Dashboard() {
                   <div className="px-5 py-3" style={{ borderTop: "1px solid #f5f3f0" }}>
                     <button onClick={() => setQuickModal("document")}
                       className="text-xs font-medium flex items-center gap-1"
-                      style={{ color: "#e8632a" }}>
+                      style={{ color: "var(--brand-accent, #e8632a)" }}>
                       <Plus size={11} /> Document toevoegen
                     </button>
                   </div>
@@ -1167,7 +1170,7 @@ export default function Dashboard() {
                   <h3 className="text-sm font-semibold text-gray-900">Laatste foto update</h3>
                   <div className="flex items-center gap-2">
                     <StatusPill label={fmtShort(latestFoto.date)} color="#6b7280" bg="#f3f4f6" />
-                    <Link href="/dossier?tab=foto-updates" className="text-xs font-medium flex items-center gap-1" style={{ color: "#e8632a" }}>
+                    <Link href="/dossier?tab=foto-updates" className="text-xs font-medium flex items-center gap-1" style={{ color: "var(--brand-accent, #e8632a)" }}>
                       Dossier <ArrowRight size={11} />
                     </Link>
                   </div>
@@ -1194,7 +1197,7 @@ export default function Dashboard() {
                     )}
                     {fotoOud && (
                       <Link href="/dossier?tab=foto-updates" className="mt-2 text-xs font-medium flex items-center gap-1"
-                        style={{ color: "#e8632a" }}>
+                        style={{ color: "var(--brand-accent, #e8632a)" }}>
                         <Plus size={10} /> Nieuwe foto update toevoegen?
                       </Link>
                     )}
@@ -1215,7 +1218,7 @@ export default function Dashboard() {
         {/* Mobile: 4 items without Document */}
         <div className="grid grid-cols-2 gap-3 sm:hidden">
           {(([
-            { label: "Check-in",  icon: ClipboardCheck, modal: "checkin"  , color: "#e8632a", bg: "#fff3ee" },
+            { label: "Check-in",  icon: ClipboardCheck, modal: "checkin"  , color: "var(--brand-accent, #e8632a)", bg: "var(--brand-accent-soft, #fff3ee)" },
             { label: "Afspraak",  icon: Calendar,       modal: "afspraak" , color: "#3b82f6", bg: "#eff6ff" },
             { label: "Training",  icon: Dumbbell,       modal: "training" , color: "#0ea5e9", bg: "#f0f9ff" },
             { label: "Medicatie", icon: Pill,           modal: "medicatie", color: "#8b5cf6", bg: "#f5f3ff" },
@@ -1232,7 +1235,7 @@ export default function Dashboard() {
         {/* Desktop: all 5 items including Document */}
         <div className="hidden sm:grid sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {(([
-            { label: "Check-in",  icon: ClipboardCheck, modal: "checkin"  , color: "#e8632a", bg: "#fff3ee" },
+            { label: "Check-in",  icon: ClipboardCheck, modal: "checkin"  , color: "var(--brand-accent, #e8632a)", bg: "var(--brand-accent-soft, #fff3ee)" },
             { label: "Afspraak",  icon: Calendar,       modal: "afspraak" , color: "#3b82f6", bg: "#eff6ff" },
             { label: "Training",  icon: Dumbbell,       modal: "training" , color: "#0ea5e9", bg: "#f0f9ff" },
             { label: "Medicatie", icon: Pill,           modal: "medicatie", color: "#8b5cf6", bg: "#f5f3ff" },

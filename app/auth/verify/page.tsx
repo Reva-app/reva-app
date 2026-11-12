@@ -73,7 +73,7 @@ function VerifyHandler() {
       <div className="inline-flex items-center gap-2 mb-8">
         <div
           className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: "#e8632a" }}
+          style={{ background: "var(--brand-accent, #e8632a)" }}
         >
           <RevaGlyph className="h-[18px] text-white" />
         </div>

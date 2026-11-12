@@ -5,7 +5,7 @@ import type { CoachInsights, CoachMoodTag } from "@/lib/coach";
 
 const MOOD_CONFIG: Record<CoachMoodTag, { label: string; color: string; bg: string; dot: string }> = {
   positief:    { label: "Positief",    color: "#16a34a", bg: "#f0fdf4", dot: "#22c55e" },
-  stabiel:     { label: "Stabiel",     color: "#e8632a", bg: "#fff3ee", dot: "#e8632a" },
+  stabiel:     { label: "Stabiel",     color: "var(--brand-accent, #e8632a)", bg: "var(--brand-accent-soft, #fff3ee)", dot: "var(--brand-accent, #e8632a)" },
   voorzichtig: { label: "Voorzichtig", color: "#ca8a04", bg: "#fefce8", dot: "#eab308" },
 };
 
@@ -56,7 +56,7 @@ export function CoachPanel({ coachInsights }: CoachPanelProps) {
         )}
 
         {/* Weekly summary */}
-        <div className="rounded-xl px-4 py-3 mb-4" style={{ background: moodCfg.bg, border: `1px solid ${moodCfg.color}22` }}>
+        <div className="rounded-xl px-4 py-3 mb-4" style={{ background: moodCfg.bg, border: `1px solid color-mix(in srgb, ${moodCfg.color} 13%, transparent)` }}>
           <p className="text-[11px] font-semibold uppercase tracking-widest mb-2.5" style={{ color: moodCfg.color }}>
             Samenvatting deze week
           </p>

@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandLockup } from "@/components/brand/BrandLockup";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
@@ -120,14 +121,17 @@ export function PortalSidebar() {
       style={{ background: "#18181a", borderRight: "1px solid rgba(255,255,255,0.05)" }}
     >
       <div className={pick("px-3 py-5", "px-5 py-5", "px-3 py-5 xl:px-5")}>
-        <div className={clsx("flex items-center gap-2.5", justifyClass)}>
+        {/* Smalle balk: alleen het beeldmerk; brede balk: logo/naam leesbaar */}
+        <div className={clsx("flex items-center", justifyClass, pick("flex", "hidden", "flex xl:hidden"))}>
           <BrandMark logoUrl={branding?.logoUrl} initial={(membership?.organizationName || "R")[0]} />
-          <div className={clsx("leading-none min-w-0", blockClass)}>
-            <p className="text-white font-semibold text-sm tracking-tight truncate">
-              {membership?.organizationName ?? "REVA"}
-            </p>
-            <p className="text-[11px] mt-0.5" style={{ color: "#52525e" }}>Practice Portal</p>
-          </div>
+        </div>
+        <div className={pick("hidden", "block", "hidden xl:block")}>
+          <BrandLockup
+            logoUrl={branding?.logoUrl}
+            initial={(membership?.organizationName || "R")[0]}
+            name={membership?.organizationName ?? "REVA"}
+            subtitle="Practice Portal"
+          />
         </div>
       </div>
 

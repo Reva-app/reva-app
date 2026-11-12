@@ -41,10 +41,10 @@ export function ExerciseMedia({ mediaPath, mediaType, number, timed }: {
   return (
     <div
       className="rounded-3xl aspect-[16/7] sm:aspect-[16/6] relative overflow-hidden flex items-center justify-center"
-      style={{ background: "linear-gradient(135deg, #fff3ee 0%, #fde3d4 55%, #f9d2bd 100%)" }}
+      style={{ background: "linear-gradient(135deg, var(--brand-accent-soft, #fff3ee) 0%, var(--brand-accent-border, #fde3d4) 55%, var(--brand-accent-border, #f9d2bd) 100%)" }}
       aria-hidden
     >
-      <span className="absolute -right-4 -bottom-10 text-[180px] font-bold leading-none tabular-nums select-none" style={{ color: "rgba(232,99,42,0.12)" }}>
+      <span className="absolute -right-4 -bottom-10 text-[180px] font-bold leading-none tabular-nums select-none" style={{ color: "rgba(var(--brand-accent-rgb, 232, 99, 42),0.12)" }}>
         {number}
       </span>
       <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-white/80 shadow-sm">

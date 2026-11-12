@@ -48,7 +48,7 @@ function Chip({ selected, onClick, children }: { selected: boolean; onClick: () 
       className="rounded-full border px-3.5 py-2 text-sm transition-colors min-h-10"
       style={{
         borderColor: selected ? "var(--brand-accent, #e8632a)" : "#e8e5df",
-        background: selected ? "#fff3ee" : "#ffffff",
+        background: selected ? "var(--brand-accent-soft, #fff3ee)" : "#ffffff",
         color: selected ? "#1a1a1a" : "#4b5563",
         fontWeight: selected ? 500 : 400,
       }}
