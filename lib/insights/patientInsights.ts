@@ -13,7 +13,7 @@ import type { PortalCheckinTrendPoint } from "@/lib/services/portalService";
 import type { PortalPatientProtocolAssignment, PortalPatientSessionNote } from "@/lib/services/protocolService";
 
 export type InsightTone = "attention" | "positive" | "info";
-export type InsightTarget = "herstelplan" | "logboek" | "contact";
+export type InsightTarget = "herstelplan" | "logboek" | "testen" | "contact";
 
 export interface InsightSuggestion {
   /** Stabiel per situatie en week, zodat "Negeren" alleen deze week geldt. */
@@ -45,6 +45,8 @@ export interface PatientInsightInput {
   planSuggestionCount?: number;
   /** Ingevulde intake wacht op een plan: dat blok staat er al, dus hier niet herhalen. */
   intakeWaiting?: boolean;
+  /** Testen met hun laatste meetdatum (lib/services/testService.ts). */
+  staleTests?: { id: string; name: string; lastMeasuredOn: string }[];
 }
 
 const DAY = 86_400_000;
@@ -64,7 +66,7 @@ function weekKey(today: string): string {
 /** Woorden in een trainingsnotitie die de fysio waarschijnlijk wil lezen. */
 const CONCERN_WORDS = ["pijn", "zeer", "zwaar", "lastig", "moeilijk", "dik", "zwelling", "opgezet", "niet gelukt", "gestopt", "slecht", "eng", "bang"];
 
-export function buildPatientInsights({ firstName, checkins, assignment, sessionNotes, today, planSuggestionCount = 0, intakeWaiting = false }: PatientInsightInput): PatientInsights {
+export function buildPatientInsights({ firstName, checkins, assignment, sessionNotes, today, planSuggestionCount = 0, intakeWaiting = false, staleTests = [] }: PatientInsightInput): PatientInsights {
   const name = firstName || "De patiënt";
   const wk = weekKey(today);
   const summary: string[] = [];
@@ -229,6 +231,23 @@ export function buildPatientInsights({ firstName, checkins, assignment, sessionN
       title: worrying.kind === "check-in" ? "Lees de notitie bij de check-in" : "Lees de notitie bij een training",
       reason: `"${quote}"`,
       action: worrying.kind === "training" ? { label: "Logboek openen", target: "logboek" } : undefined,
+    });
+  }
+
+  // Test al lang niet herhaald: opnieuw meten maakt de voortgang zichtbaar.
+  const stale = staleTests
+    .map((t) => ({ ...t, days: daysBetween(t.lastMeasuredOn, today) }))
+    .filter((t) => t.days >= 42)
+    .sort((a, b) => b.days - a.days);
+  if (stale.length > 0) {
+    const t = stale[0];
+    suggestions.push({
+      id: `hertest:${t.id}:${t.lastMeasuredOn}`, tone: "info",
+      title: stale.length === 1 ? `${t.name} opnieuw afnemen` : `${stale.length} testen opnieuw afnemen`,
+      reason: stale.length === 1
+        ? `Laatste meting ${Math.round(t.days / 7)} weken geleden. Een nieuwe meting laat objectief zien waar ${name} nu staat.`
+        : `Onder andere ${t.name} (${Math.round(t.days / 7)} weken geleden). Een nieuwe meting laat de voortgang zien.`,
+      action: { label: "Naar testen", target: "testen" },
     });
   }
 

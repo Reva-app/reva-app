@@ -1,24 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useInsightFeedback } from "@/lib/hooks/useInsightFeedback";
 import { Sparkles, AlertTriangle, TrendingUp, Info, X, Phone, Mail } from "lucide-react";
 import type { InsightSuggestion, InsightTarget, InsightTone, PatientInsights } from "@/lib/insights/patientInsights";
-
-const DISMISS_KEY = "reva-insights-dismissed";
-
-export function readDismissed(scope: string): string[] {
-  try {
-    const all = JSON.parse(localStorage.getItem(DISMISS_KEY) ?? "{}") as Record<string, string[]>;
-    return all[scope] ?? [];
-  } catch { return []; }
-}
-export function writeDismissed(scope: string, ids: string[]) {
-  try {
-    const all = JSON.parse(localStorage.getItem(DISMISS_KEY) ?? "{}") as Record<string, string[]>;
-    all[scope] = ids.slice(-40);
-    localStorage.setItem(DISMISS_KEY, JSON.stringify(all));
-  } catch { /* geen opslag */ }
-}
 
 export const TONE: Record<InsightTone, { icon: typeof Info; color: string; bg: string }> = {
   attention: { icon: AlertTriangle, color: "#b45309", bg: "#fef3c7" },
@@ -35,9 +19,10 @@ export function InsightBadge() {
   );
 }
 
-function SuggestionRow({ s, onAction, onDismiss, contact }: {
+function SuggestionRow({ s, onAction, onContact, onDismiss, contact }: {
   s: InsightSuggestion;
   onAction: (t: InsightTarget) => void;
+  onContact: () => void;
   onDismiss: () => void;
   contact: { phone: string | null; email: string | null };
 }) {
@@ -55,8 +40,8 @@ function SuggestionRow({ s, onAction, onDismiss, contact }: {
         <div className="flex flex-wrap items-center gap-2 mt-2.5">
           {s.action?.target === "contact" ? (
             <>
-              {contact.phone && <a href={`tel:${contact.phone.replace(/\s/g, "")}`} className={actionClass} style={{ borderColor: "#e8e5df" }}><Phone size={12} /> Bellen</a>}
-              {contact.email && <a href={`mailto:${contact.email}`} className={actionClass} style={{ borderColor: "#e8e5df" }}><Mail size={12} /> E-mailen</a>}
+              {contact.phone && <a href={`tel:${contact.phone.replace(/\s/g, "")}`} onClick={onContact} className={actionClass} style={{ borderColor: "#e8e5df" }}><Phone size={12} /> Bellen</a>}
+              {contact.email && <a href={`mailto:${contact.email}`} onClick={onContact} className={actionClass} style={{ borderColor: "#e8e5df" }}><Mail size={12} /> E-mailen</a>}
             </>
           ) : s.action && (
             <button type="button" onClick={() => onAction(s.action!.target)} className={actionClass} style={{ borderColor: "#e8e5df" }}>{s.action.label}</button>
@@ -76,19 +61,13 @@ function SuggestionRow({ s, onAction, onDismiss, contact }: {
  */
 export function InsightCard({ insights, scope, onAction, contact }: {
   insights: PatientInsights;
-  /** Waar "Negeren" voor geldt, bv. de patiënt-id. */
+  /** Patiënt-id: feedback (negeren, openen) wordt per patiënt vastgelegd. */
   scope: string;
   onAction: (target: InsightTarget) => void;
   contact: { phone: string | null; email: string | null };
 }) {
-  const [dismissed, setDismissed] = useState<string[]>(() => readDismissed(scope));
-  const visible = insights.suggestions.filter((s) => !dismissed.includes(s.id));
-
-  function dismiss(id: string) {
-    const next = [...dismissed, id];
-    setDismissed(next);
-    writeDismissed(scope, next);
-  }
+  const { isHandled, record } = useInsightFeedback(scope, "inzicht");
+  const visible = insights.suggestions.filter((s) => !isHandled(s.id));
 
   if (insights.sparse && visible.length === 0) return null;
 
@@ -116,7 +95,7 @@ export function InsightCard({ insights, scope, onAction, contact }: {
         {visible.length > 0 ? (
           <ul className="mt-4 pt-4 border-t divide-y divide-[#f0ede8]" style={{ borderColor: "#f0ede8" }}>
             {visible.map((s) => (
-              <SuggestionRow key={s.id} s={s} contact={contact} onAction={onAction} onDismiss={() => dismiss(s.id)} />
+              <SuggestionRow key={s.id} s={s} contact={contact} onAction={(t) => { record(s.id, "opened"); onAction(t); }} onContact={() => record(s.id, "opened")} onDismiss={() => record(s.id, "dismissed")} />
             ))}
           </ul>
         ) : insights.summary.length > 0 && (

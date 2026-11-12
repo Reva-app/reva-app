@@ -26,6 +26,8 @@ import { buildPatientInsights } from "@/lib/insights/patientInsights";
 import { buildPlanSuggestions, type PlanSuggestion } from "@/lib/insights/planInsights";
 import { PlanSuggestions } from "@/components/insights/PlanSuggestions";
 import { IntakeInsight } from "@/components/insights/IntakeInsight";
+import { PatientTestsTab } from "@/components/portal/tests/PatientTestsTab";
+import { loadPatientTests, type PatientTest } from "@/lib/services/testService";
 import { loadPatientTrainingLogs, type PortalTrainingSessionLog, type PortalTrainingExerciseLog } from "@/lib/services/protocolService";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PatientEditForm } from "@/components/portal/PatientEditForm";
@@ -887,10 +889,11 @@ function localToday(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-type TabKey = "overzicht" | "herstelplan" | "logboek" | "gegevens";
+type TabKey = "overzicht" | "herstelplan" | "testen" | "logboek" | "gegevens";
 const TAB_OPTIONS: { value: TabKey; label: string; className?: string }[] = [
   { value: "overzicht", label: "Overzicht" },
   { value: "herstelplan", label: "Herstelplan" },
+  { value: "testen", label: "Testen" },
   { value: "logboek", label: "Logboek" },
   // Op desktop staan Status, Afsluiting en Behandelgegevens in de zijkolom
   // naast elke tab; op telefoon/tablet krijgen ze een eigen tab i.p.v. onder
@@ -918,7 +921,7 @@ export default function PortalPatientDetailPage() {
   const [tab, setTab] = useState<TabKey>(() => {
     if (typeof window === "undefined") return "overzicht";
     const t = new URLSearchParams(window.location.search).get("tab");
-    return t === "herstelplan" || t === "logboek" ? t : "overzicht";
+    return t === "herstelplan" || t === "logboek" || t === "testen" ? t : "overzicht";
   });
 
   // Fotogalerij: laadt de volledige fotogeschiedenis pas zodra de gebruiker
@@ -991,6 +994,16 @@ export default function PortalPatientDetailPage() {
     let cancelled = false;
     const since = new Date(Date.now() - 35 * 86_400_000).toISOString().slice(0, 10);
     loadPatientTrainingLogs(patientId, since).then((logs) => { if (!cancelled) setTrainingLogs(logs); });
+    return () => { cancelled = true; };
+  }, [patientId]);
+
+  const [tests, setTests] = useState<PatientTest[]>([]);
+  function refreshTests() {
+    loadPatientTests(patientId).then(setTests);
+  }
+  useEffect(() => {
+    let cancelled = false;
+    loadPatientTests(patientId).then((t) => { if (!cancelled) setTests(t); });
     return () => { cancelled = true; };
   }, [patientId]);
 
@@ -1438,10 +1451,13 @@ export default function PortalPatientDetailPage() {
                     today: localToday(),
                     planSuggestionCount: planSuggestions.length,
                     intakeWaiting: intake?.status === "submitted",
+                    staleTests: tests
+                      .filter((t) => t.results.length > 0)
+                      .map((t) => ({ id: t.id, name: t.name, lastMeasuredOn: t.results[t.results.length - 1].measuredOn })),
                   })}
                   contact={{ phone: patient.phone, email: patient.email }}
                   onAction={(target) => {
-                    if (target === "herstelplan" || target === "logboek") {
+                    if (target === "herstelplan" || target === "logboek" || target === "testen") {
                       setTab(target);
                       window.scrollTo({ top: 0, behavior: "smooth" });
                     }
@@ -1595,6 +1611,20 @@ export default function PortalPatientDetailPage() {
                   planSuggestions={planSuggestions}
                   onEditExercise={(e) => { setScheduleExerciseError(""); setEditingScheduleExercise(e); }}
                   onAddPhaseClick={() => { setAddPhaseError(""); setAddPhase({ phaseName: `Fase ${(assignment?.phases.length ?? 0) + 1}`, phaseDescription: "", frequencyPerWeek: 3 }); }}
+                />
+              )}
+
+              {tab === "testen" && membership && (
+                <PatientTestsTab
+                  patientId={patientId}
+                  organizationId={membership.organizationId}
+                  injuryType={patient.injuryType}
+                  tests={tests}
+                  phases={(assignment?.phases ?? []).map((p) => ({ id: p.id, name: p.name, status: p.status }))}
+                  canManage={canManageProtocolContent}
+                  canSaveToLibrary={canManageProtocolContent}
+                  onChanged={refreshTests}
+                  notify={(m, t) => showToast(m, t)}
                 />
               )}
 

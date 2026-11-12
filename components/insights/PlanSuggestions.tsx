@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Sparkles, X, Loader2, Check } from "lucide-react";
-import { TONE, InsightBadge, readDismissed, writeDismissed } from "@/components/insights/InsightCard";
+import { TONE, InsightBadge } from "@/components/insights/InsightCard";
+import { useInsightFeedback } from "@/lib/hooks/useInsightFeedback";
 import { updatePatientScheduleExercise, type PortalPatientProtocolScheduleExercise } from "@/lib/services/protocolService";
 import type { PlanSuggestion } from "@/lib/insights/planInsights";
 
@@ -20,16 +21,12 @@ export function PlanSuggestions({ suggestions, scope, canManage, onEditExercise,
   onChanged: () => void;
   notify: (message: string, type?: "success" | "error") => void;
 }) {
-  const [dismissed, setDismissed] = useState<string[]>(() => readDismissed(scope));
+  const { isHandled, record } = useInsightFeedback(scope, "plan");
   const [busy, setBusy] = useState<string | null>(null);
-  const visible = suggestions.filter((s) => !dismissed.includes(s.id));
+  const visible = suggestions.filter((s) => !isHandled(s.id));
   if (visible.length === 0) return null;
 
-  function dismiss(id: string) {
-    const next = [...dismissed, id];
-    setDismissed(next);
-    writeDismissed(scope, next);
-  }
+  const dismiss = (id: string) => record(id, "dismissed");
 
   async function apply(s: PlanSuggestion) {
     if (!s.apply || !s.exercise) return;
@@ -37,7 +34,7 @@ export function PlanSuggestions({ suggestions, scope, canManage, onEditExercise,
     const { error } = await updatePatientScheduleExercise(s.exercise.id, s.apply.input);
     setBusy(null);
     if (error) { notify(error, "error"); return; }
-    dismiss(s.id);
+    record(s.id, "applied");
     notify(`${s.exercise.title} bijgewerkt: ${s.apply.label}`);
     onChanged();
   }
@@ -49,7 +46,7 @@ export function PlanSuggestions({ suggestions, scope, canManage, onEditExercise,
     setBusy(null);
     const failed = results.filter((r) => r.error).length;
     if (failed) notify(`${failed} van de ${results.length} oefeningen konden niet worden bijgewerkt.`, "error");
-    else { dismiss(s.id); notify(`${results.length} oefeningen opgebouwd`); }
+    else { record(s.id, "applied"); notify(`${results.length} oefeningen opgebouwd`); }
     onChanged();
   }
 
@@ -98,10 +95,10 @@ export function PlanSuggestions({ suggestions, scope, canManage, onEditExercise,
                     </button>
                   )}
                   {canManage && s.exercise && (
-                    <button type="button" onClick={() => onEditExercise(s.exercise!)} className={btn} style={{ borderColor: "#e8e5df" }}>Aanpassen</button>
+                    <button type="button" onClick={() => { record(s.id, "opened"); onEditExercise(s.exercise!); }} className={btn} style={{ borderColor: "#e8e5df" }}>Aanpassen</button>
                   )}
                   {canManage && s.advancePhase && (
-                    <button type="button" onClick={onAdvancePhase} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white" style={{ background: "var(--brand-accent, #e8632a)" }}>
+                    <button type="button" onClick={() => { record(s.id, "opened"); onAdvancePhase(); }} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white" style={{ background: "var(--brand-accent, #e8632a)" }}>
                       <Check size={12} /> Fase afronden en volgende starten
                     </button>
                   )}

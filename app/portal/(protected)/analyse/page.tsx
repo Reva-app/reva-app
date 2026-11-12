@@ -17,6 +17,7 @@ import {
   type PortalRecoveryDurationStats,
 } from "@/lib/services/portalService";
 import { INJURY_CATEGORY_LABELS } from "@/lib/services/protocolService";
+import { InsightStatsCard } from "@/components/insights/InsightStatsCard";
 
 /** Zichtbaar gelabelde aanname i.p.v. verstopt in een databasefunctie — zie migratie 115. */
 const MINUTES_SAVED_PER_AI_INTAKE = 5;
@@ -262,6 +263,8 @@ export default function PortalAnalysePage() {
           )}
         </Card>
       </div>
+
+      {membership && <InsightStatsCard organizationId={membership.organizationId} days={Math.max(period, 30)} />}
 
       <Card>
         <CardHeader title="Teamactiviteit" subtitle="Laatste keer ingelogd per medewerker" />
