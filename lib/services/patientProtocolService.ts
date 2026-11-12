@@ -123,6 +123,7 @@ export interface PatientProtocolExerciseView {
   prescribedLoadText: string | null;
   prescriptionNote: string | null;
   mediaPath: string | null;
+  mediaType: string | null;
 }
 
 export interface PatientProtocolScheduleView {
@@ -303,7 +304,7 @@ export async function loadMyActiveProtocol(patientId: string): Promise<PatientAc
   const [scheduleExerciseRows, sessionLogRows] = await Promise.all([
     scheduleIds.length
       ? supabase.from("patient_protocol_schedule_exercises")
-          .select("id, schedule_id, title, description, instructions, prescribed_sets, prescribed_reps, prescribed_duration_seconds, prescribed_load_text, prescription_note, media_path")
+          .select("id, schedule_id, title, description, instructions, prescribed_sets, prescribed_reps, prescribed_duration_seconds, prescribed_load_text, prescription_note, media_path, media_type")
           .in("schedule_id", scheduleIds).order("sort_order")
       : Promise.resolve({ data: [], error: null }),
     scheduleIds.length
@@ -321,13 +322,13 @@ export async function loadMyActiveProtocol(patientId: string): Promise<PatientAc
   for (const ex of (scheduleExerciseRows.data ?? []) as unknown as {
     id: string; schedule_id: string; title: string; description: string | null; instructions: string | null;
     prescribed_sets: number | null; prescribed_reps: number | null; prescribed_duration_seconds: number | null;
-    prescribed_load_text: string | null; prescription_note: string | null; media_path: string | null;
+    prescribed_load_text: string | null; prescription_note: string | null; media_path: string | null; media_type: string | null;
   }[]) {
     const list = exercisesBySchedule.get(ex.schedule_id) ?? [];
     list.push({
       id: ex.id, title: ex.title, description: ex.description, instructions: ex.instructions,
       prescribedSets: ex.prescribed_sets, prescribedReps: ex.prescribed_reps, prescribedDurationSeconds: ex.prescribed_duration_seconds,
-      prescribedLoadText: ex.prescribed_load_text, prescriptionNote: ex.prescription_note, mediaPath: ex.media_path,
+      prescribedLoadText: ex.prescribed_load_text, prescriptionNote: ex.prescription_note, mediaPath: ex.media_path, mediaType: ex.media_type,
     });
     exercisesBySchedule.set(ex.schedule_id, list);
   }

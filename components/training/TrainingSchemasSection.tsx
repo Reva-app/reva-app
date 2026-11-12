@@ -1,5 +1,7 @@
 "use client";
 
+import { Tabs } from "@/components/ui/Tabs";
+import { OwnSchemaTrainer } from "@/components/training/OwnSchemaTrainer";
 import { useState, useEffect } from "react";
 import { useAppData } from "@/lib/store";
 import dynamic from "next/dynamic";
@@ -30,7 +32,7 @@ import { useToast } from "@/components/ui/Toast";
 import {
   Plus, Pencil, Trash2, X, Check, ChevronDown, ChevronUp,
   Dumbbell, Activity, Zap, Move, Minus, HelpCircle, Clock,
-  LayoutList, BookOpen,
+  LayoutList, BookOpen, CheckCircle2,
 } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -729,52 +731,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 type Tab = "schemas" | "oefeningen";
 
-function PageTabs({ active, onChange, schemaCount, oefeningCount }: {
-  active: Tab;
-  onChange: (t: Tab) => void;
-  schemaCount: number;
-  oefeningCount: number;
-}) {
-  return (
-    <div
-      className="inline-flex items-center p-1 rounded-xl gap-0.5"
-      style={{ background: "#f0ede8" }}
-    >
-      {([
-        { id: "schemas" as Tab, label: "Schema's", count: schemaCount, icon: LayoutList },
-        { id: "oefeningen" as Tab, label: "Oefeningen", count: oefeningCount, icon: BookOpen },
-      ] as const).map(({ id, label, count, icon: Icon }) => {
-        const isActive = active === id;
-        return (
-          <button
-            key={id}
-            onClick={() => onChange(id)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
-            style={{
-              background: isActive ? "#ffffff" : "transparent",
-              color: isActive ? "#1a1a1a" : "#6b7280",
-              boxShadow: isActive ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
-            }}
-          >
-            <Icon size={14} />
-            {label}
-            {count > 0 && (
-              <span
-                className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full min-w-[20px] text-center"
-                style={{
-                  background: isActive ? "#f3f0eb" : "transparent",
-                  color: isActive ? "#6b7280" : "#c4bfb9",
-                }}
-              >
-                {count}
-              </span>
-            )}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 // ─── Main section ─────────────────────────────────────────────────────────────
 
@@ -947,11 +903,13 @@ export function TrainingSchemasSection({ variant }: TrainingSchemasSectionProps)
       <div>
         {/* Desktop: tabs + inline button on same row */}
         <div className="hidden sm:flex items-center justify-between mb-5">
-          <PageTabs
-            active={activeTab}
+<Tabs
+            options={[
+              { value: "schemas", label: `Schema's (${trainingSchemas.length})` },
+              { value: "oefeningen", label: `Oefeningen (${trainingOefeningen.length})` },
+            ]}
+            value={activeTab}
             onChange={setActiveTab}
-            schemaCount={trainingSchemas.length}
-            oefeningCount={trainingOefeningen.length}
           />
           <button
             onClick={() => activeTab === "schemas"
@@ -965,29 +923,17 @@ export function TrainingSchemasSection({ variant }: TrainingSchemasSectionProps)
             {activeTab === "schemas" ? "Nieuw schema" : "Oefening toevoegen"}
           </button>
         </div>
-        {/* Mobile: full-width pill tabs (Medicatie stijl) + CTA below */}
+        {/* Mobile: tabs over de volle breedte + knop eronder */}
         <div className="sm:hidden mb-4">
-          <div className="flex rounded-xl overflow-hidden" style={{ background: "#f3f0eb" }}>
-            {([
-              { id: "schemas" as Tab, label: `Schema's (${trainingSchemas.length})` },
-              { id: "oefeningen" as Tab, label: `Oefeningen (${trainingOefeningen.length})` },
-            ]).map(({ id, label }) => (
-              <button
-                key={id}
-                onClick={() => setActiveTab(id)}
-                className="flex-1 py-2.5 text-sm font-medium transition-all"
-                style={{
-                  background: activeTab === id ? "#ffffff" : "transparent",
-                  color: activeTab === id ? "#1a1a1a" : "#6b7280",
-                  boxShadow: activeTab === id ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
-                  margin: activeTab === id ? "3px" : "0",
-                  borderRadius: activeTab === id ? "8px" : "0",
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <Tabs
+            options={[
+              { value: "schemas", label: `Schema's (${trainingSchemas.length})` },
+              { value: "oefeningen", label: `Oefeningen (${trainingOefeningen.length})` },
+            ]}
+            value={activeTab}
+            onChange={setActiveTab}
+            className="w-full"
+          />
           <div className="mt-3">
             <Button
               size="sm"
@@ -1036,15 +982,20 @@ export function TrainingSchemasSection({ variant }: TrainingSchemasSectionProps)
                 {actieveSchemas.length > 0 && (
                   <div className={schemaStatusFilter !== "Alles" && schemaStatusFilter !== "actief" ? "hidden sm:block" : ""}>
                     <SectionLabel>Actief</SectionLabel>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                       {actieveSchemas.map((s) => (
-                        <SchemaCard
+                        <OwnSchemaTrainer
                           key={s.id}
                           schema={s}
-                          oefeningen={trainingOefeningen}
-                          onEdit={() => setSchemaModal({ open: true, editing: s })}
-                          onDelete={() => handleDeleteSchema(s.id)}
-                          onStatusChange={(st) => updateTrainingSchema(s.id, { status: st })}
+                          onSaved={() => showToast("Training opgeslagen")}
+                          actions={
+                            <>
+                              <button type="button" onClick={() => setSchemaModal({ open: true, editing: s })} title="Schema bewerken"
+                                className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-100"><Pencil size={14} className="text-gray-400" /></button>
+                              <button type="button" onClick={() => updateTrainingSchema(s.id, { status: "afgerond" })} title="Markeren als afgerond"
+                                className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-100"><CheckCircle2 size={14} className="text-gray-400" /></button>
+                            </>
+                          }
                         />
                       ))}
                     </div>

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Textarea, Input, Select } from "@/components/ui/Field";
 import { CompleteIntakeModal } from "@/components/portal/CompleteIntakeModal";
+import { PatientScheduleBoard } from "@/components/portal/PatientScheduleBoard";
 import {
   ONSET_MECHANISM_LABELS, SYMPTOM_COURSE_LABELS, REFERRAL_SOURCE_LABELS, SLEEP_IMPACT_LABELS, WORK_LOAD_LABELS,
   SPORT_FREQUENCY_LABELS, SPORT_LEVEL_LABELS, IMAGING_LABELS, RED_FLAG_LABELS,
@@ -24,8 +25,6 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { PatientEditForm } from "@/components/portal/PatientEditForm";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { ExerciseMultiSelectModal } from "@/components/portal/ExerciseMultiSelectModal";
-import { ExerciseThumb } from "@/components/portal/ExerciseThumb";
-import { SortableExerciseList } from "@/components/portal/SortableExerciseList";
 import { Avatar } from "@/components/ui/Avatar";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { formatDate, formatDateShort, BLESSURE_TYPEN } from "@/lib/data";
@@ -282,7 +281,8 @@ function phaseStatusBadge(status: string) {
 
 function ProtocolTab({
   assignment, canAssign, canManageContent, onAssignClick, onToggleCriterion, onToggleMilestone, onAdvancePhase, onRevertPhase, sessionNotes,
-  onAddExerciseClick, onEditExerciseClick, onRemoveExerciseClick, onReorderExercises, onAddPhaseClick,
+  onAddExerciseClick, onRemoveExerciseClick, onReorderExercises, onAddPhaseClick,
+  patientId, patientName, onScheduleChanged, notify,
 }: {
   assignment: PortalPatientProtocolAssignment | null;
   canAssign: boolean;
@@ -294,11 +294,15 @@ function ProtocolTab({
   onRevertPhase: (previousPhase: PortalPatientProtocolPhase) => void;
   sessionNotes: PortalPatientSessionNote[];
   onAddExerciseClick: (scheduleId: string) => void;
-  onEditExerciseClick: (exercise: PortalPatientProtocolScheduleExercise) => void;
   onRemoveExerciseClick: (exercise: PortalPatientProtocolScheduleExercise) => void;
   onReorderExercises: (scheduleId: string, orderedIds: string[]) => void;
   onAddPhaseClick: () => void;
+  patientId: string;
+  patientName: string;
+  onScheduleChanged: () => void;
+  notify: (message: string, type?: "success" | "error") => void;
 }) {
+  const [expandedPhaseIds, setExpandedPhaseIds] = useState<Set<string>>(new Set());
   if (!assignment) {
     return (
       <Card>
@@ -324,23 +328,35 @@ function ProtocolTab({
         {canAssign && <Button size="sm" variant="secondary" onClick={onAssignClick}>Herstelplan wijzigen</Button>}
       </div>
 
-      {sessionNotes.length > 0 && (
-        <Card>
-          <CardHeader title="Notities bij trainingssessies" subtitle="Door de patiënt toegevoegd bij het loggen van een sessie" />
-          <div className="space-y-2.5">
-            {sessionNotes.map((n) => (
-              <div key={n.id} className="rounded-xl p-3" style={{ background: "#f8f7f4" }}>
-                <div className="flex items-center gap-2 mb-1">
-                  <MessageSquare size={12} className="text-gray-400 shrink-0" />
-                  <span className="text-xs font-medium text-gray-700">{scheduleTitleById.get(n.scheduleId) ?? "Sessie"}</span>
-                  <span className="text-xs text-subtle ml-auto shrink-0">{formatDate(n.date)}</span>
-                </div>
-                <p className="text-sm text-gray-600 pl-[18px]">{n.reflection}</p>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
+      {/* Alle fases als stappen; klik om naar een fase te springen */}
+      <div className="rounded-2xl bg-white border p-3 overflow-x-auto" style={{ borderColor: "#e8e5df" }}>
+        <ol className="flex items-stretch gap-2 min-w-max">
+          {assignment.phases.map((ph, i) => {
+            const active = ph.status === "active";
+            const done = ph.status === "completed";
+            return (
+              <li key={ph.id} className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setExpandedPhaseIds((cur) => new Set(cur).add(ph.id)); document.getElementById(`fase-${ph.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
+                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-left transition-colors hover:bg-[#faf9f7]"
+                  style={{ background: active ? "#fff3ee" : undefined }}
+                >
+                  <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
+                    style={{ background: done ? "#16a34a" : active ? "var(--brand-accent, #e8632a)" : "#efece6", color: done || active ? "#fff" : "#8a847b" }}>
+                    {done ? <Check size={12} /> : i + 1}
+                  </span>
+                  <span className="max-w-[160px]">
+                    <span className={`block text-xs font-semibold truncate ${active ? "text-gray-900" : done ? "text-gray-600" : "text-gray-400"}`}>{ph.name}</span>
+                    <span className="block text-[11px] text-gray-400">{active ? "Huidige fase" : done ? "Afgerond" : "Nog niet gestart"}</span>
+                  </span>
+                </button>
+                {i < assignment.phases.length - 1 && <span className="w-4 h-px shrink-0" style={{ background: "#e2ddd5" }} />}
+              </li>
+            );
+          })}
+        </ol>
+      </div>
 
       {(() => {
         const activeIndex = assignment.phases.findIndex((p) => p.status === "active");
@@ -351,10 +367,21 @@ function ProtocolTab({
         const hasNextPhase = index < assignment.phases.length - 1;
         const canRevertToThis = canManageContent && phase.status === "completed" && activeIndex !== -1 && index === activeIndex - 1;
 
+        const expanded = isActive || expandedPhaseIds.has(phase.id);
         return (
-          <Card key={phase.id} padding={isActive ? "md" : "sm"}>
+          <div key={phase.id} id={`fase-${phase.id}`} className="scroll-mt-4 rounded-2xl" style={isActive ? { boxShadow: "0 0 0 2px var(--brand-accent, #e8632a)" } : undefined}>
+          <Card padding={isActive ? "md" : "sm"}>
+            {isActive && <p className="text-[11px] font-semibold uppercase tracking-[0.12em] mb-1" style={{ color: "var(--brand-accent, #e8632a)" }}>Huidige fase · {index + 1} van {assignment.phases.length}</p>}
             <div className="flex items-start justify-between gap-2 mb-1">
-              <h4 className="text-sm font-semibold text-gray-900">{phase.name}</h4>
+              {isActive ? (
+                <h4 className="text-lg font-semibold text-gray-900">{phase.name}</h4>
+              ) : (
+                <button type="button" onClick={() => setExpandedPhaseIds((cur) => { const n = new Set(cur); if (n.has(phase.id)) n.delete(phase.id); else n.add(phase.id); return n; })}
+                  className="flex items-center gap-2 text-left">
+                  <ChevronRight size={14} className={`text-gray-400 transition-transform ${expanded ? "rotate-90" : ""}`} />
+                  <span className="text-sm font-semibold text-gray-900">{index + 1}. {phase.name}</span>
+                </button>
+              )}
               <div className="flex items-center gap-2 shrink-0">
                 {phaseStatusBadge(phase.status)}
                 {canRevertToThis && (
@@ -369,9 +396,9 @@ function ProtocolTab({
                 )}
               </div>
             </div>
-            {phase.description && <p className="text-xs text-gray-500 mb-3">{phase.description}</p>}
+            {expanded && phase.description && <p className={`${isActive ? "text-sm" : "text-xs"} text-gray-500 mb-3`}>{phase.description}</p>}
 
-            {phase.status === "completed" && hasTransitionCheckin(phase) && (
+            {expanded && phase.status === "completed" && hasTransitionCheckin(phase) && (
               <div className="rounded-xl p-3 text-xs space-y-1 mb-3" style={{ background: "#f8f7f4" }}>
                 <p className="font-medium text-gray-500 uppercase tracking-wide" style={{ fontSize: "10px" }}>Check-in bij afronden fase</p>
                 {phase.transitionPainScore !== null && <p className="text-gray-700">Pijnscore: {phase.transitionPainScore}/10</p>}
@@ -437,86 +464,19 @@ function ProtocolTab({
                   </div>
                 )}
 
-                {phase.schedules.length > 0 && (
-                  <div>
-                    <h5 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Trainingsschema&apos;s</h5>
-                    <div className="space-y-2">
-                      {phase.schedules.map((s) => (
-                        <div key={s.id} className="rounded-xl border p-3" style={{ borderColor: "#e8e5df" }}>
-                          <div className="flex items-center justify-between gap-2 flex-wrap">
-                            <p className="text-sm font-medium text-gray-800">{s.title} <span className="text-xs text-subtle font-normal">— {s.frequencyPerWeek}× per week</span></p>
-                            <Badge variant={s.completedThisWeek >= s.frequencyPerWeek ? "success" : "muted"}>
-                              {s.completedThisWeek}/{s.frequencyPerWeek} deze week
-                            </Badge>
-                          </div>
-                          <div className="space-y-1.5 mt-2">
-                            <SortableExerciseList
-                              items={s.exercises}
-                              getId={(ex) => ex.id}
-                              onReorder={(orderedIds) => onReorderExercises(s.id, orderedIds)}
-                              disabled={!canManageContent}
-                              renderItem={(ex, index, dragHandle) => (
-                                <div
-                                  className="flex items-start gap-2.5 rounded-xl border px-2.5 py-2"
-                                  style={{ borderColor: "#e8e5df", background: "#ffffff" }}
-                                >
-                                  {dragHandle}
-                                  <div className="flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-semibold shrink-0 mt-0.5" style={{ background: "#f3f0eb", color: "#8a847d" }}>
-                                    {index + 1}
-                                  </div>
-                                  <ExerciseThumb mediaPath={ex.mediaPath} size={28} />
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-medium text-gray-800 truncate">{ex.title}</p>
-                                    {(ex.prescribedSets || ex.prescribedReps || ex.prescribedDurationSeconds || ex.prescribedLoadText) && (
-                                      <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 mt-0.5 text-[11px] text-gray-500">
-                                        {(ex.prescribedSets || ex.prescribedReps) && <span>{ex.prescribedSets ?? "?"}×{ex.prescribedReps ?? "?"}</span>}
-                                        {ex.prescribedDurationSeconds != null && <span>{ex.prescribedDurationSeconds} sec</span>}
-                                        {ex.prescribedLoadText && <span>{ex.prescribedLoadText}</span>}
-                                      </div>
-                                    )}
-                                    {ex.prescriptionNote && (
-                                      <p className="text-[11px] text-subtle italic mt-0.5 truncate">{ex.prescriptionNote}</p>
-                                    )}
-                                  </div>
-                                  {canManageContent && (
-                                    <span className="flex items-center gap-1 shrink-0">
-                                      <button
-                                        type="button"
-                                        onClick={() => onEditExerciseClick(ex)}
-                                        title="Oefening bewerken"
-                                        className="w-6 h-6 rounded-md flex items-center justify-center text-subtle hover:text-gray-700 hover:bg-gray-50 transition-colors"
-                                      >
-                                        <Pencil size={12} />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => onRemoveExerciseClick(ex)}
-                                        title="Oefening verwijderen"
-                                        className="w-6 h-6 rounded-md flex items-center justify-center text-subtle hover:text-red-600 hover:bg-gray-50 transition-colors"
-                                      >
-                                        <Trash2 size={12} />
-                                      </button>
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            />
-                          </div>
-                          {canManageContent && (
-                            <button
-                              type="button"
-                              onClick={() => onAddExerciseClick(s.id)}
-                              className="text-xs font-medium mt-2.5"
-                              style={{ color: "var(--brand-accent, #e8632a)" }}
-                            >
-                              + Oefening toevoegen
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <PatientScheduleBoard
+                  schedules={phase.schedules}
+                  phaseId={phase.id}
+                  phaseName={phase.name}
+                  patientId={patientId}
+                  patientName={patientName}
+                  canManage={canManageContent}
+                  onChanged={onScheduleChanged}
+                  onAddExercises={onAddExerciseClick}
+                  onRemoveExercise={onRemoveExerciseClick}
+                  onReorderExercises={onReorderExercises}
+                  notify={notify}
+                />
 
                 {canManageContent && hasNextPhase && (
                   <Button size="sm" disabled={!allCriteriaMet} onClick={() => onAdvancePhase(phase)}>
@@ -529,9 +489,28 @@ function ProtocolTab({
               </div>
             )}
           </Card>
+          </div>
         );
         });
       })()}
+
+      {sessionNotes.length > 0 && (
+        <Card>
+          <CardHeader title="Notities bij trainingssessies" subtitle="Door de patiënt toegevoegd bij het loggen van een sessie" />
+          <div className="space-y-2.5">
+            {sessionNotes.map((n) => (
+              <div key={n.id} className="rounded-xl p-3" style={{ background: "#f8f7f4" }}>
+                <div className="flex items-center gap-2 mb-1">
+                  <MessageSquare size={12} className="text-gray-400 shrink-0" />
+                  <span className="text-xs font-medium text-gray-700">{scheduleTitleById.get(n.scheduleId) ?? "Sessie"}</span>
+                  <span className="text-xs text-subtle ml-auto shrink-0">{formatDate(n.date)}</span>
+                </div>
+                <p className="text-sm text-gray-600 pl-[18px]">{n.reflection}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {canManageContent && (
         <button
@@ -1540,7 +1519,10 @@ export default function PortalPatientDetailPage() {
                   onRevertPhase={setConfirmRevert}
                   sessionNotes={sessionNotes}
                   onAddExerciseClick={(scheduleId) => setAddExerciseModal({ scheduleId })}
-                  onEditExerciseClick={(ex) => { setScheduleExerciseError(""); setEditingScheduleExercise(ex); }}
+                  patientId={patientId}
+                  patientName={patient.fullName || "Patiënt"}
+                  onScheduleChanged={refreshProtocol}
+                  notify={(m, t) => showToast(m, t)}
                   onRemoveExerciseClick={setConfirmRemoveExercise}
                   onReorderExercises={handleReorderScheduleExercises}
                   onAddPhaseClick={() => { setAddPhaseError(""); setAddPhase({ phaseName: `Fase ${(assignment?.phases.length ?? 0) + 1}`, phaseDescription: "", frequencyPerWeek: 3 }); }}

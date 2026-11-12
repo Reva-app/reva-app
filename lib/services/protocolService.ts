@@ -1336,6 +1336,9 @@ export interface PortalPatientProtocolScheduleExercise {
   prescribedLoadText: string | null;
   prescriptionNote: string | null;
   mediaPath: string | null;
+  mediaType: string | null;
+  description: string | null;
+  instructions: string | null;
 }
 
 export interface PortalPatientProtocolSchedule {
@@ -1549,7 +1552,7 @@ export async function loadPatientProtocolAssignment(patientId: string): Promise<
   const [{ data: scheduleExerciseRows }, { data: sessionLogRows }] = await Promise.all([
     scheduleIds.length
       ? supabase.from("patient_protocol_schedule_exercises")
-          .select("id, schedule_id, title, source_exercise_id, prescribed_sets, prescribed_reps, prescribed_duration_seconds, prescribed_load_text, prescription_note, media_path")
+          .select("id, schedule_id, title, description, instructions, source_exercise_id, prescribed_sets, prescribed_reps, prescribed_duration_seconds, prescribed_load_text, prescription_note, media_path, media_type")
           .in("schedule_id", scheduleIds).order("sort_order")
       : Promise.resolve({ data: [] as never[] }),
     // Zelfde weekdefinitie als patientProtocolService.ts's loadMyActiveProtocol
@@ -1595,7 +1598,7 @@ export async function loadPatientProtocolAssignment(patientId: string): Promise<
     id: string; schedule_id: string; title: string; source_exercise_id: string | null;
     prescribed_sets: number | null; prescribed_reps: number | null;
     prescribed_duration_seconds: number | null; prescribed_load_text: string | null; prescription_note: string | null;
-    media_path: string | null;
+    media_path: string | null; media_type: string | null; description: string | null; instructions: string | null;
   }[]) {
     const list = exercisesBySchedule.get(ex.schedule_id) ?? [];
     list.push({
@@ -1603,6 +1606,7 @@ export async function loadPatientProtocolAssignment(patientId: string): Promise<
       prescribedSets: ex.prescribed_sets, prescribedReps: ex.prescribed_reps,
       prescribedDurationSeconds: ex.prescribed_duration_seconds, prescribedLoadText: ex.prescribed_load_text,
       prescriptionNote: ex.prescription_note, mediaPath: ex.media_path,
+      description: ex.description, instructions: ex.instructions, mediaType: ex.media_type,
     });
     exercisesBySchedule.set(ex.schedule_id, list);
   }
@@ -1632,6 +1636,50 @@ export async function loadPatientProtocolAssignment(patientId: string): Promise<
   }));
 
   return { id: assignment.id, name: assignment.name, status: assignment.status, assignedAt: assignment.assigned_at, phases };
+}
+
+/** Nieuw (leeg) oefenschema in een fase van één patiënt. */
+export async function createPatientSchedule(
+  phaseId: string, title: string, frequencyPerWeek: number, sortOrder: number
+): Promise<{ id: string | null; error: string | null }> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("patient_protocol_schedules")
+    .insert({ phase_id: phaseId, title: title.trim() || "Oefeningen", frequency_per_week: frequencyPerWeek, sort_order: sortOrder })
+    .select("id").single();
+  if (error || !data) { logErr("createPatientSchedule", error); return { id: null, error: "Aanmaken van het schema is niet gelukt." }; }
+  return { id: data.id as string, error: null };
+}
+
+export async function updatePatientSchedule(
+  scheduleId: string, input: { title: string; frequencyPerWeek: number }
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("patient_protocol_schedules")
+    .update({ title: input.title.trim() || "Oefeningen", frequency_per_week: input.frequencyPerWeek })
+    .eq("id", scheduleId);
+  if (error) { logErr("updatePatientSchedule", error); return { error: "Opslaan van het schema is niet gelukt." }; }
+  return { error: null };
+}
+
+/**
+ * Alleen een schema zonder gelogde trainingen: de logs hangen er met een
+ * cascade aan, dus verwijderen zou de trainingshistorie van de patiënt wissen.
+ */
+export async function deletePatientSchedule(scheduleId: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { count, error: countError } = await supabase
+    .from("patient_protocol_session_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("schedule_id", scheduleId);
+  if (countError) { logErr("deletePatientSchedule(count)", countError); return { error: "Verwijderen van het schema is niet gelukt." }; }
+  if ((count ?? 0) > 0) {
+    return { error: "Op dit schema zijn al trainingen gelogd. Verwijderen zou die historie wissen; haal liever de oefeningen eruit of hernoem het schema." };
+  }
+  const { error } = await supabase.from("patient_protocol_schedules").delete().eq("id", scheduleId);
+  if (error) { logErr("deletePatientSchedule", error); return { error: "Verwijderen van het schema is niet gelukt." }; }
+  return { error: null };
 }
 
 export interface PortalPatientScheduleExerciseInput {

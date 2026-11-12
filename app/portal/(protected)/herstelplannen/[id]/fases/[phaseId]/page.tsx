@@ -1,5 +1,6 @@
 "use client";
 
+import { formatPrescription } from "@/lib/prescription";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -401,9 +402,9 @@ export default function PortalProtocolPhaseDetailPage() {
                               <div key={ex.id} className="flex items-center gap-2 text-xs rounded-lg px-3 py-2" style={{ background: "#f8f7f4" }}>
                                 <Dumbbell size={12} className="text-gray-400 shrink-0" />
                                 <span className="text-gray-700 truncate">{ex.exerciseTitle}</span>
-                                {(ex.prescribedSets || ex.prescribedReps) && (
+                                {formatPrescription(ex) && (
                                   <Badge variant="muted" className="ml-auto shrink-0">
-                                    {ex.prescribedSets ?? "?"}×{ex.prescribedReps ?? "?"}{ex.prescribedLoadText ? ` · ${ex.prescribedLoadText}` : ""}
+                                    {formatPrescription(ex)}
                                   </Badge>
                                 )}
                               </div>

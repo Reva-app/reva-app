@@ -1,5 +1,6 @@
 "use client";
 
+import { formatPrescription } from "@/lib/prescription";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowUpDown, Info, Plus, Pencil, Trash2 } from "lucide-react";
@@ -330,9 +331,7 @@ export default function PortalScheduleDetailPage() {
                             <p className="text-sm font-medium text-gray-800 truncate">{ex.exerciseTitle}</p>
                             {(ex.prescribedSets || ex.prescribedReps || ex.prescribedDurationSeconds || ex.prescribedLoadText) && (
                               <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 mt-0.5 text-xs text-gray-500">
-                                {(ex.prescribedSets || ex.prescribedReps) && <span>{ex.prescribedSets ?? "?"}×{ex.prescribedReps ?? "?"}</span>}
-                                {ex.prescribedDurationSeconds != null && <span>{ex.prescribedDurationSeconds} sec</span>}
-                                {ex.prescribedLoadText && <span>{ex.prescribedLoadText}</span>}
+                                <span>{formatPrescription(ex)}</span>
                               </div>
                             )}
                             {ex.prescriptionNote && (

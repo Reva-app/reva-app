@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, Check, X } from "lucide-react";
+import { formatPrescription } from "@/lib/prescription";
 import { Modal, ModalFooter } from "@/components/ui/Modal";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ExerciseThumb } from "@/components/portal/ExerciseThumb";
 import {
@@ -18,6 +18,16 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 }
 
 type SourceFilter = "all" | "organization" | "reva";
+
+function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" onClick={onClick} aria-pressed={active}
+      className="rounded-full border px-3 py-1.5 text-sm transition-colors"
+      style={{ borderColor: active ? "#1c1c1e" : "#e8e5df", background: active ? "#1c1c1e" : "#ffffff", color: active ? "#ffffff" : "#4b5563" }}>
+      {children}
+    </button>
+  );
+}
 
 /**
  * Doorzoekbare multi-select om in één keer meerdere oefeningen aan een
@@ -113,81 +123,91 @@ export function ExerciseMultiSelectModal({
   }
 
   return (
-    <Modal onClose={onClose} maxWidth="max-w-lg" dismissOnBackdropClick={false}>
+    <Modal onClose={onClose} maxWidth="max-w-3xl" dismissOnBackdropClick={false}>
       <div className="rounded-2xl p-6" style={{ background: "#ffffff" }}>
-        <h3 className="font-semibold text-gray-900 mb-4">Oefeningen toevoegen</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Oefeningen toevoegen</h3>
 
         {!showNewExercise ? (
           <div className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-              <div className="relative flex-1 min-w-[160px]">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Zoeken…" className="w-full text-base sm:text-sm rounded-xl border pl-9 pr-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
-                />
-              </div>
-              <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value as SourceFilter)} className="text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
-                <option value="all">Alles</option>
-                <option value="organization">Eigen bibliotheek</option>
-                <option value="reva">REVA-bibliotheek</option>
-              </select>
-              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}>
-                <option value="">Alle categorieën</option>
-                {Object.entries(EXERCISE_TYPE_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-              </select>
+            <div className="relative">
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text" value={search} onChange={(e) => setSearch(e.target.value)} autoFocus
+                placeholder="Zoek een oefening, bijv. squat, kuit, schouder…"
+                className="w-full text-base rounded-2xl border pl-10 pr-3 py-3 focus:outline-none focus:border-[#e8632a]" style={inputStyle}
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {[{ key: "", label: "Alle typen" }, ...Object.entries(EXERCISE_TYPE_LABELS).map(([key, label]) => ({ key, label }))].map((c) => (
+                <FilterChip key={c.key || "all"} active={categoryFilter === c.key} onClick={() => setCategoryFilter(c.key)}>{c.label}</FilterChip>
+              ))}
+              <span className="w-px bg-gray-200 mx-1" aria-hidden />
+              {([["all", "Alles"], ["organization", "Eigen"], ["reva", "REVA"]] as const).map(([key, label]) => (
+                <FilterChip key={key} active={sourceFilter === key} onClick={() => setSourceFilter(key)}>{label}</FilterChip>
+              ))}
             </div>
 
             <div className="flex items-center justify-between">
-              <p className="text-xs text-subtle">{pickable.length} beschikbaar</p>
-              <button type="button" onClick={() => setShowNewExercise(true)} className="text-xs font-medium" style={{ color: "var(--brand-accent, #e8632a)" }}>
+              <p className="text-xs text-subtle">{pickable.length} {pickable.length === 1 ? "oefening" : "oefeningen"}</p>
+              <button type="button" onClick={() => setShowNewExercise(true)} className="text-sm font-medium" style={{ color: "var(--brand-accent, #e8632a)" }}>
                 + Nieuwe oefening
               </button>
             </div>
 
-            <div className="max-h-72 overflow-y-auto rounded-xl border" style={{ borderColor: "#e8e5df" }}>
+            <div className="max-h-[52vh] overflow-y-auto -mx-1 px-1">
               {pickable.length === 0 ? (
-                <p className="text-sm text-subtle p-4">Geen oefeningen gevonden.</p>
+                <p className="text-sm text-subtle p-4 text-center">Geen oefeningen gevonden. Pas je zoekterm of filters aan.</p>
               ) : (
-                <>
-                  {orgPickable.length > 0 && (
-                    <>
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-subtle px-3 pt-2.5 pb-1">Eigen bibliotheek</p>
-                      {orgPickable.map((ex) => (
-                        <label key={ex.id} className="flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50">
-                          <input type="checkbox" checked={selectedIds.has(ex.id)} onChange={() => toggle(ex.id)} />
-                          <ExerciseThumb mediaPath={ex.mediaPath} mediaType={ex.mediaType} size={28} />
-                          <span className="flex-1 text-gray-700">{ex.title}</span>
-                          <Badge variant="muted">{EXERCISE_TYPE_LABELS[ex.exerciseType] ?? ex.exerciseType}</Badge>
-                        </label>
-                      ))}
-                    </>
-                  )}
-                  {revaPickable.length > 0 && (
-                    <>
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-subtle px-3 pt-2.5 pb-1">REVA-bibliotheek</p>
-                      {revaPickable.map((ex) => (
-                        <label key={ex.id} className="flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50">
-                          <input type="checkbox" checked={selectedIds.has(ex.id)} onChange={() => toggle(ex.id)} />
-                          <ExerciseThumb mediaPath={ex.mediaPath} mediaType={ex.mediaType} size={28} />
-                          <span className="flex-1 text-gray-700">{ex.title}</span>
-                          <Badge variant="muted">{EXERCISE_TYPE_LABELS[ex.exerciseType] ?? ex.exerciseType}</Badge>
-                        </label>
-                      ))}
-                    </>
-                  )}
-                </>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {[...orgPickable, ...revaPickable].map((ex) => {
+                    const selected = selectedIds.has(ex.id);
+                    const dose = formatPrescription({ prescribedSets: ex.defaultSets, prescribedReps: ex.defaultReps, prescribedDurationSeconds: ex.defaultDurationSeconds }, { withLoad: false });
+                    return (
+                      <button
+                        key={ex.id} type="button" onClick={() => toggle(ex.id)} aria-pressed={selected}
+                        className="flex items-center gap-3 text-left rounded-2xl border p-2.5 transition-colors"
+                        style={{ borderColor: selected ? "var(--brand-accent, #e8632a)" : "#e8e5df", background: selected ? "#fff6f1" : "#ffffff" }}
+                      >
+                        <ExerciseThumb mediaPath={ex.mediaPath} mediaType={ex.mediaType} size={48} />
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-sm font-medium text-gray-900 leading-snug line-clamp-2">{ex.title}</span>
+                          <span className="block text-xs text-gray-500 mt-0.5">
+                            {EXERCISE_TYPE_LABELS[ex.exerciseType] ?? ex.exerciseType}{dose ? ` · ${dose}` : ""}{ex.scope === "organization" ? " · eigen" : ""}
+                          </span>
+                        </span>
+                        <span className="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style={{ background: selected ? "var(--brand-accent, #e8632a)" : "#ffffff", border: selected ? "none" : "2px solid #d9d4cc" }}>
+                          {selected && <Check size={14} color="#ffffff" strokeWidth={3} />}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               )}
             </div>
+
+            {selectedIds.size > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {[...selectedIds].map((id) => {
+                  const ex = exercises.find((e) => e.id === id);
+                  return ex ? (
+                    <span key={id} className="inline-flex items-center gap-1 rounded-full pl-3 pr-1 py-1 text-xs font-medium" style={{ background: "#fff3ee", color: "#9a3f17" }}>
+                      {ex.title}
+                      <button type="button" onClick={() => toggle(id)} aria-label={`${ex.title} weghalen`} className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-white/60"><X size={12} /></button>
+                    </span>
+                  ) : null;
+                })}
+              </div>
+            )}
 
             {resultMessage && <p className="text-xs" style={{ color: "#dc2626" }}>{resultMessage}</p>}
 
             <ModalFooter className="justify-between">
-              <span className="text-xs text-gray-500">{selectedIds.size} geselecteerd</span>
+              <span className="text-sm text-gray-500">{selectedIds.size} geselecteerd</span>
               <div className="flex gap-2">
-                <Button type="button" size="sm" variant="secondary" onClick={onClose}>Annuleren</Button>
-                <Button type="button" size="sm" disabled={adding || selectedIds.size === 0} onClick={handleAdd}>
-                  {adding ? "Toevoegen…" : `${selectedIds.size || ""} Toevoegen`.trim()}
+                <Button type="button" variant="secondary" onClick={onClose}>Annuleren</Button>
+                <Button type="button" disabled={adding || selectedIds.size === 0} onClick={handleAdd}>
+                  {adding ? "Toevoegen…" : selectedIds.size > 0 ? `${selectedIds.size} toevoegen` : "Toevoegen"}
                 </Button>
               </div>
             </ModalFooter>
