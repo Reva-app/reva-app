@@ -1,5 +1,6 @@
 "use client";
 
+import { useEscape } from "@/lib/hooks/useEscape";
 import { ScoreScale } from "@/components/checkin/ScoreScale";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
@@ -347,6 +348,7 @@ function CheckInEditModal({
   const [slaap,      setSlaap]      = useState(checkIn.slaap);
   const [stemming,   setStemming]   = useState(checkIn.stemming);
   const [notitie,    setNotitie]    = useState(checkIn.notitie ?? "");
+  useEscape(onClose);
 
   const dateLabel = new Date(checkIn.date + "T12:00:00").toLocaleDateString("nl-NL", {
     weekday: "long", day: "numeric", month: "long",

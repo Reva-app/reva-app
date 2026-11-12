@@ -1,5 +1,6 @@
 "use client";
 
+import { useEscape } from "@/lib/hooks/useEscape";
 import { useState } from "react";
 import { X, Zap, CheckCircle, Star } from "lucide-react";
 import { getFeatureLockInfo } from "@/lib/featureGates";
@@ -20,6 +21,7 @@ const PREMIUM_FEATURES = [
 ];
 
 export function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
+  useEscape(onClose);
   const planInfo = useUserPlan();
   const lockInfo = feature ? getFeatureLockInfo(feature) : null;
   const [selected, setSelected] = useState<"yearly" | "monthly">("yearly");

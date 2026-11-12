@@ -1,5 +1,6 @@
 "use client";
 
+import { useEscape } from "@/lib/hooks/useEscape";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, UserPlus, Dumbbell, ListChecks, ClipboardList, Loader2 } from "lucide-react";
@@ -31,6 +32,7 @@ export function PortalQuickActionFAB() {
   const { membership } = usePortalMembership();
   const { showToast, toastNode } = useToast();
   const [open, setOpen] = useState(false);
+  useEscape(() => setOpen(false), open);
   const [busy, setBusy] = useState<ActionId | null>(null);
 
   if (!membership) return null;

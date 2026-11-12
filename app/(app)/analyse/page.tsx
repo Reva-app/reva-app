@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { usePatientProtocol } from "@/lib/hooks/usePatientProtocol";
 import { MyTests } from "@/components/tests/MyTests";
+import { MyJourney } from "@/components/journey/MyJourney";
 import type { TrainingLog } from "@/lib/data";
 import { loadExerciseProgressHistory, loadSessionLogsInRange, type ExerciseProgressPoint } from "@/lib/services/patientProtocolService";
 import { LineChart as ProtocolLineChart, Bar as ProtocolBar } from "@/components/ui/Charts";
@@ -252,7 +253,7 @@ function PeriodFilter({ value, onChange }: { value: Period; onChange: (p: Period
 export default function AnalysePage() {
   const {
     hydrated, checkIns, medicatie, trainingLogs,
-    appointments, mijlpalen, fotoUpdates,
+    appointments, mijlpalen, fotoUpdates, dagsSindsBlessure,
   } = useAppData();
   const planInfo = useUserPlan();
   const { checked: protocolChecked, hasActiveProtocol, protocol, patientId } = usePatientProtocol();
@@ -487,6 +488,9 @@ export default function AnalysePage() {
           <PeriodFilter value={period} onChange={setPeriod} />
         </div>
       </div>
+
+      {/* Jouw traject: wat je al gedaan hebt, altijd zichtbaar */}
+      <MyJourney patientId={patientId} checkIns={checkIns} mijlpalen={mijlpalen} trainingLogs={trainingLogs} daysSinceStart={dagsSindsBlessure} />
 
       {/* Testen van de fysio: altijd zichtbaar, ook zonder abonnement */}
       {patientId && <MyTests patientId={patientId} />}

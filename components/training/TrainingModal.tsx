@@ -1,5 +1,6 @@
 "use client";
 
+import { useEscape } from "@/lib/hooks/useEscape";
 import { useState } from "react";
 import { X, Check } from "lucide-react";
 import type { DagboekWorkout } from "@/lib/data";
@@ -117,6 +118,7 @@ export function TrainingModal({
   onSave: (w: DagboekWorkout) => void;
   onClose: () => void;
 }) {
+  useEscape(onClose);
   const [values, setValues] = useState<TrainingFormValues>({
     schemaId: trainingSchemas[0]?.id ?? "",
     vrij: "",

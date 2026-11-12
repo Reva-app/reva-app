@@ -87,7 +87,8 @@ export function PortalSidebar() {
   const { membership } = usePortalMembership();
   const { branding } = usePortalBranding();
   const canManageBranding = !!membership && MANAGE_BRANDING_ROLES.includes(membership.roleKey);
-  const canViewAnalytics = !!membership && VIEW_ANALYTICS_ROLES.includes(membership.roleKey);
+  // Analyse: eigenaar ziet de praktijk, een behandelaar de eigen patiënten.
+  const canViewAnalytics = !!membership && (VIEW_ANALYTICS_ROLES.includes(membership.roleKey) || canViewClinicalData(membership.roleKey));
   const canViewAuditLog = !!membership && VIEW_AUDIT_LOG_ROLES.includes(membership.roleKey);
   const { primary, secondary } = getPortalNavItems(canManageBranding, canViewAnalytics, canViewAuditLog, canViewClinicalData(membership?.roleKey));
 

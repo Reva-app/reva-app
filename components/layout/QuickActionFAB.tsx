@@ -1,5 +1,6 @@
 "use client";
 
+import { useEscape } from "@/lib/hooks/useEscape";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -189,6 +190,7 @@ const ACTIONS = [
 export function QuickActionFAB() {
   const router = useRouter();
   const [fabOpen, setFabOpen] = useState(false);
+  useEscape(() => setFabOpen(false), fabOpen);
   const [activeSheet, setActiveSheet] = useState<Sheet | null>(null);
 
   const {
