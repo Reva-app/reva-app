@@ -306,11 +306,28 @@ const SYMPTOM_ONSET_LABELS: Record<SymptomOnset, string> = {
   gt_3_months: "meer dan 3 maanden",
 };
 
+/** Vrije tekst netjes in een zin: zonder eigen slotpunt (anders ".."). */
+function clause(text: string): string {
+  return text.trim().replace(/[.!?\s]+$/, "");
+}
+
+/** Vrije tekst midden in een zin: eerste letter klein (tenzij het een afkorting lijkt). */
+function lowerFirst(text: string): string {
+  const t = clause(text);
+  return /^[A-Z]{2}/.test(t) ? t : t.charAt(0).toLowerCase() + t.slice(1);
+}
+
+/** Beloop in een zin over "de klachten" (meervoud). */
+const SYMPTOM_COURSE_PLURAL: Record<SymptomCourse, string> = {
+  improving: "worden beter", stable: "blijven gelijk", worsening: "worden erger", fluctuating: "wisselen sterk",
+};
+
 function buildSummary(input: IntakeAnalysisInput, weeksPostOp: number | null): string {
   const { intake, injuryType, surgeryDate } = input;
   const fragments: string[] = [];
 
-  if (intake.visitReason && intake.visitReason !== "surgery") {
+  // "Anders" zegt in een samenvatting niets; de omschrijving hieronder wel.
+  if (intake.visitReason && intake.visitReason !== "surgery" && intake.visitReason !== "other") {
     fragments.push(`De patiënt komt in verband met: ${VISIT_REASON_LABELS[intake.visitReason].toLowerCase()}.`);
   }
 
@@ -327,12 +344,12 @@ function buildSummary(input: IntakeAnalysisInput, weeksPostOp: number | null): s
         ? `De patiënt is deze week geopereerd${label ? ` (${label.toLowerCase()})` : ""}${sideSuffix}.`
         : `De patiënt is ${weeksPostOp} ${weeksPostOp === 1 ? "week" : "weken"} geleden geopereerd${label ? ` (${label.toLowerCase()})` : ""}${sideSuffix}.`
     );
-  } else if (injuryType) {
+  } else if (injuryType && injuryType !== "anders") {
     fragments.push(`De patiënt heeft te maken met: ${blessureLabel(injuryType).toLowerCase()}${sideSuffix}.`);
   }
 
   if (intake.additionalProcedures.trim()) {
-    fragments.push(`Tijdens dezelfde ingreep is aanvullend: ${intake.additionalProcedures.trim()}.`);
+    fragments.push(`Tijdens dezelfde ingreep is aanvullend: ${clause(intake.additionalProcedures)}.`);
   }
 
   if (intake.pregnancyRelated) {
@@ -360,7 +377,7 @@ function buildSummary(input: IntakeAnalysisInput, weeksPostOp: number | null): s
   if (painParts.length > 0) fragments.push(`Momenteel is er ${painParts.join(" en ")}.`);
 
   if (intake.injuryDescription.trim()) {
-    fragments.push(`Zo is het ontstaan: ${intake.injuryDescription.trim()}.`);
+    fragments.push(`Zo is het ontstaan: ${lowerFirst(intake.injuryDescription)}.`);
   } else if (intake.onsetMechanism === "sudden") {
     fragments.push("De klacht ontstond plotseling.");
   } else if (intake.onsetMechanism === "gradual") {
@@ -368,9 +385,9 @@ function buildSummary(input: IntakeAnalysisInput, weeksPostOp: number | null): s
   }
 
   if (intake.symptomOnset) {
-    fragments.push(`De klachten bestaan al ${SYMPTOM_ONSET_LABELS[intake.symptomOnset]}${intake.symptomCourse ? ` en ${SYMPTOM_COURSE_LABELS[intake.symptomCourse].toLowerCase()}` : ""}.`);
+    fragments.push(`De klachten bestaan al ${SYMPTOM_ONSET_LABELS[intake.symptomOnset]}${intake.symptomCourse ? ` en ${SYMPTOM_COURSE_PLURAL[intake.symptomCourse]}` : ""}.`);
   } else if (intake.symptomCourse) {
-    fragments.push(`Het beloop: ${SYMPTOM_COURSE_LABELS[intake.symptomCourse].toLowerCase()}.`);
+    fragments.push(`De klachten ${SYMPTOM_COURSE_PLURAL[intake.symptomCourse]}.`);
   }
 
   if (intake.dailyImpact === "moderate" || intake.dailyImpact === "severe") {
@@ -378,7 +395,7 @@ function buildSummary(input: IntakeAnalysisInput, weeksPostOp: number | null): s
   }
 
   if (intake.previousTreatmentText.trim()) {
-    fragments.push(`Eerder gevolgde behandeling: ${intake.previousTreatmentText.trim()}.`);
+    fragments.push(`Eerder gevolgde behandeling: ${lowerFirst(intake.previousTreatmentText)}.`);
   }
 
   if (intake.occupation.trim() || intake.workLoad) {
@@ -389,7 +406,7 @@ function buildSummary(input: IntakeAnalysisInput, weeksPostOp: number | null): s
   const goalParts: string[] = [];
   if (intake.returnToSportGoal) goalParts.push(intake.sportType.trim() ? `weer te kunnen ${intake.sportType.trim()}` : "weer te kunnen sporten");
   if (intake.returnToWorkGoal) goalParts.push("terug te keren naar werk");
-  if (intake.patientGoalText.trim()) goalParts.push(intake.patientGoalText.trim());
+  if (intake.patientGoalText.trim()) goalParts.push(lowerFirst(intake.patientGoalText));
   if (goalParts.length > 0) {
     const timeframe = intake.goalTimeframeMonths ? ` binnen ${intake.goalTimeframeMonths} ${intake.goalTimeframeMonths === 1 ? "maand" : "maanden"}` : "";
     fragments.push(`Het persoonlijke doel is om${timeframe} ${goalParts.join(" en ")}.`);

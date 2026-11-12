@@ -407,7 +407,8 @@ for (const [index, p] of PATIENTS.entries()) {
             exLogs.push({ patient_id: patientId, session_log_id: sid, schedule_exercise_id: e.id, date: dayStr(d), completed: true,
               sets: e.prescribed_sets, reps: timed ? null : e.prescribed_reps, duration_seconds: timed ? e.prescribed_duration_seconds : null,
               weight_kg: !timed && /gewicht|kg|dumbbell|halter/i.test(e.prescribed_load_text ?? "") ? 5 + Math.round(rnd() * 10) : null,
-              pain_score: clamp(Math.round(3 + rnd() * 2 - (TODAY - d) / -60), 0, 10) });
+              // Pijn per oefening: niet altijd ingevuld, lager naarmate het herstel vordert.
+              pain_score: rnd() < 0.4 ? null : clamp(Math.round(1 + rnd() * 2 + (TODAY - d) / 86_400_000 / 30), 0, 10) });
           }
         }
       }

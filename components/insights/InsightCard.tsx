@@ -6,13 +6,13 @@ import type { InsightSuggestion, InsightTarget, InsightTone, PatientInsights } f
 
 const DISMISS_KEY = "reva-insights-dismissed";
 
-function readDismissed(scope: string): string[] {
+export function readDismissed(scope: string): string[] {
   try {
     const all = JSON.parse(localStorage.getItem(DISMISS_KEY) ?? "{}") as Record<string, string[]>;
     return all[scope] ?? [];
   } catch { return []; }
 }
-function writeDismissed(scope: string, ids: string[]) {
+export function writeDismissed(scope: string, ids: string[]) {
   try {
     const all = JSON.parse(localStorage.getItem(DISMISS_KEY) ?? "{}") as Record<string, string[]>;
     all[scope] = ids.slice(-40);
@@ -20,7 +20,7 @@ function writeDismissed(scope: string, ids: string[]) {
   } catch { /* geen opslag */ }
 }
 
-const TONE: Record<InsightTone, { icon: typeof Info; color: string; bg: string }> = {
+export const TONE: Record<InsightTone, { icon: typeof Info; color: string; bg: string }> = {
   attention: { icon: AlertTriangle, color: "#b45309", bg: "#fef3c7" },
   positive: { icon: TrendingUp, color: "#15803d", bg: "#dcfce7" },
   info: { icon: Info, color: "#4b5563", bg: "#f3f4f6" },

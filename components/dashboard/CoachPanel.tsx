@@ -1,5 +1,6 @@
 "use client";
 
+import { Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import type { CoachInsights, CoachMoodTag } from "@/lib/coach";
 
@@ -35,7 +36,7 @@ export function CoachPanel({ coachInsights }: CoachPanelProps) {
               {moodCfg.label}
             </span>
           </div>
-          <span className="text-[11px] font-medium text-subtle uppercase tracking-widest">Jouw coach</span>
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--brand-accent, #e8632a)" }}><Sparkles size={12} /> REVA-coach</span>
         </div>
 
         {/* Daily insight */}

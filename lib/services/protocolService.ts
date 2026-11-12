@@ -1404,6 +1404,49 @@ export async function loadPatientSessionNotes(patientId: string, limit = 10): Pr
     .map((r) => ({ id: r.id as string, date: r.date as string, scheduleId: r.schedule_id as string, reflection: r.reflection as string }));
 }
 
+/** Eén gelogde trainingssessie (voor REVA-inzicht: trainingstrouw per schema). */
+export interface PortalTrainingSessionLog {
+  id: string;
+  scheduleId: string;
+  date: string;
+}
+
+/** Cijfers van één oefening binnen een gelogde sessie (sets gedaan, herhalingen, gewicht, duur, pijn). */
+export interface PortalTrainingExerciseLog {
+  sessionLogId: string;
+  scheduleExerciseId: string;
+  date: string;
+  sets: number | null;
+  reps: number | null;
+  weightKg: number | null;
+  durationSeconds: number | null;
+  painScore: number | null;
+}
+
+/** Sessies en oefeningcijfers vanaf `sinceDate` (YYYY-MM-DD), voor voorstellen over dosering. */
+export async function loadPatientTrainingLogs(patientId: string, sinceDate: string): Promise<{ sessions: PortalTrainingSessionLog[]; exercises: PortalTrainingExerciseLog[] }> {
+  const supabase = createClient();
+  const [sessionsRes, exercisesRes] = await Promise.all([
+    supabase.from("patient_protocol_session_logs").select("id, schedule_id, date").eq("patient_id", patientId).gte("date", sinceDate).order("date", { ascending: false }).limit(200),
+    supabase.from("patient_protocol_exercise_logs").select("session_log_id, schedule_exercise_id, date, sets, reps, weight_kg, duration_seconds, pain_score").eq("patient_id", patientId).gte("date", sinceDate).limit(1000),
+  ]);
+  if (sessionsRes.error) logErr("loadPatientTrainingLogs(sessions)", sessionsRes.error);
+  if (exercisesRes.error) logErr("loadPatientTrainingLogs(exercises)", exercisesRes.error);
+  return {
+    sessions: (sessionsRes.data ?? []).map((r) => ({ id: r.id as string, scheduleId: r.schedule_id as string, date: r.date as string })),
+    exercises: (exercisesRes.data ?? []).map((r) => ({
+      sessionLogId: r.session_log_id as string,
+      scheduleExerciseId: r.schedule_exercise_id as string,
+      date: r.date as string,
+      sets: r.sets as number | null,
+      reps: r.reps as number | null,
+      weightKg: r.weight_kg === null ? null : Number(r.weight_kg),
+      durationSeconds: r.duration_seconds as number | null,
+      painScore: r.pain_score as number | null,
+    })),
+  };
+}
+
 export interface PortalPatientStaffNote {
   id: string;
   authorId: string | null;

@@ -23,6 +23,10 @@ import { Tabs } from "@/components/ui/Tabs";
 import { ActionMenu } from "@/components/ui/ActionMenu";
 import { InsightCard } from "@/components/insights/InsightCard";
 import { buildPatientInsights } from "@/lib/insights/patientInsights";
+import { buildPlanSuggestions, type PlanSuggestion } from "@/lib/insights/planInsights";
+import { PlanSuggestions } from "@/components/insights/PlanSuggestions";
+import { IntakeInsight } from "@/components/insights/IntakeInsight";
+import { loadPatientTrainingLogs, type PortalTrainingSessionLog, type PortalTrainingExerciseLog } from "@/lib/services/protocolService";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PatientEditForm } from "@/components/portal/PatientEditForm";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -284,8 +288,10 @@ function phaseStatusBadge(status: string) {
 function ProtocolTab({
   assignment, canAssign, canManageContent, onAssignClick, onToggleCriterion, onToggleMilestone, onAdvancePhase, onRevertPhase, sessionNotes,
   onAddExerciseClick, onRemoveExerciseClick, onReorderExercises, onAddPhaseClick,
-  patientId, patientName, onScheduleChanged, notify,
+  patientId, patientName, onScheduleChanged, notify, planSuggestions, onEditExercise,
 }: {
+  planSuggestions: PlanSuggestion[];
+  onEditExercise: (exercise: PortalPatientProtocolScheduleExercise) => void;
   assignment: PortalPatientProtocolAssignment | null;
   canAssign: boolean;
   canManageContent: boolean;
@@ -414,6 +420,15 @@ function ProtocolTab({
 
             {isActive && (
               <div className="space-y-4 mt-3">
+                <PlanSuggestions
+                  suggestions={planSuggestions}
+                  scope={patientId}
+                  canManage={canManageContent}
+                  onEditExercise={onEditExercise}
+                  onAdvancePhase={() => onAdvancePhase(phase)}
+                  onChanged={onScheduleChanged}
+                  notify={notify}
+                />
                 {phase.forbiddenActivities.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {phase.forbiddenActivities.map((a, i) => <Badge key={i} variant="danger">Verboden: {a}</Badge>)}
@@ -898,7 +913,13 @@ export default function PortalPatientDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [tab, setTab] = useState<TabKey>("overzicht");
+  // ?tab=herstelplan opent direct die tab (bv. vanuit een voorstel of link).
+  // Lazy uitlezen is veilig: de tabs renderen pas na het laden van de data.
+  const [tab, setTab] = useState<TabKey>(() => {
+    if (typeof window === "undefined") return "overzicht";
+    const t = new URLSearchParams(window.location.search).get("tab");
+    return t === "herstelplan" || t === "logboek" ? t : "overzicht";
+  });
 
   // Fotogalerij: laadt de volledige fotogeschiedenis pas zodra de gebruiker
   // hem daadwerkelijk opent (niet vooraf bij elk paginabezoek).
@@ -964,6 +985,14 @@ export default function PortalPatientDetailPage() {
   const canManagePatients = !!membership && MANAGE_PATIENTS_ROLES.includes(membership.roleKey);
   const canAssignProtocol = canManagePatients; // toewijzen mag de bredere groep, zie D6
   const canManageProtocolContent = !!membership && MANAGE_PROTOCOLS_ROLES.includes(membership.roleKey);
+
+  const [trainingLogs, setTrainingLogs] = useState<{ sessions: PortalTrainingSessionLog[]; exercises: PortalTrainingExerciseLog[] }>({ sessions: [], exercises: [] });
+  useEffect(() => {
+    let cancelled = false;
+    const since = new Date(Date.now() - 35 * 86_400_000).toISOString().slice(0, 10);
+    loadPatientTrainingLogs(patientId, since).then((logs) => { if (!cancelled) setTrainingLogs(logs); });
+    return () => { cancelled = true; };
+  }, [patientId]);
 
   function refreshProtocol() {
     loadPatientProtocolAssignment(patientId).then(setAssignment);
@@ -1308,6 +1337,17 @@ export default function PortalPatientDetailPage() {
 
   const lastCheckin = extras?.checkinTrend[extras.checkinTrend.length - 1] ?? null;
   const showMilestone = extras?.recentMilestone && daysSince(extras.recentMilestone.completedAt) <= 30;
+  const activePhaseIndex = assignment?.phases.findIndex((p) => p.status === "active") ?? -1;
+  const planSuggestions: PlanSuggestion[] = assignment && activePhaseIndex >= 0
+    ? buildPlanSuggestions({
+        phase: assignment.phases[activePhaseIndex],
+        hasNextPhase: activePhaseIndex < assignment.phases.length - 1,
+        sessions: trainingLogs.sessions,
+        exerciseLogs: trainingLogs.exercises,
+        checkins: extras?.checkinTrend ?? [],
+        today: localToday(),
+      })
+    : [];
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
@@ -1370,18 +1410,14 @@ export default function PortalPatientDetailPage() {
               {(tab === "overzicht" || tab === "gegevens") && (
               <>
               {intake?.status === "submitted" && canAssignProtocol && (
-                <div className="rounded-2xl p-5 flex items-start gap-4 flex-wrap" style={{ background: "var(--brand-accent-soft, #fff3ee)", border: "1px solid var(--brand-accent-border, #f6d3c2)" }}>
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--brand-accent, #e8632a)" }}>
-                    <ClipboardList size={18} color="#ffffff" />
-                  </div>
-                  <div className="flex-1 min-w-[200px]">
-                    <p className="text-sm font-semibold text-gray-900">Intake ingevuld door de patiënt</p>
-                    <p className="text-sm text-gray-600 mt-0.5">
-                      {intake.submittedAt ? `Ingevuld op ${formatDate(intake.submittedAt)}. ` : ""}Bekijk de analyse en kies het herstelplan om te starten.
-                    </p>
-                  </div>
-                  <Button size="sm" onClick={() => setShowCompleteIntake(true)}>Herstelplan kiezen</Button>
-                </div>
+                <IntakeInsight
+                  intake={intake}
+                  injuryType={patient.injuryType ?? ""}
+                  injuryDate={patient.injuryDate ?? ""}
+                  surgeryDate={patient.surgeryDate ?? ""}
+                  protocols={[...orgProtocols, ...revaProtocols]}
+                  onChoose={() => setShowCompleteIntake(true)}
+                />
               )}
               {intake?.status === "requested" && (
                 <div className="rounded-2xl px-5 py-4 text-sm text-gray-600" style={{ background: "#ffffff", border: "1px solid #e8e5df" }}>
@@ -1400,6 +1436,8 @@ export default function PortalPatientDetailPage() {
                     assignment,
                     sessionNotes,
                     today: localToday(),
+                    planSuggestionCount: planSuggestions.length,
+                    intakeWaiting: intake?.status === "submitted",
                   })}
                   contact={{ phone: patient.phone, email: patient.email }}
                   onAction={(target) => {
@@ -1554,6 +1592,8 @@ export default function PortalPatientDetailPage() {
                   notify={(m, t) => showToast(m, t)}
                   onRemoveExerciseClick={setConfirmRemoveExercise}
                   onReorderExercises={handleReorderScheduleExercises}
+                  planSuggestions={planSuggestions}
+                  onEditExercise={(e) => { setScheduleExerciseError(""); setEditingScheduleExercise(e); }}
                   onAddPhaseClick={() => { setAddPhaseError(""); setAddPhase({ phaseName: `Fase ${(assignment?.phases.length ?? 0) + 1}`, phaseDescription: "", frequencyPerWeek: 3 }); }}
                 />
               )}

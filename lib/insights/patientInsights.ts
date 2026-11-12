@@ -41,6 +41,10 @@ export interface PatientInsightInput {
   sessionNotes: PortalPatientSessionNote[];
   /** YYYY-MM-DD, lokale datum. */
   today: string;
+  /** Aantal voorstellen voor het herstelplan (lib/insights/planInsights.ts). */
+  planSuggestionCount?: number;
+  /** Ingevulde intake wacht op een plan: dat blok staat er al, dus hier niet herhalen. */
+  intakeWaiting?: boolean;
 }
 
 const DAY = 86_400_000;
@@ -60,7 +64,7 @@ function weekKey(today: string): string {
 /** Woorden in een trainingsnotitie die de fysio waarschijnlijk wil lezen. */
 const CONCERN_WORDS = ["pijn", "zeer", "zwaar", "lastig", "moeilijk", "dik", "zwelling", "opgezet", "niet gelukt", "gestopt", "slecht", "eng", "bang"];
 
-export function buildPatientInsights({ firstName, checkins, assignment, sessionNotes, today }: PatientInsightInput): PatientInsights {
+export function buildPatientInsights({ firstName, checkins, assignment, sessionNotes, today, planSuggestionCount = 0, intakeWaiting = false }: PatientInsightInput): PatientInsights {
   const name = firstName || "De patiënt";
   const wk = weekKey(today);
   const summary: string[] = [];
@@ -82,7 +86,9 @@ export function buildPatientInsights({ firstName, checkins, assignment, sessionN
     const rhythm = last14.length >= 10 ? "trouw" : last14.length >= 5 ? "regelmatig" : "af en toe";
     summary.push(`${name} vulde de afgelopen 2 weken ${last14.length} check-ins in (${rhythm}).`);
   }
-  if (daysSinceCheckin === null) {
+  if (daysSinceCheckin === null && !assignment) {
+    // Nog geen plan: check-ins volgen vanzelf zodra er een plan is.
+  } else if (daysSinceCheckin === null) {
     suggestions.push({
       id: `geen-checkins:${wk}`, tone: "attention",
       title: "Nog geen check-ins",
@@ -165,7 +171,7 @@ export function buildPatientInsights({ firstName, checkins, assignment, sessionN
 
   // ── Herstelplan en trainingen ──────────────────────────────────────────────
   const phase = assignment?.phases.find((p) => p.status === "active") ?? null;
-  if (!assignment) {
+  if (!assignment && !intakeWaiting) {
     suggestions.push({
       id: "geen-plan", tone: "info",
       title: "Herstelplan kiezen",
@@ -223,6 +229,15 @@ export function buildPatientInsights({ firstName, checkins, assignment, sessionN
       title: worrying.kind === "check-in" ? "Lees de notitie bij de check-in" : "Lees de notitie bij een training",
       reason: `"${quote}"`,
       action: worrying.kind === "training" ? { label: "Logboek openen", target: "logboek" } : undefined,
+    });
+  }
+
+  if (planSuggestionCount > 0) {
+    suggestions.push({
+      id: `plan:${wk}:${planSuggestionCount}`, tone: "info",
+      title: planSuggestionCount === 1 ? "1 voorstel voor het herstelplan" : `${planSuggestionCount} voorstellen voor het herstelplan`,
+      reason: "Over de dosering van oefeningen of de volgende fase, op basis van de gelogde trainingen.",
+      action: { label: "Bekijk voorstellen", target: "herstelplan" },
     });
   }
 
