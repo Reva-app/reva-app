@@ -237,3 +237,16 @@ body {
 .reva-colorful .react-colorful__saturation { border-radius: 12px; border-bottom: none; }
 .reva-colorful .react-colorful__hue { height: 14px; margin-top: 12px; border-radius: 999px; }
 .reva-colorful .react-colorful__pointer { width: 22px; height: 22px; border-width: 3px; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); }
+
+/* ── Printen (voortgangsrapport, components/portal/report) ─────────────────
+   Het rapport staat als .reva-print-only direct in <body>; bij printen is
+   alleen dat zichtbaar, zodat het netjes over meerdere A4-pagina's loopt. */
+.reva-print-only { display: none; }
+@page { size: A4; margin: 14mm 14mm 16mm; }
+@media print {
+  html, body { height: auto !important; overflow: visible !important; background: #ffffff !important; }
+  body > *:not(.reva-print-only) { display: none !important; }
+  .reva-print-only { display: block !important; }
+  .reva-print-only * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .reva-print-section { break-inside: avoid; }
+}

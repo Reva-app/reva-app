@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Send, ShieldOff, Archive, ArchiveRestore, Camera, Pill, CalendarClock, Dumbbell, Award, Droplets, Pencil, Star, Flag, ClipboardList, Check, ChevronRight, ChevronLeft, RotateCcw, MessageSquare, Trash2, Loader2, X, History, Images } from "lucide-react";
+import { ArrowLeft, FileText, Send, ShieldOff, Archive, ArchiveRestore, Camera, Pill, CalendarClock, Dumbbell, Award, Droplets, Pencil, Star, Flag, ClipboardList, Check, ChevronRight, ChevronLeft, RotateCcw, MessageSquare, Trash2, Loader2, X, History, Images } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -1396,6 +1396,7 @@ export default function PortalPatientDetailPage() {
                 <ActionMenu
                   label="Acties"
                   items={[
+                    { label: "Voortgangsrapport (PDF)", icon: FileText, onClick: () => router.push(`/portal/patienten/${patientId}/rapport`) },
                     { label: "Gegevens wijzigen", icon: Pencil, onClick: () => setEditing(true) },
                     ...(!patient.hasAccount && patient.email
                       ? [{ label: "Uitnodiging versturen", icon: Send, onClick: handleInvitePatient }]
