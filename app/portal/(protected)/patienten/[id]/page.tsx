@@ -46,6 +46,7 @@ import {
   type PortalMember,
   type PortalPhotoHistoryItem,
   type DischargeOutcome,
+  resetPatientMfa,
 } from "@/lib/services/portalService";
 import { resolveSignedUrl, resolveSignedUrls } from "@/lib/services/storageService";
 import { loadPatientIntake, type PortalPatientIntake } from "@/lib/services/intakeService";
@@ -900,6 +901,8 @@ export default function PortalPatientDetailPage() {
   const [confirmDeleteNote, setConfirmDeleteNote] = useState<PortalPatientStaffNote | null>(null);
   const [deletingNote, setDeletingNote] = useState(false);
   const { showToast, toastNode } = useToast();
+  const [confirmMfaReset, setConfirmMfaReset] = useState(false);
+  const [resettingMfa, setResettingMfa] = useState(false);
 
   const canManagePatients = !!membership && MANAGE_PATIENTS_ROLES.includes(membership.roleKey);
   const canAssignProtocol = canManagePatients; // toewijzen mag de bredere groep, zie D6
@@ -998,6 +1001,16 @@ export default function PortalPatientDetailPage() {
     setLightboxIndex(null);
     setPhotoHistory([]);
     setPhotoHistoryUrls(new Map());
+  }
+
+  async function handleMfaReset() {
+    if (!patient) return;
+    setResettingMfa(true);
+    const { error } = await resetPatientMfa(patient.id);
+    setResettingMfa(false);
+    setConfirmMfaReset(false);
+    if (error) { showToast(error, "error"); return; }
+    showToast("Tweestapsverificatie gereset. De patiënt stelt deze opnieuw in bij de volgende keer inloggen.");
   }
 
   async function handleInvitePatient() {
@@ -1259,6 +1272,9 @@ export default function PortalPatientDetailPage() {
                     { label: "Gegevens wijzigen", onClick: () => setEditing(true) },
                     ...(!patient.hasAccount && patient.email
                       ? [{ label: "Uitnodiging versturen", onClick: handleInvitePatient }]
+                      : []),
+                    ...(patient.hasAccount
+                      ? [{ label: "Tweestapsverificatie resetten", onClick: () => setConfirmMfaReset(true) }]
                       : []),
                     {
                       label: patient.status === "archived" ? "Dearchiveren" : "Archiveren",
@@ -1558,6 +1574,17 @@ export default function PortalPatientDetailPage() {
               loading={deletingNote}
               onCancel={() => setConfirmDeleteNote(null)}
               onConfirm={handleConfirmDeleteNote}
+            />
+          )}
+
+          {confirmMfaReset && (
+            <ConfirmDialog
+              title="Tweestapsverificatie resetten?"
+              message="Doe dit alleen als de patiënt geen toegang meer heeft tot de authenticator-app, bijvoorbeeld na een nieuwe telefoon. Controleer eerst of je echt met de patiënt zelf spreekt. Bij de volgende keer inloggen stelt de patiënt tweestapsverificatie opnieuw in."
+              confirmLabel="Resetten"
+              loading={resettingMfa}
+              onCancel={() => setConfirmMfaReset(false)}
+              onConfirm={handleMfaReset}
             />
           )}
 

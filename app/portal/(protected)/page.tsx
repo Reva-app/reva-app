@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { HeartPulse, Users, AlertTriangle, ChevronRight, CalendarRange } from "lucide-react";
+import { HeartPulse, Users, AlertTriangle, ChevronRight } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { StatStrip } from "@/components/ui/StatStrip";
@@ -94,7 +94,6 @@ export default function PortalDashboardPage() {
         {!isClinical && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
-              { href: "/portal/reserveringen", title: "Agenda", description: "Ruimtes, reserveringen en fysio-afspraken van deze week", icon: CalendarRange },
               { href: "/portal/patienten", title: "Patiënten", description: "Contactgegevens, behandelaar en locatie", icon: HeartPulse },
             ].map((item) => (
               <Link key={item.href} href={item.href} className="block">

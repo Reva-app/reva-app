@@ -7,7 +7,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { loadPortalStaffOverview } from "@/lib/services/portalService";
 import { MedewerkerDetail } from "@/components/portal/MedewerkerDetail";
 
-const VALID_TABS = ["algemeen", "werkuren", "locaties", "rol", "account"] as const;
+const VALID_TABS = ["algemeen", "locaties", "rol", "account"] as const;
 type TabKey = (typeof VALID_TABS)[number];
 
 export default function PortalAccountPage() {

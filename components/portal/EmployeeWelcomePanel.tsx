@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Clock, UserCircle, HeartPulse } from "lucide-react";
+import { X, BadgeCheck, UserCircle, HeartPulse } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { OnboardingItemGrid } from "@/components/ui/OnboardingItemGrid";
@@ -24,7 +24,7 @@ interface EmployeeWelcomePanelProps {
  * eigenaar heeft daar rechten toe (zie can_manage_org_branding/locations RLS).
  */
 export function EmployeeWelcomePanel({ membershipId, userId, organizationName, roleName, stats, initiallyWelcomed }: EmployeeWelcomePanelProps) {
-  const [status, setStatus] = useState<{ hasWorkSchedule: boolean; hasAvatar: boolean } | null>(null);
+  const [status, setStatus] = useState<{ hasTitle: boolean; hasAvatar: boolean } | null>(null);
   const [collapsed, setCollapsed] = useState(initiallyWelcomed);
   const [sessionExpanded, setSessionExpanded] = useState(false);
   const [dismissing, setDismissing] = useState(false);
@@ -49,7 +49,7 @@ export function EmployeeWelcomePanel({ membershipId, userId, organizationName, r
   }
 
   const checklist = [
-    { label: "Vul je werkuren in", done: status?.hasWorkSchedule === true, href: "/portal/account?tab=werkuren", icon: Clock },
+    { label: "Vul je functie in", done: status?.hasTitle === true, href: "/portal/account?tab=algemeen", icon: BadgeCheck },
     { label: "Personaliseer je account", done: status?.hasAvatar === true, href: "/portal/account?tab=account", icon: UserCircle },
     { label: "Bekijk je eerste patiënt", done: stats.patientCount > 0, href: "/portal/patienten", icon: HeartPulse },
   ];

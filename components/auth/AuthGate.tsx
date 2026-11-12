@@ -9,6 +9,9 @@ import { usePatientStatus } from "@/lib/hooks/usePatientStatus";
 import { AccountInactiveScreen } from "@/components/auth/AccountInactiveScreen";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { StaffAccountScreen } from "@/components/auth/StaffAccountScreen";
+import { useMfaStatus } from "@/lib/hooks/useMfaStatus";
+import { MfaEnrollScreen } from "@/components/auth/MfaEnrollScreen";
+import { MfaChallengeScreen } from "@/components/auth/MfaChallengeScreen";
 
 /**
  * Client-side auth + onboarding guard.
@@ -36,6 +39,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const setupEffectivelyDone = setupCompleted || !!profile.blessureType;
   const { checked: statusChecked, status: patientStatus } = usePatientStatus();
   const { checked: membershipChecked, membership: staffMembership } = usePortalMembership();
+  // Tweestapsverificatie is ook voor patiënten verplicht (november 2026):
+  // gezondheidsgegevens verdienen hetzelfde niveau als het praktijkportaal.
+  const { checked: mfaChecked, satisfied: mfaSatisfied, needsEnrollment, factorId, refresh: refreshMfa } = useMfaStatus();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -140,6 +146,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     return <AccountInactiveScreen status={patientStatus} onSignOut={signOut} />;
   }
   if (checkingInvite) return null;
+  if (!mfaChecked) return null;
+  if (!mfaSatisfied) {
+    return needsEnrollment || !factorId
+      ? <MfaEnrollScreen onVerified={refreshMfa} onSignOut={signOut} portalLabel="je REVA-account" />
+      : <MfaChallengeScreen factorId={factorId} onVerified={refreshMfa} onSignOut={signOut} />;
+  }
   if (!setupEffectivelyDone && !onInstellingen) return null;
 
   return <>{children}</>;

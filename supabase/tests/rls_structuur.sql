@@ -54,10 +54,10 @@ checks(controle, fouten) as (
             and tablename in ('patients', 'patient_intakes', 'patient_staff_notes')
             and (coalesce(qual, '') || coalesce(with_check, '')) like '%is_org_member%')
   union all
-  select '8. Agenda-links alleen voor medewerker zelf en Practice Owner (migratie 124)',
-         (select string_agg(policyname, ', ') from pg_policies
-          where schemaname = 'public' and tablename = 'staff_calendar_feeds'
-            and coalesce(qual, '') like '%is_org_member%')
+  select '8. EPD-tabellen (agenda, ruimtes, verlof, rooster) verwijderd (migratie 135)',
+         (select string_agg(tablename, ', ') from pg_tables
+          where schemaname = 'public'
+            and tablename in ('room_reservations', 'location_rooms', 'staff_leave', 'staff_calendar_feeds', 'work_schedules'))
   union all
   select '9. REVA-bibliotheek niet leesbaar zonder lidmaatschap (migratie 126)',
          (select string_agg(tablename || '.' || policyname, ', ') from pg_policies

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, HeartPulse, ClipboardList, Users, Dumbbell, CalendarRange, MoreHorizontal, X, LogOut } from "lucide-react";
+import { LayoutDashboard, HeartPulse, ClipboardList, Users, Dumbbell, MapPin, MoreHorizontal, X, LogOut } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { getPortalNavItems } from "./PortalSidebar";
@@ -17,7 +17,7 @@ import { VIEW_AUDIT_LOG_ROLES } from "@/lib/services/auditService";
  *
  * - Practice Owner: beheert ook het team, dus Medewerkers vast in beeld.
  * - Behandelaar: werkt tussen behandelingen met oefeningen, niet met het team.
- * - Overige rollen (o.a. receptie): geen behandelinhoud, wel de agenda.
+ * - Overige (oude) rollen: geen behandelinhoud, alleen contact en organisatie.
  */
 type NavItem = { href: string; label: string; icon: React.ElementType };
 const DASHBOARD: NavItem = { href: "/portal", label: "Dashboard", icon: LayoutDashboard };
@@ -25,7 +25,7 @@ const PATIENTEN: NavItem = { href: "/portal/patienten", label: "Patiënten", ico
 const FIXED_NAV_BY_ROLE: Record<"owner" | "clinical" | "other", NavItem[]> = {
   owner: [DASHBOARD, PATIENTEN, { href: "/portal/herstelplannen", label: "Herstelplannen", icon: ClipboardList }, { href: "/portal/medewerkers", label: "Medewerkers", icon: Users }],
   clinical: [DASHBOARD, PATIENTEN, { href: "/portal/herstelplannen", label: "Herstelplannen", icon: ClipboardList }, { href: "/portal/oefeningen", label: "Oefeningen", icon: Dumbbell }],
-  other: [DASHBOARD, PATIENTEN, { href: "/portal/reserveringen", label: "Agenda", icon: CalendarRange }, { href: "/portal/medewerkers", label: "Medewerkers", icon: Users }],
+  other: [DASHBOARD, PATIENTEN, { href: "/portal/locaties", label: "Locaties", icon: MapPin }, { href: "/portal/medewerkers", label: "Medewerkers", icon: Users }],
 };
 
 const INACTIVE_ICON = "#8e8e9a";

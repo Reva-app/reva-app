@@ -4,12 +4,10 @@ import { useState } from "react";
 import { Loader2, X } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { TimePicker } from "@/components/ui/TimePicker";
 import { ModalFooter } from "@/components/ui/Modal";
 import {
   createPortalLocationFull, updatePortalLocationFull,
-  OPENING_HOURS_DAY_LABELS, DEFAULT_OPENING_HOURS,
-  type PortalLocationFull, type PortalLocationInput, type PortalOpeningHoursDayKey,
+  type PortalLocationFull, type PortalLocationInput,
 } from "@/lib/services/portalService";
 
 const inputStyle = {
@@ -22,14 +20,11 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   return <label className="block text-xs font-medium text-gray-500 mb-1.5">{children}</label>;
 }
 
-const DAY_ORDER: PortalOpeningHoursDayKey[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-
 function toInput(loc?: PortalLocationFull): PortalLocationInput {
   if (!loc) {
     return {
       name: "", phone: "", email: "", website: "",
       street: "", houseNumber: "", postalCode: "", city: "", country: "Nederland",
-      openingHours: DEFAULT_OPENING_HOURS,
     };
   }
   return {
@@ -42,7 +37,6 @@ function toInput(loc?: PortalLocationFull): PortalLocationInput {
     postalCode: loc.postalCode ?? "",
     city: loc.city ?? "",
     country: loc.country || "Nederland",
-    openingHours: loc.openingHours ?? DEFAULT_OPENING_HOURS,
   };
 }
 
@@ -60,13 +54,6 @@ export function LocationForm({ organizationId, location, onSaved, onClose }: Loc
 
   function update<K extends keyof PortalLocationInput>(key: K, value: PortalLocationInput[K]) {
     setInput((prev) => ({ ...prev, [key]: value }));
-  }
-
-  function updateDay(day: PortalOpeningHoursDayKey, patch: Partial<{ open: boolean; from: string; to: string }>) {
-    setInput((prev) => ({
-      ...prev,
-      openingHours: { ...prev.openingHours, [day]: { ...prev.openingHours[day], ...patch } },
-    }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -151,37 +138,6 @@ export function LocationForm({ organizationId, location, onSaved, onClose }: Loc
               <input type="text" value={input.country} onChange={(e) => update("country", e.target.value)}
                 className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle} />
             </div>
-          </div>
-        </div>
-
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-subtle mb-3">Openingstijden</p>
-          <div className="space-y-2">
-            {DAY_ORDER.map((day) => {
-              const d = input.openingHours[day];
-              return (
-                <div key={day} className="flex items-center gap-3 flex-wrap gap-y-2">
-                  <label className="flex items-center gap-2 w-32 shrink-0 text-sm text-gray-700">
-                    <input
-                      type="checkbox"
-                      checked={d.open}
-                      onChange={(e) => updateDay(day, { open: e.target.checked })}
-                      className="rounded"
-                    />
-                    {OPENING_HOURS_DAY_LABELS[day]}
-                  </label>
-                  {d.open ? (
-                    <div className="flex items-center gap-2 w-full sm:w-auto pl-6 sm:pl-0">
-                      <TimePicker compact value={d.from} onChange={(v) => updateDay(day, { from: v })} ariaLabel={`${OPENING_HOURS_DAY_LABELS[day]} van`} placeholder="--:--" />
-                      <span className="text-subtle text-sm">tot</span>
-                      <TimePicker compact value={d.to} onChange={(v) => updateDay(day, { to: v })} ariaLabel={`${OPENING_HOURS_DAY_LABELS[day]} tot`} placeholder="--:--" />
-                    </div>
-                  ) : (
-                    <span className="text-sm text-subtle">Gesloten</span>
-                  )}
-                </div>
-              );
-            })}
           </div>
         </div>
 

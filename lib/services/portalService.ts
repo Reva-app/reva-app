@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabaseClient";
 import { isPlanKey, type PlanKey, type BillingInterval } from "@/lib/plans";
 import { apiUrl } from "@/lib/apiBase";
-import { mondayOfWeek, weekDates } from "@/lib/dateUtils";
+import { mondayOfWeek } from "@/lib/dateUtils";
 import { normalizeLogo } from "@/lib/logoImage";
 
 function logErr(fn: string, error: { message?: string; code?: string; details?: string; hint?: string } | null) {
@@ -666,35 +666,10 @@ export async function loadOrgUsageStats(organizationId: string, periodDays: 7 | 
   return data as PortalOrgUsageStats;
 }
 
-export interface PortalRoomOccupancy {
-  locationId: string;
-  locationName: string;
-  roomCount: number;
-  reservedMinutes: number;
-  availableMinutes: number;
-}
-
-/**
- * Ruimtebezetting per locatie over de gekozen periode — gereserveerde
- * minuten (room_reservations) t.o.v. beschikbare minuten (actieve ruimtes ×
- * locatie-openingstijden). Loopt via de portal_room_occupancy_stats-RPC
- * (migratie 115, eigenaar-only afgedwongen), zelfde patroon als
- * loadOrgUsageStats hierboven.
- */
-export async function loadRoomOccupancyStats(organizationId: string, periodDays: 7 | 14 | 30): Promise<PortalRoomOccupancy[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase.rpc("portal_room_occupancy_stats", {
-    p_organization_id: organizationId, p_period_days: periodDays,
-  });
-  if (error) { logErr("loadRoomOccupancyStats", error); return []; }
-  return (data ?? []) as PortalRoomOccupancy[];
-}
-
 export interface PortalQualityStats {
   completedPhasesCount: number;
   completedPhasesWithCheckinCount: number;
   aiIntakeCount: number;
-  aiRoomSuggestionsTakenCount: number;
 }
 
 /**
@@ -710,7 +685,7 @@ export async function loadQualityStats(organizationId: string, periodDays: 7 | 1
   });
   if (error) {
     logErr("loadQualityStats", error);
-    return { completedPhasesCount: 0, completedPhasesWithCheckinCount: 0, aiIntakeCount: 0, aiRoomSuggestionsTakenCount: 0 };
+    return { completedPhasesCount: 0, completedPhasesWithCheckinCount: 0, aiIntakeCount: 0 };
   }
   return data as PortalQualityStats;
 }
@@ -843,53 +818,6 @@ export async function updatePatientDischarge(
     .eq("id", patientId);
   if (error) { logErr("updatePatientDischarge", error); return { error: "Opslaan van de afsluitdatum is niet gelukt." }; }
   return { error: null };
-}
-
-export interface PortalWeekAppointment {
-  id: string;
-  patientId: string;
-  patientName: string | null;
-  appointmentType: string | null;
-  date: string;
-  time: string | null;
-  providerName: string | null;
-  /** Alleen voor klinische rollen; voor de receptie altijd null (migratie 122). */
-  title: string | null;
-  location: string | null;
-}
-
-/**
- * Patiëntafspraken van de hele organisatie binnen een week, via de RPC
- * portal_org_agenda (migratie 122). Afspraken voert de patiënt zelf in en
- * kunnen dus ook ziekenhuis/MRI/operatie zijn: behandelaars zien alles, de
- * receptie alleen fysio-afspraken zonder titel en locatie. `location`/
- * `provider_name` zijn vrije tekst (geen FK naar ruimte of medewerker).
- */
-export async function loadOrgAppointmentsForWeek(organizationId: string, weekStart: string): Promise<PortalWeekAppointment[]> {
-  const supabase = createClient();
-  const days = weekDates(weekStart);
-  const { data, error } = await supabase.rpc("portal_org_agenda", {
-    p_organization_id: organizationId,
-    p_from: days[0],
-    p_to: days[6],
-  });
-  if (error) { logErr("loadOrgAppointmentsForWeek", error); return []; }
-
-  const rows = (data ?? []) as {
-    id: string; patient_id: string; patient_name: string | null; appointment_type: string | null;
-    date: string; time: string | null; provider_name: string | null; title: string | null; location: string | null;
-  }[];
-  return rows.map((r) => ({
-    id: r.id,
-    patientId: r.patient_id,
-    patientName: r.patient_name,
-    appointmentType: r.appointment_type,
-    date: r.date,
-    time: r.time,
-    providerName: r.provider_name,
-    title: r.title,
-    location: r.location,
-  }));
 }
 
 export async function loadPortalLocations(organizationId: string): Promise<PortalLocationOption[]> {
@@ -1133,46 +1061,6 @@ export async function loadPortalMaxLocations(organizationId: string): Promise<nu
   return data?.max_locations ?? 0;
 }
 
-const OPENING_HOURS_DAY_KEYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
-export type PortalOpeningHoursDayKey = (typeof OPENING_HOURS_DAY_KEYS)[number];
-
-export interface PortalOpeningHoursDay {
-  open: boolean;
-  from: string;
-  to: string;
-}
-
-export type PortalOpeningHours = Record<PortalOpeningHoursDayKey, PortalOpeningHoursDay>;
-
-export const OPENING_HOURS_DAY_LABELS: Record<PortalOpeningHoursDayKey, string> = {
-  monday: "Maandag", tuesday: "Dinsdag", wednesday: "Woensdag", thursday: "Donderdag",
-  friday: "Vrijdag", saturday: "Zaterdag", sunday: "Zondag",
-};
-
-const OPENING_HOURS_DAY_SHORT: Record<PortalOpeningHoursDayKey, string> = {
-  monday: "Ma", tuesday: "Di", wednesday: "Wo", thursday: "Do", friday: "Vr", saturday: "Za", sunday: "Zo",
-};
-
-export const DEFAULT_OPENING_HOURS: PortalOpeningHours = OPENING_HOURS_DAY_KEYS.reduce((acc, day) => {
-  acc[day] = { open: false, from: "09:00", to: "17:00" };
-  return acc;
-}, {} as PortalOpeningHours);
-
-/** Korte, leesbare samenvatting van de openingstijden voor op de kaart, bv. "Ma–Vr 09:00–17:00". */
-export function summarizeOpeningHours(hours: PortalOpeningHours): string {
-  const openDays = OPENING_HOURS_DAY_KEYS.filter((d) => hours[d]?.open);
-  if (openDays.length === 0) return "Gesloten";
-  const first = hours[openDays[0]];
-  const sameHours = openDays.every((d) => hours[d].from === first.from && hours[d].to === first.to);
-  if (!sameHours) return "Wisselende tijden";
-  const indices = openDays.map((d) => OPENING_HOURS_DAY_KEYS.indexOf(d));
-  const isContiguous = indices.every((idx, i) => i === 0 || idx === indices[i - 1] + 1);
-  const rangeLabel = isContiguous && openDays.length > 1
-    ? `${OPENING_HOURS_DAY_SHORT[openDays[0]]}–${OPENING_HOURS_DAY_SHORT[openDays[openDays.length - 1]]}`
-    : openDays.map((d) => OPENING_HOURS_DAY_SHORT[d]).join(", ");
-  return `${rangeLabel} ${first.from}–${first.to}`;
-}
-
 export interface PortalLocationCard {
   id: string;
   name: string;
@@ -1182,7 +1070,6 @@ export interface PortalLocationCard {
   houseNumber: string | null;
   postalCode: string | null;
   city: string | null;
-  openingHours: PortalOpeningHours;
   employeeCount: number;
   patientCount: number;
 }
@@ -1209,7 +1096,6 @@ export interface PortalLocationFull {
   country: string;
   isMainLocation: boolean;
   archived: boolean;
-  openingHours: PortalOpeningHours;
   employees: PortalLocationEmployee[];
 }
 
@@ -1223,7 +1109,6 @@ export interface PortalLocationInput {
   postalCode: string;
   city: string;
   country: string;
-  openingHours: PortalOpeningHours;
 }
 
 function locationInputToRow(input: PortalLocationInput) {
@@ -1237,7 +1122,6 @@ function locationInputToRow(input: PortalLocationInput) {
     postal_code: input.postalCode.trim() || null,
     city: input.city.trim() || null,
     country: input.country.trim() || "Nederland",
-    opening_hours: input.openingHours,
   };
 }
 
@@ -1245,7 +1129,7 @@ export async function loadPortalLocationCards(organizationId: string): Promise<P
   const supabase = createClient();
   const { data, error } = await supabase
     .from("locations")
-    .select("id, name, is_main_location, archived, street, house_number, postal_code, city, opening_hours, patients(count)")
+    .select("id, name, is_main_location, archived, street, house_number, postal_code, city, patients(count)")
     .eq("organization_id", organizationId)
     .order("is_main_location", { ascending: false })
     .order("name");
@@ -1254,7 +1138,6 @@ export async function loadPortalLocationCards(organizationId: string): Promise<P
   const rows = (data ?? []) as unknown as {
     id: string; name: string; is_main_location: boolean; archived: boolean;
     street: string | null; house_number: string | null; postal_code: string | null; city: string | null;
-    opening_hours: PortalOpeningHours | null;
     patients: { count: number }[] | null;
   }[];
   const locationIds = rows.map((r) => r.id);
@@ -1297,7 +1180,6 @@ export async function loadPortalLocationCards(organizationId: string): Promise<P
     houseNumber: r.house_number,
     postalCode: r.postal_code,
     city: r.city,
-    openingHours: r.opening_hours ?? DEFAULT_OPENING_HOURS,
     employeeCount: (employeeIdsByLocation.get(r.id)?.size ?? 0) + orgWideMembershipIds.size,
     patientCount: r.patients?.[0]?.count ?? 0,
   }));
@@ -1307,7 +1189,7 @@ export async function loadPortalLocationFull(locationId: string): Promise<Portal
   const supabase = createClient();
   const { data, error } = await supabase
     .from("locations")
-    .select("id, organization_id, name, phone, email, website, street, house_number, postal_code, city, country, is_main_location, archived, opening_hours")
+    .select("id, organization_id, name, phone, email, website, street, house_number, postal_code, city, country, is_main_location, archived")
     .eq("id", locationId)
     .maybeSingle();
   if (error) { logErr("loadPortalLocationFull", error); return null; }
@@ -1390,7 +1272,6 @@ export async function loadPortalLocationFull(locationId: string): Promise<Portal
     country: data.country,
     isMainLocation: data.is_main_location,
     archived: data.archived,
-    openingHours: (data.opening_hours as PortalOpeningHours | null) ?? DEFAULT_OPENING_HOURS,
     employees,
   };
 }
@@ -1481,195 +1362,6 @@ export async function deletePortalLocationChecked(locationId: string): Promise<{
   return { error: null };
 }
 
-// ─── Ruimtes & reserveringen ────────────────────────────────────────────────
-// Fundament voor het ruimtereserveringssysteem (migraties 113/114). Ruimtes
-// zijn eenvoudige entiteiten per locatie; reserveringen zijn tijdvakken
-// (starts_at/ends_at) per ruimte, met een database-exclude-constraint die
-// overlap op dezelfde ruimte hard voorkomt.
-
-export interface PortalRoom {
-  id: string;
-  locationId: string;
-  name: string;
-  sortOrder: number;
-  archived: boolean;
-}
-
-export async function loadLocationRooms(locationId: string): Promise<PortalRoom[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("location_rooms")
-    .select("id, location_id, name, sort_order, archived")
-    .eq("location_id", locationId)
-    .order("sort_order");
-  if (error) { logErr("loadLocationRooms", error); return []; }
-  return (data ?? []).map((r) => ({
-    id: r.id as string, locationId: r.location_id as string, name: r.name as string,
-    sortOrder: r.sort_order as number, archived: r.archived as boolean,
-  }));
-}
-
-export async function createLocationRoom(locationId: string, name: string, sortOrder: number): Promise<{ id: string | null; error: string | null }> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("location_rooms")
-    .insert({ location_id: locationId, name: name.trim(), sort_order: sortOrder })
-    .select("id")
-    .single();
-  if (error) { logErr("createLocationRoom", error); return { id: null, error: "Aanmaken van de ruimte is niet gelukt." }; }
-  return { id: data.id as string, error: null };
-}
-
-export async function updateLocationRoom(roomId: string, name: string): Promise<{ error: string | null }> {
-  const supabase = createClient();
-  const { error } = await supabase.from("location_rooms").update({ name: name.trim() }).eq("id", roomId);
-  if (error) { logErr("updateLocationRoom", error); return { error: "Bijwerken van de ruimte is niet gelukt." }; }
-  return { error: null };
-}
-
-export async function updateRoomArchived(roomId: string, archived: boolean): Promise<{ error: string | null }> {
-  const supabase = createClient();
-  const { error } = await supabase.from("location_rooms").update({ archived }).eq("id", roomId);
-  if (error) { logErr("updateRoomArchived", error); return { error: "Bijwerken van de ruimte is niet gelukt." }; }
-  return { error: null };
-}
-
-/** Faalt vriendelijk als de ruimte nog reserveringen heeft (FK-restrict), zelfde patroon als deleteOrgExercise. */
-export async function deleteLocationRoom(roomId: string): Promise<{ error: string | null }> {
-  const supabase = createClient();
-  const { error } = await supabase.from("location_rooms").delete().eq("id", roomId);
-  if (error) {
-    logErr("deleteLocationRoom", error);
-    if (error.code === "23503") {
-      return { error: "Deze ruimte heeft nog reserveringen en kan niet verwijderd worden. Verwijder eerst de reserveringen, of archiveer de ruimte." };
-    }
-    return { error: "Verwijderen van de ruimte is niet gelukt." };
-  }
-  return { error: null };
-}
-
-export interface PortalReservation {
-  id: string;
-  roomId: string;
-  membershipId: string;
-  membershipName: string | null;
-  startsAt: string;
-  endsAt: string;
-  source: "manual" | "ai_suggested";
-}
-
-/**
- * memberships.user_id verwijst naar auth.users, niet naar profiles — er
- * bestaat dus geen foreign key waarmee PostgREST `memberships(profiles(...))`
- * automatisch kan embedden (dat gaf PGRST200 "Could not find a relationship").
- * Twee losse leesacties + zelf koppelen op user_id, zelfde patroon als
- * loadPortalPatients hierboven.
- */
-async function resolveMembershipFullNames(membershipIds: string[]): Promise<Map<string, string | null>> {
-  if (membershipIds.length === 0) return new Map();
-  const supabase = createClient();
-  const { data: membershipRows } = await supabase.from("memberships").select("id, user_id").in("id", membershipIds);
-  const userIds = [...new Set((membershipRows ?? []).map((m) => m.user_id as string).filter(Boolean))];
-  const { data: profileRows } = userIds.length > 0
-    ? await supabase.from("profiles").select("id, full_name").in("id", userIds)
-    : { data: [] as { id: string; full_name: string | null }[] };
-  const nameByUserId = new Map((profileRows ?? []).map((p) => [p.id as string, p.full_name as string | null]));
-  return new Map((membershipRows ?? []).map((m) => [m.id as string, nameByUserId.get(m.user_id as string) ?? null]));
-}
-
-/** Alle reserveringen van alle ruimtes van een locatie, op een specifieke dag. */
-export async function loadRoomReservations(locationId: string, date: string): Promise<PortalReservation[]> {
-  const supabase = createClient();
-  const dayStart = `${date}T00:00:00`;
-  const dayEnd = `${date}T23:59:59`;
-  const { data, error } = await supabase
-    .from("room_reservations")
-    .select("id, room_id, membership_id, starts_at, ends_at, source, location_rooms!inner(location_id)")
-    .eq("location_rooms.location_id", locationId)
-    .gte("starts_at", dayStart)
-    .lte("starts_at", dayEnd)
-    .order("starts_at");
-  if (error) { logErr("loadRoomReservations", error); return []; }
-
-  const rows = (data ?? []) as unknown as { id: string; room_id: string; membership_id: string; starts_at: string; ends_at: string; source: "manual" | "ai_suggested" }[];
-  const nameMap = await resolveMembershipFullNames([...new Set(rows.map((r) => r.membership_id))]);
-
-  return rows.map((r) => ({
-    id: r.id, roomId: r.room_id, membershipId: r.membership_id,
-    membershipName: nameMap.get(r.membership_id) ?? null,
-    startsAt: r.starts_at, endsAt: r.ends_at, source: r.source,
-  }));
-}
-
-/** Alle reserveringen van alle ruimtes van een locatie, over een hele week (ma t/m zo, weekStart moet een maandag zijn). Voor de tijdas-weekweergave. */
-export async function loadRoomReservationsForWeek(locationId: string, weekStart: string): Promise<PortalReservation[]> {
-  const supabase = createClient();
-  const days = weekDates(weekStart);
-  const rangeStart = `${days[0]}T00:00:00`;
-  const rangeEnd = `${days[6]}T23:59:59`;
-  const { data, error } = await supabase
-    .from("room_reservations")
-    .select("id, room_id, membership_id, starts_at, ends_at, source, location_rooms!inner(location_id)")
-    .eq("location_rooms.location_id", locationId)
-    .gte("starts_at", rangeStart)
-    .lte("starts_at", rangeEnd)
-    .order("starts_at");
-  if (error) { logErr("loadRoomReservationsForWeek", error); return []; }
-
-  const rows = (data ?? []) as unknown as { id: string; room_id: string; membership_id: string; starts_at: string; ends_at: string; source: "manual" | "ai_suggested" }[];
-  const nameMap = await resolveMembershipFullNames([...new Set(rows.map((r) => r.membership_id))]);
-
-  return rows.map((r) => ({
-    id: r.id, roomId: r.room_id, membershipId: r.membership_id,
-    membershipName: nameMap.get(r.membership_id) ?? null,
-    startsAt: r.starts_at, endsAt: r.ends_at, source: r.source,
-  }));
-}
-
-export interface PortalReservationInput {
-  roomId: string;
-  membershipId: string;
-  startsAt: string; // ISO
-  endsAt: string; // ISO
-  source?: "manual" | "ai_suggested";
-}
-
-/** Vriendelijke afvang van de exclude-constraint (23P01): dezelfde ruimte, overlappend tijdvak. */
-function reservationConflictError(error: { code?: string }): string | null {
-  if (error.code === "23P01") return "Deze ruimte is op dat tijdstip al gereserveerd.";
-  return null;
-}
-
-export async function createReservation(input: PortalReservationInput, createdBy: string | null): Promise<{ error: string | null }> {
-  const supabase = createClient();
-  const { error } = await supabase.from("room_reservations").insert({
-    room_id: input.roomId, membership_id: input.membershipId,
-    starts_at: input.startsAt, ends_at: input.endsAt,
-    source: input.source ?? "manual", created_by: createdBy,
-  });
-  if (error) { logErr("createReservation", error); return { error: reservationConflictError(error) ?? "Aanmaken van de reservering is niet gelukt." }; }
-  return { error: null };
-}
-
-export async function updateReservation(reservationId: string, patch: Partial<PortalReservationInput>): Promise<{ error: string | null }> {
-  const supabase = createClient();
-  const row: Record<string, unknown> = {};
-  if (patch.roomId !== undefined) row.room_id = patch.roomId;
-  if (patch.membershipId !== undefined) row.membership_id = patch.membershipId;
-  if (patch.startsAt !== undefined) row.starts_at = patch.startsAt;
-  if (patch.endsAt !== undefined) row.ends_at = patch.endsAt;
-  const { error } = await supabase.from("room_reservations").update(row).eq("id", reservationId);
-  if (error) { logErr("updateReservation", error); return { error: reservationConflictError(error) ?? "Bijwerken van de reservering is niet gelukt." }; }
-  return { error: null };
-}
-
-export async function deleteReservation(reservationId: string): Promise<{ error: string | null }> {
-  const supabase = createClient();
-  const { error } = await supabase.from("room_reservations").delete().eq("id", reservationId);
-  if (error) { logErr("deleteReservation", error); return { error: "Verwijderen van de reservering is niet gelukt." }; }
-  return { error: null };
-}
-
 // ─── Medewerkers (zelf-service) ─────────────────────────────────────────────
 
 /**
@@ -1682,17 +1374,17 @@ export const MANAGE_STAFF_ROLES = ["organization_owner"];
 
 /**
  * De rollen die een praktijk kan toekennen, in de volgorde van de keuzelijst
- * (de eerste is de standaardkeuze). `reception` is in migratie 123 opnieuw
- * in gebruik genomen; de overige rolrijen uit migratie 016/041 blijven
- * ongebruikt in de database staan.
+ * (de eerste is de standaardkeuze). Sinds de RMP-koers (november 2026)
+ * alleen eigenaar en fysiotherapeut — de receptie-rol (agenda + NAW) is
+ * vervallen; overige rolrijen uit migratie 016/041/123 blijven ongebruikt
+ * in de database staan.
  */
-const CANONICAL_ROLE_KEYS = ["therapist", "reception", "organization_owner"];
+const CANONICAL_ROLE_KEYS = ["therapist", "organization_owner"];
 
 /** Wat een rol mag — getoond bij uitnodigen en op de medewerkerpagina. */
 export const ROLE_EXPLANATIONS: Record<string, string> = {
   organization_owner: "Praktijk eigenaar heeft volledige toegang: kan medewerkers uitnodigen en verwijderen, locaties beheren, analyses inzien, en alle patiëntdossiers en herstelplannen beheren.",
   therapist: "Fysiotherapeut kan patiëntdossiers aanmaken, inzien en bewerken, en herstelplannen, schema's en oefeningen beheren. Geen toegang tot medewerkers- of locatiebeheer, en geen inzage in de praktijkbrede analyses.",
-  reception: "Receptie ziet de agenda (ruimtes, reserveringen en fysio-afspraken) en de contactgegevens van patiënten. Geen toegang tot medische gegevens, dossiers of herstelplannen.",
 };
 
 export async function loadPortalRoles(): Promise<PortalRoleOption[]> {
@@ -2080,6 +1772,28 @@ export async function resetStaffMfa(targetUserId: string, organizationId: string
   return { error: null };
 }
 
+/**
+ * Reset de tweestapsverificatie van een patiënt (kwijtgeraakte telefoon).
+ * Alleen eigenaar/behandelaar van de praktijk van dit dossier — de server
+ * controleert dat via RLS op het dossier (zie /api/mfa-reset).
+ */
+export async function resetPatientMfa(patientId: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return { error: "Niet ingelogd." };
+
+  const res = await fetch(apiUrl("/api/mfa-reset"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ patientId }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || json.error) {
+    return { error: json.error ?? "Resetten van tweestapsverificatie is niet gelukt." };
+  }
+  return { error: null };
+}
+
 export async function loadMembershipLocations(membershipId: string): Promise<string[]> {
   const supabase = createClient();
   const { data, error } = await supabase
@@ -2102,282 +1816,19 @@ export async function updateMembershipLocations(membershipId: string, locationId
   return { error: null };
 }
 
-export type PortalWeekday = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
-
-export interface PortalWorkDay {
-  isOff: boolean;
-  startTime: string;
-  endTime: string;
-}
-
-export type PortalWorkSchedule = Record<PortalWeekday, PortalWorkDay>;
-
-const WEEKDAY_KEYS: PortalWeekday[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-
-export const WEEKDAY_LABELS: Record<PortalWeekday, string> = {
-  monday: "Maandag",
-  tuesday: "Dinsdag",
-  wednesday: "Woensdag",
-  thursday: "Donderdag",
-  friday: "Vrijdag",
-  saturday: "Zaterdag",
-  sunday: "Zondag",
-};
-
-export const DEFAULT_WORK_SCHEDULE: PortalWorkSchedule = WEEKDAY_KEYS.reduce((acc, day) => {
-  acc[day] = { isOff: true, startTime: "09:00", endTime: "17:00" };
-  return acc;
-}, {} as PortalWorkSchedule);
-
-/**
- * Werkrooster is per medewerker PER LOCATIE (migratie 113) — iemand kan op
- * maandag bij locatie A werken en op dinsdag bij locatie B. Nodig als
- * fundament voor de AI-suggestie bij ruimtereservering (roomSuggestionService.ts).
- */
-export async function loadWorkSchedule(membershipId: string, locationId: string): Promise<PortalWorkSchedule> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("work_schedules")
-    .select("weekday, start_time, end_time, is_off")
-    .eq("membership_id", membershipId)
-    .eq("location_id", locationId);
-  if (error) { logErr("loadWorkSchedule", error); return { ...DEFAULT_WORK_SCHEDULE }; }
-  const schedule = { ...DEFAULT_WORK_SCHEDULE };
-  for (const row of (data ?? []) as { weekday: string; start_time: string | null; end_time: string | null; is_off: boolean }[]) {
-    const day = row.weekday as PortalWeekday;
-    schedule[day] = {
-      isOff: row.is_off,
-      startTime: row.start_time ?? "09:00",
-      endTime: row.end_time ?? "17:00",
-    };
-  }
-  return schedule;
-}
-
-/** Werkrooster van alle medewerkers die aan deze locatie gekoppeld zijn — voor de ruimteverdeling-suggestie. */
-export async function loadWorkSchedulesForLocation(locationId: string): Promise<{ membershipId: string; workingHours: PortalWorkSchedule }[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("work_schedules")
-    .select("membership_id, weekday, start_time, end_time, is_off")
-    .eq("location_id", locationId);
-  if (error) { logErr("loadWorkSchedulesForLocation", error); return []; }
-
-  const byMembership = new Map<string, PortalWorkSchedule>();
-  for (const row of (data ?? []) as { membership_id: string; weekday: string; start_time: string | null; end_time: string | null; is_off: boolean }[]) {
-    const schedule = byMembership.get(row.membership_id) ?? { ...DEFAULT_WORK_SCHEDULE };
-    schedule[row.weekday as PortalWeekday] = {
-      isOff: row.is_off, startTime: row.start_time ?? "09:00", endTime: row.end_time ?? "17:00",
-    };
-    byMembership.set(row.membership_id, schedule);
-  }
-  return [...byMembership.entries()].map(([membershipId, workingHours]) => ({ membershipId, workingHours }));
-}
-
-export async function updateWorkSchedule(membershipId: string, locationId: string, schedule: PortalWorkSchedule): Promise<{ error: string | null }> {
-  const supabase = createClient();
-  const rows = WEEKDAY_KEYS.map((day) => ({
-    membership_id: membershipId,
-    location_id: locationId,
-    weekday: day,
-    is_off: schedule[day].isOff,
-    start_time: schedule[day].isOff ? null : schedule[day].startTime,
-    end_time: schedule[day].isOff ? null : schedule[day].endTime,
-  }));
-  const { error } = await supabase.from("work_schedules").upsert(rows, { onConflict: "membership_id,weekday,location_id" });
-  if (error) { logErr("updateWorkSchedule", error); return { error: "Bijwerken van de werkuren is niet gelukt." }; }
-  return { error: null };
-}
-
-// ─── Verlof ──────────────────────────────────────────────────────────────────
-// Vakantie/vrije dagen per medewerker (migratie 117) — hele dagen, geen
-// tijdvakken (net als isOff op work_schedules). Zonder deze data zou de
-// AI-suggestie (roomSuggestionService.ts) een fysio nog steeds voorstellen
-// op een dag dat diegene er niet is.
-
-export type PortalLeaveType = "vakantie" | "vrije_dag" | "ziek" | "overig";
-
-export const LEAVE_TYPE_LABELS: Record<PortalLeaveType, string> = {
-  vakantie: "Vakantie",
-  vrije_dag: "Vrije dag",
-  ziek: "Ziek",
-  overig: "Overig",
-};
-
-export interface PortalStaffLeave {
-  id: string;
-  membershipId: string;
-  membershipName: string | null;
-  startsOn: string;
-  endsOn: string;
-  leaveType: PortalLeaveType;
-  note: string | null;
-}
-
-/** Verlof van alle medewerkers gekoppeld aan deze locatie (primair óf extra, via membership_locations), dat overlapt met de gegeven week. */
-export async function loadStaffLeaveForLocation(locationId: string, weekStart: string): Promise<PortalStaffLeave[]> {
-  const supabase = createClient();
-  const days = weekDates(weekStart);
-  const [primaryRes, extraRes] = await Promise.all([
-    supabase.from("memberships").select("id").eq("location_id", locationId),
-    supabase.from("membership_locations").select("membership_id").eq("location_id", locationId),
-  ]);
-  const membershipIds = [...new Set([
-    ...((primaryRes.data ?? []).map((m) => m.id as string)),
-    ...((extraRes.data ?? []).map((m) => m.membership_id as string)),
-  ])];
-  if (membershipIds.length === 0) return [];
-
-  const { data, error } = await supabase
-    .from("staff_leave")
-    .select("id, membership_id, starts_on, ends_on, leave_type, note")
-    .in("membership_id", membershipIds)
-    .lte("starts_on", days[6])
-    .gte("ends_on", days[0])
-    .order("starts_on");
-  if (error) { logErr("loadStaffLeaveForLocation", error); return []; }
-
-  const rows = (data ?? []) as unknown as {
-    id: string; membership_id: string; starts_on: string; ends_on: string; leave_type: PortalLeaveType; note: string | null;
-  }[];
-  const nameMap = await resolveMembershipFullNames([...new Set(rows.map((r) => r.membership_id))]);
-  return rows.map((r) => ({
-    id: r.id, membershipId: r.membership_id,
-    membershipName: nameMap.get(r.membership_id) ?? null,
-    startsOn: r.starts_on, endsOn: r.ends_on, leaveType: r.leave_type, note: r.note,
-  }));
-}
-
-/** Al het verlof van één medewerker, nieuwste eerst — voor het Verlof-tabblad bij de medewerker. */
-export async function loadStaffLeaveForMembership(membershipId: string): Promise<PortalStaffLeave[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("staff_leave")
-    .select("id, membership_id, starts_on, ends_on, leave_type, note")
-    .eq("membership_id", membershipId)
-    .order("starts_on", { ascending: false });
-  if (error) { logErr("loadStaffLeaveForMembership", error); return []; }
-  return (data ?? []).map((r) => ({
-    id: r.id as string, membershipId: r.membership_id as string, membershipName: null,
-    startsOn: r.starts_on as string, endsOn: r.ends_on as string,
-    leaveType: r.leave_type as PortalLeaveType, note: r.note as string | null,
-  }));
-}
-
-export interface PortalStaffLeaveInput {
-  membershipId: string;
-  startsOn: string;
-  endsOn: string;
-  leaveType: PortalLeaveType;
-  note: string;
-}
-
-export async function createStaffLeave(input: PortalStaffLeaveInput, createdBy: string | null): Promise<{ error: string | null }> {
-  const supabase = createClient();
-  const { error } = await supabase.from("staff_leave").insert({
-    membership_id: input.membershipId, starts_on: input.startsOn, ends_on: input.endsOn,
-    leave_type: input.leaveType, note: input.note.trim() || null, created_by: createdBy,
-  });
-  if (error) { logErr("createStaffLeave", error); return { error: "Toevoegen van het verlof is niet gelukt." }; }
-  return { error: null };
-}
-
-export async function deleteStaffLeave(leaveId: string): Promise<{ error: string | null }> {
-  const supabase = createClient();
-  const { error } = await supabase.from("staff_leave").delete().eq("id", leaveId);
-  if (error) { logErr("deleteStaffLeave", error); return { error: "Verwijderen van het verlof is niet gelukt." }; }
-  return { error: null };
-}
-
-// ─── Agenda-koppeling ────────────────────────────────────────────────────────
-// Alleen-lezen iCal-feed per medewerker (migratie 118) — zelf-service (owner
-// of de medewerker zelf), in tegenstelling tot verlof. Het daadwerkelijk
-// ophalen/parsen gebeurt server-side via /api/calendar-feed (CORS + een
-// eventueel onveilige URL horen niet in de browser thuis).
-
-export interface PortalCalendarFeed {
-  membershipId: string;
-  icsUrl: string;
-  lastSyncedAt: string | null;
-  lastSyncError: string | null;
-}
-
-export async function loadCalendarFeed(membershipId: string): Promise<PortalCalendarFeed | null> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("staff_calendar_feeds")
-    .select("membership_id, ics_url, last_synced_at, last_sync_error")
-    .eq("membership_id", membershipId)
-    .maybeSingle();
-  if (error) { logErr("loadCalendarFeed", error); return null; }
-  if (!data) return null;
-  return {
-    membershipId: data.membership_id, icsUrl: data.ics_url,
-    lastSyncedAt: data.last_synced_at, lastSyncError: data.last_sync_error,
-  };
-}
-
-export async function saveCalendarFeed(membershipId: string, icsUrl: string): Promise<{ error: string | null }> {
-  const supabase = createClient();
-  const { error } = await supabase
-    .from("staff_calendar_feeds")
-    .upsert({ membership_id: membershipId, ics_url: icsUrl.trim(), last_synced_at: null, last_sync_error: null }, { onConflict: "membership_id" });
-  if (error) { logErr("saveCalendarFeed", error); return { error: "Opslaan van de agenda-koppeling is niet gelukt." }; }
-  return { error: null };
-}
-
-export async function deleteCalendarFeed(membershipId: string): Promise<{ error: string | null }> {
-  const supabase = createClient();
-  const { error } = await supabase.from("staff_calendar_feeds").delete().eq("membership_id", membershipId);
-  if (error) { logErr("deleteCalendarFeed", error); return { error: "Ontkoppelen van de agenda is niet gelukt." }; }
-  return { error: null };
-}
-
-export interface PortalBusyBlock {
-  startsAt: string;
-  endsAt: string;
-  summary: string;
-}
-
-/** Roept /api/calendar-feed aan — server-side ophalen/parsen, zie route voor SSRF-afscherming en RRULE-expansie. */
-export async function loadExternalBusyBlocks(membershipId: string, rangeStart: string, rangeEnd: string): Promise<{ blocks: PortalBusyBlock[]; error: string | null }> {
-  const supabase = createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return { blocks: [], error: "Niet ingelogd." };
-
-  try {
-    const res = await fetch(apiUrl("/api/calendar-feed"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({ membershipId, rangeStart, rangeEnd }),
-    });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok && !json.blocks) {
-      return { blocks: [], error: json.error ?? "Ophalen van de agenda is niet gelukt." };
-    }
-    return { blocks: (json.blocks ?? []) as PortalBusyBlock[], error: json.error ?? null };
-  } catch {
-    return { blocks: [], error: "Ophalen van de agenda is niet gelukt." };
-  }
-}
-
 export interface PortalEmployeeOnboardingStatus {
-  hasWorkSchedule: boolean;
+  /** Functie (bv. "Fysiotherapeut") ingevuld — zichtbaar voor patiënten bij hun behandelaar. */
+  hasTitle: boolean;
   hasAvatar: boolean;
 }
 
-/** Voor het rolgebonden welkomstpaneel van een medewerker (EmployeeWelcomePanel). */
-export async function loadEmployeeOnboardingStatus(membershipId: string, userId: string): Promise<PortalEmployeeOnboardingStatus> {
+export async function loadEmployeeOnboardingStatus(_membershipId: string, userId: string): Promise<PortalEmployeeOnboardingStatus> {
   const supabase = createClient();
-  const [scheduleRes, profileRes] = await Promise.all([
-    supabase.from("work_schedules").select("id", { count: "exact", head: true }).eq("membership_id", membershipId),
-    supabase.from("profiles").select("avatar_url").eq("id", userId).maybeSingle(),
-  ]);
-  if (scheduleRes.error) logErr("loadEmployeeOnboardingStatus(work_schedules)", scheduleRes.error);
-  if (profileRes.error) logErr("loadEmployeeOnboardingStatus(profiles)", profileRes.error);
+  const { data, error } = await supabase.from("profiles").select("avatar_url, title").eq("id", userId).maybeSingle();
+  if (error) logErr("loadEmployeeOnboardingStatus(profiles)", error);
   return {
-    hasWorkSchedule: (scheduleRes.count ?? 0) > 0,
-    hasAvatar: !!profileRes.data?.avatar_url,
+    hasTitle: !!data?.title?.trim(),
+    hasAvatar: !!data?.avatar_url,
   };
 }
 

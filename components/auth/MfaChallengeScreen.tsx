@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { OtpCodeInput } from "@/components/ui/OtpCodeInput";
 import { createClient } from "@/lib/supabaseClient";
 
 interface MfaChallengeScreenProps {
@@ -21,54 +22,63 @@ export function MfaChallengeScreen({ factorId, onVerified, onSignOut }: MfaChall
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (code.length !== 6) return;
+  async function verify(value: string) {
+    if (value.length !== 6 || verifying) return;
     setVerifying(true);
     setError("");
     const supabase = createClient();
-    const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({ factorId, code });
+    const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({ factorId, code: value });
     setVerifying(false);
     if (verifyError) {
       setError("Onjuiste code. Controleer je authenticator-app en probeer het opnieuw.");
+      setCode("");
       return;
     }
     onVerified();
   }
 
   return (
-    <div className="fixed inset-0 z-(--z-gate) flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)" }}>
-      <div className="relative w-full max-w-md rounded-2xl p-6 sm:p-8 shadow-2xl" style={{ background: "#ffffff" }}>
-        <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5" style={{ background: "#fff3ee" }}>
-          <ShieldCheck size={22} style={{ color: "#e8632a" }} />
-        </div>
-        <h2 className="text-lg font-semibold mb-2" style={{ color: "#1a1a1a" }}>
-          Verificatiecode vereist
-        </h2>
-        <p className="text-sm leading-relaxed mb-5" style={{ color: "#6b6560" }}>
-          Vul de 6-cijferige code uit je authenticator-app in om verder te gaan.
-        </p>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5">Verificatiecode</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              placeholder="123456"
-              autoFocus
-              className="w-full text-base sm:text-sm rounded-xl border px-4 py-2.5 focus:outline-none tracking-widest text-center min-h-11 sm:min-h-0"
-              style={{ borderColor: "#e8e5df", background: "#f8f7f4", color: "#1a1a1a" }}
-            />
-            {error && <p className="text-[11px] mt-1" style={{ color: "#dc2626" }}>{error}</p>}
+    <div className="fixed inset-0 z-(--z-gate) flex items-center justify-center p-4 overflow-y-auto" style={{ background: "rgba(0,0,0,0.55)" }}>
+      <div className="relative w-full max-w-[420px] my-auto rounded-3xl px-6 py-8 sm:px-9 sm:py-10 shadow-2xl" style={{ background: "#ffffff" }}>
+        <div className="flex flex-col items-center text-center">
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4" style={{ background: "#fff3ee" }}>
+            <ShieldCheck size={22} style={{ color: "#e8632a" }} />
           </div>
-          <div className="flex items-center gap-3 pt-1">
-            <Button type="submit" size="sm" disabled={verifying || code.length !== 6}>
-              {verifying ? "Bevestigen…" : "Bevestigen"}
-            </Button>
+          <h2 className="text-xl font-semibold tracking-tight mb-2" style={{ color: "#1a1a1a" }}>
+            Voer je verificatiecode in
+          </h2>
+          <p className="text-sm leading-relaxed max-w-[320px]" style={{ color: "#6b6560" }}>
+            Open je authenticator-app en vul de 6-cijferige code voor REVA App in.
+          </p>
+        </div>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void verify(code);
+          }}
+          className="mt-7"
+        >
+          <OtpCodeInput
+            value={code}
+            onChange={(v) => {
+              setCode(v);
+              if (error) setError("");
+            }}
+            onComplete={(v) => void verify(v)}
+            disabled={verifying}
+            error={!!error}
+            autoFocus
+          />
+          <p className="text-xs text-center mt-2.5 min-h-4" role={error ? "alert" : undefined} style={{ color: error ? "#dc2626" : "#9ca3af" }}>
+            {error || "De code ververst elke 30 seconden."}
+          </p>
+
+          <Button type="submit" size="lg" fullWidth className="mt-5 rounded-xl" disabled={verifying || code.length !== 6}>
+            {verifying ? "Controleren…" : "Ga door"}
+          </Button>
+
+          <div className="mt-5 flex justify-center">
             <button type="button" onClick={onSignOut} className="text-xs font-medium hover:opacity-70" style={{ color: "#6b7280" }}>
               Uitloggen
             </button>

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 /**
  * Gedeelde rate-limit-helper voor de API-routes (feedback, send-invite,
- * mfa-reset, delete-account, delete-patient, calendar-feed) — zie migratie
+ * mfa-reset, delete-account, delete-patient) — zie migratie
  * 086 voor de onderliggende, Postgres-gedeelde teller (bewust géén
  * in-memory teller, die zou per serverless-instance apart tellen en dus
  * geen echte bescherming bieden op Vercel).

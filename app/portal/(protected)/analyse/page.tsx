@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Activity, ClipboardCheck, HeartPulse, DoorOpen, Sparkles, ShieldCheck, Clock, CalendarCheck2, Timer } from "lucide-react";
+import { Activity, ClipboardCheck, HeartPulse, Sparkles, ShieldCheck, Clock, CalendarCheck2, Timer } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
@@ -10,17 +10,16 @@ import { LineChart, Bar, PeriodFilter, type Period } from "@/components/ui/Chart
 import { formatDate } from "@/lib/data";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import {
-  loadOrgUsageStats, loadTherapistWorkload, loadPortalStaffOverview, loadRoomOccupancyStats, loadQualityStats,
+  loadOrgUsageStats, loadTherapistWorkload, loadPortalStaffOverview, loadQualityStats,
   loadRecoveryDurationStats,
   VIEW_ANALYTICS_ROLES, STAFF_INACTIVITY_THRESHOLD_DAYS, isDateStale,
-  type PortalOrgUsageStats, type PortalTherapistWorkload, type PortalStaffMember, type PortalRoomOccupancy, type PortalQualityStats,
+  type PortalOrgUsageStats, type PortalTherapistWorkload, type PortalStaffMember, type PortalQualityStats,
   type PortalRecoveryDurationStats,
 } from "@/lib/services/portalService";
 import { INJURY_CATEGORY_LABELS } from "@/lib/services/protocolService";
 
 /** Zichtbaar gelabelde aanname i.p.v. verstopt in een databasefunctie — zie migratie 115. */
 const MINUTES_SAVED_PER_AI_INTAKE = 5;
-const MINUTES_SAVED_PER_AI_ROOM_SUGGESTION = 2;
 
 function formatMinutes(totalMinutes: number): string {
   if (totalMinutes < 60) return `${totalMinutes} min`;
@@ -33,7 +32,6 @@ export default function PortalAnalysePage() {
   const { checked, membership } = usePortalMembership();
   const [period, setPeriod] = useState<Period>(30);
   const [stats, setStats] = useState<PortalOrgUsageStats | null>(null);
-  const [occupancy, setOccupancy] = useState<PortalRoomOccupancy[] | null>(null);
   const [quality, setQuality] = useState<PortalQualityStats | null>(null);
   const [workload, setWorkload] = useState<{ rows: PortalTherapistWorkload[]; unassignedCount: number } | null>(null);
   const [staff, setStaff] = useState<PortalStaffMember[]>([]);
@@ -47,12 +45,10 @@ export default function PortalAnalysePage() {
     let cancelled = false;
     Promise.all([
       loadOrgUsageStats(membership.organizationId, period),
-      loadRoomOccupancyStats(membership.organizationId, period),
       loadQualityStats(membership.organizationId, period),
-    ]).then(([statsData, occupancyData, qualityData]) => {
+    ]).then(([statsData, qualityData]) => {
       if (cancelled) return;
       setStats(statsData);
-      setOccupancy(occupancyData);
       setQuality(qualityData);
     });
     return () => { cancelled = true; };
@@ -91,15 +87,11 @@ export default function PortalAnalysePage() {
   const maxTrendTrainings = Math.max(1, ...(stats?.trend.map((p) => p.trainingsCompleted) ?? [0]));
 
   const estimatedMinutesSaved = quality
-    ? quality.aiIntakeCount * MINUTES_SAVED_PER_AI_INTAKE + quality.aiRoomSuggestionsTakenCount * MINUTES_SAVED_PER_AI_ROOM_SUGGESTION
+    ? quality.aiIntakeCount * MINUTES_SAVED_PER_AI_INTAKE
     : 0;
   const checkinDocumentationRate = quality && quality.completedPhasesCount > 0
     ? Math.round((quality.completedPhasesWithCheckinCount / quality.completedPhasesCount) * 100)
     : null;
-  const totalReservedMinutes = (occupancy ?? []).reduce((sum, o) => sum + o.reservedMinutes, 0);
-  const totalAvailableMinutes = (occupancy ?? []).reduce((sum, o) => sum + o.availableMinutes, 0);
-  const overallOccupancyPct = totalAvailableMinutes > 0 ? Math.round((totalReservedMinutes / totalAvailableMinutes) * 100) : null;
-
   const currentYear = new Date().getFullYear();
   const patientsThisYear = recovery?.patientsPerYear.find((y) => y.year === currentYear)?.count ?? 0;
   const maxByCategory = Math.max(1, ...(recovery?.byInjuryCategory.map((c) => c.avgDurationDays) ?? [0]));
@@ -156,11 +148,11 @@ export default function PortalAnalysePage() {
           title="Automatisering & kwaliteit"
           subtitle="Wat REVA voor je regelt, en hoe goed vastleggingen worden bijgehouden"
         />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard
             label="Tijd bespaard (schatting)"
             value={quality ? formatMinutes(estimatedMinutesSaved) : "…"}
-            subtitle={`~${MINUTES_SAVED_PER_AI_INTAKE} min/AI-analyse, ~${MINUTES_SAVED_PER_AI_ROOM_SUGGESTION} min/ruimteplanning`}
+            subtitle={`~${MINUTES_SAVED_PER_AI_INTAKE} min per AI-intakeanalyse`}
             icon={Clock}
             iconColor="#e8632a"
           />
@@ -170,13 +162,6 @@ export default function PortalAnalysePage() {
             subtitle="Automatisch samengevat bij intake"
             icon={Sparkles}
             iconColor="#8b5cf6"
-          />
-          <StatCard
-            label="Ruimteplanningen via AI"
-            value={quality ? quality.aiRoomSuggestionsTakenCount : "…"}
-            subtitle="AI-suggesties overgenomen"
-            icon={DoorOpen}
-            iconColor="#3b82f6"
           />
           <StatCard
             label="Documentatiegraad faseovergangen"
@@ -189,36 +174,6 @@ export default function PortalAnalysePage() {
           />
         </div>
       </Card>
-
-      <div id="ruimtebezetting">
-        <Card>
-          <CardHeader
-            title="Ruimtebezetting per locatie"
-            subtitle={overallOccupancyPct !== null ? `Gemiddeld ${overallOccupancyPct}% bezet in deze periode` : "Nog geen ruimtes ingericht"}
-          />
-          {occupancy && occupancy.length > 0 ? (
-            <div className="space-y-3">
-              {occupancy.map((o) => {
-                const pct = o.availableMinutes > 0 ? Math.round((o.reservedMinutes / o.availableMinutes) * 100) : 0;
-                return (
-                  <Bar
-                    key={o.locationId}
-                    label={`${o.locationName} (${o.roomCount} ${o.roomCount === 1 ? "ruimte" : "ruimtes"})`}
-                    value={pct}
-                    max={100}
-                    format={(v) => `${v}%`}
-                    sublabel={`${formatMinutes(o.reservedMinutes)} van ${formatMinutes(o.availableMinutes)}`}
-                  />
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-sm text-subtle">
-              Nog geen ruimtes met reserveringen. Voeg ruimtes toe bij een locatie en plan reserveringen in via Reserveringen.
-            </p>
-          )}
-        </Card>
-      </div>
 
       <div id="herstel">
         <Card>
