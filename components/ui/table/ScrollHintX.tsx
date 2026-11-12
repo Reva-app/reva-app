@@ -51,6 +51,10 @@ export function ScrollHintX({ children, stickyBg = "#ffffff" }: ScrollHintXProps
           right: 0;
           background: ${stickyBg};
         }
+        .scroll-hint-x table thead tr > *:last-child,
+        .scroll-hint-x table tbody tr.cursor-pointer:hover > *:last-child {
+          background: #faf9f7;
+        }
         .scroll-hint-x.scroll-hint-x--scrolled table tr > *:last-child {
           box-shadow: -6px 0 8px -6px rgba(0, 0, 0, 0.12);
         }

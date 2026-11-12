@@ -12,6 +12,7 @@ import { WelcomePanel } from "@/components/portal/WelcomePanel";
 import { EmployeeWelcomePanel } from "@/components/portal/EmployeeWelcomePanel";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { InitialsAvatar, CheckinIndicator } from "@/components/portal/PatientListParts";
 import {
   loadPortalDashboardStats, loadMyPortalPatientsSummary, loadTherapistWorkload, loadOrgActivitySummary,
   ATTENTION_REASON_LABELS, ATTENTION_BADGE_VARIANT, canViewClinicalData,
@@ -130,27 +131,34 @@ export default function PortalDashboardPage() {
                   { label: "Check-ins deze week", value: myPatients.checkinsThisWeekCount, icon: HeartPulse, iconColor: "#16a34a" },
                 ]}
               />
-              <div className="space-y-1">
+              <ul className="rounded-xl border divide-y overflow-hidden" style={{ borderColor: "#e8e5df" }}>
                 {myPatients.patients.slice(0, 8).map((p) => (
-                  <Link
-                    key={p.id}
-                    href={`/portal/patienten/${p.id}`}
-                    // Op telefoon naam boven de signalen (anders werd de naam afgekapt tot "Thomas …").
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3 min-h-11 py-2 px-2 -mx-2 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <span className="text-sm text-gray-700 sm:truncate">{p.fullName || "Nog niet ingevuld"}</span>
-                    {p.attentionReasons.length > 0 && (
-                      <div className="flex items-center gap-1.5 flex-wrap sm:justify-end sm:shrink-0">
-                        {p.attentionReasons.map((reason) => (
-                          <Badge key={reason} variant={ATTENTION_BADGE_VARIANT[reason]}>
-                            {reason === "inactief" && !p.lastCheckinDate ? "Nog geen activiteit" : ATTENTION_REASON_LABELS[reason]}
-                          </Badge>
-                        ))}
+                  <li key={p.id} style={{ borderColor: "#f0ede8" }}>
+                    <Link
+                      href={`/portal/patienten/${p.id}`}
+                      className="flex items-center gap-3 px-4 py-3 min-h-14 transition-colors hover:bg-[#faf9f7]"
+                    >
+                      <InitialsAvatar name={p.fullName} size={36} />
+                      <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-3">
+                        <div className="min-w-0 sm:flex-1">
+                          <p className="text-sm font-medium text-gray-900 truncate">{p.fullName || "Nog niet ingevuld"}</p>
+                          <p className="text-xs mt-0.5"><CheckinIndicator date={p.lastCheckinDate} /></p>
+                        </div>
+                        {p.attentionReasons.length > 0 && (
+                          <div className="flex items-center gap-1.5 flex-wrap mt-2 sm:mt-0 sm:justify-end sm:shrink-0">
+                            {p.attentionReasons.map((reason) => (
+                              <Badge key={reason} variant={reason === "inactief" ? "warning" : ATTENTION_BADGE_VARIANT[reason]}>
+                                {reason === "inactief" && !p.lastCheckinDate ? "Nog geen activiteit" : ATTENTION_REASON_LABELS[reason]}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </Link>
+                      <ChevronRight size={16} className="text-gray-300 shrink-0" />
+                    </Link>
+                  </li>
                 ))}
-              </div>
+              </ul>
               {myPatients.totalCount > 8 && (
                 <Link
                   href={`/portal/patienten?therapist=${user?.id ?? ""}`}

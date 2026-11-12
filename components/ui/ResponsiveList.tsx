@@ -60,11 +60,20 @@ interface ResponsiveListProps<T, K extends string> {
   rowLabel?: (row: T) => string;
   actions?: (row: T) => ListAction[] | null;
   sort?: ListSort<K>;
+  /**
+   * Telefoon: "rows" (standaard) zijn regels binnen de omliggende kaart;
+   * "cards" zijn losse kaarten met eigen rand en ruimte ertussen — voor
+   * lijsten waar elk item een eigen object is (bv. patiënten). Laat de
+   * aanroeper de omliggende kaart dan alleen vanaf md tekenen.
+   */
+  mobileVariant?: "rows" | "cards";
 }
 
 export function ResponsiveList<T, K extends string>({
   rows, rowKey, columns, card, onRowClick: onRowClickProp, isRowClickable, rowLabel, actions, sort,
+  mobileVariant = "rows",
 }: ResponsiveListProps<T, K>) {
+  const asCards = mobileVariant === "cards";
   const hasActions = !!actions;
   const sortId = useId();
 
@@ -73,7 +82,7 @@ export function ResponsiveList<T, K extends string>({
       {/* Telefoon: kaarten */}
       <div className="md:hidden">
         {sort && (
-          <div className="px-4 pt-3 pb-1 flex items-center justify-end gap-2">
+          <div className={`${asCards ? "pb-3" : "px-4 pt-3 pb-1"} flex items-center justify-end gap-2`}>
             <label htmlFor={sortId} className="text-xs font-medium text-gray-500 shrink-0">Sorteren op</label>
             <div className="w-52">
               <Select
@@ -91,12 +100,16 @@ export function ResponsiveList<T, K extends string>({
             </div>
           </div>
         )}
-        <ul>
+        <ul className={asCards ? "space-y-2.5" : undefined}>
           {rows.map((row) => {
             const rowActions = actions?.(row) ?? null;
             const onRowClick = onRowClickProp && (isRowClickable?.(row) ?? true) ? onRowClickProp : undefined;
             return (
-              <li key={rowKey(row)} className="flex items-start gap-1 border-b last:border-b-0" style={{ borderColor: "#f0ede8" }}>
+              <li
+                key={rowKey(row)}
+                className={asCards ? "flex items-start gap-1 rounded-2xl border bg-white overflow-hidden" : "flex items-start gap-1 border-b last:border-b-0"}
+                style={asCards ? { borderColor: "#e8e5df", boxShadow: "0 1px 2px rgba(0,0,0,0.04)" } : { borderColor: "#f0ede8" }}
+              >
                 <div
                   role={onRowClick ? "link" : undefined}
                   tabIndex={onRowClick ? 0 : undefined}
@@ -123,7 +136,7 @@ export function ResponsiveList<T, K extends string>({
         <ScrollHintX>
           <table className="w-full text-sm">
             <thead>
-              <tr style={{ borderBottom: "1px solid #e8e5df" }}>
+              <tr style={{ borderBottom: "1px solid #e8e5df", background: "#faf9f7" }}>
                 {columns.map((col) => (
                   <HeaderCell key={col.key} column={col} sort={sort} />
                 ))}
@@ -140,8 +153,8 @@ export function ResponsiveList<T, K extends string>({
                   <tr
                     key={rowKey(row)}
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
-                    className={onRowClick ? "cursor-pointer transition-colors hover:bg-gray-50" : undefined}
-                    style={{ borderBottom: "1px solid #f8f7f4" }}
+                    className={`border-b last:border-b-0 ${onRowClick ? "cursor-pointer transition-colors hover:bg-[#faf9f7]" : ""}`}
+                    style={{ borderColor: "#f0ede8" }}
                   >
                     {columns.map((col) => (
                       <td key={col.key} className={`px-5 py-3.5 ${col.align === "right" ? "text-right" : ""} ${col.hideBelow ? HIDE_BELOW[col.hideBelow] : ""} ${col.className ?? ""}`}>
