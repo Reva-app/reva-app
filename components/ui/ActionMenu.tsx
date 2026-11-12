@@ -2,16 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { MoreVertical } from "lucide-react";
+import { MoreVertical, ChevronDown, type LucideIcon } from "lucide-react";
 
 export interface ActionMenuItem {
   label: string;
   onClick: () => void;
   danger?: boolean;
+  icon?: LucideIcon;
 }
 
 interface ActionMenuProps {
   items: ActionMenuItem[];
+  /** Met tekst: een duidelijke knop ("Acties") i.p.v. alleen drie puntjes. */
+  label?: string;
 }
 
 interface MenuPos {
@@ -21,7 +24,7 @@ interface MenuPos {
 }
 
 const MENU_WIDTH = 208;
-const ITEM_HEIGHT = 36;
+const ITEM_HEIGHT = 40;
 
 /**
  * Kebab-menu met acties, portal-gerenderd naar document.body zodat het menu
@@ -29,7 +32,7 @@ const ITEM_HEIGHT = 36;
  * tabelkaart) — zelfde patroon als DatePicker. Klapt automatisch omhoog open
  * als er onder de trigger niet genoeg ruimte meer is.
  */
-export function ActionMenu({ items }: ActionMenuProps) {
+export function ActionMenu({ items, label }: ActionMenuProps) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<MenuPos>({ top: 0, left: 0 });
   const [mounted] = useState(() => typeof window !== "undefined");
@@ -91,13 +94,14 @@ export function ActionMenu({ items }: ActionMenuProps) {
         <button
           key={i}
           type="button"
-          className="w-full text-left px-4 py-2 hover:bg-gray-50"
-          style={item.danger ? { color: "#dc2626" } : undefined}
+          className={`w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-2.5 ${item.danger ? "border-t" : ""}`}
+          style={item.danger ? { color: "#dc2626", borderColor: "#f0ede8" } : { color: "#1f2937" }}
           onClick={() => {
             setOpen(false);
             item.onClick();
           }}
         >
+          {item.icon && <item.icon size={15} className={item.danger ? "" : "text-gray-400"} />}
           {item.label}
         </button>
       ))}
@@ -106,14 +110,32 @@ export function ActionMenu({ items }: ActionMenuProps) {
 
   return (
     <div className="relative inline-block">
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={toggle}
-        className="relative tap-target p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"
-      >
-        <MoreVertical size={16} />
-      </button>
+      {label ? (
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={toggle}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          className="inline-flex items-center gap-1.5 rounded-xl border bg-white px-3.5 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 transition-colors min-h-10"
+          style={{ borderColor: "#e8e5df" }}
+        >
+          {label}
+          <ChevronDown size={15} className={`text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+      ) : (
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={toggle}
+          aria-label="Acties"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          className="relative tap-target p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"
+        >
+          <MoreVertical size={16} />
+        </button>
+      )}
       {mounted && open && createPortal(menu, document.body)}
     </div>
   );

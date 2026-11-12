@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Camera, Pill, CalendarClock, Dumbbell, Award, Droplets, Pencil, Star, Flag, ClipboardList, Check, ChevronRight, ChevronLeft, RotateCcw, MessageSquare, Trash2, Loader2, X, History, Images } from "lucide-react";
+import { ArrowLeft, Send, ShieldOff, Archive, ArchiveRestore, Camera, Pill, CalendarClock, Dumbbell, Award, Droplets, Pencil, Star, Flag, ClipboardList, Check, ChevronRight, ChevronLeft, RotateCcw, MessageSquare, Trash2, Loader2, X, History, Images } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -1331,21 +1331,23 @@ export default function PortalPatientDetailPage() {
               )}
             </div>
             {canManagePatients && (
-              <div className="shrink-0 pt-1">
+              <div className="shrink-0 pt-2">
                 <ActionMenu
+                  label="Acties"
                   items={[
-                    { label: "Gegevens wijzigen", onClick: () => setEditing(true) },
+                    { label: "Gegevens wijzigen", icon: Pencil, onClick: () => setEditing(true) },
                     ...(!patient.hasAccount && patient.email
-                      ? [{ label: "Uitnodiging versturen", onClick: handleInvitePatient }]
+                      ? [{ label: "Uitnodiging versturen", icon: Send, onClick: handleInvitePatient }]
                       : []),
                     ...(patient.hasAccount
-                      ? [{ label: "Tweestapsverificatie resetten", onClick: () => setConfirmMfaReset(true) }]
+                      ? [{ label: "Tweestapsverificatie resetten", icon: ShieldOff, onClick: () => setConfirmMfaReset(true) }]
                       : []),
                     {
                       label: patient.status === "archived" ? "Dearchiveren" : "Archiveren",
+                      icon: patient.status === "archived" ? ArchiveRestore : Archive,
                       onClick: () => { if (!archivingPatient) handleArchivePatient(); },
                     },
-                    { label: "Verwijderen", onClick: () => setConfirmDeletePatient(true), danger: true },
+                    { label: "Verwijderen", icon: Trash2, onClick: () => setConfirmDeletePatient(true), danger: true },
                   ]}
                 />
               </div>
