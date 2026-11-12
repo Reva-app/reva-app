@@ -7,7 +7,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { loadPortalPlanUsage, MANAGE_BRANDING_ROLES, type PortalPlanUsage } from "@/lib/services/portalService";
-import { PLANS, UNLIMITED, PATIENT_WARNING_RATIO, priceLabel, limitLabel } from "@/lib/plans";
+import { PLANS, UNLIMITED, PATIENT_WARNING_RATIO, SEAT_PRICE_EXPLANATION, priceLabel, limitLabel } from "@/lib/plans";
 import { trialState, dayLabel } from "@/lib/trial";
 
 function UsageRow({ label, used, max, hint }: { label: string; used: number | null; max: number | null; hint: string }) {
@@ -71,9 +71,18 @@ export default function PortalAbonnementPage() {
               {plan ? plan.name : "Pakket"}
             </p>
             <p className="text-2xl font-bold text-gray-900 mt-1">
-              {plan ? priceLabel(membership.plan, membership.customMonthlyPriceCents, membership.billingInterval) : "Nog geen pakket"}
+              {!plan
+                ? "Nog geen pakket"
+                : !plan.customizable && usage === null
+                  ? "…"
+                  : priceLabel(membership.plan, membership.customMonthlyPriceCents, membership.billingInterval, usage?.members ?? 1)}
             </p>
-            {plan && <p className="text-xs text-subtle mt-1">{membership.billingInterval === "year" ? "Jaarlijks betaald, 2 maanden gratis" : "Maandelijks betaald"}</p>}
+            {plan && (
+              <p className="text-xs text-subtle mt-1">
+                {!plan.customizable && usage !== null && `${usage.members} ${usage.members === 1 ? "behandelaar" : "behandelaars"} · `}
+                {membership.billingInterval === "year" ? "Jaarlijks betaald, 2 maanden gratis" : "Maandelijks betaald"} · excl. btw
+              </p>
+            )}
           </div>
           {trial.kind === "trial" && <Badge variant="warning">Proefperiode · nog {dayLabel(trial.daysLeft)}</Badge>}
           {trial.kind === "grace" && <Badge variant="danger">Proefperiode verlopen</Badge>}
@@ -81,7 +90,12 @@ export default function PortalAbonnementPage() {
         </div>
         {plan && (
           <ul className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {["Alle functies van REVA", plan.support].map((item) => (
+            {[
+              ...(plan.customizable ? [] : [SEAT_PRICE_EXPLANATION]),
+              "Alle functies van REVA",
+              "Onbeperkt patiënten en vestigingen",
+              plan.support,
+            ].map((item) => (
               <li key={item} className="flex items-center gap-2 text-sm text-gray-600">
                 <Check size={15} style={{ color: "var(--brand-accent, #e8632a)" }} /> {item}
               </li>
@@ -93,10 +107,12 @@ export default function PortalAbonnementPage() {
       <Card>
         <CardHeader title="Verbruik" subtitle="Hoeveel van je pakket je nu gebruikt" />
         <UsageRow
-          label="Medewerkers"
+          label="Behandelaars"
           used={usage?.members ?? null}
           max={membership.maxMembers}
-          hint="Inclusief openstaande uitnodigingen. Bij het maximum kun je niemand meer uitnodigen."
+          hint={plan && !plan.customizable
+            ? "Iedere medewerker met toegang tot het praktijkportaal telt mee voor de prijs, inclusief openstaande uitnodigingen."
+            : "Inclusief openstaande uitnodigingen."}
         />
         <UsageRow
           label="Vestigingen"

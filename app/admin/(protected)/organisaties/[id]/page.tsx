@@ -16,7 +16,7 @@ import { formatDate } from "@/lib/data";
 import { orgStatusBadge } from "../page";
 import {
   PLANS, PLAN_ORDER, UNLIMITED, YEARLY_MONTHS_CHARGED, PATIENT_WARNING_RATIO,
-  priceLabel, limitLabel, formatEuro, type PlanKey,
+  priceLabel, limitLabel, SEAT_PRICE_EXPLANATION, type PlanKey,
 } from "@/lib/plans";
 import { trialState, isoDatePlusDays, dayLabel, DEFAULT_TRIAL_DAYS, TRIAL_GRACE_DAYS } from "@/lib/trial";
 import {
@@ -782,8 +782,8 @@ function LimitInput({ label, value, onChange, allowEmpty }: { label: string; val
 }
 
 /**
- * Pakket, betaalperiode en limieten. Solo t/m Praktijk Plus nemen de aantallen
- * uit lib/plans.ts over; Enterprise en Maatwerk zijn vrij in te vullen.
+ * Pakket, betaalperiode en limieten. "Per behandelaar" rekent de staffel uit
+ * lib/plans.ts over het aantal medewerkers; Maatwerk is vrij in te vullen.
  * Medewerkers en vestigingen zijn harde limieten, patiënten een zachte.
  */
 function PlanCard({
@@ -803,7 +803,7 @@ function PlanCard({
       maxMembers: def.maxMembers,
       maxLocations: def.maxLocations,
       maxPatients: def.maxPatients,
-      customMonthlyPriceCents: def.customizable && def.monthlyPrice !== null ? def.monthlyPrice * 100 : null,
+      customMonthlyPriceCents: def.customizable ? org.customMonthlyPriceCents : null,
     });
   }
 
@@ -813,18 +813,13 @@ function PlanCard({
     <Card>
       <CardHeader
         title="Pakket"
-        subtitle={plan ? `${plan.name} · ${priceLabel(org.plan, org.customMonthlyPriceCents, org.billingInterval)}` : "Nog geen pakket gekozen"}
+        subtitle={plan ? `${plan.name} · ${priceLabel(org.plan, org.customMonthlyPriceCents, org.billingInterval, usage.members)}` : "Nog geen pakket gekozen"}
       />
       <div className="space-y-5">
         <div className="flex flex-wrap gap-2">
           {PLAN_ORDER.map((key) => (
             <Pill key={key} active={org.plan === key} onClick={() => choosePlan(key)}>
               {PLANS[key].name}
-              {PLANS[key].monthlyPrice !== null && (
-                <span className="ml-1.5 font-normal opacity-60">
-                  {PLANS[key].priceIsFrom ? "vanaf " : ""}{formatEuro(PLANS[key].monthlyPrice!)}
-                </span>
-              )}
             </Pill>
           ))}
         </div>
@@ -840,6 +835,10 @@ function PlanCard({
                 </Pill>
               </div>
             </div>
+
+            {!plan.customizable && (
+              <p className="text-sm text-gray-600">{SEAT_PRICE_EXPLANATION}. Patiënten en vestigingen onbeperkt.</p>
+            )}
 
             {plan.customizable && (
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
@@ -873,7 +872,7 @@ function PlanCard({
             <p className="text-xs text-gray-500 leading-relaxed">
               Medewerkers en vestigingen zijn een harde grens: daarboven kan de praktijk niemand meer uitnodigen of toevoegen.
               Patiënten zijn een zachte grens: de praktijkeigenaar krijgt vanaf {Math.round(PATIENT_WARNING_RATIO * 100)}% een melding, maar er wordt niets geblokkeerd.
-              {!plan.customizable && " Aantallen komen uit het pakket; kies Maatwerk om ze aan te passen."}
+              {!plan.customizable && " De prijs volgt het aantal medewerkers; kies Maatwerk voor een afwijkend bedrag of limieten."}
               {" "}Vergeet niet op te slaan.
             </p>
           </>
