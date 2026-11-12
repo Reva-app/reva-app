@@ -21,6 +21,53 @@ export type VisitReason = "surgery" | "sports_injury" | "chronic_complaint" | "o
 export type SymptomOnset = "lt_2_weeks" | "2_6_weeks" | "6_12_weeks" | "gt_3_months";
 export type DailyImpact = "none" | "mild" | "moderate" | "severe";
 export type BodySide = "left" | "right" | "both";
+export type OnsetMechanism = "sudden" | "gradual" | "after_surgery" | "unknown";
+export type SymptomCourse = "improving" | "stable" | "worsening" | "fluctuating";
+export type WorkLoad = "sedentary" | "standing" | "physical" | "not_working";
+export type SportFrequency = "none" | "1_2" | "3_4" | "5_plus";
+export type SportLevel = "recreational" | "competitive" | "professional";
+export type ReferralSource = "direct" | "gp" | "specialist" | "other";
+export type SleepImpact = "none" | "some" | "severe";
+export type Imaging = "xray" | "mri" | "echo" | "ct";
+export type RedFlag = "fever" | "weight_loss" | "night_pain_constant" | "numbness" | "bladder_bowel" | "cancer_history" | "trauma_severe";
+
+export const ONSET_MECHANISM_LABELS: Record<OnsetMechanism, string> = {
+  sudden: "Plotseling (bijv. val, verdraaiing, klap)",
+  gradual: "Geleidelijk, zonder duidelijk moment",
+  after_surgery: "Na een operatie",
+  unknown: "Weet ik niet",
+};
+export const SYMPTOM_COURSE_LABELS: Record<SymptomCourse, string> = {
+  improving: "Wordt beter", stable: "Blijft gelijk", worsening: "Wordt erger", fluctuating: "Wisselt sterk",
+};
+export const WORK_LOAD_LABELS: Record<WorkLoad, string> = {
+  sedentary: "Vooral zittend", standing: "Veel staan of lopen", physical: "Zwaar lichamelijk", not_working: "Werkt (nu) niet",
+};
+export const SPORT_FREQUENCY_LABELS: Record<SportFrequency, string> = {
+  none: "Niet", "1_2": "1-2× per week", "3_4": "3-4× per week", "5_plus": "5× of vaker per week",
+};
+export const SPORT_LEVEL_LABELS: Record<SportLevel, string> = {
+  recreational: "Recreatief", competitive: "Wedstrijd/competitie", professional: "(Semi)professioneel",
+};
+export const REFERRAL_SOURCE_LABELS: Record<ReferralSource, string> = {
+  direct: "Zelf gekomen", gp: "Huisarts", specialist: "Specialist/ziekenhuis", other: "Anders",
+};
+export const SLEEP_IMPACT_LABELS: Record<SleepImpact, string> = {
+  none: "Slaapt goed", some: "Soms wakker door de klacht", severe: "Slaapt slecht door de klacht",
+};
+export const IMAGING_LABELS: Record<Imaging, string> = {
+  xray: "Röntgenfoto", mri: "MRI", echo: "Echo", ct: "CT-scan",
+};
+/** Signalen die op iets anders dan een bewegingsprobleem kunnen wijzen — reden voor overleg met de huisarts. */
+export const RED_FLAG_LABELS: Record<RedFlag, string> = {
+  fever: "Koorts of algemeen ziek gevoel",
+  weight_loss: "Onverklaard gewichtsverlies",
+  night_pain_constant: "Constante pijn, ook in rust en 's nachts",
+  numbness: "Doof gevoel, tintelingen of krachtsverlies",
+  bladder_bowel: "Problemen met plassen of ontlasting",
+  cancer_history: "Kanker (gehad)",
+  trauma_severe: "Zwaar ongeval of val van hoogte",
+};
 
 /**
  * Grove lichaamsregio per blessuretype (BLESSURE_TYPEN-waarde) — bepaalt
@@ -90,6 +137,25 @@ export interface IntakeInput {
   previousTreatmentText: string;
   dailyImpact: DailyImpact | "";
 
+  onsetMechanism: OnsetMechanism | "";
+  injuryDescription: string;
+  symptomCourse: SymptomCourse | "";
+  painWorst: number | null;
+  nightPain: boolean | null;
+  painTriggers: string;
+  sleepImpact: SleepImpact | "";
+  occupation: string;
+  workLoad: WorkLoad | "";
+  sportFrequency: SportFrequency | "";
+  sportLevel: SportLevel | "";
+  medicalHistory: string;
+  medicationText: string;
+  imaging: Imaging[];
+  referralSource: ReferralSource | "";
+  redFlags: RedFlag[];
+  fearOfMovement: boolean | null;
+  patientExpectation: string;
+
   returnToSportGoal: boolean;
   sportType: string;
   returnToWorkGoal: boolean;
@@ -115,6 +181,24 @@ export const emptyIntakeInput: IntakeInput = {
   symptomOnset: "",
   previousTreatmentText: "",
   dailyImpact: "",
+  onsetMechanism: "",
+  injuryDescription: "",
+  symptomCourse: "",
+  painWorst: null,
+  nightPain: null,
+  painTriggers: "",
+  sleepImpact: "",
+  occupation: "",
+  workLoad: "",
+  sportFrequency: "",
+  sportLevel: "",
+  medicalHistory: "",
+  medicationText: "",
+  imaging: [],
+  referralSource: "",
+  redFlags: [],
+  fearOfMovement: null,
+  patientExpectation: "",
   returnToSportGoal: false,
   sportType: "",
   returnToWorkGoal: false,
@@ -271,11 +355,22 @@ function buildSummary(input: IntakeAnalysisInput, weeksPostOp: number | null): s
 
   const painParts: string[] = [];
   if (intake.painScoreNow !== null) painParts.push(`een pijnscore van ${intake.painScoreNow}/10`);
+  if (intake.painWorst !== null) painParts.push(`op het ergste moment ${intake.painWorst}/10`);
   if (intake.romDegrees !== null) painParts.push(`een mobiliteit (ROM) van ${intake.romDegrees}°`);
   if (painParts.length > 0) fragments.push(`Momenteel is er ${painParts.join(" en ")}.`);
 
+  if (intake.injuryDescription.trim()) {
+    fragments.push(`Zo is het ontstaan: ${intake.injuryDescription.trim()}.`);
+  } else if (intake.onsetMechanism === "sudden") {
+    fragments.push("De klacht ontstond plotseling.");
+  } else if (intake.onsetMechanism === "gradual") {
+    fragments.push("De klacht is geleidelijk ontstaan.");
+  }
+
   if (intake.symptomOnset) {
-    fragments.push(`De klachten bestaan al ${SYMPTOM_ONSET_LABELS[intake.symptomOnset]}.`);
+    fragments.push(`De klachten bestaan al ${SYMPTOM_ONSET_LABELS[intake.symptomOnset]}${intake.symptomCourse ? ` en ${SYMPTOM_COURSE_LABELS[intake.symptomCourse].toLowerCase()}` : ""}.`);
+  } else if (intake.symptomCourse) {
+    fragments.push(`Het beloop: ${SYMPTOM_COURSE_LABELS[intake.symptomCourse].toLowerCase()}.`);
   }
 
   if (intake.dailyImpact === "moderate" || intake.dailyImpact === "severe") {
@@ -284,6 +379,11 @@ function buildSummary(input: IntakeAnalysisInput, weeksPostOp: number | null): s
 
   if (intake.previousTreatmentText.trim()) {
     fragments.push(`Eerder gevolgde behandeling: ${intake.previousTreatmentText.trim()}.`);
+  }
+
+  if (intake.occupation.trim() || intake.workLoad) {
+    const load = intake.workLoad ? WORK_LOAD_LABELS[intake.workLoad].toLowerCase() : "";
+    fragments.push(`Werk: ${[intake.occupation.trim(), load].filter(Boolean).join(", ")}.`);
   }
 
   const goalParts: string[] = [];
@@ -307,6 +407,18 @@ function buildAttentionPoints(input: IntakeAnalysisInput, weeksPostOp: number | 
   const { intake } = input;
   const points: AttentionPoint[] = [];
 
+  if (intake.redFlags.length > 0) {
+    points.push({ label: `Rode vlag gemeld: ${intake.redFlags.map((f) => RED_FLAG_LABELS[f].toLowerCase()).join(", ")} — overweeg overleg met de huisarts`, severity: "warning" });
+  }
+  if (intake.symptomCourse === "worsening") {
+    points.push({ label: "Klachten worden erger", severity: "warning" });
+  }
+  if (intake.fearOfMovement) {
+    points.push({ label: "Zorgen of angst om te bewegen", severity: "warning" });
+  }
+  if (intake.nightPain) {
+    points.push({ label: "Nachtelijke pijn", severity: "info" });
+  }
   if (intake.radiatingPain) {
     points.push({ label: "Uitstraling naar arm of been", severity: "warning" });
   }
@@ -348,7 +460,7 @@ function buildAttentionPoints(input: IntakeAnalysisInput, weeksPostOp: number | 
     points.push({ label: "Eerder al behandeld voor deze klacht", severity: "info" });
   }
 
-  return points.slice(0, 6);
+  return points.slice(0, 8);
 }
 
 // ─── Builder: Hersteldoelen ─────────────────────────────────────────────────

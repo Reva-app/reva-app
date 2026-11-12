@@ -7,7 +7,12 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Textarea } from "@/components/ui/Field";
+import { Textarea, Input, Select } from "@/components/ui/Field";
+import { CompleteIntakeModal } from "@/components/portal/CompleteIntakeModal";
+import {
+  ONSET_MECHANISM_LABELS, SYMPTOM_COURSE_LABELS, REFERRAL_SOURCE_LABELS, SLEEP_IMPACT_LABELS, WORK_LOAD_LABELS,
+  SPORT_FREQUENCY_LABELS, SPORT_LEVEL_LABELS, IMAGING_LABELS, RED_FLAG_LABELS,
+} from "@/lib/intakeAnalysis";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PhaseTransitionModal } from "@/components/portal/PhaseTransitionModal";
@@ -49,11 +54,11 @@ import {
   resetPatientMfa,
 } from "@/lib/services/portalService";
 import { resolveSignedUrl, resolveSignedUrls } from "@/lib/services/storageService";
-import { loadPatientIntake, type PortalPatientIntake } from "@/lib/services/intakeService";
+import { loadPatientIntake, markIntakeCompleted, type PortalPatientIntake } from "@/lib/services/intakeService";
 import {
   loadRevaProtocols, loadOrgProtocols, assignProtocolToPatient,
   loadPatientProtocolAssignment, toggleCriterionMet, updateMilestoneCompletion, advanceToNextPhase, revertToPreviousPhase,
-  loadPatientSessionNotes, loadExerciseLibrary,
+  loadPatientSessionNotes, loadExerciseLibrary, addPatientProtocolPhase,
   addExercisesToPatientSchedule, updatePatientScheduleExercise, removeExerciseFromPatientSchedule, reorderPatientScheduleExercises,
   loadPatientStaffNotes, addPatientStaffNote, updatePatientStaffNote, deletePatientStaffNote,
   MANAGE_PROTOCOLS_ROLES,
@@ -277,7 +282,7 @@ function phaseStatusBadge(status: string) {
 
 function ProtocolTab({
   assignment, canAssign, canManageContent, onAssignClick, onToggleCriterion, onToggleMilestone, onAdvancePhase, onRevertPhase, sessionNotes,
-  onAddExerciseClick, onEditExerciseClick, onRemoveExerciseClick, onReorderExercises,
+  onAddExerciseClick, onEditExerciseClick, onRemoveExerciseClick, onReorderExercises, onAddPhaseClick,
 }: {
   assignment: PortalPatientProtocolAssignment | null;
   canAssign: boolean;
@@ -292,6 +297,7 @@ function ProtocolTab({
   onEditExerciseClick: (exercise: PortalPatientProtocolScheduleExercise) => void;
   onRemoveExerciseClick: (exercise: PortalPatientProtocolScheduleExercise) => void;
   onReorderExercises: (scheduleId: string, orderedIds: string[]) => void;
+  onAddPhaseClick: () => void;
 }) {
   if (!assignment) {
     return (
@@ -340,7 +346,8 @@ function ProtocolTab({
         const activeIndex = assignment.phases.findIndex((p) => p.status === "active");
         return assignment.phases.map((phase, index) => {
         const isActive = phase.status === "active";
-        const allCriteriaMet = phase.criteria.length > 0 && phase.criteria.every((c) => c.met);
+        // Zonder criteria (bv. een eigen fase) mag de fysio altijd door.
+        const allCriteriaMet = phase.criteria.every((c) => c.met);
         const hasNextPhase = index < assignment.phases.length - 1;
         const canRevertToThis = canManageContent && phase.status === "completed" && activeIndex !== -1 && index === activeIndex - 1;
 
@@ -525,6 +532,17 @@ function ProtocolTab({
         );
         });
       })()}
+
+      {canManageContent && (
+        <button
+          type="button"
+          onClick={onAddPhaseClick}
+          className="w-full rounded-2xl border border-dashed py-3.5 text-sm font-medium transition-colors hover:bg-white"
+          style={{ borderColor: "#d9d4cc", color: "var(--brand-accent, #e8632a)" }}
+        >
+          + Fase toevoegen
+        </button>
+      )}
     </div>
   );
 }
@@ -558,6 +576,17 @@ function IntakeField({ label, value }: { label: string; value: React.ReactNode }
 
 function IntakeSubTab({ intake, loading }: { intake: PortalPatientIntake | null; loading: boolean }) {
   if (loading) return <Card><p className="text-sm text-subtle">Laden…</p></Card>;
+  if (intake?.status === "requested") {
+    return (
+      <Card>
+        <EmptyState
+          icon={ClipboardList}
+          title="Wacht op de patiënt"
+          description={`De patiënt vult de intake zelf in na het inloggen${intake.requestedAt ? ` (klaargezet op ${formatDate(intake.requestedAt)})` : ""}.`}
+        />
+      </Card>
+    );
+  }
   if (!intake) {
     return (
       <Card>
@@ -570,8 +599,20 @@ function IntakeSubTab({ intake, loading }: { intake: PortalPatientIntake | null;
     );
   }
 
+  const i = intake.input;
+  const filledByPatient = intake.filledBy === "patient";
   return (
     <div className="space-y-4">
+      {filledByPatient && (
+        <p className="text-xs text-subtle">Ingevuld door de patiënt{intake.submittedAt ? ` op ${formatDate(intake.submittedAt)}` : ""}.</p>
+      )}
+      {i.redFlags.length > 0 && (
+        <div className="rounded-2xl p-4" style={{ background: "#fef2f2", border: "1px solid #fecaca" }}>
+          <p className="text-sm font-semibold" style={{ color: "#b91c1c" }}>Rode vlag gemeld</p>
+          <p className="text-sm mt-1" style={{ color: "#7f1d1d" }}>{i.redFlags.map((f) => RED_FLAG_LABELS[f]).join(" · ")}</p>
+          <p className="text-xs mt-1.5" style={{ color: "#991b1b" }}>Overweeg overleg met de huisarts.</p>
+        </div>
+      )}
       {intake.aiSummary && (
         <Card>
           <CardHeader title="REVA Analyse" subtitle={intake.completedAt ? `Intake afgerond op ${formatDate(intake.completedAt)}${intake.createdByName ? ` door ${intake.createdByName}` : ""}` : undefined} />
@@ -593,11 +634,13 @@ function IntakeSubTab({ intake, loading }: { intake: PortalPatientIntake | null;
       )}
 
       <Card>
-        <CardHeader title="Lichaamsgegevens" />
+        <CardHeader title="Ontstaan en beloop" />
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
-          <IntakeField label="Lengte" value={intake.heightCm !== null ? `${intake.heightCm} cm` : null} />
-          <IntakeField label="Gewicht" value={intake.weightKg !== null ? `${intake.weightKg} kg` : null} />
+          <IntakeField label="Ontstaan" value={i.onsetMechanism ? ONSET_MECHANISM_LABELS[i.onsetMechanism] : null} />
+          <IntakeField label="Beloop" value={i.symptomCourse ? SYMPTOM_COURSE_LABELS[i.symptomCourse] : null} />
+          <IntakeField label="Verwezen door" value={i.referralSource ? REFERRAL_SOURCE_LABELS[i.referralSource] : null} />
         </div>
+        {i.injuryDescription && <p className="text-sm text-gray-700 mt-3">{i.injuryDescription}</p>}
       </Card>
 
       <Card>
@@ -606,6 +649,9 @@ function IntakeSubTab({ intake, loading }: { intake: PortalPatientIntake | null;
           <IntakeField label="Reden bezoek" value={intake.visitReason} />
           <IntakeField label="Zijde" value={intake.bodySide ? BODY_SIDE_LABELS[intake.bodySide] ?? intake.bodySide : null} />
           <IntakeField label="Pijnscore bij intake" value={intake.painScoreNow !== null ? `${intake.painScoreNow}/10` : null} />
+          <IntakeField label="Ergste pijn" value={i.painWorst !== null ? `${i.painWorst}/10` : null} />
+          <IntakeField label="Nachtpijn" value={i.nightPain === null ? null : i.nightPain ? "Ja" : "Nee"} />
+          <IntakeField label="Erger bij" value={i.painTriggers} />
           <IntakeField label="Zwelling" value={intake.swelling ? SWELLING_LABELS[intake.swelling] ?? intake.swelling : null} />
           <IntakeField label="Pijnlocatie" value={intake.painLocation} />
           <IntakeField label="Sinds wanneer" value={intake.symptomOnset ? SYMPTOM_ONSET_LABELS[intake.symptomOnset] ?? intake.symptomOnset : null} />
@@ -621,8 +667,25 @@ function IntakeSubTab({ intake, loading }: { intake: PortalPatientIntake | null;
           <IntakeField label="Hulpmiddel" value={intake.mobilityAid ? MOBILITY_AID_LABELS[intake.mobilityAid] ?? intake.mobilityAid : null} />
           <IntakeField label="Belasting" value={intake.weightBearingStatus ? WEIGHT_BEARING_LABELS[intake.weightBearingStatus] ?? intake.weightBearingStatus : null} />
           <IntakeField label="ROM bij intake" value={intake.romDegrees !== null ? `${intake.romDegrees}°` : null} />
+          <IntakeField label="Slaap" value={i.sleepImpact ? SLEEP_IMPACT_LABELS[i.sleepImpact] : null} />
+          <IntakeField label="Angst om te bewegen" value={i.fearOfMovement === null ? null : i.fearOfMovement ? "Ja" : "Nee"} />
           <IntakeField label="Aanvullende ingreep" value={intake.additionalProcedures} />
           <IntakeField label="Eerdere behandeling" value={intake.previousTreatmentText} />
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader title="Werk, sport en gezondheid" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
+          <IntakeField label="Beroep" value={i.occupation} />
+          <IntakeField label="Werkbelasting" value={i.workLoad ? WORK_LOAD_LABELS[i.workLoad] : null} />
+          <IntakeField label="Sport" value={i.sportFrequency ? SPORT_FREQUENCY_LABELS[i.sportFrequency] : null} />
+          <IntakeField label="Sportniveau" value={i.sportLevel ? SPORT_LEVEL_LABELS[i.sportLevel] : null} />
+          <IntakeField label="Voorgeschiedenis" value={i.medicalHistory} />
+          <IntakeField label="Medicatie" value={i.medicationText} />
+          <IntakeField label="Scans/foto's" value={i.imaging.length > 0 ? i.imaging.map((x) => IMAGING_LABELS[x]).join(", ") : null} />
+          <IntakeField label="Lengte" value={intake.heightCm !== null ? `${intake.heightCm} cm` : null} />
+          <IntakeField label="Gewicht" value={intake.weightKg !== null ? `${intake.weightKg} kg` : null} />
         </div>
       </Card>
 
@@ -635,6 +698,9 @@ function IntakeSubTab({ intake, loading }: { intake: PortalPatientIntake | null;
         </div>
         {intake.patientGoalText && (
           <p className="text-sm text-gray-600 italic mt-3">&ldquo;{intake.patientGoalText}&rdquo;</p>
+        )}
+        {i.patientExpectation && (
+          <p className="text-sm text-gray-600 mt-2"><span className="text-gray-500">Verwachting:</span> {i.patientExpectation}</p>
         )}
         {intake.therapistObservations && (
           <div className="mt-3 pt-3" style={{ borderTop: "1px solid #f0ede8" }}>
@@ -902,6 +968,10 @@ export default function PortalPatientDetailPage() {
   const [deletingNote, setDeletingNote] = useState(false);
   const { showToast, toastNode } = useToast();
   const [confirmMfaReset, setConfirmMfaReset] = useState(false);
+  const [showCompleteIntake, setShowCompleteIntake] = useState(false);
+  const [addPhase, setAddPhase] = useState<{ phaseName: string; phaseDescription: string; frequencyPerWeek: number } | null>(null);
+  const [addPhaseSaving, setAddPhaseSaving] = useState(false);
+  const [addPhaseError, setAddPhaseError] = useState("");
   const [resettingMfa, setResettingMfa] = useState(false);
 
   const canManagePatients = !!membership && MANAGE_PATIENTS_ROLES.includes(membership.roleKey);
@@ -1001,6 +1071,18 @@ export default function PortalPatientDetailPage() {
     setLightboxIndex(null);
     setPhotoHistory([]);
     setPhotoHistoryUrls(new Map());
+  }
+
+  async function handleAddPhase() {
+    if (!addPhase || !assignment) return;
+    if (!addPhase.phaseName.trim()) { setAddPhaseError("Geef de fase een naam"); return; }
+    setAddPhaseSaving(true);
+    const { error } = await addPatientProtocolPhase(assignment.id, addPhase);
+    setAddPhaseSaving(false);
+    if (error) { setAddPhaseError(error); return; }
+    setAddPhase(null);
+    refreshProtocol();
+    showToast("Fase toegevoegd");
   }
 
   async function handleMfaReset() {
@@ -1122,6 +1204,10 @@ export default function PortalPatientDetailPage() {
     if (error) { setAssignError(error); return; }
     setShowAssignModal(false);
     refreshProtocol();
+    if (intake?.status === "submitted") {
+      await markIntakeCompleted(intake.id);
+      loadPatientIntake(patientId).then(setIntake);
+    }
     showToast("Herstelplan toegewezen");
   }
 
@@ -1294,6 +1380,28 @@ export default function PortalPatientDetailPage() {
               {/* "Gegevens" bestaat alleen onder lg; wordt het scherm breder, dan valt de hoofdkolom terug op het overzicht. */}
               {(tab === "overzicht" || tab === "gegevens") && (
               <>
+              {intake?.status === "submitted" && canAssignProtocol && (
+                <div className="rounded-2xl p-5 flex items-start gap-4 flex-wrap" style={{ background: "#fff3ee", border: "1px solid #f6d3c2" }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--brand-accent, #e8632a)" }}>
+                    <ClipboardList size={18} color="#ffffff" />
+                  </div>
+                  <div className="flex-1 min-w-[200px]">
+                    <p className="text-sm font-semibold text-gray-900">Intake ingevuld door de patiënt</p>
+                    <p className="text-sm text-gray-600 mt-0.5">
+                      {intake.submittedAt ? `Ingevuld op ${formatDate(intake.submittedAt)}. ` : ""}Bekijk de analyse en kies het herstelplan om te starten.
+                    </p>
+                  </div>
+                  <Button size="sm" onClick={() => setShowCompleteIntake(true)}>Herstelplan kiezen</Button>
+                </div>
+              )}
+              {intake?.status === "requested" && (
+                <div className="rounded-2xl px-5 py-4 text-sm text-gray-600" style={{ background: "#ffffff", border: "1px solid #e8e5df" }}>
+                  <span className="font-medium text-gray-800">Wacht op de intake van de patiënt.</span>{" "}
+                  {patient.hasAccount
+                    ? "De patiënt ziet de intake bij de volgende keer inloggen."
+                    : "De patiënt vult de intake in na het accepteren van de uitnodiging."}
+                </div>
+              )}
               {extras?.mainGoal && <MainGoalCard goal={extras.mainGoal} />}
 
               {/* Check-in status — hoe voelt de patiënt zich */}
@@ -1435,6 +1543,7 @@ export default function PortalPatientDetailPage() {
                   onEditExerciseClick={(ex) => { setScheduleExerciseError(""); setEditingScheduleExercise(ex); }}
                   onRemoveExerciseClick={setConfirmRemoveExercise}
                   onReorderExercises={handleReorderScheduleExercises}
+                  onAddPhaseClick={() => { setAddPhaseError(""); setAddPhase({ phaseName: `Fase ${(assignment?.phases.length ?? 0) + 1}`, phaseDescription: "", frequencyPerWeek: 3 }); }}
                 />
               )}
 
@@ -1575,6 +1684,57 @@ export default function PortalPatientDetailPage() {
               onCancel={() => setConfirmDeleteNote(null)}
               onConfirm={handleConfirmDeleteNote}
             />
+          )}
+
+          {showCompleteIntake && intake && (
+            <CompleteIntakeModal
+              patientId={patient.id}
+              patientName={patient.fullName || "De patiënt"}
+              intake={intake}
+              injuryType={patient.injuryType ?? ""}
+              injuryDate={patient.injuryDate ?? ""}
+              surgeryDate={patient.surgeryDate ?? ""}
+              protocols={[...orgProtocols, ...revaProtocols]}
+              onClose={() => setShowCompleteIntake(false)}
+              onDone={() => {
+                setShowCompleteIntake(false);
+                refreshProtocol();
+                loadPatientIntake(patientId).then(setIntake);
+                showToast("Herstelplan gestart");
+                setTab("herstelplan");
+              }}
+            />
+          )}
+
+          {addPhase && (
+            <Modal onClose={() => setAddPhase(null)} maxWidth="max-w-md" dismissOnBackdropClick={false}>
+              <Card>
+                <CardHeader title="Fase toevoegen" subtitle="Komt achteraan in het herstelplan van deze patiënt." />
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 mb-1.5">Naam</p>
+                    <Input value={addPhase.phaseName} onChange={(e) => setAddPhase({ ...addPhase, phaseName: e.target.value })} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 mb-1.5">Doel van deze fase (optioneel)</p>
+                    <Textarea rows={2} value={addPhase.phaseDescription} onChange={(e) => setAddPhase({ ...addPhase, phaseDescription: e.target.value })} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 mb-1.5">Oefenen per week</p>
+                    <Select value={addPhase.frequencyPerWeek} onChange={(e) => setAddPhase({ ...addPhase, frequencyPerWeek: Number(e.target.value) })}>
+                      {[1, 2, 3, 4, 5, 6, 7, 14].map((n) => <option key={n} value={n}>{n === 14 ? "2× per dag" : `${n}× per week`}</option>)}
+                    </Select>
+                  </div>
+                  {addPhaseError && <p className="text-xs" style={{ color: "#dc2626" }}>{addPhaseError}</p>}
+                  <div className="flex justify-end gap-2 pt-1">
+                    <Button size="sm" variant="secondary" onClick={() => setAddPhase(null)} disabled={addPhaseSaving}>Annuleren</Button>
+                    <Button size="sm" onClick={handleAddPhase} disabled={addPhaseSaving}>
+                      {addPhaseSaving ? <Loader2 size={13} className="animate-spin" /> : "Toevoegen"}
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </Modal>
           )}
 
           {confirmMfaReset && (

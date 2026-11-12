@@ -29,9 +29,44 @@ function roleInSentence(roleName: string | null): string {
 
 const NOT_EXPECTED = "Verwachtte je deze e-mail niet? Dan kun je hem negeren.";
 
+// ─── Voordelen per type account (onderaan de uitnodigingen) ──────────────────
+// Geen medische beloftes; REVA werkt naast het EPD van de praktijk.
+
+const PATIENT_HIGHLIGHTS: EmailContent["highlights"] = {
+  title: "Wat je met REVA kunt",
+  items: [
+    "Je herstelplan en oefeningen van je fysiotherapeut, altijd bij de hand",
+    "In een halve minuut per dag laten weten hoe het met je gaat",
+    "Je voortgang in overzichtelijke grafieken, zodat je ziet hoe ver je al bent",
+    "Afspraken, medicatie en documenten samen op één plek",
+  ],
+};
+
+const THERAPIST_HIGHLIGHTS: EmailContent["highlights"] = {
+  title: "Wat REVA voor je doet",
+  items: [
+    "Je ziet ook tussen de behandelingen door hoe het met je patiënten gaat",
+    "Signalen bij hoge pijn, zwelling of weinig activiteit, zodat je op tijd bijstuurt",
+    "Herstelplannen en oefenschema's in een paar klikken klaargezet",
+    "Werkt naast jullie EPD: geen dubbele invoer",
+  ],
+};
+
+const OWNER_HIGHLIGHTS: EmailContent["highlights"] = {
+  title: "Wat REVA je praktijk oplevert",
+  items: [
+    "Een herstelplatform in de huisstijl van je eigen praktijk",
+    "Overzicht van herstel en betrokkenheid van al je patiënten",
+    "Werkt naast je EPD: agenda en administratie blijven waar ze zijn",
+    "Veilig: tweestapsverificatie voor iedereen en gegevens in de EU",
+  ],
+};
+
+const INTAKE_SENTENCE = "Na het inloggen vragen we je om een korte intake over je klacht in te vullen. Dat duurt ongeveer 5 minuten en helpt je fysiotherapeut om je herstel goed voor te bereiden.";
+
 // ─── Uitnodigingen (app/api/send-invite) ──────────────────────────────────────
 
-export function patientInviteEmail(p: { practice: PracticeInfo; firstName: string; url: string }): EmailContent {
+export function patientInviteEmail(p: { practice: PracticeInfo; firstName: string; url: string; intakeRequested?: boolean }): EmailContent {
   return {
     brand: practiceBrand(p.practice),
     subject: `${p.practice.name} heeft je hersteldashboard klaargezet`,
@@ -40,17 +75,19 @@ export function patientInviteEmail(p: { practice: PracticeInfo; firstName: strin
     paragraphs: [
       [{ bold: p.practice.name }, " begeleidt je herstel met REVA. Je hebt nu een eigen hersteldashboard met je afspraken, oefeningen en voortgang op één plek."],
       "Kies een wachtwoord om je account te activeren. Dat kost je minder dan een minuut.",
+      ...(p.intakeRequested ? [INTAKE_SENTENCE] : []),
     ],
     button: { label: "Account activeren", url: p.url },
     notes: [
       `Deze link is persoonlijk en beperkt geldig. Werkt hij niet meer? Vraag ${p.practice.name} dan om een nieuwe uitnodiging.`,
     ],
+    highlights: PATIENT_HIGHLIGHTS,
     footerReason: { text: `Je ontvangt deze e-mail omdat ${p.practice.name} een dossier voor je heeft aangemaakt in REVA.` },
   };
 }
 
 /** Patiënt die al een REVA-account had: het dossier is direct gekoppeld, dus geen activatielink. */
-export function patientAccessGrantedEmail(p: { practice: PracticeInfo; firstName: string; url: string }): EmailContent {
+export function patientAccessGrantedEmail(p: { practice: PracticeInfo; firstName: string; url: string; intakeRequested?: boolean }): EmailContent {
   return {
     brand: practiceBrand(p.practice),
     subject: `${p.practice.name} heeft je hersteldashboard klaargezet`,
@@ -59,11 +96,13 @@ export function patientAccessGrantedEmail(p: { practice: PracticeInfo; firstName
     paragraphs: [
       [{ bold: p.practice.name }, " begeleidt je herstel met REVA. Je hebt nu een eigen hersteldashboard met je afspraken, oefeningen en voortgang op één plek."],
       "Je had al een REVA-account met dit e-mailadres, dus je hoeft niets te activeren: log in zoals je gewend bent.",
+      ...(p.intakeRequested ? [INTAKE_SENTENCE] : []),
     ],
     button: { label: "Inloggen", url: p.url },
     notes: [
       "Wachtwoord kwijt? Kies dan op het inlogscherm voor “Wachtwoord vergeten”.",
     ],
+    highlights: PATIENT_HIGHLIGHTS,
     footerReason: { text: `Je ontvangt deze e-mail omdat ${p.practice.name} een dossier voor je heeft aangemaakt in REVA.` },
   };
 }
@@ -83,6 +122,7 @@ export function staffInviteEmail(p: { practice: PracticeInfo; firstName: string;
       `Deze link is persoonlijk en beperkt geldig. Werkt hij niet meer? Vraag de beheerder van ${p.practice.name} dan om een nieuwe uitnodiging.`,
       NOT_EXPECTED,
     ],
+    highlights: THERAPIST_HIGHLIGHTS,
   };
 }
 
@@ -100,6 +140,7 @@ export function ownerInviteEmail(p: { organizationName: string; firstName: strin
     notes: [
       `Deze link is persoonlijk en beperkt geldig. Werkt hij niet meer? Mail naar ${EMAIL_REPLY_TO}, dan sturen we je een nieuwe.`,
     ],
+    highlights: OWNER_HIGHLIGHTS,
   };
 }
 
@@ -116,6 +157,7 @@ export function staffAccessGrantedEmail(p: { practice: PracticeInfo; firstName: 
     ],
     button: { label: "Wachtwoord kiezen", url: p.url },
     notes: [`Deze link is persoonlijk en beperkt geldig.`, NOT_EXPECTED],
+    highlights: THERAPIST_HIGHLIGHTS,
   };
 }
 

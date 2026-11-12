@@ -144,8 +144,9 @@ export default function PortalDashboardPage() {
                           <p className="text-sm font-medium text-gray-900 truncate">{p.fullName || "Nog niet ingevuld"}</p>
                           <p className="text-xs mt-0.5"><CheckinIndicator date={p.lastCheckinDate} /></p>
                         </div>
-                        {p.attentionReasons.length > 0 && (
+                        {(p.intakeSubmitted || p.attentionReasons.length > 0) && (
                           <div className="flex items-center gap-1.5 flex-wrap mt-2 sm:mt-0 sm:justify-end sm:shrink-0">
+                            {p.intakeSubmitted && <Badge variant="accent">Intake ingevuld · kies herstelplan</Badge>}
                             {p.attentionReasons.map((reason) => (
                               <Badge key={reason} variant={reason === "inactief" ? "warning" : ATTENTION_BADGE_VARIANT[reason]}>
                                 {reason === "inactief" && !p.lastCheckinDate ? "Nog geen activiteit" : ATTENTION_REASON_LABELS[reason]}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronRight, ChevronLeft, Loader2, X } from "lucide-react";
+import { Check, ChevronRight, ChevronLeft, Loader2, X, ClipboardEdit, Send } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -11,16 +11,20 @@ import {
   createAndInvitePortalPatient,
   type PortalPatientInput, type PortalLocationOption, type PortalMember,
 } from "@/lib/services/portalService";
-import { assignProtocolToPatient, type PortalProtocolCard } from "@/lib/services/protocolService";
-import { createPatientIntake } from "@/lib/services/intakeService";
+import type { PortalProtocolCard } from "@/lib/services/protocolService";
+import { createPatientIntake, requestPatientIntake } from "@/lib/services/intakeService";
 import { generateIntakeAnalysis, emptyIntakeInput, type IntakeInput, type SuggestedGoal, type VisitReason } from "@/lib/intakeAnalysis";
 import { isValidEmail, BLESSURE_TYPEN } from "@/lib/data";
 import { FieldLabel } from "./wizard/shared";
 import { AanleidingStep } from "./wizard/AanleidingStep";
 import { IntakeStep } from "./wizard/IntakeStep";
 import { RevaAnalyseStep } from "./wizard/RevaAnalyseStep";
+import { applyPlanChoice, defaultPlanChoice, DEFAULT_CUSTOM_PHASE, type PlanChoiceValue, type CustomPhaseInput } from "./wizard/PlanChoice";
 
-const STEPS = ["Basisgegevens", "Aanleiding", "Behandeltraject", "Intake", "REVA Analyse", "Uitnodiging"];
+type IntakeMode = "therapist" | "patient";
+const THERAPIST_STEPS = ["Basisgegevens", "Aanleiding", "Behandeltraject", "Intake", "REVA Analyse", "Uitnodiging"] as const;
+const PATIENT_STEPS = ["Basisgegevens", "Uitnodiging"] as const;
+type StepName = (typeof THERAPIST_STEPS)[number];
 
 const emptyInput: PortalPatientInput = {
   firstName: "", lastName: "", email: "", phone: "", dateOfBirth: "", gender: "",
@@ -47,10 +51,14 @@ export function PatientWizard({
   const [input, setInput] = useState<PortalPatientInput>(emptyInput);
   const [intake, setIntake] = useState<IntakeInput>(emptyIntakeInput);
   const [stepError, setStepError] = useState("");
+  const [intakeMode, setIntakeMode] = useState<IntakeMode>("therapist");
+  const STEPS: readonly StepName[] = intakeMode === "patient" ? PATIENT_STEPS : THERAPIST_STEPS;
+  const current = STEPS[Math.min(step, STEPS.length - 1)];
 
-  // undefined = nog niet aangeraakt door de therapeut → volgt de AI-aanbeveling;
-  // null = expliciet "geen herstelplan" gekozen.
-  const [selectedProtocolId, setSelectedProtocolId] = useState<string | null | undefined>(undefined);
+  // undefined = nog niet aangeraakt door de therapeut → volgt de aanbeveling
+  // (of een eigen eerste fase als er geen passend plan is).
+  const [planChoiceOverride, setPlanChoiceOverride] = useState<PlanChoiceValue | undefined>(undefined);
+  const [customPhase, setCustomPhase] = useState<CustomPhaseInput>(DEFAULT_CUSTOM_PHASE);
   const [summaryOverride, setSummaryOverride] = useState<string | null>(null);
   const [goalsOverride, setGoalsOverride] = useState<SuggestedGoal[] | null>(null);
 
@@ -82,7 +90,8 @@ export function PatientWizard({
   );
   const summary = summaryOverride ?? analysis.summary;
   const goals = goalsOverride ?? analysis.suggestedGoals;
-  const effectiveProtocolId = selectedProtocolId !== undefined ? selectedProtocolId : analysis.recommendation?.protocol.id ?? null;
+  const planChoice = planChoiceOverride ?? defaultPlanChoice(analysis.recommendation);
+  const effectiveProtocolId = planChoice.kind === "protocol" ? planChoice.protocolId : null;
   const protocolOptions = analysis.recommendation ? [analysis.recommendation, ...analysis.alternatives] : [];
 
   function update<K extends keyof PortalPatientInput>(key: K, value: PortalPatientInput[K]) {
@@ -94,7 +103,7 @@ export function PatientWizard({
   }
 
   function goNext() {
-    if (step === 0) {
+    if (current === "Basisgegevens") {
       if (!input.firstName.trim() || !input.lastName.trim() || !input.email.trim()) {
         setStepError("Vul voornaam, achternaam en e-mailadres in");
         return;
@@ -104,7 +113,7 @@ export function PatientWizard({
         return;
       }
     }
-    if (step === 1) {
+    if (current === "Aanleiding") {
       if (!intake.visitReason) {
         setStepError("Kies waarvoor de patiënt komt");
         return;
@@ -118,7 +127,7 @@ export function PatientWizard({
         return;
       }
     }
-    if (step === 2) {
+    if (current === "Behandeltraject") {
       if (!input.injuryDate) {
         setStepError("Vul de datum van de blessure in");
         return;
@@ -127,6 +136,10 @@ export function PatientWizard({
         setStepError("Vul de operatiedatum in");
         return;
       }
+    }
+    if (current === "REVA Analyse" && planChoice.kind === "custom" && !customPhase.phaseName.trim()) {
+      setStepError("Geef de eerste fase een naam");
+      return;
     }
     setStepError("");
     setStep((s) => {
@@ -149,8 +162,11 @@ export function PatientWizard({
 
   async function handleInvite() {
     setSending(true);
-    const res = await createAndInvitePortalPatient(organizationId, input);
-    if (res.outcome !== "failed") {
+    const res = await createAndInvitePortalPatient(
+      organizationId, input,
+      intakeMode === "patient" ? (patientId) => requestPatientIntake(organizationId, patientId, user?.id ?? null) : undefined
+    );
+    if (res.outcome !== "failed" && intakeMode !== "patient") {
       const reasoning = protocolOptions.find((r) => r.protocol.id === effectiveProtocolId)?.reasoning ?? null;
       await createPatientIntake(organizationId, res.patientId, user?.id ?? null, intake, {
         aiSummary: summary,
@@ -159,15 +175,22 @@ export function PatientWizard({
         recommendationReasoning: reasoning,
         stagedGoals: goals,
       });
-      if (effectiveProtocolId) {
-        await assignProtocolToPatient(res.patientId, effectiveProtocolId);
+      const planResult = await applyPlanChoice(res.patientId, planChoice, customPhase);
+      if (planResult.error) {
+        setSending(false);
+        setResult({ ok: false, text: `Dossier aangemaakt en uitnodiging verstuurd, maar het herstelplan kon niet worden aangemaakt: ${planResult.error} Kies het herstelplan in het dossier.` });
+        return;
       }
     }
     setSending(false);
     if (res.outcome === "linked") {
-      setResult({ ok: true, text: "Dossier aangemaakt en gekoppeld aan het bestaande REVA-account van deze patiënt. We hebben een e-mail gestuurd dat het dossier klaarstaat." });
+      setResult({ ok: true, text: intakeMode === "patient"
+        ? "Dossier aangemaakt en gekoppeld aan het bestaande REVA-account van deze patiënt. Bij de volgende keer inloggen vult de patiënt de intake in."
+        : "Dossier aangemaakt en gekoppeld aan het bestaande REVA-account van deze patiënt. We hebben een e-mail gestuurd dat het dossier klaarstaat." });
     } else if (res.outcome === "invited") {
-      setResult({ ok: true, text: "Dossier aangemaakt en uitnodiging verstuurd." });
+      setResult({ ok: true, text: intakeMode === "patient"
+        ? "Dossier aangemaakt en uitnodiging verstuurd. Na het inloggen vult de patiënt de intake in; daarna zie je de patiënt bij \"Aandacht nodig\" om het herstelplan te kiezen."
+        : "Dossier aangemaakt en uitnodiging verstuurd." });
     } else {
       setResult({ ok: false, text: res.error });
     }
@@ -177,7 +200,7 @@ export function PatientWizard({
     <Card padding="none">
       <div className="p-5">
       <div className="flex items-start justify-between">
-        <CardHeader title="Patiënt toevoegen" subtitle={`Stap ${step + 1} van ${STEPS.length}: ${STEPS[step]}`} />
+        <CardHeader title="Patiënt toevoegen" subtitle={`Stap ${step + 1} van ${STEPS.length}: ${current}`} />
         <button type="button" onClick={onClose} aria-label="Sluiten" className="relative tap-target text-subtle hover:text-gray-600 shrink-0 -mt-1">
           <X size={18} />
         </button>
@@ -214,7 +237,7 @@ export function PatientWizard({
         })}
       </div>
 
-      {step === 0 && (
+      {current === "Basisgegevens" && (
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Voornaam">
@@ -253,11 +276,39 @@ export function PatientWizard({
               </Select>
             </Field>
           </div>
+          <div className="pt-2">
+            <p className="text-xs font-medium text-gray-500 mb-2">Wie vult de intake in?</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {([
+                { mode: "therapist" as const, icon: ClipboardEdit, title: "Ik vul het nu in", text: "Samen met de patiënt of op basis van het eerste gesprek." },
+                { mode: "patient" as const, icon: Send, title: "De patiënt vult het zelf in", text: "Na het inloggen in de app. Daarna kies jij het herstelplan." },
+              ]).map(({ mode, icon: Icon, title, text }) => {
+                const selected = intakeMode === mode;
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => { setIntakeMode(mode); setMaxStepReached(0); }}
+                    className="flex items-start gap-3 text-left rounded-xl border px-4 py-3.5 transition-colors"
+                    style={{ borderColor: selected ? "var(--brand-accent, #e8632a)" : "#e8e5df", background: selected ? "#fff3ee" : "#ffffff" }}
+                  >
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: selected ? "var(--brand-accent, #e8632a)" : "#f8f7f4" }}>
+                      <Icon size={15} style={{ color: selected ? "#ffffff" : "#6b7280" }} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{title}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{text}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           {stepError && <p className="text-xs" style={{ color: "#dc2626" }}>{stepError}</p>}
         </div>
       )}
 
-      {step === 1 && (
+      {current === "Aanleiding" && (
         <AanleidingStep
           visitReason={intake.visitReason}
           onVisitReasonChange={(r: VisitReason) => updateIntake("visitReason", r)}
@@ -271,7 +322,7 @@ export function PatientWizard({
         />
       )}
 
-      {step === 2 && (
+      {current === "Behandeltraject" && (
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -290,23 +341,29 @@ export function PatientWizard({
         </div>
       )}
 
-      {step === 3 && (
+      {current === "Intake" && (
         <IntakeStep value={intake} onChange={updateIntake} injuryType={input.injuryType} />
       )}
 
-      {step === 4 && (
-        <RevaAnalyseStep
-          analysis={analysis}
-          summary={summary}
-          onSummaryChange={setSummaryOverride}
-          goals={goals}
-          onGoalsChange={setGoalsOverride}
-          selectedProtocolId={effectiveProtocolId}
-          onSelectProtocol={setSelectedProtocolId}
-        />
+      {current === "REVA Analyse" && (
+        <>
+          <RevaAnalyseStep
+            analysis={analysis}
+            summary={summary}
+            onSummaryChange={setSummaryOverride}
+            goals={goals}
+            onGoalsChange={setGoalsOverride}
+            allProtocols={allProtocols}
+            planChoice={planChoice}
+            onPlanChoiceChange={setPlanChoiceOverride}
+            customPhase={customPhase}
+            onCustomPhaseChange={setCustomPhase}
+          />
+          {stepError && <p className="text-xs mt-3" style={{ color: "#dc2626" }}>{stepError}</p>}
+        </>
       )}
 
-      {step === 5 && (
+      {current === "Uitnodiging" && (
         <div className="space-y-4">
           {!result ? (
             <>
@@ -315,8 +372,16 @@ export function PatientWizard({
                 <p><span className="text-gray-500">E-mail:</span> {input.email}</p>
                 <p><span className="text-gray-500">Locatie:</span> {locations.find((l) => l.id === input.locationId)?.name ?? "Geen"}</p>
                 <p><span className="text-gray-500">Behandelaar:</span> {activeMembers.find((m) => m.userId === input.therapistId)?.fullName ?? "Nog niet toegewezen"}</p>
-                <p><span className="text-gray-500">Blessuretype:</span> {BLESSURE_TYPEN.find((b) => b.value === input.injuryType)?.label ?? "Nog niet bekend"}</p>
-                <p><span className="text-gray-500">Herstelplan:</span> {allProtocols.find((p) => p.id === effectiveProtocolId)?.name ?? "Geen"}</p>
+                {intakeMode === "patient" ? (
+                  <p><span className="text-gray-500">Intake:</span> vult de patiënt zelf in, daarna kies jij het herstelplan</p>
+                ) : (
+                  <>
+                    <p><span className="text-gray-500">Blessuretype:</span> {BLESSURE_TYPEN.find((b) => b.value === input.injuryType)?.label ?? "Nog niet bekend"}</p>
+                    <p><span className="text-gray-500">Herstelplan:</span> {planChoice.kind === "protocol"
+                      ? allProtocols.find((p) => p.id === planChoice.protocolId)?.name ?? "Onbekend"
+                      : planChoice.kind === "custom" ? `Eigen plan, start met "${customPhase.phaseName.trim() || "Fase 1"}"` : "Later kiezen"}</p>
+                  </>
+                )}
               </div>
               <p className="text-xs text-gray-500">
                 Bij het versturen wordt het dossier aangemaakt en ontvangt de patiënt direct een uitnodiging op {input.email || "het opgegeven e-mailadres"}.
@@ -346,11 +411,11 @@ export function PatientWizard({
           style={{ background: "#ffffff", borderTop: "1px solid #e8e5df" }}
         >
           <Button type="button" size="sm" variant="secondary" onClick={goBack} disabled={step === 0}>
-            <ChevronLeft size={14} /> {step === 4 ? "Intake aanpassen" : "Vorige"}
+            <ChevronLeft size={14} /> {current === "REVA Analyse" ? "Intake aanpassen" : "Vorige"}
           </Button>
           {step < STEPS.length - 1 && (
             <Button type="button" size="sm" onClick={goNext}>
-              {step === 4 ? "🚀 Start herstelplan" : "Volgende"} {step !== 4 && <ChevronRight size={14} />}
+              Volgende <ChevronRight size={14} />
             </Button>
           )}
         </div>

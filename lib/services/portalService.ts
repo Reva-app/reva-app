@@ -124,6 +124,8 @@ export interface PortalPatient {
   checkinSignals: PatientAttentionReason[];
   dischargedAt: string | null;
   dischargeOutcome: DischargeOutcome | null;
+  /** Openstaande zelf-intake (migratie 137): "requested" = wacht op patiënt, "submitted" = fysio moet herstelplan kiezen. */
+  intakeStatus: "requested" | "submitted" | null;
 }
 
 export type DischargeOutcome = "fully_recovered" | "partially_recovered" | "stopped_early" | "transferred";
@@ -504,6 +506,8 @@ export interface PortalMyPatientRow {
   lastCheckinDate: string | null;
   inactive: boolean;
   attentionReasons: PatientAttentionReason[];
+  /** De patiënt vulde de intake zelf in; de fysio moet nog een herstelplan kiezen (migratie 137). */
+  intakeSubmitted: boolean;
 }
 
 export interface PortalMyPatientsSummary {
@@ -541,6 +545,14 @@ export async function loadMyPortalPatientsSummary(organizationId: string, userId
     checkins_last_7d: number;
   }[];
 
+  const { data: submitted, error: intakeError } = await supabase
+    .from("patient_intakes")
+    .select("patient_id")
+    .eq("organization_id", organizationId)
+    .eq("status", "submitted");
+  if (intakeError) logErr("loadMyPortalPatientsSummary(intakes)", intakeError);
+  const submittedIds = new Set(((submitted ?? []) as { patient_id: string }[]).map((r) => r.patient_id));
+
   const patients: PortalMyPatientRow[] = rows
     .map((r) => {
       const inactive = isPatientInactive(r.last_checkin_date, r.created_at);
@@ -556,9 +568,11 @@ export async function loadMyPortalPatientsSummary(organizationId: string, userId
         lastCheckinDate: r.last_checkin_date,
         inactive,
         attentionReasons,
+        intakeSubmitted: submittedIds.has(r.patient_id),
       };
     })
     .sort((a, b) => {
+      if (a.intakeSubmitted !== b.intakeSubmitted) return a.intakeSubmitted ? -1 : 1;
       if (a.attentionReasons.length !== b.attentionReasons.length) return b.attentionReasons.length - a.attentionReasons.length;
       return (a.fullName ?? "").localeCompare(b.fullName ?? "", "nl");
     });
@@ -566,7 +580,7 @@ export async function loadMyPortalPatientsSummary(organizationId: string, userId
   return {
     patients,
     totalCount: patients.length,
-    needsAttentionCount: patients.filter((p) => p.attentionReasons.length > 0).length,
+    needsAttentionCount: patients.filter((p) => p.intakeSubmitted || p.attentionReasons.length > 0).length,
     checkinsThisWeekCount: rows.reduce((sum, r) => sum + (r.checkins_last_7d ?? 0), 0),
   };
 }
@@ -775,6 +789,18 @@ export async function loadPortalPatients(organizationId: string): Promise<Portal
     if (page.length < PATIENT_LIST_PAGE) break;
   }
 
+  // Openstaande zelf-intakes (migratie 137). Faalt dit (bv. migratie nog niet
+  // gedraaid), dan gewoon zonder deze status verder.
+  const { data: openIntakes, error: intakeError } = await supabase
+    .from("patient_intakes")
+    .select("patient_id, status")
+    .eq("organization_id", organizationId)
+    .in("status", ["requested", "submitted"]);
+  if (intakeError) logErr("loadPortalPatients(intakes)", intakeError);
+  const intakeStatusByPatient = new Map(
+    ((openIntakes ?? []) as { patient_id: string; status: "requested" | "submitted" }[]).map((i) => [i.patient_id, i.status])
+  );
+
   return rows.map((r) => ({
     id: r.id,
     fullName: r.full_name,
@@ -798,6 +824,7 @@ export async function loadPortalPatients(organizationId: string): Promise<Portal
     checkinSignals: checkinAttentionReasons(r.last_pain_score, r.last_swelling, r.last_day_score),
     dischargedAt: r.discharged_at,
     dischargeOutcome: r.discharge_outcome as DischargeOutcome | null,
+    intakeStatus: intakeStatusByPatient.get(r.id) ?? null,
   }));
 }
 
@@ -1028,12 +1055,15 @@ export async function invitePortalPatient(
 /** Voor de intake-wizard: maakt het dossier aan en stuurt in één stap de uitnodiging. */
 export async function createAndInvitePortalPatient(
   organizationId: string,
-  input: PortalPatientInput
+  input: PortalPatientInput,
+  /** Draait tussen aanmaken en uitnodigen, bv. de zelf-intake klaarzetten zodat de mail die kan noemen. */
+  beforeInvite?: (patientId: string) => Promise<unknown>
 ): Promise<InvitePortalPatientResult> {
   const { id, error: createError } = await createPortalPatient(organizationId, input);
   if (createError || !id) {
     return { outcome: "failed", error: createError ?? "Aanmaken van het patiëntdossier is niet gelukt." };
   }
+  if (beforeInvite) await beforeInvite(id);
   return invitePortalPatient(id, organizationId, input.email);
 }
 

@@ -12,6 +12,8 @@ import { StaffAccountScreen } from "@/components/auth/StaffAccountScreen";
 import { useMfaStatus } from "@/lib/hooks/useMfaStatus";
 import { MfaEnrollScreen } from "@/components/auth/MfaEnrollScreen";
 import { MfaChallengeScreen } from "@/components/auth/MfaChallengeScreen";
+import { PatientIntakeScreen } from "@/components/intake/PatientIntakeScreen";
+import { loadMyPendingIntake, type MyPendingIntake } from "@/lib/services/intakeService";
 
 /**
  * Client-side auth + onboarding guard.
@@ -42,6 +44,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   // Tweestapsverificatie is ook voor patiënten verplicht (november 2026):
   // gezondheidsgegevens verdienen hetzelfde niveau als het praktijkportaal.
   const { checked: mfaChecked, satisfied: mfaSatisfied, needsEnrollment, factorId, refresh: refreshMfa } = useMfaStatus();
+  // Intake die de fysio door de patiënt zelf laat invullen (migratie 137):
+  // na de tweestapsverificatie, vóór de rest van de app.
+  const [pendingIntake, setPendingIntake] = useState<{ userId: string; intake: MyPendingIntake | null } | null>(null);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -128,6 +133,16 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     }
   }, [authLoading, hydrated, user, membershipChecked, inviteChecked, setupEffectivelyDone, onInstellingen, router, staffMembership]);
 
+  useEffect(() => {
+    if (!user || !mfaSatisfied || staffMembership || !membershipChecked) return;
+    if (pendingIntake?.userId === user.id) return;
+    let cancelled = false;
+    loadMyPendingIntake().then((intake) => {
+      if (!cancelled) setPendingIntake({ userId: user.id, intake });
+    });
+    return () => { cancelled = true; };
+  }, [user, mfaSatisfied, staffMembership, membershipChecked, pendingIntake]);
+
   // Zet de DB-vlag alsnog op waar (zelfhelend), zodat ook Instellingen'
   // eigen "setup nog niet afgerond"-banner klopt en dit maar één keer
   // per account hoeft te gebeuren i.p.v. elke render opnieuw af te leiden.
@@ -151,6 +166,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     return needsEnrollment || !factorId
       ? <MfaEnrollScreen onVerified={refreshMfa} onSignOut={signOut} portalLabel="je REVA-account" />
       : <MfaChallengeScreen factorId={factorId} onVerified={refreshMfa} onSignOut={signOut} />;
+  }
+  if (pendingIntake?.userId !== user.id) return null;
+  if (pendingIntake.intake) {
+    // Na versturen herladen: de blessuregegevens staan dan in de
+    // instellingen (patients_sync_settings), dus geen onboarding meer.
+    return <PatientIntakeScreen pending={pendingIntake.intake} onDone={() => window.location.replace("/")} onSignOut={signOut} />;
   }
   if (!setupEffectivelyDone && !onInstellingen) return null;
 

@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Star, Bot } from "lucide-react";
+import { Plus, Trash2, Bot } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { DatePicker } from "@/components/ui/DatePicker";
-import { INJURY_CATEGORY_LABELS } from "@/lib/services/protocolService";
-import type { IntakeAnalysis, SuggestedGoal, ProtocolRecommendation } from "@/lib/intakeAnalysis";
+import type { PortalProtocolCard } from "@/lib/services/protocolService";
+import type { IntakeAnalysis, SuggestedGoal } from "@/lib/intakeAnalysis";
+import { PlanChoiceSection, type PlanChoiceValue, type CustomPhaseInput } from "./PlanChoice";
 import { inputStyle, GOAL_ICON_OPTIONS } from "./shared";
 
 interface RevaAnalyseStepProps {
@@ -14,47 +15,16 @@ interface RevaAnalyseStepProps {
   onSummaryChange: (v: string) => void;
   goals: SuggestedGoal[];
   onGoalsChange: (goals: SuggestedGoal[]) => void;
-  selectedProtocolId: string | null;
-  onSelectProtocol: (id: string | null) => void;
-}
-
-function Stars({ count }: { count: number }) {
-  return (
-    <span className="inline-flex gap-0.5" style={{ color: "var(--brand-accent, #e8632a)" }}>
-      {Array.from({ length: 5 }, (_, i) => (
-        <Star key={i} size={13} fill={i < count ? "currentColor" : "none"} strokeWidth={1.5} />
-      ))}
-    </span>
-  );
-}
-
-function ProtocolOption({
-  rec, selected, onSelect,
-}: { rec: ProtocolRecommendation; selected: boolean; onSelect: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className="w-full text-left rounded-xl border p-3 transition-colors"
-      style={{
-        borderColor: selected ? "var(--brand-accent, #e8632a)" : "#e8e5df",
-        background: selected ? "#fff3ee" : "#ffffff",
-      }}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-gray-900">{rec.protocol.name}</p>
-          <p className="text-xs text-gray-500 mt-0.5">{INJURY_CATEGORY_LABELS[rec.protocol.injuryCategory] ?? rec.protocol.injuryCategory}</p>
-        </div>
-        <Stars count={rec.stars} />
-      </div>
-      <p className="text-xs text-gray-600 mt-2">{rec.reasoning}</p>
-    </button>
-  );
+  allProtocols: PortalProtocolCard[];
+  planChoice: PlanChoiceValue;
+  onPlanChoiceChange: (v: PlanChoiceValue) => void;
+  customPhase: CustomPhaseInput;
+  onCustomPhaseChange: (v: CustomPhaseInput) => void;
 }
 
 export function RevaAnalyseStep({
-  analysis, summary, onSummaryChange, goals, onGoalsChange, selectedProtocolId, onSelectProtocol,
+  analysis, summary, onSummaryChange, goals, onGoalsChange,
+  allProtocols, planChoice, onPlanChoiceChange, customPhase, onCustomPhaseChange,
 }: RevaAnalyseStepProps) {
   const [editingSummary, setEditingSummary] = useState(false);
   const allOptions = analysis.recommendation ? [analysis.recommendation, ...analysis.alternatives] : [];
@@ -139,30 +109,20 @@ export function RevaAnalyseStep({
 
       {/* 4. Aanbevolen herstelplan */}
       <div>
-        <h3 className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#b5b0a8" }}>Aanbevolen herstelplan</h3>
-        {allOptions.length === 0 ? (
-          <p className="text-sm rounded-xl p-3.5" style={{ background: "#f8f7f4", color: "#6b7280" }}>
-            Geen passend herstelplan gevonden voor dit blessuretype — kies later handmatig een herstelplan via het patiëntdossier.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {allOptions.map((rec) => (
-              <ProtocolOption key={rec.protocol.id} rec={rec} selected={selectedProtocolId === rec.protocol.id} onSelect={() => onSelectProtocol(rec.protocol.id)} />
-            ))}
-            <button
-              type="button" onClick={() => onSelectProtocol(null)}
-              className="w-full text-left rounded-xl border p-3 text-sm"
-              style={{ borderColor: selectedProtocolId === null ? "var(--brand-accent, #e8632a)" : "#e8e5df", background: selectedProtocolId === null ? "#fff3ee" : "#ffffff", color: "#6b7280" }}
-            >
-              Geen herstelplan
-            </button>
-          </div>
-        )}
+        <h3 className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#b5b0a8" }}>Herstelplan</h3>
+        <PlanChoiceSection
+          recommendations={allOptions}
+          allProtocols={allProtocols}
+          value={planChoice}
+          onChange={onPlanChoiceChange}
+          custom={customPhase}
+          onCustomChange={onCustomPhaseChange}
+        />
       </div>
 
       {/* 5. Controle vóór activatie */}
       <div className="rounded-xl p-3.5 text-xs space-y-1" style={{ background: "#f8f7f4" }}>
-        <p className="text-gray-500">✓ Intake compleet &nbsp;·&nbsp; ✓ Samenvatting gecontroleerd &nbsp;·&nbsp; ✓ Doelen gecontroleerd &nbsp;·&nbsp; {selectedProtocolId ? "✓" : "—"} Herstelplan geselecteerd</p>
+        <p className="text-gray-500">✓ Intake compleet &nbsp;·&nbsp; ✓ Samenvatting gecontroleerd &nbsp;·&nbsp; ✓ Doelen gecontroleerd &nbsp;·&nbsp; {planChoice.kind !== "none" ? "✓" : "—"} Herstelplan gekozen</p>
       </div>
     </div>
   );

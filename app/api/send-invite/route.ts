@@ -84,6 +84,7 @@ export async function POST(request: Request) {
     let email: string;
     let firstName: string;
     let roleKey: string | null = null;
+    let intakeRequested = false;
     let roleName: string | null = null;
 
     if (body.context === "admin" || body.context === "portal-staff") {
@@ -244,6 +245,15 @@ export async function POST(request: Request) {
       organizationId = patient.organization_id;
       email = patient.email;
       firstName = patient.first_name || "";
+      // Vult de patiënt de intake zelf in (migratie 137)? Dan zegt de mail dat.
+      const { data: openIntake } = await supabase
+        .from("patient_intakes")
+        .select("id")
+        .eq("patient_id", body.patientId)
+        .eq("status", "requested")
+        .limit(1)
+        .maybeSingle();
+      intakeRequested = !!openIntake;
       // Bewust géén intake-samenvatting in deze mail: e-mail is niet
       // end-to-end versleuteld en wordt doorgestuurd of gedeeld — klinische
       // inhoud hoort alleen achter de login (code-review nov 2026).
@@ -320,9 +330,9 @@ export async function POST(request: Request) {
     // patiënten en medewerkers zien de huisstijl van hun praktijk.
     const content =
       notifyOnly
-        ? patientAccessGrantedEmail({ practice, firstName, url: `${origin}/login` })
+        ? patientAccessGrantedEmail({ practice, firstName, url: `${origin}/login`, intakeRequested })
         : body.context === "portal-patient"
-        ? patientInviteEmail({ practice, firstName, url: actionLink })
+        ? patientInviteEmail({ practice, firstName, url: actionLink, intakeRequested })
         : body.context === "admin-relink"
           ? activationReminderEmail({
               brand: roleKey === "organization_owner" ? { kind: "reva" } : { kind: "practice", ...practice },

@@ -58,6 +58,8 @@ export interface EmailContent {
   details?: { label: string; value: string }[];
   /** Vrij tekstblok met behoud van regeleinden — voor interne mails. */
   message?: string;
+  /** Korte voordelenlijst onderaan de kaart (bv. bij een uitnodiging), per type account. */
+  highlights?: { title: string; items: string[] };
   /** Waarom de ontvanger dit krijgt, met optionele link (bv. naar meldingen). */
   footerReason?: { text: string; linkLabel?: string; linkUrl?: string };
 }
@@ -207,6 +209,18 @@ export function renderEmailHtml(content: EmailContent): string {
     .map((n) => `<p style="margin:12px 0 0;font-family:${FONT};font-size:13px;line-height:1.55;color:${COLOR_MUTED};">${escapeHtml(n)}</p>`)
     .join("");
 
+  const highlights = content.highlights?.items.length
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:28px 0 0;border-top:1px solid ${COLOR_BORDER};">
+        <tr><td style="padding:22px 0 10px;font-family:${FONT};font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${COLOR_MUTED};">${escapeHtml(content.highlights.title)}</td></tr>
+        ${content.highlights.items.map((item) => `<tr><td style="padding:0 0 10px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td width="26" valign="top" style="width:26px;padding-top:1px;font-family:${FONT};font-size:14px;font-weight:700;line-height:22px;color:${accent};">&#10003;</td>
+            <td valign="top" style="font-family:${FONT};font-size:14px;line-height:22px;color:#374151;">${escapeHtml(item)}</td>
+          </tr></table>
+        </td></tr>`).join("")}
+      </table>`
+    : "";
+
   // Onzichtbare opvulling na de preheader, zodat de inbox-preview niet
   // aanvult met tekst uit de mail zelf.
   const preheaderFill = "&#8203;&nbsp;".repeat(60);
@@ -243,7 +257,7 @@ export function renderEmailHtml(content: EmailContent): string {
               <tr>
                 <td class="reva-card" style="padding:36px 36px 32px;">
                   <h1 style="margin:0 0 18px;font-family:${FONT};font-size:24px;line-height:1.3;font-weight:700;color:${COLOR_HEADING};letter-spacing:-0.01em;">${escapeHtml(content.heading)}</h1>
-                  ${paragraphs}${details}${message}${buttonHtml}${notes}
+                  ${paragraphs}${details}${message}${buttonHtml}${notes}${highlights}
                 </td>
               </tr>
             </table>
@@ -274,6 +288,11 @@ export function renderEmailText(content: EmailContent): string {
   if (content.button) lines.push(`${content.button.label}: ${content.button.url}`, "");
   for (const n of content.notes ?? []) lines.push(n);
   if (content.notes?.length) lines.push("");
+  if (content.highlights?.items.length) {
+    lines.push(content.highlights.title);
+    for (const item of content.highlights.items) lines.push(`✓ ${item}`);
+    lines.push("");
+  }
   lines.push("—");
   if (content.footerReason) {
     const { text, linkLabel, linkUrl } = content.footerReason;

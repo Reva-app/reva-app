@@ -1483,6 +1483,39 @@ export async function assignProtocolToPatient(patientId: string, protocolId: str
   return { error: null };
 }
 
+/** Eigen herstelplan voor één patiënt, met een eerste (actieve) fase en een leeg oefenschema (migratie 137). */
+export async function createCustomPatientProtocol(
+  patientId: string,
+  input: { planName: string; phaseName: string; phaseDescription: string; frequencyPerWeek: number }
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("create_custom_patient_protocol", {
+    p_patient_id: patientId,
+    p_name: input.planName,
+    p_phase_name: input.phaseName,
+    p_phase_description: input.phaseDescription,
+    p_frequency_per_week: input.frequencyPerWeek,
+  });
+  if (error) { logErr("createCustomPatientProtocol", error); return { error: error.message || "Aanmaken van het herstelplan is niet gelukt." }; }
+  return { error: null };
+}
+
+/** Fase achteraan toevoegen aan het herstelplan van één patiënt (migratie 137). */
+export async function addPatientProtocolPhase(
+  patientProtocolId: string,
+  input: { phaseName: string; phaseDescription: string; frequencyPerWeek: number }
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("add_patient_protocol_phase", {
+    p_patient_protocol_id: patientProtocolId,
+    p_phase_name: input.phaseName,
+    p_phase_description: input.phaseDescription,
+    p_frequency_per_week: input.frequencyPerWeek,
+  });
+  if (error) { logErr("addPatientProtocolPhase", error); return { error: error.message || "Toevoegen van de fase is niet gelukt." }; }
+  return { error: null };
+}
+
 export async function loadPatientProtocolAssignment(patientId: string): Promise<PortalPatientProtocolAssignment | null> {
   const supabase = createClient();
 

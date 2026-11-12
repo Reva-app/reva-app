@@ -79,15 +79,20 @@ export function CheckinIndicator({ date }: { date: string | null }) {
 }
 
 export function patientNeedsAttention(p: PortalPatient): boolean {
-  return p.status === "active" && (p.checkinSignals.length > 0 || isPatientInactive(p.lastCheckinDate, p.createdAt));
+  return p.status === "active" && (
+    p.intakeStatus === "submitted" || p.checkinSignals.length > 0 || isPatientInactive(p.lastCheckinDate, p.createdAt)
+  );
 }
 
 /** Klinische signalen + weinig activiteit, alleen bij actieve dossiers. */
 function AttentionBadges({ patient: p }: { patient: PortalPatient }) {
   if (p.status !== "active") return null;
-  const inactive = isPatientInactive(p.lastCheckinDate, p.createdAt);
+  // Wie nog op de eigen intake wacht, is niet "inactief" — dat is verwacht.
+  const inactive = p.intakeStatus !== "requested" && isPatientInactive(p.lastCheckinDate, p.createdAt);
   return (
     <>
+      {p.intakeStatus === "submitted" && <Badge variant="accent">Intake ingevuld · kies herstelplan</Badge>}
+      {p.intakeStatus === "requested" && <Badge variant="muted">Wacht op intake</Badge>}
       {p.checkinSignals.map((reason) => (
         <Badge key={reason} variant={ATTENTION_BADGE_VARIANT[reason]}>{ATTENTION_REASON_LABELS[reason]}</Badge>
       ))}
@@ -110,6 +115,7 @@ function accountLabel(p: PortalPatient): string | null {
 }
 
 function planLabel(p: PortalPatient): string {
+  if (p.intakeStatus === "requested" && !p.protocolName) return "Vult de intake zelf in";
   return p.protocolName || p.injuryType || "Nog geen herstelplan";
 }
 
@@ -132,7 +138,7 @@ export const PATIENT_COLUMNS: ListColumn<PortalPatient, PatientSortKey>[] = [
     key: "attention", header: "Aandacht",
     cell: (p) => (
       <div className="flex items-center gap-1.5 flex-wrap">
-        {patientNeedsAttention(p) ? <AttentionBadges patient={p} /> : <span className="text-gray-300">—</span>}
+        {patientNeedsAttention(p) || p.intakeStatus ? <AttentionBadges patient={p} /> : <span className="text-gray-300">—</span>}
       </div>
     ),
   },
@@ -167,7 +173,7 @@ export function PatientCard({ patient: p }: { patient: PortalPatient }) {
           <CheckinIndicator date={p.lastCheckinDate} />
           {p.therapistName && <span className="text-gray-500">{p.therapistName}</span>}
         </div>
-        {(patientNeedsAttention(p) || account) && (
+        {(patientNeedsAttention(p) || p.intakeStatus || account) && (
           <div className="flex flex-wrap gap-1.5 mt-2.5">
             <AttentionBadges patient={p} />
             {account && <Badge variant="muted">{account}</Badge>}

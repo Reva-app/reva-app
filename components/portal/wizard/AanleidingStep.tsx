@@ -15,6 +15,8 @@ interface AanleidingStepProps {
   bodySide: BodySide | "";
   onBodySideChange: (value: BodySide) => void;
   error?: string;
+  /** "patient" = de patiënt vult zelf in (je-vorm). */
+  audience?: "therapist" | "patient";
 }
 
 const BODY_SIDE_OPTIONS: { value: BodySide; label: string }[] = [
@@ -149,8 +151,9 @@ function ReasonCard({ reason, selected, onClick }: { reason: VisitReason; select
 
 export function AanleidingStep({
   visitReason, onVisitReasonChange, injuryType, onInjuryTypeChange, sportType, onSportTypeChange,
-  bodySide, onBodySideChange, error,
+  bodySide, onBodySideChange, error, audience = "therapist",
 }: AanleidingStepProps) {
+  const isPatient = audience === "patient";
   const locationOptions = visitReason ? LOCATION_OPTIONS_BY_REASON[visitReason] : undefined;
   const isKnownSport = SPORT_OPTIONS.slice(0, -1).includes(sportType);
   const showBodySide = injuryType !== "" && hasLaterality(injuryType);
@@ -158,7 +161,7 @@ export function AanleidingStep({
   return (
     <div className="space-y-6">
       <div>
-        <FieldLabel>Waarvoor komt de patiënt?</FieldLabel>
+        <FieldLabel>{isPatient ? "Waarvoor kom je bij de fysiotherapeut?" : "Waarvoor komt de patiënt?"}</FieldLabel>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mt-2">
           {REASON_ORDER.map((reason) => (
             <ReasonCard
@@ -197,7 +200,7 @@ export function AanleidingStep({
 
       {visitReason === "surgery" && (
         <div>
-          <FieldLabel>Welke operatie?</FieldLabel>
+          <FieldLabel>{isPatient ? "Welke operatie heb je gehad (of krijg je)?" : "Welke operatie?"}</FieldLabel>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mt-2">
             {OPERATION_OPTIONS.map((o) => (
               <OptionCard key={o.value} label={o.label} selected={injuryType === o.value} onClick={() => onInjuryTypeChange(o.value)} />
@@ -219,12 +222,12 @@ export function AanleidingStep({
 
       {visitReason === "other" && (
         <div>
-          <FieldLabel>Blessuretype</FieldLabel>
+          <FieldLabel>{isPatient ? "Wat voor klacht is het?" : "Blessuretype"}</FieldLabel>
           <select
             value={injuryType} onChange={(e) => onInjuryTypeChange(e.target.value)}
             className="w-full text-base sm:text-sm rounded-xl border px-3 py-2 focus:outline-none min-h-11 sm:min-h-0" style={inputStyle}
           >
-            <option value="">Kies een blessuretype</option>
+            <option value="">{isPatient ? "Kies wat het beste past" : "Kies een blessuretype"}</option>
             {BLESSURE_TYPEN.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
           </select>
         </div>
