@@ -36,6 +36,7 @@ export interface LibraryTest {
   description: string | null;
   instructions: string | null;
   bodyRegions: string[];
+  archived: boolean;
 }
 
 export interface TestResult {
@@ -71,13 +72,14 @@ function logErr(fn: string, error: { message?: string } | null) {
   console.error(`[${fn}] Supabase error — message: "${error?.message ?? "onbekend"}"`);
 }
 
-export async function loadTestLibrary(): Promise<LibraryTest[]> {
+export async function loadTestLibrary(opts: { includeArchived?: boolean } = {}): Promise<LibraryTest[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
+  let q = supabase
     .from("test_library")
-    .select("id, scope, name, category, unit, higher_is_better, bilateral, description, instructions, body_regions")
-    .eq("archived", false)
+    .select("id, scope, name, category, unit, higher_is_better, bilateral, description, instructions, body_regions, archived")
     .order("name");
+  if (!opts.includeArchived) q = q.eq("archived", false);
+  const { data, error } = await q;
   if (error) { logErr("loadTestLibrary", error); return []; }
   return (data ?? []).map((r) => ({
     id: r.id as string,
@@ -90,7 +92,61 @@ export async function loadTestLibrary(): Promise<LibraryTest[]> {
     description: r.description as string | null,
     instructions: r.instructions as string | null,
     bodyRegions: (r.body_regions as string[]) ?? [],
+    archived: r.archived as boolean,
   }));
+}
+
+export interface LibraryTestInput {
+  name: string;
+  category: TestCategory;
+  unit: string;
+  higherIsBetter: boolean;
+  bilateral: boolean;
+  description: string;
+  instructions: string;
+  bodyRegions: string[];
+}
+
+function libraryRow(input: LibraryTestInput) {
+  return {
+    name: input.name.trim(),
+    category: input.category,
+    unit: input.unit.trim(),
+    higher_is_better: input.higherIsBetter,
+    bilateral: input.bilateral,
+    description: input.description.trim() || null,
+    instructions: input.instructions.trim() || null,
+    body_regions: input.bodyRegions,
+  };
+}
+
+export async function createLibraryTest(organizationId: string, input: LibraryTestInput): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("test_library").insert({ scope: "organization", organization_id: organizationId, ...libraryRow(input) });
+  if (error) { logErr("createLibraryTest", error); return { error: "Opslaan van de test is niet gelukt." }; }
+  return { error: null };
+}
+
+export async function updateLibraryTest(id: string, input: LibraryTestInput): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("test_library").update(libraryRow(input)).eq("id", id);
+  if (error) { logErr("updateLibraryTest", error); return { error: "Bijwerken van de test is niet gelukt." }; }
+  return { error: null };
+}
+
+export async function setLibraryTestArchived(id: string, archived: boolean): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("test_library").update({ archived }).eq("id", id);
+  if (error) { logErr("setLibraryTestArchived", error); return { error: "Bijwerken van de test is niet gelukt." }; }
+  return { error: null };
+}
+
+/** Verwijderen kan altijd: bij patiënten blijft de test (als kopie) gewoon bestaan. */
+export async function deleteLibraryTest(id: string): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("test_library").delete().eq("id", id);
+  if (error) { logErr("deleteLibraryTest", error); return { error: "Verwijderen van de test is niet gelukt." }; }
+  return { error: null };
 }
 
 export async function loadPatientTests(patientId: string): Promise<PatientTest[]> {

@@ -13,6 +13,7 @@ import {
   CheckCircle2, Circle,
 } from "lucide-react";
 import { usePatientProtocol } from "@/lib/hooks/usePatientProtocol";
+import { MyTests } from "@/components/tests/MyTests";
 import type { TrainingLog } from "@/lib/data";
 import { loadExerciseProgressHistory, loadSessionLogsInRange, type ExerciseProgressPoint } from "@/lib/services/patientProtocolService";
 import { LineChart as ProtocolLineChart, Bar as ProtocolBar } from "@/components/ui/Charts";
@@ -486,6 +487,9 @@ export default function AnalysePage() {
           <PeriodFilter value={period} onChange={setPeriod} />
         </div>
       </div>
+
+      {/* Testen van de fysio: altijd zichtbaar, ook zonder abonnement */}
+      {patientId && <MyTests patientId={patientId} />}
 
       {/* ── Feature gate: free users see a lock card instead of stats ── */}
       {!canViewFullAnalyse(planInfo) ? (

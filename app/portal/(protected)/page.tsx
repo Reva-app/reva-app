@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { quickSuggestion } from "@/lib/insights/patientInsights";
+import { ReviewPrompt } from "@/components/reviews/ReviewPrompt";
+import { ownerReviewTrigger } from "@/lib/reviews";
 import { HeartPulse, Users, AlertTriangle, ChevronRight, Sparkles } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StatCard } from "@/components/ui/StatCard";
@@ -61,6 +63,12 @@ export default function PortalDashboardPage() {
     };
   }, [checked, membership, user]);
 
+  // Reviewverzoek alleen aan praktijkeigenaren (onze klanten), en pas na
+  // weken echt gebruik (lib/reviews.ts).
+  const [now] = useState(() => Date.now());
+  const accountDays = user ? Math.floor((now - new Date(user.created_at).getTime()) / 86_400_000) : 0;
+  const reviewTrigger = loading || !isOwner ? null : ownerReviewTrigger({ daysSinceJoin: accountDays, patientCount: stats?.patientCount ?? 0 });
+
   // Voornaam uit het profiel ("Sanne de Vries" → "Sanne"), niet de rolnaam.
   const firstName = membership?.userFullName?.trim().split(/\s+/)[0] ?? null;
 
@@ -70,6 +78,16 @@ export default function PortalDashboardPage() {
         title={membership ? membership.organizationName : "Dashboard"}
         subtitle={membership ? (firstName ? `Welkom terug, ${firstName}` : "Welkom terug") : undefined}
       />
+
+      {membership && isOwner && (
+        <ReviewPrompt
+          trigger={reviewTrigger}
+          weeks={Math.max(1, Math.round(accountDays / 7))}
+          practiceName={membership.organizationName}
+          name={membership.userFullName}
+          email={user?.email ?? null}
+        />
+      )}
 
       {membership && stats && (
         isOwner ? (

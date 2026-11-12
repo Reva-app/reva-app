@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import { useState } from "react";
-import { LayoutDashboard, HeartPulse, MapPin, Users, ClipboardList, ListChecks, Dumbbell, Palette, LogOut, BarChart3, History, CreditCard, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { LayoutDashboard, HeartPulse, MapPin, Users, ClipboardList, ListChecks, Dumbbell, Gauge, Palette, LogOut, BarChart3, History, CreditCard, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { usePortalBranding } from "@/lib/hooks/usePortalBranding";
@@ -20,6 +20,7 @@ const nav = [
   { href: "/portal/herstelplannen", label: "Herstelplannen", icon: ClipboardList, clinical: true },
   { href: "/portal/schemas", label: "Schema's", icon: ListChecks, clinical: true },
   { href: "/portal/oefeningen", label: "Oefeningen", icon: Dumbbell, clinical: true },
+  { href: "/portal/testen", label: "Testen", icon: Gauge, clinical: true },
   { href: "/portal/locaties", label: "Locaties", icon: MapPin },
   { href: "/portal/medewerkers", label: "Medewerkers", icon: Users },
 ];
