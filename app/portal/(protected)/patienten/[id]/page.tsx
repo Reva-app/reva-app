@@ -21,6 +21,8 @@ import { useToast } from "@/components/ui/Toast";
 import { ScoreBar } from "@/components/ui/ScoreBar";
 import { Tabs } from "@/components/ui/Tabs";
 import { ActionMenu } from "@/components/ui/ActionMenu";
+import { InsightCard } from "@/components/insights/InsightCard";
+import { buildPatientInsights } from "@/lib/insights/patientInsights";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PatientEditForm } from "@/components/portal/PatientEditForm";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -864,6 +866,12 @@ function LogboekTab({
   );
 }
 
+/** Lokale datum als YYYY-MM-DD (niet UTC). */
+function localToday(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 type TabKey = "overzicht" | "herstelplan" | "logboek" | "gegevens";
 const TAB_OPTIONS: { value: TabKey; label: string; className?: string }[] = [
   { value: "overzicht", label: "Overzicht" },
@@ -1382,6 +1390,25 @@ export default function PortalPatientDetailPage() {
                     ? "De patiënt ziet de intake bij de volgende keer inloggen."
                     : "De patiënt vult de intake in na het accepteren van de uitnodiging."}
                 </div>
+              )}
+              {extras && patient.status === "active" && (
+                <InsightCard
+                  scope={patientId}
+                  insights={buildPatientInsights({
+                    firstName: (patient.fullName ?? "").split(" ")[0],
+                    checkins: extras.checkinTrend,
+                    assignment,
+                    sessionNotes,
+                    today: localToday(),
+                  })}
+                  contact={{ phone: patient.phone, email: patient.email }}
+                  onAction={(target) => {
+                    if (target === "herstelplan" || target === "logboek") {
+                      setTab(target);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }
+                  }}
+                />
               )}
               {extras?.mainGoal && <MainGoalCard goal={extras.mainGoal} />}
 

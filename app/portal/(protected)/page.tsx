@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { HeartPulse, Users, AlertTriangle, ChevronRight } from "lucide-react";
+import { quickSuggestion } from "@/lib/insights/patientInsights";
+import { HeartPulse, Users, AlertTriangle, ChevronRight, Sparkles } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { StatStrip } from "@/components/ui/StatStrip";
@@ -153,6 +154,11 @@ export default function PortalDashboardPage() {
                             </p>
                           )}
                           <p className="text-xs mt-0.5"><CheckinIndicator date={p.lastCheckinDate} /></p>
+                          {quickSuggestion({ intakeSubmitted: p.intakeSubmitted, reasons: p.attentionReasons }) && (
+                            <p className="text-xs mt-1 inline-flex items-center gap-1 font-medium" style={{ color: "var(--brand-accent-ink, #8a3a17)" }}>
+                              <Sparkles size={11} className="shrink-0" /> Voorstel: {quickSuggestion({ intakeSubmitted: p.intakeSubmitted, reasons: p.attentionReasons })}
+                            </p>
+                          )}
                         </div>
                         {(p.intakeSubmitted || p.attentionReasons.length > 0) && (
                           <div className="flex items-center gap-1.5 flex-wrap mt-2 sm:mt-0 sm:justify-end sm:shrink-0">
