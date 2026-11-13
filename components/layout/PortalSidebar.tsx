@@ -13,6 +13,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { MANAGE_BRANDING_ROLES, VIEW_ANALYTICS_ROLES, canViewClinicalData } from "@/lib/services/portalService";
 import { VIEW_AUDIT_LOG_ROLES } from "@/lib/services/auditService";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { publicLogoUrl, readBrandCache } from "@/lib/brandCache";
 
 const nav = [
   { href: "/portal", label: "Dashboard", icon: LayoutDashboard },
@@ -86,6 +87,14 @@ export function PortalSidebar() {
   const { signOut, user } = useAuth();
   const { membership } = usePortalMembership();
   const { branding } = usePortalBranding();
+  // Logo uit de lokale huisstijl-cache tot de echte huisstijl binnen is, zodat
+  // het merkblok niet eerst als beginletter + naam verschijnt en dan omspringt.
+  // Liefst de vaste publieke logo-URL: die blijft gelijk (browsercache), een
+  // ondertekende URL wisselt per sessie en laadt het logo telkens opnieuw.
+  const [cachedBrand] = useState(readBrandCache);
+  const logoUrl = branding
+    ? publicLogoUrl(branding.logoPath) ?? branding.logoUrl
+    : cachedBrand && cachedBrand.name === membership?.organizationName ? cachedBrand.logoUrl : null;
   const canManageBranding = !!membership && MANAGE_BRANDING_ROLES.includes(membership.roleKey);
   // Analyse: eigenaar ziet de praktijk, een behandelaar de eigen patiënten.
   const canViewAnalytics = !!membership && (VIEW_ANALYTICS_ROLES.includes(membership.roleKey) || canViewClinicalData(membership.roleKey));
@@ -125,11 +134,11 @@ export function PortalSidebar() {
       <div className={pick("px-3 py-5", "px-5 py-5", "px-3 py-5 xl:px-5")}>
         {/* Smalle balk: alleen het beeldmerk; brede balk: logo/naam leesbaar */}
         <div className={clsx("flex items-center", justifyClass, pick("flex", "hidden", "flex xl:hidden"))}>
-          <BrandMark logoUrl={branding?.logoUrl} initial={(membership?.organizationName || "R")[0]} />
+          <BrandMark logoUrl={logoUrl} initial={(membership?.organizationName || "R")[0]} />
         </div>
         <div className={pick("hidden", "block", "hidden xl:block")}>
           <BrandLockup
-            logoUrl={branding?.logoUrl}
+            logoUrl={logoUrl}
             initial={(membership?.organizationName || "R")[0]}
             name={membership?.organizationName ?? "REVA"}
             subtitle="Practice Portal"

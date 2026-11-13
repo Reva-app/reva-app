@@ -173,6 +173,11 @@ body {
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+@keyframes toastCountdown {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+
 @keyframes checkmarkDraw {
   from { stroke-dashoffset: 30; }
   to   { stroke-dashoffset: 0; }
