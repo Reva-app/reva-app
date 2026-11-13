@@ -679,6 +679,22 @@ async function handleRequest(req: Request): Promise<Response> {
   }
   console.info(`[webpush] sent=${webPushSent} total=${webPushes.length}`);
 
+  // ── Wekelijks overzicht voor praktijkeigenaren (maandag 07:00) ─────────────
+  // Samengesteld door /api/digest/weekly (zelfde cijfers als Analyse).
+  if (dayOfWeek === 1 && localHour === 7 && localMinuteBucket === 0 && pushSecret && !testMode) {
+    try {
+      const res = await fetch(`${siteUrl}/api/digest/weekly`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-push-secret": pushSecret },
+        body: "{}",
+      });
+      const json = await res.json().catch(() => ({}));
+      console.info(`[digest] status=${res.status} sent=${json.sent ?? 0}`);
+    } catch (err) {
+      console.error("[digest] fout:", err);
+    }
+  }
+
   // ── Verstuur alle e-mails via Resend ──────────────────────────────────────
   let emailsSent = 0;
   const emailErrors: string[] = [];

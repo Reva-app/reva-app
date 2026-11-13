@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { HeartPulse, UserPlus, Download } from "lucide-react";
+import { HeartPulse, UserPlus, Download, Upload } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -17,6 +17,7 @@ import { useToast } from "@/components/ui/Toast";
 import { formatDate } from "@/lib/data";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { PatientWizard } from "@/components/portal/PatientWizard";
+import { ImportPatientsModal } from "@/components/portal/ImportPatientsModal";
 import { PatientEditForm } from "@/components/portal/PatientEditForm";
 import { PatientDirectory } from "@/components/portal/PatientDirectory";
 import { PATIENT_COLUMNS, PatientCard, patientNeedsAttention, type PatientSortKey } from "@/components/portal/PatientListParts";
@@ -156,6 +157,7 @@ function ClinicalPatientsPage() {
   const [patients, setPatients] = useState<PortalPatient[]>([]);
   const [locations, setLocations] = useState<PortalLocationOption[]>([]);
   const [members, setMembers] = useState<PortalMember[]>([]);
+  const [importing, setImporting] = useState(false);
   const [revaProtocols, setRevaProtocols] = useState<PortalProtocolCard[]>([]);
   const [orgProtocols, setOrgProtocols] = useState<PortalProtocolCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -353,6 +355,12 @@ function ClinicalPatientsPage() {
             <Download size={14} />
             Exporteren
           </Button>
+          {canManagePatients && (
+            <Button size="sm" variant="secondary" onClick={() => setImporting(true)}>
+              <Upload size={14} />
+              Importeren
+            </Button>
+          )}
           {canManagePatients && !showWizard && !editingPatient && (
             <Button size="sm" onClick={() => setShowWizard(true)}>
               <UserPlus size={14} />
@@ -361,6 +369,17 @@ function ClinicalPatientsPage() {
           )}
         </div>
       </div>
+
+      {importing && membership && (
+        <ImportPatientsModal
+          organizationId={membership.organizationId}
+          members={members}
+          locations={locations}
+          existing={patients}
+          onClose={() => setImporting(false)}
+          onDone={(n) => { setImporting(false); if (n > 0) { showToast(`${n} ${n === 1 ? "patiënt" : "patiënten"} geïmporteerd`); refresh(membership.organizationId); } }}
+        />
+      )}
 
       {showWizard && membership && (
         <Modal onClose={() => setShowWizard(false)} maxWidth="max-w-3xl" dismissOnBackdropClick={false}>

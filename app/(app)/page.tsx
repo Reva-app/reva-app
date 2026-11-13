@@ -36,6 +36,7 @@ import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist"
 import { WelcomeHero } from "@/components/dashboard/WelcomeHero";
 import { usePatientWelcome } from "@/lib/hooks/usePatientWelcome";
 import { CoachPanel } from "@/components/dashboard/CoachPanel";
+import { SatisfactionPrompt } from "@/components/feedback/SatisfactionPrompt";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 
 // ─── Lazy-loaded modals ────────────────────────────────────────────────────────
@@ -644,6 +645,7 @@ export default function Dashboard() {
       )}
 
       <PushPrompt />
+      <SatisfactionPrompt patientId={protocolPatientId} practiceName={careContext?.therapistName ? careContext.organizationName : null} />
 
       <OnboardingChecklist
         hasActiveProtocol={hasActiveProtocol}

@@ -27,6 +27,8 @@ import { buildPlanSuggestions, type PlanSuggestion } from "@/lib/insights/planIn
 import { PlanSuggestions } from "@/components/insights/PlanSuggestions";
 import { IntakeInsight } from "@/components/insights/IntakeInsight";
 import { PatientTestsTab } from "@/components/portal/tests/PatientTestsTab";
+import { notifyPatientUpdate } from "@/lib/push/notifyPatient";
+import { loadPatientFeedback, type PatientFeedback } from "@/lib/services/patientFeedbackService";
 import { loadPatientTests, type PatientTest } from "@/lib/services/testService";
 import { loadPatientTrainingLogs, type PortalTrainingSessionLog, type PortalTrainingExerciseLog } from "@/lib/services/protocolService";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -997,6 +999,12 @@ export default function PortalPatientDetailPage() {
     return () => { cancelled = true; };
   }, [patientId]);
 
+  const [feedback, setFeedback] = useState<PatientFeedback[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    loadPatientFeedback(patientId).then((f) => { if (!cancelled) setFeedback(f); });
+    return () => { cancelled = true; };
+  }, [patientId]);
   const [tests, setTests] = useState<PatientTest[]>([]);
   function refreshTests() {
     loadPatientTests(patientId).then(setTests);
@@ -1162,6 +1170,7 @@ export default function PortalPatientDetailPage() {
     if (error) { showToast(error, "error"); return; }
     setEditingDischarge(false);
     showToast("Afsluitdatum opgeslagen");
+    if (!patient.dischargedAt) notifyPatientUpdate(patient.id, "afgerond");
     if (membership) refresh(membership.organizationId);
   }
 
@@ -1264,7 +1273,7 @@ export default function PortalPatientDetailPage() {
     const schedule = assignment.phases.flatMap((p) => p.schedules).find((s) => s.id === addExerciseModal.scheduleId);
     const result = await addExercisesToPatientSchedule(addExerciseModal.scheduleId, exerciseIds, schedule?.exercises.length ?? 0);
     refreshProtocol();
-    if (result.addedCount > 0) showToast(`${result.addedCount} oefening${result.addedCount === 1 ? "" : "en"} toegevoegd`);
+    if (result.addedCount > 0) { showToast(`${result.addedCount} oefening${result.addedCount === 1 ? "" : "en"} toegevoegd`); notifyPatientUpdate(patientId); }
     return result;
   }
 
@@ -1277,6 +1286,7 @@ export default function PortalPatientDetailPage() {
     if (error) { setScheduleExerciseError(error); return; }
     setEditingScheduleExercise(null);
     showToast("Oefening bijgewerkt");
+    notifyPatientUpdate(patientId);
     refreshProtocol();
   }
 
@@ -1306,6 +1316,7 @@ export default function PortalPatientDetailPage() {
     setConfirmRemoveExercise(null);
     if (error) { showToast(error, "error"); return; }
     showToast("Oefening verwijderd uit schema");
+    notifyPatientUpdate(patientId);
     refreshProtocol();
   }
 
@@ -1321,6 +1332,7 @@ export default function PortalPatientDetailPage() {
     setConfirmAdvance(null);
     if (error) { showToast(error, "error"); return; }
     showToast("Volgende fase gestart");
+    notifyPatientUpdate(patientId, "fase");
     refreshProtocol();
   }
 
@@ -1605,7 +1617,7 @@ export default function PortalPatientDetailPage() {
                   onAddExerciseClick={(scheduleId) => setAddExerciseModal({ scheduleId })}
                   patientId={patientId}
                   patientName={patient.fullName || "Patiënt"}
-                  onScheduleChanged={refreshProtocol}
+                  onScheduleChanged={() => { refreshProtocol(); notifyPatientUpdate(patientId); }}
                   notify={(m, t) => showToast(m, t)}
                   onRemoveExerciseClick={setConfirmRemoveExercise}
                   onReorderExercises={handleReorderScheduleExercises}
@@ -1712,6 +1724,17 @@ export default function PortalPatientDetailPage() {
                     <div>
                       <p className="text-xs text-subtle">Uitkomst</p>
                       <p className="text-gray-800">{patient.dischargeOutcome ? DISCHARGE_OUTCOME_LABELS[patient.dischargeOutcome] : "Niet aangegeven"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-subtle">Tevredenheid patiënt</p>
+                      {feedback[0] && !feedback[0].declined ? (
+                        <>
+                          <p className="text-gray-800">{"★".repeat(feedback[0].satisfaction ?? 0)}{"☆".repeat(5 - (feedback[0].satisfaction ?? 0))} <span className="text-gray-500">({feedback[0].satisfaction}/5{feedback[0].recommend !== null ? `, aanraden ${feedback[0].recommend}/10` : ""})</span></p>
+                          {feedback[0].comment && <p className="text-gray-600 italic mt-1">&ldquo;{feedback[0].comment}&rdquo;</p>}
+                        </>
+                      ) : (
+                        <p className="text-gray-500">{feedback[0]?.declined ? "Patiënt wilde liever niet reageren" : patient.hasAccount ? "Nog geen reactie (de patiënt krijgt de vraag in de app)" : "Geen app-account"}</p>
+                      )}
                     </div>
                     {canManagePatients && (
                       <div className="flex gap-2 pt-1">

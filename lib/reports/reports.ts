@@ -180,6 +180,35 @@ export const REPORTS: ReportDefinition[] = [
     },
   },
   {
+    id: "tevredenheid", name: "Tevredenheid bij afsluiting", category: "herstel",
+    description: "Hoe tevreden patiënten zijn over hun herstel en de begeleiding, en of ze de praktijk aanraden.",
+    build: (d) => {
+      const fb = (d.feedback ?? []).filter((f) => f.created_on >= d.from && f.created_on <= d.to);
+      const answered = fb.filter((f) => !f.declined && f.satisfaction !== null);
+      const sat = avg(answered.map((f) => f.satisfaction as number));
+      const rec = answered.map((f) => f.recommend).filter((x): x is number => x !== null);
+      const nps = rec.length ? Math.round(((rec.filter((x) => x >= 9).length - rec.filter((x) => x <= 6).length) / rec.length) * 100) : null;
+      const discharged = d.patients.filter((p) => p.discharged_on && p.discharged_on >= d.from && p.discharged_on <= d.to && p.has_account).length;
+      const names = new Map(d.patients.map((p) => [p.id, p.name]));
+      const dist = [5, 4, 3, 2, 1].map((n) => ({ label: `${"★".repeat(n)}`, n: answered.filter((f) => f.satisfaction === n).length }));
+      return {
+        kpis: [
+          { label: "Gem. tevredenheid", value: sat === null ? "—" : `${nf(sat)} / 5` },
+          { label: "NPS", value: nps === null ? "—" : `${nps > 0 ? "+" : ""}${nps}`, hint: "% aanraders (9-10) min % criticasters (0-6)" },
+          { label: "Reacties", value: String(answered.length), hint: discharged ? `van ${discharged} afgesloten patiënten met de app` : undefined },
+        ],
+        chart: barFromCounts(dist, "Patiënten"),
+        table: {
+          columns: [{ key: "datum", label: "Datum" }, { key: "naam", label: "Patiënt" }, { key: "score", label: "Tevredenheid", align: "right" }, { key: "aanraden", label: "Aanraden", align: "right" }, { key: "toelichting", label: "Toelichting" }],
+          rows: answered.sort((a, b) => b.created_on.localeCompare(a.created_on)).map((f) => ({
+            datum: f.created_on, naam: names.get(f.patient_id) ?? "—", score: f.satisfaction, aanraden: f.recommend, toelichting: f.comment ?? "",
+          })),
+        },
+        note: "Patiënten krijgen de vraag in de app nadat de behandeling is afgesloten. De antwoorden zijn alleen voor de praktijk.",
+      };
+    },
+  },
+  {
     id: "behandelduur", name: "Behandelduur per blessure", category: "herstel",
     description: "Gemiddeld aantal weken van start tot afsluiting, per blessuretype.",
     build: (d) => {
@@ -418,6 +447,7 @@ export function overviewKpis(cur: ReportData, prev: ReportData | null): Overview
       pijn: weightedAvg(d.daily, "avg_pain"),
       afgesloten: sum(d.daily, "discharged"),
       betrokken: act.length ? (recent / act.length) * 100 : null,
+      tevreden: avg((d.feedback ?? []).filter((f) => !f.declined && f.satisfaction !== null && f.created_on >= d.from && f.created_on <= d.to).map((f) => f.satisfaction as number)),
     };
   };
   const c = k(cur)!, p = k(prev);
@@ -429,7 +459,7 @@ export function overviewKpis(cur: ReportData, prev: ReportData | null): Overview
     { label: "Therapietrouw", value: c.trouw, prev: p?.trouw ?? null, format: "pct", betterWhen: "up", reportId: "therapietrouw" },
     { label: "Gem. pijn", value: c.pijn, prev: p?.pijn ?? null, format: "score10", betterWhen: "down", reportId: "pijn-tijd" },
     { label: "Actief in de app", value: c.betrokken, prev: p?.betrokken ?? null, format: "pct", betterWhen: "up", reportId: "actief-inactief" },
-    { label: "Afgesloten behandelingen", value: c.afgesloten, prev: p?.afgesloten ?? null, format: "int", betterWhen: "up", reportId: "uitkomst" },
+    { label: "Tevredenheid", value: c.tevreden, prev: p?.tevreden ?? null, format: "score5", betterWhen: "up", reportId: "tevredenheid" },
   ];
 }
 

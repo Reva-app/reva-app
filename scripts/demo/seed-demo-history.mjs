@@ -86,5 +86,13 @@ for (const [first, last, injury, plan, th, l, start, end, outcome] of HISTORY) {
     };
   });
   await api("POST", "patient_protocol_phases", rows);
+  // Tevredenheid bij afsluiting (migratie 148), zoals de patiënt die in de app geeft.
+  const FEEDBACK = {
+    Thomas: [5, 10, "Super begeleiding, ik sta weer op het veld."], Lieke: [5, 9, null], Hans: [4, 8, "Fijn dat ik thuis kon oefenen met de app."],
+    Sara: [5, 9, "Duidelijk schema en snelle reactie op vragen."], Peter: [3, 6, "Herstel ging trager dan gehoopt."], Anouk: [4, 8, null],
+    Mohamed: [5, 10, null], Ilse: [4, 9, "Prettig contact en goede uitleg."], Emma: [5, 9, "De voortgang zien hielp me echt."],
+  };
+  const fb = FEEDBACK[first];
+  if (fb) await api("POST", "patient_feedback", { patient_id: p.id, satisfaction: fb[0], recommend: fb[1], comment: fb[2], created_at: ago(Math.max(0, end - 2)).toISOString() });
   console.log("✓", first, last, `(${outcome})`);
 }

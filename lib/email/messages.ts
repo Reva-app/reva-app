@@ -317,3 +317,33 @@ export function authChangeEmailEmail(): EmailContent {
     notes: [`Heb je dit niet aangevraagd? Wijzig dan direct je wachtwoord en mail naar ${EMAIL_REPLY_TO}.`],
   };
 }
+
+// ─── Wekelijks overzicht voor praktijkeigenaren (/api/digest/weekly) ──────────
+
+export function weeklyDigestEmail(p: {
+  brand: EmailBrand;
+  siteUrl: string;
+  firstName: string;
+  organizationName: string;
+  periodLabel: string;
+  kpis: { label: string; value: string }[];
+  highlights: string[];
+}): EmailContent {
+  return {
+    brand: p.brand,
+    subject: `Je week in cijfers: ${p.organizationName}`,
+    preheader: p.highlights[0] ?? "De belangrijkste cijfers van afgelopen week.",
+    heading: p.firstName ? `Goedemorgen ${p.firstName}, dit was je week` : "Dit was je week",
+    paragraphs: [
+      ["De belangrijkste cijfers van ", { bold: p.organizationName }, ` over ${p.periodLabel}, vergeleken met de week ervoor.`],
+      ...p.highlights,
+    ],
+    details: p.kpis,
+    button: { label: "Bekijk Analyse", url: `${p.siteUrl}/portal/analyse?periode=7` },
+    footerReason: {
+      text: "Je ontvangt dit wekelijkse overzicht omdat je eigenaar bent van de praktijk in REVA.",
+      linkLabel: "Uitzetten",
+      linkUrl: `${p.siteUrl}/portal/account?tab=account`,
+    },
+  };
+}

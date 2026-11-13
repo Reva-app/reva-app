@@ -62,6 +62,15 @@ export interface ReportTest {
   last: ResultPoint;
 }
 
+export interface ReportFeedback {
+  patient_id: string;
+  satisfaction: number | null;
+  recommend: number | null;
+  comment: string | null;
+  created_on: string;
+  declined: boolean;
+}
+
 export interface ReportData {
   from: string;
   to: string;
@@ -71,6 +80,8 @@ export interface ReportData {
   daily: ReportDay[];
   phases: ReportPhase[];
   tests: ReportTest[];
+  /** Tevredenheid bij afsluiting (migratie 148); leeg zolang die niet gedraaid is. */
+  feedback?: ReportFeedback[];
 }
 
 export async function loadReportData(organizationId: string, from: string, to: string, therapistId: string | null = null): Promise<ReportData | null> {
