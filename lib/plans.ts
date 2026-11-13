@@ -21,10 +21,19 @@ export const YEARLY_MONTHS_CHARGED = 10;
 
 export const PATIENT_WARNING_RATIO = 0.9;
 
-/** Maandprijs per behandelaar (excl. btw), behandelaar 1 t/m VOLUME_FROM - 1. */
-export const SEAT_PRICE = 24;
-/** Maandprijs per behandelaar vanaf de VOLUME_FROM-de behandelaar. */
-export const VOLUME_SEAT_PRICE = 19;
+/**
+ * Prijzen zijn INCLUSIEF btw (november 2026). Fysiotherapie is vrijgesteld
+ * van btw, dus een praktijk kan btw niet terugvragen: het bedrag inclusief
+ * btw is voor hen de echte prijs. Onder de KOR wordt er geen btw berekend;
+ * daarna zit de 21% in deze bedragen (€29 ≈ €23,97 + btw), zodat de prijs
+ * voor de praktijk gelijk blijft.
+ */
+/** Maandprijs per behandelaar (incl. btw), behandelaar 1 t/m VOLUME_FROM - 1. */
+export const SEAT_PRICE = 29;
+/** Maandprijs per behandelaar (incl. btw) vanaf de VOLUME_FROM-de behandelaar; ook de vaste prijs voor pilotpraktijken. */
+export const VOLUME_SEAT_PRICE = 23;
+/** Vermelding achter elk bedrag. */
+export const VAT_NOTE = "incl. btw";
 export const VOLUME_FROM = 10;
 
 export interface PlanDefinition {
@@ -89,9 +98,9 @@ export function priceLabel(plan: PlanKey | null, customMonthlyPriceCents: number
     : `${formatEuro(monthly)} per maand`;
 }
 
-/** "€24 per behandelaar per maand, vanaf de 10e €19" — voor uitleg in de UI. */
+/** "€29 per behandelaar per maand, vanaf de 10e behandelaar €23" — voor uitleg in de UI. */
 export const SEAT_PRICE_EXPLANATION =
-  `${formatEuro(SEAT_PRICE)} per behandelaar per maand, vanaf de ${VOLUME_FROM}e behandelaar ${formatEuro(VOLUME_SEAT_PRICE)}`;
+  `${formatEuro(SEAT_PRICE)} per behandelaar per maand ${VAT_NOTE}, vanaf de ${VOLUME_FROM}e behandelaar ${formatEuro(VOLUME_SEAT_PRICE)}`;
 
 export function limitLabel(value: number | null): string {
   return value === null || value >= UNLIMITED ? "Onbeperkt" : value.toLocaleString("nl-NL");

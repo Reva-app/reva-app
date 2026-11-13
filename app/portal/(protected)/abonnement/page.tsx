@@ -7,7 +7,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { loadPortalPlanUsage, MANAGE_BRANDING_ROLES, type PortalPlanUsage } from "@/lib/services/portalService";
-import { PLANS, UNLIMITED, PATIENT_WARNING_RATIO, SEAT_PRICE_EXPLANATION, priceLabel, limitLabel } from "@/lib/plans";
+import { PLANS, UNLIMITED, PATIENT_WARNING_RATIO, SEAT_PRICE_EXPLANATION, VAT_NOTE, priceLabel, limitLabel } from "@/lib/plans";
 import { trialState, dayLabel } from "@/lib/trial";
 
 function UsageRow({ label, used, max, hint }: { label: string; used: number | null; max: number | null; hint: string }) {
@@ -80,7 +80,7 @@ export default function PortalAbonnementPage() {
             {plan && (
               <p className="text-xs text-subtle mt-1">
                 {!plan.customizable && usage !== null && `${usage.members} ${usage.members === 1 ? "behandelaar" : "behandelaars"} · `}
-                {membership.billingInterval === "year" ? "Jaarlijks betaald, 2 maanden gratis" : "Maandelijks betaald"} · excl. btw
+                {membership.billingInterval === "year" ? "Jaarlijks betaald, 2 maanden gratis" : "Maandelijks betaald"} · {VAT_NOTE}
               </p>
             )}
           </div>
