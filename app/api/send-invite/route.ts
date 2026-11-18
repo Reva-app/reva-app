@@ -347,6 +347,11 @@ export async function POST(request: Request) {
               : staffInviteEmail({ practice, firstName, roleName, url: actionLink });
 
     const { subject, html, text } = renderEmail(content);
+    // Demo-accounts (@demo.reva-app.nl) hebben geen echte mailbox: niet versturen,
+    // anders stuitert de mail en lijdt de afzenderreputatie eronder.
+    if (String(email).toLowerCase().endsWith("@demo.reva-app.nl")) {
+      return NextResponse.json({ success: true, skipped: "demo" });
+    }
     const { error: sendError } = await resend.emails.send({
       from: emailFrom(content.brand),
       to: email,
