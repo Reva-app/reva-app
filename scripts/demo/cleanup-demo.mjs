@@ -19,6 +19,7 @@ const KEY = env.SUPABASE_SERVICE_ROLE_KEY;
 const H = { apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" };
 const DOMAIN = "@demo.reva-app.nl";
 const ORG_NAME = "Fysiotherapie De Linde";
+const KEEP = ["demo@demo.reva-app.nl", "patient@demo.reva-app.nl"];
 
 async function rest(method, path) {
   const res = await fetch(`${URL_}/rest/v1/${path}`, { method, headers: { ...H, Prefer: "return=representation" } });
@@ -39,7 +40,8 @@ for (let page = 1; ; page++) {
   const res = await fetch(`${URL_}/auth/v1/admin/users?page=${page}&per_page=200`, { headers: H });
   const json = await res.json();
   const batch = json.users ?? [];
-  users.push(...batch.filter((u) => (u.email ?? "").endsWith(DOMAIN)));
+  // De vaste live-demo-accounts (setup-live-demo.mjs) horen niet bij De Linde.
+  users.push(...batch.filter((u) => (u.email ?? "").endsWith(DOMAIN) && !KEEP.includes(u.email)));
   if (batch.length < 200) break;
 }
 

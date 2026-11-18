@@ -2,6 +2,8 @@
 
 import { Suspense, useEffect, useState, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { DemoResetButton } from "@/components/portal/DemoResetButton";
+import { useToast } from "@/components/ui/Toast";
 import {
   ArrowLeft, Building2, MapPin, HeartPulse, Activity,
   MessageSquare, Camera, Loader2, Check, UserPlus, AlertCircle,
@@ -81,6 +83,7 @@ function AdminOrganizationDetailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orgId = params.id as string;
+  const { showToast, toastNode } = useToast();
   const inviteErrorFromRedirect = searchParams.get("inviteError");
 
   const [org, setOrg] = useState<AdminOrganizationDetail | null>(null);
@@ -361,6 +364,9 @@ function AdminOrganizationDetailContent() {
           )}
         </Button>
       </div>
+
+      {toastNode}
+      <DemoResetButton organizationId={orgId} reloadTo={`/admin/organisaties/${orgId}`} notify={(msg, type) => showToast(msg, type)} />
 
       {/* ── Pakket (migratie 130) ─────────────────────────────────────────── */}
       <PlanCard

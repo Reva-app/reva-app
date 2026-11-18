@@ -13,6 +13,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { PushSettings } from "@/components/notifications/PushSettings";
 import { WeeklyDigestToggle } from "@/components/portal/WeeklyDigestToggle";
+import { DemoResetButton } from "@/components/portal/DemoResetButton";
 import { Avatar } from "@/components/ui/Avatar";
 import { usePortalMembership } from "@/lib/hooks/usePortalMembership";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -515,6 +516,7 @@ export function MedewerkerDetail({
 
                 {isSelf && <PushSettings variant="staff" notify={(msg, type) => showToast(msg, type)} />}
                 {isSelf && member.roleKey === "organization_owner" && <WeeklyDigestToggle notify={(msg, type) => showToast(msg, type)} />}
+                {isSelf && member.roleKey === "organization_owner" && <DemoResetButton organizationId={membership?.organizationId} notify={(msg, type) => showToast(msg, type)} />}
 
                 {canShowDangerActions && (
                   <div className="flex flex-wrap gap-2">
